@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Servicio para el backend Django
+  backend:
+    build:
+      context: ./backend  # Ruta al Dockerfile del backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"  # Mapea el puerto 8000 del contenedor al puerto 8000 de la máquina local
+    depends_on:
+      - db  # Espera a que la base de datos esté lista
+    environment:
+      - DEBUG=True
+    networks:
+      - app-network
+
+  # Servicio para el frontend React
+  frontend:
+    build:
+      context: ./frontend  # Ruta al Dockerfile del frontend
+    ports:
+      - "3000:3000"  # Mapea el puerto 3000 del contenedor al puerto 3000 de la máquina local
+    depends_on:
+      - backend  # Asegúrate de que el backend esté listo
+    networks:
+      - app-network
+
+
+    # Servicio para la base de datos (PostgreSQL en este caso)
+#   db:
+#     image: postgres:13
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     environment:
+#       POSTGRES_DB: mydatabase
+#       POSTGRES_USER: user
+#       POSTGRES_PASSWORD: password
+#     networks:
+#       - app-network
+
+# # Volúmenes para la base de datos
+# volumes:
+#   postgres_data:
+
+# Redes para conectar los servicios
+networks:
+  app-network:
+    driver: bridge
