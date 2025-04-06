@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap');
+
+.home {
+  position: relative;
+  width: 100%;
+  height: 70vh;
+  background-image: url('../img/general/audi_wallpaper.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: black;
+}
+
+.promo-section{
+  background-color: var(--color-primario);
+  position: relative;
+  bottom: 0;
+}
+
+.w-100{
+  width: 100% !important;
+}
+
+
+.oculto{
+    margin-bottom: 300px;
+}
+
+.search-section {
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+}
+
+.input-search {
+  width: 100%;
+  min-width: 300px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.search-form {
+  background-color: #ffffffcc;
+  padding: 20px;
+  border: var(--color-primario) 1px solid;
+  border-radius: 8px;
+}
+
+.btn-buscar, .btn-guardar {
+  background-color: var(--color-primario);
+}
+
+.btn-buscar:hover, .btn-guardar:hover {
+  background-color: var(--color-hover);
+}
+
+.location-suggestions{
+  background-color: var(--color-fundo-blanco) !important;
+}
+
+.close-suggestions-icon:hover {
+  background-color: var(--color-primario);
+  color: var(--color-texto-claro);
+  border-radius: 90%;
+
+}
+
+/* Rango activo de calendario */
+.rdrStartEdge, .rdrDayNumberSelected, .rdrDayNumberSelected, .rdrDayToday .rdrDayNumber span:after, .rdrInRange, .rdrEndEdge {
+  background-color: var(--color-primario) !important;
+}
+
+.location-info {
+  background-color: var(--color-texto-secundario);
+  width: 600px;
+}
+
+  
+  .promo-section {
+    text-align: center;
+    margin-top: 20px;
+  }
+  
+
+
+  .promo-section h2 span {
+    font-size: 3rem;
+    font-family: "Roboto Condensed", RobotoCondensedArial, sans-serif;
+  }
+  
+  .promo-section h1 {
+    font-size: 2rem;
+  }
+  
+  .features-section {
+    padding: 50px 20px;
+    background: #f8f9fa;
+  }
+  
+  .feature {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .feature .icon {
+    margin-right: 20px;
+  }
+  
+  .feature .icon svg {
+    fill: #ff6600;
+  }
+  
+  .feature .content h3 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+  
+  .feature .content p {
+    margin: 0;
+    color: #6c757d;
+  }
+  

@@ -1,0 +1,64 @@
+:root {
+    --color-primario: #002e5d;
+    --color-secundario: #2ecc71;
+    --color-terciario: #e74c3c;
+    --color-fondo: #000000cc;
+    --color-fundo-blanco: #FFFFFF;
+
+    --color-texto-negro: #000000;
+    --color-texto-claro: #ffffffcc;
+    --color-texto-secundario: rgb(244, 244, 249);
+    --color-boton-primario: #002e5d;
+    --color-boton-secundario: #bdc3c7;
+    --color-borde-primario: #bdc3c7;
+    --color-borde-secundario: #002e5d;
+    --color-hover: #2980b9;
+    --color-activo: #27ae60;
+}
+
+
+.color-primario{
+    background-color: var(--color-primario) !important;
+    color: var(--color-texto-claro) !important;
+}
+
+.color-texto-primario {
+    color: var(--color-primario) !important;
+}
+
+
+body{
+    font-family: ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT', 'Arial Rounded MT Bold', Calibri, source-sans-pro, sans-serif;
+    font-weight: normal;
+}
+
+/* body {
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--color-texto-claro);
+}
+
+a {
+    color: var(--color-secundario);
+}
+
+a:hover {
+    color: var(--color-hover);
+}
+
+button {
+    background-color: var(--color-primario);
+    color: var(--color-fondo);
+    border: 1px solid var(--color-borde);
+}
+
+button:hover {
+    background-color: var(--color-hover);
+}
+
+button:active {
+    background-color: var(--color-activo);
+} */
