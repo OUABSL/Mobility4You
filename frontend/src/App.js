@@ -1,8 +1,10 @@
 // Todas las importaciones al inicio
 import React from 'react';
+import API_URL from './config';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './css/style.css';
+
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
@@ -13,7 +15,7 @@ import { fab } from '@fortawesome/free-brands-svg-icons';
 import MyNavbar from './components/MyNavbar';
 import Home from './components/Home';
 // import ContactUs from './components/ContactUs';
-// import CarList from './components/CarList';
+import ListadoCoches from './components/ListadoCoches';
 // import CarDetail from './components/CarDetail';
 // import UserProfile from './components/UserProfile';
 // import AdminPanel from './components/AdminPanel';
@@ -32,7 +34,7 @@ function App() {
         <AlertProvider> */}
           <div className='d-flex flex-column min-vh-100 justify-content-start'>
             <MyNavbar />
-              <div className="w-100" style={{backgroundColor: 'black'}}>
+              <div className="w-100">
               {/* <AlertContext.Consumer>
                 {context => {
                   const { alert, setAlert } = context;
@@ -50,9 +52,9 @@ function App() {
               <Routes>
                 {/* Vistas comúnes */}
                 <Route path="/" element={<Home />} />
-                {/* <Route path="/contactus" element={<ContactUs />} />
-                <Route path="/cars" element={<CarList />} />
-                <Route path="/cars/:id" element={<CarDetail />} />
+                {/* <Route path="/contactus" element={<ContactUs />} /> */}
+                <Route path="/coches" element={<ListadoCoches />} />
+                {/*  <Route path="/cars/:id" element={<CarDetail />} />
                 {/* Portal de Usuario */}
                 {/* <Route path="/user/profile" element={<UserProfile />} /> */}
                 {/* Panel de Administración */}

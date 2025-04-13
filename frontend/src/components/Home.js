@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { Form, Button, Row, Col, Modal } from 'react-bootstrap';
 import { DateRange } from 'react-date-range';
@@ -9,6 +9,7 @@ import { faPlane, faCity } from '@fortawesome/free-solid-svg-icons';
 import 'react-date-range/dist/styles.css'; // Estilos básicos
 import 'react-date-range/dist/theme/default.css'; // Tema por defecto
 import '../css/Home.css';
+import FormBusqueda from './FormBusqueda'; // Asegúrate de que la ruta sea correcta
 
 const availableTimes = ["11:00", "11:30", "12:00", "13:30"];
 
@@ -62,42 +63,66 @@ const Home = () => {
 
   // Estados para manejar visualización de elementos
   const [sameLocation, setSameLocation] = useState(true);
-  const [locationSuggestions, setLocationSuggestions] = useState([]);
-  // Función para manejar el cambio en el campo de ubicación
-  const handleLocationChange = (e, setLocation) => {
-    const value = e.target.value;
-    setLocation(value);
-    if (value) {
-      setLocationSuggestions(locations.filter(location => location.name.toLowerCase().includes(value.toLowerCase())));
-    } else {
-      setLocationSuggestions([]);
-    }
-  };
+  const [pickupSuggestions, setPickupSuggestions] = useState([]);
+  const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
 
-  // Función para cerrar las sugerencias
-  const handleCloseSuggestions = () => {
-    setLocationSuggestions([]);
-  };
+
+    // Función para manejar el cambio en el campo de ubicación
+    const handleLocationChange = (e, setLocation, setSuggestions) => {
+      const value = e.target.value;
+      setLocation(value);
+      if (value) {
+        setSuggestions(
+          locations.filter(location =>
+            location.name.toLowerCase().includes(value.toLowerCase())
+          )
+        );
+      } else {
+        setSuggestions([]);
+      }
+    };
+
+  // Refs para detectar clics externos en las sugerencias
+  const pickupRef = useRef(null);
+  const dropoffRef = useRef(null);
+
+  useEffect(() => {
+    // Función para manejar clics fuera de las sugerencias
+    const handleClickOutside = (event) => {
+      // Si existe el ref y el click ocurrió fuera de él, se cierra
+      if (pickupRef.current && !pickupRef.current.contains(event.target)) {
+        setPickupSuggestions([]);
+      }
+      if (dropoffRef.current && !dropoffRef.current.contains(event.target)) {
+        setDropoffSuggestions([]);
+      }
+    };
+  
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
 
   // Renderizado de las sugerencias de ubicaciones
-  const renderLocationSuggestions = (setLocation) => {
-    return locationSuggestions.map((location, index) => (
-      <div key={index} className="location-suggestion d-flex flex-row align-items-center px-2" style={{cursor:'pointer'}} onClick={() => {
-        setLocation(location.name);
-        setLocationSuggestions([]);
-      }}>
-        <div className='w-100'>
-          <div><FontAwesomeIcon icon={location.icon} /> {location.name}</div>
+  const renderSuggestions = (suggestions, setLocation, setSuggestions) => {
+    return suggestions.map((location, index) => (
+      <div
+        key={index}
+        className="suggestion-option"
+        onClick={() => {
+          setLocation(location.name);
+          setSuggestions([]);
+        }}
+      >
+        <div className="suggestion-main">
+          <FontAwesomeIcon className='me-2' icon={location.icon} /> {location.name}
         </div>
-        <div className="location-info p-3">
-          {location.info && (
-            <>
-            <FontAwesomeIcon icon={location.icon} />
-              <p><strong>Dirección:</strong> {location.info.address}</p>
-              <p><strong>Horario:</strong> {location.info.hours}</p>
-              <p><strong>Festivos:</strong> {location.info.holidays}</p>
-            </>
-          )}
+        <div className="suggestion-detail">
+          <p><strong>Dirección:</strong> {location.info.address}</p>
+          <p><strong>Horario:</strong> {location.info.hours}</p>
+          <p><strong>Festivos:</strong> {location.info.holidays}</p>
         </div>
       </div>
     ));
@@ -135,185 +160,11 @@ const Home = () => {
   };
 
   return (
-    <div>
     <div className="home w-100">
-      <div className="search-section w-100">
-        <div className="search-form bg-light text-dark mt-5 mx-5 p-3 rounded">
-          <Form onSubmit={handleSearch}>
-            <Row className='d-flex flex-row align-items-center'>
-              {/* Ubicación */}
-              <Col className='d-flex align-items-center'>
-                <Form.Group controlId="pickupLocation" className='flex-grow-1'>
-                  <Form.Label className='small'>Recogida</Form.Label>
-                  <Form.Control
-                    type="text"
-                    className='w-100 input-search'
-                    placeholder="Aeropuerto, ciudad o dirección"
-                    value={pickupLocation}
-                    onChange={(e) => handleLocationChange(e, setPickupLocation)}
-                    onFocus={() => setLocationSuggestions(locations)}
-                  />
-                  {locationSuggestions.length > 0 && (
-                    <div className="location-suggestions">
-                      <div className="close-suggestions d-flex justify-content-end m-2" style={{cursor:'pointer'}} onClick={handleCloseSuggestions}>
-                        <FontAwesomeIcon className="close-suggestions-icon" icon={['fas', 'times']} />
-                      </div>
-                      {renderLocationSuggestions(setPickupLocation)}
-                    </div>
-                  )}
-                </Form.Group>
-              </Col>
-
-              {/* Ubicación de devolución opcional */}
-              <Col className='d-flex align-items-center align-self-end'>
-                <FontAwesomeIcon icon={['fas', 'exchange-alt']} className='color-texto-primario me-2 align-self-end' 
-                  style={{ cursor: 'pointer', color: '#007bff' }}
-                  onClick={() => {
-                    setShowDropoffLocation(!showDropoffLocation);
-                    setSameLocation(!sameLocation);
-                  }}/>
-                {sameLocation && (
-                <span
-                  className="span-dif-lugar text-secondary"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => {
-                    setShowDropoffLocation(!showDropoffLocation);
-                    setSameLocation(false);
-                  }}
-                >
-                  ¿Distinto Lugar de Devolución?
-                </span>
-                )}
-                {showDropoffLocation && (
-                  <Form.Group controlId="dropoffLocation" className='flex-grow-1 ms-2'>
-                    <Form.Label className='small'>Devolución</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Aeropuerto, ciudad o dirección"
-                      value={dropoffLocation}
-                      onChange={(e) => handleLocationChange(e, setDropoffLocation)}
-                      onFocus={() => setLocationSuggestions(locations)}
-                    />
-                    {locationSuggestions.length > 0 && (
-                      <div className="location-suggestions">
-                        {renderLocationSuggestions(setDropoffLocation)}
-                        <div className="close-suggestions" onClick={handleCloseSuggestions}>
-                          <FontAwesomeIcon icon={['fas', 'times']} />
-                        </div>
-                      </div>
-                    )}
-                  </Form.Group>
-                )}
-              </Col>
-            </Row>
-              <Row className='d-flex flex-row justify-content-evenly align-items-center mt-3'>
-                {/* Selector combinado de Fecha y Hora para Recogida y Devolución */}
-                <Col className='d-flex flex-column align-items-start'>
-                  <Form.Label className='small'>
-                    Fecha de Recogida
-                  </Form.Label>
-                  <div 
-                    className="d-flex align-items-center p-2 border rounded"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setOpenCalendar(true)}
-                  >
-                    {/* Recogida */}
-                    <span className='me-3'>
-                      <FontAwesomeIcon icon={['fas', 'calendar-alt']} className='color-texto-primario me-1' />
-                      {format(pickupDate, 'd MMM', { locale: undefined })} | 
-                      <FontAwesomeIcon icon={['fas', 'clock']} className='color-texto-primario ms-2 me-1' />
-                      {pickupTime}
-                    </span>
-                  </div>
-                </Col>
-
-                <Col className='d-flex flex-column align-items-start'>
-                  <Form.Label className='small'>
-                    Fecha de Devolución
-                  </Form.Label>
-                  <div 
-                    className="d-flex align-items-center p-2 border rounded"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setOpenCalendar(true)}
-                  >
-                    {/* Devolución */}
-                    <span>
-                      <FontAwesomeIcon icon={['fas', 'calendar-alt']} className='color-texto-primario me-1' />
-                      {format(dropoffDate, 'd MMM', { locale: undefined })} | 
-                      <FontAwesomeIcon icon={['fas', 'clock']} className='color-texto-primario ms-2 me-1' />
-                      {dropoffTime}
-                    </span>
-                  </div>
-                </Col>
-
-                {/* Botón para buscar */}
-                <Col className='d-flex align-items-center align-self-end'>
-                  <Button className='btn-buscar' type="submit">
-                    Buscar coches
-                  </Button>
-                </Col>
-              </Row>
-            </Form>
-          </div>
-        </div>
+      {/* Sección de búsqueda */}
+      <div className="search-section d-flex flex-column align-items-center justify-content-center text-light">
+        <FormBusqueda onSearch={handleSearch} collapsible={false} />
       </div>
-
-      {/* Modal con calendario y selección de horas */}
-      <Modal show={openCalendar} onHide={() => setOpenCalendar(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Selecciona fechas y horas</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className='d-flex flex-column align-items-center'>
-          {/* Calendario para seleccionar el rango */}
-          <DateRange
-            editableDateInputs={true}
-            onChange={handleSelectRange}
-            moveRangeOnFirstSelection={false}
-            ranges={dateRange}
-            minDate={new Date()}
-            locale={enUS}
-          />
-
-          <hr />
-          <div className='d-flex flex-row justify-content-evenly align-items-center w-100'>
-            <Form.Group className=''>
-              <Form.Label>Hora de Recogida</Form.Label>
-              <Form.Control
-                as="select"
-                value={pickupTime}
-                onChange={(e) => setPickupTime(e.target.value)}
-              >
-                {availableTimes.map((time, index) => (
-                  <option key={index} value={time}>{time}</option>
-                ))}
-              </Form.Control>
-            </Form.Group>
-
-            <Form.Group>
-              <Form.Label>Hora de Devolución</Form.Label>
-              <Form.Control
-                as="select"
-                value={dropoffTime}
-                onChange={(e) => setDropoffTime(e.target.value)}
-              >
-                {availableTimes.map((time, index) => (
-                  <option key={index} value={time}>{time}</option>
-                ))}
-              </Form.Control>
-            </Form.Group>
-          </div>
-          
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setOpenCalendar(false)}>
-            Cancelar
-          </Button>
-          <Button className='btn-guardar' onClick={handleSaveDates}>
-            Guardar
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
       {/* Sección de promoción y características */}
       <div className="promo-section text-light p-4 w-100">
         <h2>
