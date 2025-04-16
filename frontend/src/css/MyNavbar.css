@@ -11,3 +11,11 @@
     color: var(--color-hover) !important;
     transform: scale(1.05);
   }
+
+  /* Ejemplo en MyNavbar.css */
+.fixed-navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1050;
+}

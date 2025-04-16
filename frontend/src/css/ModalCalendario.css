@@ -1,0 +1,23 @@
+.rdrStartEdge,
+.rdrEndEdge,
+.rdrInRange
+{
+    background-color: var(--color-primario) !important;
+}
+
+
+.btn-guardar{
+    background-color: var(--color-primario);
+}
+
+.btn-guardar:hover{
+    background-color: var(--color-hover);
+}
+
+.rdrDayToday .rdrDayNumber span:after {
+    background: var(--color-primario);
+}
+
+.rdrDateDisplayItemActive {
+    border-color: var(--color-primario) !important;
+}

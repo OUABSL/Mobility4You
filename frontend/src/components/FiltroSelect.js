@@ -16,7 +16,24 @@ const FiltroSelect = ({ filters, setFilters, options }) => {
 
   // Cada bloque: si ya se seleccionó una opción se muestra como etiqueta con un icono; si no, se muestra el select.
   return (
-    <Row className="mb-4 filter-selects">
+    <Row className="mb-4 filter-selects d-flex justify-content-start align-items-center flex-wrap flex-row">
+      <Col md={3} sm={6} className="mb-2">
+        <Form.Group controlId="orden">
+          {filters.orden ? (
+            <div className="selected-filter">
+              {filters.orden}
+              <FontAwesomeIcon icon={faTimes} className="remove-icon" onClick={() => removeFilter('orden')} />
+            </div>
+          ) : (
+            <Form.Select name="orden" value={filters.orden} onChange={handleChange}>
+              <option value="">Ordenar por</option>
+              {options.orden.map((opt, idx) => (
+                <option key={idx} value={opt}>{opt}</option>
+              ))}
+            </Form.Select>
+          )}
+        </Form.Group>
+      </Col>
       <Col md={3} sm={6} className="mb-2">
         <Form.Group controlId="marca">
           {filters.marca ? (
@@ -26,7 +43,7 @@ const FiltroSelect = ({ filters, setFilters, options }) => {
             </div>
           ) : (
             <Form.Select name="marca" value={filters.marca} onChange={handleChange}>
-              <option value="">Seleccione Marca</option>
+              <option value="">Marca</option>
               {options.marca.map((opt, idx) => (
                 <option key={idx} value={opt}>{opt}</option>
               ))}
@@ -43,7 +60,7 @@ const FiltroSelect = ({ filters, setFilters, options }) => {
             </div>
           ) : (
             <Form.Select name="modelo" value={filters.modelo} onChange={handleChange}>
-              <option value="">Seleccione Modelo</option>
+              <option value="">Modelo</option>
               {options.modelo.map((opt, idx) => (
                 <option key={idx} value={opt}>{opt}</option>
               ))}
@@ -60,25 +77,8 @@ const FiltroSelect = ({ filters, setFilters, options }) => {
             </div>
           ) : (
             <Form.Select name="combustible" value={filters.combustible} onChange={handleChange}>
-              <option value="">Seleccione Combustible</option>
+              <option value="">Combustible</option>
               {options.combustible.map((opt, idx) => (
-                <option key={idx} value={opt}>{opt}</option>
-              ))}
-            </Form.Select>
-          )}
-        </Form.Group>
-      </Col>
-      <Col md={3} sm={6} className="mb-2">
-        <Form.Group controlId="orden">
-          {filters.orden ? (
-            <div className="selected-filter">
-              {filters.orden}
-              <FontAwesomeIcon icon={faTimes} className="remove-icon" onClick={() => removeFilter('orden')} />
-            </div>
-          ) : (
-            <Form.Select name="orden" value={filters.orden} onChange={handleChange}>
-              <option value="">Ordenar por</option>
-              {options.orden.map((opt, idx) => (
                 <option key={idx} value={opt}>{opt}</option>
               ))}
             </Form.Select>

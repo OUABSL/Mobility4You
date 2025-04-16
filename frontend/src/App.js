@@ -14,7 +14,7 @@ import { fab } from '@fortawesome/free-brands-svg-icons';
 
 import MyNavbar from './components/MyNavbar';
 import Home from './components/Home';
-// import ContactUs from './components/ContactUs';
+import ContactUs from './components/ContactUs';
 import ListadoCoches from './components/ListadoCoches';
 // import CarDetail from './components/CarDetail';
 // import UserProfile from './components/UserProfile';
@@ -52,7 +52,7 @@ function App() {
               <Routes>
                 {/* Vistas comúnes */}
                 <Route path="/" element={<Home />} />
-                {/* <Route path="/contactus" element={<ContactUs />} /> */}
+                <Route path="/contactus" element={<ContactUs />} />
                 <Route path="/coches" element={<ListadoCoches />} />
                 {/*  <Route path="/cars/:id" element={<CarDetail />} />
                 {/* Portal de Usuario */}

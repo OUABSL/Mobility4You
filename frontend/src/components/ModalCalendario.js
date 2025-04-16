@@ -5,6 +5,7 @@ import { addDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import 'react-date-range/dist/styles.css'; // Importa estilos básicos
 import 'react-date-range/dist/theme/default.css'; // Importa tema por defecto
+import '../css/ModalCalendario.css'; // Importa tu CSS personalizado
 
 const ModalCalendario = ({ openCalendar, onHideCalendar, initialValues, availableTimes, onSave }) => {
     // Estados para fechas y horas

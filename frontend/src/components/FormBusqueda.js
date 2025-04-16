@@ -10,7 +10,9 @@ import {
   faCalendarAlt, 
   faClock, 
   faExchangeAlt, 
-  faTimes 
+  faTimes,
+  faSearch,
+  faEdit
 } from '@fortawesome/free-solid-svg-icons';
 import '../css/FormBusqueda.css';
 import ModalCalendario from './ModalCalendario';
@@ -38,7 +40,7 @@ const locations = [
 ];
 
 const availableTimes = ["11:00", "11:30", "12:00", "13:30"];
-const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {} }) => {
+const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, listado=false }) => {
   const [pickupLocation, setPickupLocation] = useState(initialValues.pickupLocation || '');
   const [dropoffLocation, setDropoffLocation] = useState(initialValues.dropoffLocation || '');
   const [showDropoffLocation, setShowDropoffLocation] = useState(initialValues.showDropoffLocation || false);
@@ -58,6 +60,39 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {} }) => 
 
   const pickupRef = useRef(null);
   const dropoffRef = useRef(null);
+
+  // NUEVO BLOQUE: Agregar estado y efecto para detectar scroll y aplicar clase "fixed" al formulario plegado
+  const [isFixedForm, setIsFixedForm] = useState(false);
+  const [navbarHeight, setNavbarHeight] = useState(0);
+
+  useEffect(() => {
+    const navbar = document.querySelector('.navbar');
+    console.log(navbar);
+    console.log(navbar.offsetHeight);
+    if (navbar) {
+      setNavbarHeight(navbar.offsetHeight);
+    }
+
+    const handleScroll = () => {
+      if (window.scrollY > 100) {
+        setIsFixedForm(true);
+      } else {
+        setIsFixedForm(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // NUEVO BLOQUE: Funciones para expandir el formulario (se despliega y vuelve al top) y para contraerlo
+  const handleExpand = () => {
+    setExpanded(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const handleCloseExpand = () => {
+    setExpanded(false);
+  };
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -133,8 +168,11 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {} }) => 
 
   if (collapsible && !expanded) {
     return (
-      <div className="form-busqueda-collapsed" onClick={() => setExpanded(true)}>
-        <Row className="align-items-center">
+      <div
+        className={`form-busqueda-collapsed ${isFixedForm ? 'fixed-search' : ''} w-100 d-flex flex-row justify-content-between align-items-center`}
+        style={{ top: isFixedForm ? `${navbarHeight}px` : 'auto' }}
+      >
+        <Row className="align-items-center" style={{ display: 'contents' }}>
           <Col>
             <span><strong>Recogida:</strong> {pickupLocation || "No definido"}</span>
           </Col>
@@ -152,14 +190,36 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {} }) => 
             </span>
           </Col>
         </Row>
+        {/* NUEVO BLOQUE: Botón para modificar y expandir formulario */}
+        <Button onClick={handleExpand} className="btn-modificar d-flex align-items-center justify-content-center bg-none">
+          <FontAwesomeIcon icon={faEdit} className="me-1" />
+        </Button>
       </div>
     );
   }
+  
 
   return (
-    <div className="search-section w-100">
+    <div className="search-section w-100" style={{ position: 'relative' }}>
       <div className="search-form bg-light text-dark mt-5 mx-5 p-3 rounded">
         <Form onSubmit={handleSubmit}>
+          {/* Icono de cierre para formulario expandido */}
+          {listado && (
+          <div
+            className="expand-close-icon align-end"
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '60px',
+              justifySelf: 'flex-end',
+              cursor: 'pointer',
+              fontSize: '1.5rem'
+            }}
+            onClick={handleCloseExpand}
+          >
+            <FontAwesomeIcon icon={faTimes} />
+          </div>
+          )}
           <Row className="d-flex flex-row align-items-center">
             <Col className="d-flex align-items-center">
               <Form.Group controlId="pickupLocation" className="flex-grow-1 position-relative">
@@ -172,6 +232,18 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {} }) => 
                   onChange={(e) => handleLocationChange(e, setPickupLocation, setPickupSuggestions)}
                   onFocus={() => setPickupSuggestions(locations)}
                 />
+                
+                {pickupLocation && (
+                  <div className="reset-search position-absolute" style={{ top: '50%', right: '10px', cursor: 'pointer' }}>
+                    <FontAwesomeIcon
+                      icon={faTimes}
+                      onClick={() => {
+                        setPickupLocation(''); 
+                        setPickupSuggestions(locations);}
+                      }
+                    />
+                  </div>
+                )}
                 {pickupSuggestions.length > 0 && (
                   <div ref={pickupRef} className="suggestions-container">
                     <div className="close-suggestions" onClick={() => setPickupSuggestions([])}>
@@ -206,6 +278,7 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {} }) => 
                 </span>
               )}
               {showDropoffLocation && (
+
                 <Form.Group controlId="dropoffLocation" className="flex-grow-1 ms-2 position-relative">
                   <Form.Label className="small">Devolución</Form.Label>
                   <Form.Control
@@ -215,12 +288,24 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {} }) => 
                     onChange={(e) => handleLocationChange(e, setDropoffLocation, setDropoffSuggestions)}
                     onFocus={() => setDropoffSuggestions(locations)}
                   />
+                  {dropoffLocation && (
+                    <div className="reset-search position-absolute" style={{ top: '50%', right: '10px', cursor: 'pointer' }}>
+                      <FontAwesomeIcon
+                        icon={faTimes}
+                        className="reset-search"
+                        onClick={() => {
+                          setDropoffLocation('');
+                          setDropoffSuggestions(locations);
+                        }}
+                      />
+                    </div>
+                  )}
                   {dropoffSuggestions.length > 0 && (
                     <div ref={dropoffRef} className="suggestions-container">
-                      {renderSuggestions(dropoffSuggestions, setDropoffLocation, setDropoffSuggestions)}
                       <div className="close-suggestions" onClick={() => setDropoffSuggestions([])}>
                         <FontAwesomeIcon icon={faTimes} />
                       </div>
+                      {renderSuggestions(dropoffSuggestions, setDropoffLocation, setDropoffSuggestions)}                  
                     </div>
                   )}
                 </Form.Group>
@@ -260,7 +345,7 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {} }) => 
             </div>
           </Col>
 
-
+          <Col className="d-flex flex-column align-items-start"></Col>
             <Col className="d-flex align-items-center align-self-end">
               <Button className="btn-buscar" type="submit">
                 Buscar coches

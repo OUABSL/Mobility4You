@@ -96,3 +96,25 @@
     border-radius: 8px;
   }
   
+/* Ejemplo en FormBusqueda.css */
+.fixed-search {
+  position: fixed;
+  width: 100%;
+  z-index: 1040;
+}
+
+.btn-modificar{
+  background: none !important;
+  border: none !important;
+}
+
+.btn-modificar .svg-inline--fa {
+  color: var(--color-primario) !important;
+  font-size: 1.5rem !important;
+  transition: transform 0.3s ease;
+}
+
+.btn-modificar:hover .svg-inline--fa {
+  transform: scale(1.2);
+  color: var(--color-hover) !important;
+}
