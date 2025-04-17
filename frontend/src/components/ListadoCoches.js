@@ -34,6 +34,15 @@ import a3Image from '../img/coches/audi-a3-2020-660x375.jpg';
       imagen: a3Image
     },
     {
+      id: 7,
+      marca: 'BMW',
+      modelo: '320i',
+      descripcion: 'Un sedán deportivo y cómodo.',
+      precio: 70,
+      combustible: 'Diésel',
+      imagen: bmwImage
+    },
+    {
       id: 2,
       marca: 'Audi',
       modelo: 'A3',
@@ -77,15 +86,6 @@ import a3Image from '../img/coches/audi-a3-2020-660x375.jpg';
       precio: 10,
       combustible: 'Gasolina',
       imagen: a3Image
-    },
-    {
-      id: 7,
-      marca: 'BMW',
-      modelo: '320i',
-      descripcion: 'Un sedán deportivo y cómodo.',
-      precio: 70,
-      combustible: 'Diésel',
-      imagen: bmwImage
     }
   ];
 
@@ -159,8 +159,24 @@ const ListadoCoches = () => {
 
   // NUEVO BLOQUE: Función para manejar la apertura/cierre de la ficha
   const handleVerDetalle = (carId) => {
-    setOpenCarId(prevId => prevId === carId ? null : carId);
-  };
+    const newId = openCarId === carId ? null : carId;
+    console.log('Nuevo ID de coche:', newId);
+    setOpenCarId(newId);
+  
+    if (newId) {
+      // Después de un pequeño delay, hacemos scroll suave hasta la ficha
+      setTimeout(() => {
+        const el = document.getElementsByClassName(`ficha-coche-modal`)[0];
+        console.log('Elemento a hacer scroll:', el);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+      }, 100);
+    } else {
+      // Al cerrar, podemos resetear la vista al top (o a otra posición)
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
 
   return (
     <Container className="listado-coches my-4 w-100 mx-auto">
@@ -198,55 +214,83 @@ const ListadoCoches = () => {
       </Row>
   
       {/* Listado de tarjetas */}
-      <Row className="results-container">
-        {loading ? null : cars.length === 0 ? (
+      {!loading && cars.length > 0 && (() => {
+        // Partir el array en grupos de 3
+        const filas = [];
+        for (let i = 0; i < cars.length; i += 3) {
+          filas.push(cars.slice(i, i + 3));
+        }
+        return filas.map((grupo, rowIdx) => (
+          <React.Fragment key={rowIdx}>
+            {/* Fila de hasta 3 tarjetas */}
+            <Row className="results-container mb-4">
+              {grupo.map(car => (
+                <Col key={car.id} md={4} sm={6} className="mb-4">
+                  <Card
+                    className={`car-card h-100 text-center ${
+                      openCarId === car.id ? 'selected-card' : ''
+                    }`}
+                  >
+                    {/* … aquí tu JSX de la tarjeta (img, título, botón) exactamente igual … */}
+                    <div className="img-container">
+                      <div className="fuel-tag">{car.combustible}</div>
+                      <Card.Img src={car.imagen} alt={`${car.marca} ${car.modelo}`} />
+                    </div>
+                    <Card.Body className="d-flex flex-column">
+                      <Card.Title>{car.marca} {car.modelo}</Card.Title>
+                      <Card.Text className="my-2">
+                        {car.descripcion || 'Descripción no disponible.'}
+                      </Card.Text>
+                      <p className="precio text-bold">
+                        Desde {car.precio}€ / día
+                      </p>
+                      <Button
+                        variant="outline-primary"
+                        className="w-100 mt-auto"
+                        onClick={() => handleVerDetalle(car.id)}
+                      >
+                        <FontAwesomeIcon icon={faSearch} className="me-1" />
+                        Ver Detalle
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+
+            {/* Si el coche seleccionado está en este grupo, muestro la ficha justo después de la fila */}
+            {grupo.some(car => car.id === openCarId) && (
+              <Row>
+                <Col md={12}>
+                  <FichaCoche
+                    car={cars.find(c => c.id === openCarId)}
+                    onClose={() => handleVerDetalle(openCarId)}
+                  />
+                </Col>
+              </Row>
+            )}
+          </React.Fragment>
+        ));
+      })()}
+
+      {/* Mensaje de 'sin resultados' o 'cargando', si fuera necesario */}
+      {!loading && cars.length === 0 && (
+        <Row>
           <Col>
             <p className="text-center text-danger">
               <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" />
               No se han encontrado coches con los filtros aplicados.
             </p>
           </Col>
-        ) : (
-          cars.map(car => (
-            <React.Fragment key={car.id}>
-              <Col md={4} sm={6} className="mb-4">
-                <Card className="car-card h-100 text-center">
-                  {car.imagen ? (
-                    <div className="img-container">
-                      <div className="fuel-tag">{car.combustible}</div>
-                      <Card.Img src={car.imagen} alt={`${car.marca} ${car.modelo}`} />
-                    </div>
-                  ) : (
-                    <div className="card-placeholder">
-                      <FontAwesomeIcon icon={faCar} size="4x" />
-                    </div>
-                  )}
-                  <Card.Body className="d-flex flex-column">
-                    <Card.Title>{car.marca} {car.modelo}</Card.Title>
-                    <Card.Text className="my-2">
-                      {car.descripcion ? car.descripcion : 'Descripción no disponible.'}
-                    </Card.Text>
-                    <p className="precio text-bold">Desde {car.precio}€ / día</p>
-                    <Button
-                      variant="outline-primary"
-                      className="w-100 mt-auto"
-                      onClick={() => handleVerDetalle(car.id)}
-                    >
-                      <FontAwesomeIcon icon={faSearch} className="me-1" />
-                      Ver Detalle
-                    </Button>
-                  </Card.Body>
-                </Card>
-              </Col>
-              {openCarId === car.id && (
-                <Col md={12}>
-                  <FichaCoche car={car} onClose={() => setOpenCarId(null)} />
-                </Col>
-              )}
-            </React.Fragment>
-          ))
-        )}
-      </Row>
+        </Row>
+      )}
+      {loading && (
+        <Row>
+          <Col>
+            <p className="text-center">Cargando vehículos...</p>
+          </Col>
+        </Row>
+      )}
     </Container>
   );  
 };

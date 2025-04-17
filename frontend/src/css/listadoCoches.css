@@ -169,3 +169,12 @@
 .car-card button {
   margin-top: auto;
 }
+
+/* resaltar tarjeta seleccionada */
+.selected-card {
+  border: 2px solid var(--color-primario); /* O el color que corresponda a --var-primario */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Opcional: añadir sombra para destacar más */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transform: scale(1.02); /* Aumentar ligeramente el tamaño de la tarjeta seleccionada */
+
+}

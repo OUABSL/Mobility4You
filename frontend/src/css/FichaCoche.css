@@ -1,9 +1,9 @@
 /* src/css/FichaCoche.css */
 .ficha-coche-modal {
     background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
     position: relative;
+    border: 2px solid var(--color-primario);
+    border-radius: '10px'
   }
   
   .close-icon {
@@ -42,3 +42,118 @@
     }
   }
   
+
+  /* NUEVO */
+
+  /* src/css/FichaCoche.css */
+.ficha-coche-modal {
+  background: var(--color-fundo-blanco);
+  border: 2px solid var(--color-primario);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.close-icon {
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: var(--color-terciario);
+}
+
+.ficha-image {
+  max-height: 350px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.car-info-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 1rem;
+  padding: 1rem 0;
+  color: var(--color-primario);
+}
+
+.car-info-icons div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.payment-options h5 {
+  margin-bottom: 1rem;
+  color: var(--color-primario);
+}
+
+.payment-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.payment-card:hover {
+  border-color: var(--color-hover);
+  box-shadow: 0 4px 10px rgba(0, 46, 93, 0.1);
+}
+
+.payment-card.active {
+  border: 2px solid var(--color-primario);
+}
+
+.payment-details ul {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+
+.payment-details li {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .ficha-coche-modal {
+    padding: 15px;
+  }
+
+  .car-info-icons {
+    font-size: 0.95rem;
+  }
+}
+
+
+/* src/css/FichaCoche.css */
+
+/* Nuevo bloque: estilo precio por día */
+.price-day {
+  font-size: 1.1rem;
+  color: var(--color-primario);
+  margin: 0;
+}
+.price-day .price-details {
+  font-size: 0.85rem;
+  color: var(--color-hover);
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+/* Nuevo bloque: estilo botón continuar */
+.continue-btn {
+  background-color: var(--color-primario);
+  font-size: 1.2rem;
+}
+
+.continue-btn:hover {
+  background-color: var(--color-hover);
+  color: var(--color-texto-claro);
+  border: 1px solid var(--color-primario);
+  transform: scale(1.05);
+  transition: all 0.3s ease;
+}
+
+/* Ajustes responsive si fuesen necesarios (ya existentes) */
+@media (max-width: 768px) {
+  .price-day { font-size: 1rem; }
+}
