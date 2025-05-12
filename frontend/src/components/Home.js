@@ -36,7 +36,7 @@ const locations = [
 ];
 
 
-const Home = () => {
+const Home = ({isMobile=false}) => {
   // Estados para ubicación y búsqueda
   const [pickupLocation, setPickupLocation] = useState('');
   const [dropoffLocation, setDropoffLocation] = useState('');
@@ -49,38 +49,28 @@ const Home = () => {
   const [pickupTime, setPickupTime] = useState(availableTimes[0]);
   const [dropoffTime, setDropoffTime] = useState(availableTimes[0]);
 
-  // Estado para mostrar el modal del calendario
-  const [openCalendar, setOpenCalendar] = useState(false);
-
-  // Rango para el DateRange
-  const [dateRange, setDateRange] = useState([
-    {
-      startDate: pickupDate,
-      endDate: dropoffDate,
-      key: 'selection'
-    }
-  ]);
-
   // Estados para manejar visualización de elementos
   const [sameLocation, setSameLocation] = useState(true);
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
   const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
 
+  const [mayor21, setMayor21] = useState(false);
 
-    // Función para manejar el cambio en el campo de ubicación
-    const handleLocationChange = (e, setLocation, setSuggestions) => {
-      const value = e.target.value;
-      setLocation(value);
-      if (value) {
-        setSuggestions(
-          locations.filter(location =>
-            location.name.toLowerCase().includes(value.toLowerCase())
-          )
-        );
-      } else {
-        setSuggestions([]);
-      }
-    };
+
+  // Función para manejar el cambio en el campo de ubicación
+  const handleLocationChange = (e, setLocation, setSuggestions) => {
+    const value = e.target.value;
+    setLocation(value);
+    if (value) {
+      setSuggestions(
+        locations.filter(location =>
+          location.name.toLowerCase().includes(value.toLowerCase())
+        )
+      );
+    } else {
+      setSuggestions([]);
+    }
+  };
 
   // Refs para detectar clics externos en las sugerencias
   const pickupRef = useRef(null);
@@ -103,43 +93,8 @@ const Home = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
   
-
-  // Renderizado de las sugerencias de ubicaciones
-  const renderSuggestions = (suggestions, setLocation, setSuggestions) => {
-    return suggestions.map((location, index) => (
-      <div
-        key={index}
-        className="suggestion-option"
-        onClick={() => {
-          setLocation(location.name);
-          setSuggestions([]);
-        }}
-      >
-        <div className="suggestion-main">
-          <FontAwesomeIcon className='me-2' icon={location.icon} /> {location.name}
-        </div>
-        <div className="suggestion-detail">
-          <p><strong>Dirección:</strong> {location.info.address}</p>
-          <p><strong>Horario:</strong> {location.info.hours}</p>
-          <p><strong>Festivos:</strong> {location.info.holidays}</p>
-        </div>
-      </div>
-    ));
-  };
-
-
-  const handleSelectRange = (ranges) => {
-    const { startDate, endDate } = ranges.selection;
-    setDateRange([ranges.selection]);
-    setPickupDate(startDate);
-    setDropoffDate(endDate);
-  };
-
-  const handleSaveDates = () => {
-    // Se cierra el modal al guardar el rango y las horas
-    setOpenCalendar(false);
-  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -152,6 +107,8 @@ const Home = () => {
         pickupTime,
         dropoffDate: format(dropoffDate, 'dd-MM'),
         dropoffTime,
+        mayor21
+        
       });
       setCars(response.data);
     } catch (error) {
@@ -163,7 +120,7 @@ const Home = () => {
     <div className="home w-100">
       {/* Sección de búsqueda */}
       <div className="search-section d-flex flex-column align-items-center justify-content-center text-light">
-        <FormBusqueda onSearch={handleSearch} collapsible={false} />
+        <FormBusqueda onSearch={handleSearch} collapsible={false} isMobile={isMobile} />
       </div>
       {/* Sección de promoción y características */}
       <div className="promo-section text-light p-4 w-100">

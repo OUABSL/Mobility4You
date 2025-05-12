@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Button, Modal } from 'react-bootstrap';
 import { DateRange } from 'react-date-range';
 import { addDays } from 'date-fns';
@@ -7,12 +7,14 @@ import 'react-date-range/dist/styles.css'; // Importa estilos básicos
 import 'react-date-range/dist/theme/default.css'; // Importa tema por defecto
 import '../css/ModalCalendario.css'; // Importa tu CSS personalizado
 
-const ModalCalendario = ({ openCalendar, onHideCalendar, initialValues, availableTimes, onSave }) => {
+const ModalCalendario = ({ openCalendar, onHideCalendar, initialValues, availableTimes, onSave, isMobile=false }) => {
     // Estados para fechas y horas
     const [pickupDate, setPickupDate] = useState(initialValues.pickupDate || new Date());
     const [dropoffDate, setDropoffDate] = useState(initialValues.dropoffDate || addDays(new Date(), 1));
     const [pickupTime, setPickupTime] = useState(initialValues.pickupTime || availableTimes[0]);
     const [dropoffTime, setDropoffTime] = useState(initialValues.dropoffTime || availableTimes[0]);
+
+
 
     // Modal y DateRange
     const [dateRange, setDateRange] = useState([
@@ -42,7 +44,7 @@ const ModalCalendario = ({ openCalendar, onHideCalendar, initialValues, availabl
         <div>
 
             {/* Modal con calendario y selección de horas */}
-            <Modal show={openCalendar} onHide={onHideCalendar} centered>
+            <Modal className='modal-calendario' show={openCalendar} onHide={onHideCalendar} centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Selecciona fechas y horas</Modal.Title>
                 </Modal.Header>
@@ -55,6 +57,8 @@ const ModalCalendario = ({ openCalendar, onHideCalendar, initialValues, availabl
                         ranges={dateRange}
                         minDate={new Date()}
                         locale={enUS}
+                        months={isMobile ? 1 : 2} // Cambia el número de meses mostrados según el tamaño de la pantalla
+                        direction={isMobile ? 'vertical' : 'horizontal'} // Cambia la dirección según el tamaño de la pantalla
                     />
 
                     <hr />

@@ -72,5 +72,17 @@
 .search-section {
   position: relative;
   z-index: 1;
-  margin-bottom: 110px;
+  margin-bottom: 130px;
+}
+
+
+@media (max-width: 768px) {
+  .search-section {
+    background-image: url('../img/general/audi_wallpaper.png');
+    background-size: contain;
+    margin-bottom: 0;
+  }
+  .home {
+    background-image: none;
+    }
 }

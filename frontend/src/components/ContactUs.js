@@ -50,7 +50,7 @@ const ContactUs = () => {
   };
 
   return (
-    <div className="contactus-container align-middle">
+    <div className="contactus-container align-middle mt-5">
       <h2>Contáctanos</h2>
       <form className="contactus-form" onSubmit={handleSubmit}>
         <div className="form-group">

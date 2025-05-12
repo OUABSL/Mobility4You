@@ -157,3 +157,44 @@
 @media (max-width: 768px) {
   .price-day { font-size: 1rem; }
 }
+
+/* Icono de info junto al título de la tarjeta de pago */
+.info-icon {
+  cursor: pointer;
+  color: var(--color-primario);
+  font-size: 1.25rem;
+  transition: color 0.2s;
+}
+.info-icon:hover {
+  color: var(--color-hover);
+}
+
+
+.opcion-pago-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: var(--color-primario);
+}
+
+.opcion-pago-titulo {
+  font-size: 1.5rem;
+  color: var(--color-texto-claro);
+}
+
+.opcion-pago-header .btn-close {
+  color: var(--color-terciario);
+  /* filter: brightness(0%) saturate(50%) invert(37%) sepia(100%) saturate(729%) hue-rotate(327deg) brightness(91%) contrast(100%); */
+  filter: brightness(0) saturate(100%) invert(12%) sepia(99%) saturate(5634%) hue-rotate(235deg) brightness(86%) contrast(97%);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.icon-svg {
+  max-width: 16px;
+  fill: var(--color-primario);
+  /* filter: brightness(0) saturate(100%) invert(14%) sepia(42%) saturate(2602%) hue-rotate(187deg) brightness(96%) contrast(105%) */
+  filter: brightness(0) saturate(100%) invert(12%) sepia(99%) saturate(5634%) hue-rotate(235deg) brightness(86%) contrast(97%);
+
+}

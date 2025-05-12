@@ -29,7 +29,7 @@ import a3Image from '../img/coches/audi-a3-2020-660x375.jpg';
       marca: 'Audi',
       modelo: 'A3',
       descripcion: 'Un coche compacto y elegante.',
-      precio: 10,
+      precio: 50,
       combustible: 'Gasolina',
       imagen: a3Image
     },
@@ -47,7 +47,7 @@ import a3Image from '../img/coches/audi-a3-2020-660x375.jpg';
       marca: 'Audi',
       modelo: 'A3',
       descripcion: 'Un coche compacto y elegante.',
-      precio: 10,
+      precio: 50,
       combustible: 'Gasolina',
       imagen: a3Image
     },
@@ -56,7 +56,7 @@ import a3Image from '../img/coches/audi-a3-2020-660x375.jpg';
       marca: 'Audi',
       modelo: 'A3',
       descripcion: 'Un coche compacto y elegante.',
-      precio: 10,
+      precio: 50,
       combustible: 'Gasolina',
       imagen: a3Image
     },
@@ -65,7 +65,7 @@ import a3Image from '../img/coches/audi-a3-2020-660x375.jpg';
       marca: 'Audi',
       modelo: 'A3',
       descripcion: 'Un coche compacto y elegante.',
-      precio: 10,
+      precio: 50,
       combustible: 'Gasolina',
       imagen: a3Image
     },
@@ -74,7 +74,7 @@ import a3Image from '../img/coches/audi-a3-2020-660x375.jpg';
       marca: 'Audi',
       modelo: 'A3',
       descripcion: 'Un coche compacto y elegante.',
-      precio: 10,
+      precio: 50,
       combustible: 'Gasolina',
       imagen: a3Image
     },
@@ -83,7 +83,7 @@ import a3Image from '../img/coches/audi-a3-2020-660x375.jpg';
       marca: 'Audi',
       modelo: 'A3',
       descripcion: 'Un coche compacto y elegante.',
-      precio: 10,
+      precio: 50,
       combustible: 'Gasolina',
       imagen: a3Image
     }

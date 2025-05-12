@@ -12,10 +12,14 @@ import {
   faExchangeAlt, 
   faTimes,
   faSearch,
-  faEdit
+  faEdit,
+  faInfoCircle,
+  faTruck,
+  faCarSide
 } from '@fortawesome/free-solid-svg-icons';
 import '../css/FormBusqueda.css';
 import ModalCalendario from './ModalCalendario';
+import { is } from 'date-fns/locale';
 
 // Opciones y datos de ejemplo para ubicaciones (podrías importarlos desde un módulo común)
 const locations = [
@@ -38,37 +42,117 @@ const locations = [
     }
   }
 ];
-
+// Opciones de horarios disponibles (podrías importarlos desde un módulo común)
 const availableTimes = ["11:00", "11:30", "12:00", "13:30"];
-const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, listado=false }) => {
+
+// Tipos de búsqueda (vehículos)
+const searchTypes = [
+  { id: 'coches',   label: 'Coches',   icon: faCarSide },
+  { id: 'furgonetas', label: 'Furgonetas', icon: faTruck }
+];
+
+// Grupos de coches (subcategorías) — más adelante vendrán de la API
+const carGroups = [
+  { id: 'A', title: 'Fiat 500, Panda o similar' },
+  { id: 'B', title: 'Seat Ibiza, VW Polo, Fabia o similar' }
+  // C se añadirá luego
+];
+
+// Componente del formulario de búsqueda
+/**
+ * Componente `FormBusqueda` para realizar búsquedas con opciones de recogida y devolución, 
+ * fechas y horarios. Incluye funcionalidad para sugerencias de ubicaciones, 
+ * manejo de fechas y un diseño plegable/expandible.
+ *
+ * @param {Object} props - Propiedades del componente.
+ * @param {boolean} [props.collapsible=false] - Indica si el formulario puede plegarse o expandirse.
+ * @param {Function} props.onSearch - Función que se ejecuta al enviar el formulario con los parámetros de búsqueda.
+ * @param {Object} [props.initialValues={}] - Valores iniciales para los campos del formulario.
+ * @param {boolean} [props.listado=false] - Indica si el formulario se muestra en un contexto de listado.
+ *
+ * @returns {JSX.Element} Componente de formulario de búsqueda.
+ *
+ * @example
+ * <FormBusqueda 
+ *   collapsible={true} 
+ *   onSearch={(params) => console.log(params)} 
+ *   initialValues={{
+ *     pickupLocation: "Madrid",
+ *     dropoffLocation: "Barcelona",
+ *     pickupDate: new Date(),
+ *     dropoffDate: new Date(),
+ *     pickupTime: "10:00",
+ *     dropoffTime: "12:00"
+ *   }} 
+ *   listado={true} 
+ * />
+ *
+ * @description
+ * Este componente permite a los usuarios seleccionar ubicaciones de recogida y devolución, 
+ * fechas y horarios para realizar una búsqueda. Incluye:
+ * - Sugerencias de ubicaciones basadas en texto ingresado.
+ * - Manejo de fechas y horarios con un calendario modal.
+ * - Diseño plegable para optimizar el espacio en pantalla.
+ * - Funcionalidad para detectar el scroll y fijar el formulario en la parte superior.
+ */
+const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, listado=false, isMobile=false}) => {
+  // Estado para la ubicación de recogida
   const [pickupLocation, setPickupLocation] = useState(initialValues.pickupLocation || '');
+  // Estado para la ubicación de devolución
   const [dropoffLocation, setDropoffLocation] = useState(initialValues.dropoffLocation || '');
+  // Estado para mostrar u ocultar el campo de ubicación de devolución
   const [showDropoffLocation, setShowDropoffLocation] = useState(initialValues.showDropoffLocation || false);
+  // Estado para determinar si la ubicación de recogida y devolución son iguales
   const [sameLocation, setSameLocation] = useState(true);
 
+  // Estado para las sugerencias de ubicaciones de recogida
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
+  // Estado para las sugerencias de ubicaciones de devolución
   const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
 
+  // Estado para controlar si el formulario está expandido o colapsado
   const [expanded, setExpanded] = useState(!collapsible);
 
+  // Estado para la fecha de recogida
   const [pickupDate, setPickupDate] = useState(initialValues.pickupDate || new Date());
+  // Estado para la fecha de devolución
   const [dropoffDate, setDropoffDate] = useState(initialValues.dropoffDate || addDays(new Date(), 1));
+  // Estado para la hora de recogida
   const [pickupTime, setPickupTime] = useState(initialValues.pickupTime || availableTimes[0]);
+  // Estado para la hora de devolución
   const [dropoffTime, setDropoffTime] = useState(initialValues.dropoffTime || availableTimes[0]);
 
+  // Estado para controlar la apertura del calendario modal
   const [openCalendar, setOpenCalendar] = useState(false);
 
+  // Estado para controlar si la edad del conductor es mayor de 21 años
+  const [mayor21, setMayor21] = useState(false);
+  // Estado para controlar la visibilidad del tooltip de información de edad
+  const [hoverTooltip, setHoverTooltip] = useState(false);
+  // Referencias para los campos de recogida y devolución
   const pickupRef = useRef(null);
   const dropoffRef = useRef(null);
 
-  // NUEVO BLOQUE: Agregar estado y efecto para detectar scroll y aplicar clase "fixed" al formulario plegado
+  // Estado para determinar si el formulario debe fijarse al hacer scroll
   const [isFixedForm, setIsFixedForm] = useState(false);
+  // Estado para almacenar la altura de la barra de navegación
   const [navbarHeight, setNavbarHeight] = useState(0);
 
+  // Tipo de búsqueda y grupo seleccionado
+const [tipoBusqueda, setTipoBusqueda] = useState('coches');
+const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
+
+// Simular llamada a API para tipos y grupos
+useEffect(() => {
+  // Aquí se haría el fetch('/api/search-types')…
+  // Por simplicidad, estamos usando datos estáticos en este ejemplo
+  //setTipoBusqueda('coches'); // Cambia esto según la lógica de tu aplicación
+  //setGrupoSeleccionado(carGroups[0]); // Selecciona el primer grupo por defecto
+}, []);
+
+  // Efecto para manejar el scroll y fijar el formulario si es necesario
   useEffect(() => {
     const navbar = document.querySelector('.navbar');
-    console.log(navbar);
-    console.log(navbar.offsetHeight);
     if (navbar) {
       setNavbarHeight(navbar.offsetHeight);
     }
@@ -84,16 +168,18 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // NUEVO BLOQUE: Funciones para expandir el formulario (se despliega y vuelve al top) y para contraerlo
+  // Función para expandir el formulario y desplazarse al inicio de la página
   const handleExpand = () => {
     setExpanded(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Función para contraer el formulario
   const handleCloseExpand = () => {
     setExpanded(false);
   };
 
-
+  // Efecto para cerrar las sugerencias al hacer clic fuera de los campos
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (pickupRef.current && !pickupRef.current.contains(event.target)) {
@@ -108,6 +194,7 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Función para manejar el cambio en los campos de ubicación y generar sugerencias
   const handleLocationChange = (e, setLocation, setSuggestions) => {
     const value = e.target.value;
     setLocation(value);
@@ -122,6 +209,7 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
     }
   };
 
+  // Función para renderizar las sugerencias de ubicaciones
   const renderSuggestions = (suggestions, setLocation, setSuggestions) => {
     return suggestions.map((location, index) => (
       <div
@@ -144,6 +232,7 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
     ));
   };
 
+  // Función para guardar las fechas seleccionadas en el calendario modal
   const handleSaveDates = ({ pickupDate, dropoffDate, pickupTime, dropoffTime }) => {
     setPickupDate(pickupDate);
     setDropoffDate(dropoffDate);
@@ -151,6 +240,7 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
     setDropoffTime(dropoffTime);
   };
 
+  // Función para manejar el envío del formulario y generar los parámetros de búsqueda
   const handleSubmit = (e) => {
     e.preventDefault();
     const searchParams = {
@@ -160,11 +250,15 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
       pickupTime,
       dropoffDate: format(dropoffDate, 'dd-MM'),
       dropoffTime,
+      tipo: tipoBusqueda,
+      grupo: grupoSeleccionado,
     };
     if (onSearch) {
       onSearch(searchParams);
     }
   };
+
+
 
   if (collapsible && !expanded) {
     return (
@@ -201,7 +295,7 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
 
   return (
     <div className="search-section w-100" style={{ position: 'relative' }}>
-      <div className="search-form bg-light text-dark mt-5 mx-5 p-3 rounded">
+      <div className={`search-form bg-light text-dark mt-5 mx-5 p-3 rounded ${isMobile ? 'mobile-form' : ''}`}>
         <Form onSubmit={handleSubmit}>
           {/* Icono de cierre para formulario expandido */}
           {listado && (
@@ -220,7 +314,31 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
             <FontAwesomeIcon icon={faTimes} />
           </div>
           )}
-          <Row className="d-flex flex-row align-items-center">
+          {/* Selección de tipo de búsqueda */}
+          <Row className={`mb-3 ${isMobile ? 'flex-nowrap overflow-auto' : ''}`}>
+            <Col>
+              <div className={`d-flex ${isMobile ? 'flex-row' : 'flex-wrap'}`}>
+                {searchTypes.map(type => (
+                  <Button
+                    key={type.id}
+                    variant={tipoBusqueda === type.id ? 'primario' : 'outline-primario'}
+                    className={`me-2 mb-2 tipo-btn`}
+                    onClick={() => {
+                      setTipoBusqueda(type.id);
+                        setGrupoSeleccionado(null);
+                      }}
+                      >
+                      <FontAwesomeIcon icon={type.icon} className="me-1" />
+                      {type.label}
+                      </Button>
+                    ))}
+                    </div>
+                  </Col>
+                  </Row>
+
+                  
+          {/* Selección de ubicaciones de recogida y devolución */}
+          <Row className={`${isMobile ? 'd-flex flex-column gap-3' : 'd-flex flex-row align-items-center'} mt-3`}>
             <Col className="d-flex align-items-center">
               <Form.Group controlId="pickupLocation" className="flex-grow-1 position-relative">
                 <Form.Label className="small">Recogida</Form.Label>
@@ -255,10 +373,10 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
               </Form.Group>
             </Col>
 
-            <Col className="d-flex align-items-center align-self-end">
+            <Col className={`d-flex ${isMobile && !sameLocation ? 'flex-column' : 'align-items-center align-self-end'}`}>
               <FontAwesomeIcon
                 icon={faExchangeAlt}
-                className="color-texto-primario me-2 align-self-end"
+                className={`color-texto-primario me-2 ${isMobile ? !sameLocation ? 'mb-2 h5' : 'align-self-end' : 'align-self-end'}`}
                 style={{ cursor: 'pointer', color: '#007bff' }}
                 onClick={() => {
                   setShowDropoffLocation(!showDropoffLocation);
@@ -279,7 +397,7 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
               )}
               {showDropoffLocation && (
 
-                <Form.Group controlId="dropoffLocation" className="flex-grow-1 ms-2 position-relative">
+                <Form.Group controlId="dropoffLocation" className={`flex-grow-1 position-relative ${isMobile ? '' : 'ms-2 '}`}>
                   <Form.Label className="small">Devolución</Form.Label>
                   <Form.Control
                     type="text"
@@ -312,41 +430,85 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
               )}
             </Col>
           </Row>
-          <Row className="d-flex flex-row justify-content-evenly align-items-center mt-3">
-          <Col className="d-flex flex-column align-items-start">
-            <Form.Label className="small">Fecha de Recogida</Form.Label>
+          {/* Selección de fechas y horas */}
+          <Row className={`${isMobile ? 'd-flex flex-column gap-3' : 'd-flex flex-row justify-content-evenly align-items-center'} mt-3`}>
+            <Col className="d-flex flex-column align-items-start">
+              <Form.Label className="small">Fecha de Recogida</Form.Label>
+              <div
+                className="d-flex align-items-center p-2 border rounded"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setOpenCalendar(true)}
+              >
+                <span className="me-3">
+                  <FontAwesomeIcon icon={faCalendarAlt} className="color-texto-primario me-1" />
+                  {format(pickupDate, 'd MMM')} |
+                  <FontAwesomeIcon icon={faClock} className="color-texto-primario ms-2 me-1" />
+                  {pickupTime}
+                </span>
+              </div>
+            </Col>
+
+            <Col className="d-flex flex-column align-items-start">
+              <Form.Label className="small">Fecha de Devolución</Form.Label>
+              <div
+                className="d-flex align-items-center p-2 border rounded"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setOpenCalendar(true)}
+              >
+                <span>
+                  <FontAwesomeIcon icon={faCalendarAlt} className="color-texto-primario me-1" />
+                  {format(dropoffDate, 'd MMM')} |
+                  <FontAwesomeIcon icon={faClock} className="color-texto-primario ms-2 me-1" />
+                  {dropoffTime}
+                </span>
+              </div>
+            </Col>
+
+          {/* Si es 'coches', muestro subcategorías */}
+          {tipoBusqueda === 'coches' && (
+            <Col>
+              <Form.Label className="small">Categoría de coche</Form.Label>
+              <Form.Select
+                value={grupoSeleccionado || ''}
+                onChange={(e) => setGrupoSeleccionado(e.target.value || null)}
+              >
+                <option value="">Todos</option>
+                {carGroups.map(g => (
+                <option key={g.id} value={g.id}>
+                  Segmento {g.id}: {g.title}
+                </option>
+                ))}
+              </Form.Select>
+            </Col>
+          )}
+
+          <Col className="d-flex flex-row align-items-center align-self-end justify-content-start flex-nowrap">
+            <Form.Check
+              type="checkbox"
+              label="Conductor mayor de 21 años"
+              checked={mayor21}
+              onChange={(e) => setMayor21(e.target.checked)}
+            />
             <div
-              className="d-flex align-items-center p-2 border rounded"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setOpenCalendar(true)}
+              className="tooltip-container position-relative"
+              onMouseEnter={() => setHoverTooltip(true)}
+              onMouseLeave={() => setHoverTooltip(false)}
+              onClick={() => alert('Actualmente, nuestros servicios están disponibles únicamente para conductores mayores de 21 años. Agradecemos su comprensión.')}
             >
-              <span className="me-3">
-                <FontAwesomeIcon icon={faCalendarAlt} className="color-texto-primario me-1" />
-                {format(pickupDate, 'd MMM')} |
-                <FontAwesomeIcon icon={faClock} className="color-texto-primario ms-2 me-1" />
-                {pickupTime}
-              </span>
+              <FontAwesomeIcon
+                icon={faInfoCircle}
+                className="info-icon ms-2"
+              />
+              {hoverTooltip && (
+                <div className="tooltip-content text-center bg-light border rounded p-2">
+                  Actualmente, nuestros servicios están disponibles únicamente para conductores mayores de 21 años.
+                </div>
+              )}
             </div>
           </Col>
 
-          <Col className="d-flex flex-column align-items-start">
-            <Form.Label className="small">Fecha de Devolución</Form.Label>
-            <div
-              className="d-flex align-items-center p-2 border rounded"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setOpenCalendar(true)}
-            >
-              <span>
-                <FontAwesomeIcon icon={faCalendarAlt} className="color-texto-primario me-1" />
-                {format(dropoffDate, 'd MMM')} |
-                <FontAwesomeIcon icon={faClock} className="color-texto-primario ms-2 me-1" />
-                {dropoffTime}
-              </span>
-            </div>
-          </Col>
-
-          <Col className="d-flex flex-column align-items-start"></Col>
-            <Col className="d-flex align-items-center align-self-end">
+          {/* Botón Buscar */}
+            <Col className={`d-flex align-items-center  ${isMobile ? 'justify-content-start align-self-start' : 'justify-content-end align-self-end'} `} style={{maxWidth: '200px'}}>
               <Button className="btn-buscar" type="submit">
                 Buscar coches
               </Button>
@@ -355,12 +517,13 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
         </Form>
       </div>
       <ModalCalendario
-      openCalendar={openCalendar}
-      onHideCalendar={() => setOpenCalendar(false)}
-      initialValues={{ pickupDate, dropoffDate, pickupTime, dropoffTime }}
-      availableTimes={availableTimes}
-      onSave={handleSaveDates}
-    />
+        openCalendar={openCalendar}
+        onHideCalendar={() => setOpenCalendar(false)}
+        initialValues={{ pickupDate, dropoffDate, pickupTime, dropoffTime }}
+        availableTimes={availableTimes}
+        onSave={handleSaveDates}
+        isMobile={isMobile} // Prop para determinar si es móvil o no
+      />
     </div>
   );
 };
