@@ -1,0 +1,21 @@
+# Usa una imagen oficial de Node.js como base
+FROM node:18-slim
+
+# Establece el directorio de trabajo en el contenedor
+WORKDIR /app
+
+# Copia los archivos de dependencias de React y los instala
+COPY package*.json /app/
+RUN npm install --legacy-peer-deps
+
+# Copia todo el código fuente
+COPY . /app/
+
+# Compila el proyecto de React para producción
+RUN npm run build
+
+# Expone el puerto 3000 para el servidor de React
+EXPOSE 3000
+
+# Comando para iniciar el servidor cuando se ejecute el contenedor
+CMD ["npm", "start"]

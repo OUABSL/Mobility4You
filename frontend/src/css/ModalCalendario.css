@@ -1,0 +1,52 @@
+.modal-calendario {
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+    width: 100%;
+}
+
+.modal-content {
+    width: auto !important;
+}
+
+.rdrMonths {
+    border: 2px solid var(--color-primario) !important;
+    border-radius: 8px !important;
+}
+
+.rdrMonthName {
+    color: var(--color-primario) !important;
+    justify-self: center;
+}
+
+
+.rdrStartEdge,
+.rdrEndEdge,
+.rdrInRange
+{
+    background-color: var(--color-primario) !important;
+}
+
+
+.btn-guardar{
+    background-color: var(--color-primario);
+}
+
+.btn-guardar:hover{
+    background-color: var(--color-hover);
+}
+
+.rdrDayToday .rdrDayNumber span:after {
+    background-color: var(--color-primario);
+}
+
+.rdrDateDisplayItemActive {
+    border-color: var(--color-primario) !important;
+}
+
+@media (max-width: 767px) {
+    /* Cada mes ocupa 100% de ancho en vista vertical */
+    .rdrDateRangeWrapper .rdrMonthAndYearWrapper {
+      width: 100% !important;
+    }
+  }
+  

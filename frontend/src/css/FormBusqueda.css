@@ -1,0 +1,166 @@
+/* src/css/formBusqueda.css */
+
+.form-busqueda-container {
+    margin: 20px;
+  }
+  
+  /* Estilo para el formulario completo */
+  .search-form {
+    background-color: #ffffffcc;
+    padding: 20px;
+    border: 1px solid var(--color-primario);
+    border-radius: 8px;
+  }
+  
+  /* Input del formulario */
+  .input-search {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+
+
+/* Tooltip Mayor de edad */
+.tooltip-content {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;         /* usar max-width en lugar de width fija */
+  padding: 0.5rem;
+  white-space: normal;      /* permitir salto de línea */
+  word-wrap: break-word;    /* envolver palabras largas */
+  overflow-wrap: break-word;
+  z-index: 10;
+  border: 1px solid var(--color-primario);
+  display: none;
+}
+
+.tooltip-container:hover .tooltip-content {
+  display: block;
+
+}
+
+
+  /* Botón Buscar */
+  .btn-buscar{
+    background-color: var(--color-primario);
+  }
+
+  .btn-buscar:hover{
+    background-color: var(--color-hover);
+    transform: scale(1.05);
+  }
+  
+  /* Contenedor de sugerencias */
+  .suggestions-container {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    z-index: 1000;
+    border: 1px solid var(--color-borde-primario);
+    max-height: 250px;
+    overflow-y: auto;
+  }
+  
+  .suggestion-option {
+    display: flex;
+    flex-direction: row;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s ease;
+  }
+  
+  .suggestion-option:hover {
+    background-color: #f7f7f7;
+  }
+  
+  .suggestion-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+  
+  .suggestion-detail {
+    flex: 1;
+    display: none;
+    padding-left: 10px;
+    font-size: 0.85rem;
+    color: #555;
+  }
+  
+  .suggestion-option:hover .suggestion-detail {
+    display: block;
+  }
+  
+  .close-suggestions {
+    text-align: right;
+    padding: 2px 6px;
+    cursor: pointer;
+    color: #888;
+  }
+  
+  .close-suggestions-icon:hover {
+    background-color: var(--color-primario);
+    color: var(--color-texto-claro);
+    border-radius: 50%;
+  }
+  
+  /* Estilo para la vista colapsada */
+  .form-busqueda-collapsed {
+    cursor: pointer;
+    background-color: var(--color-fundo-gris);
+    padding: 10px;
+    border: 1px solid var(--color-primario);
+    border-radius: 8px;
+  }
+  
+/* Ejemplo en FormBusqueda.css */
+.fixed-search {
+  position: fixed;
+  width: 100%;
+  z-index: 1040;
+}
+
+.btn-modificar{
+  background: none !important;
+  border: none !important;
+}
+
+.btn-modificar .svg-inline--fa {
+  color: var(--color-primario) !important;
+  font-size: 1.5rem !important;
+  transition: transform 0.3s ease;
+}
+
+.btn-modificar:hover .svg-inline--fa {
+  transform: scale(1.2);
+  color: var(--color-hover) !important;
+}
+
+/* Sólo para móvil: */
+@media (max-width: 767px) {
+  /* Reduce un poco el tamaño base */
+  .mobile-form {
+    font-size: 0.9rem;
+    padding: 1rem !important;
+    margin: 1rem !important;
+  }
+
+  /* Botones de tipo en fila */
+  .tipo-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 0.8rem;
+  }
+
+  /* Gaps extra entre campos flex-column */
+  .mobile-form .gap-3 > * {
+    margin-bottom: 1rem;
+  }
+}

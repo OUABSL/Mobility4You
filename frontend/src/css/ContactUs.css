@@ -1,0 +1,94 @@
+/* src/css/ContactUs.css */
+
+.contactus-container {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: var(--color-fundo-blanco);
+    border: 1px solid var(--color-borde-primario);
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .contactus-container h2 {
+    text-align: center;
+    color: var(--color-primario);
+    margin-bottom: 20px;
+  }
+  
+  .contactus-form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .form-group label {
+    margin-bottom: 5px;
+    color: var(--color-primario);
+    font-weight: bold;
+  }
+  
+  .form-group input,
+  .form-group textarea {
+    padding: 10px;
+    border: 1px solid var(--color-borde-secundario);
+    border-radius: 4px;
+    font-size: 16px;
+    font-family: inherit;
+  }
+  
+  .form-group input:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: var(--color-hover);
+  }
+  
+  .btn-submit {
+    padding: 10px;
+    background-color: var(--color-boton-primario);
+    border: none;
+    color: var(--color-texto-claro);
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .btn-submit:hover {
+    background-color: var(--color-hover);
+  }
+  
+  .success-message {
+    color: var(--color-activo);
+    margin-top: 10px;
+    text-align: center;
+  }
+  
+  .error-message {
+    color: var(--color-terciario);
+    margin-top: 10px;
+    text-align: center;
+  }
+  
+  /* Responsive Styles */
+  @media screen and (max-width: 768px) {
+    .contactus-container {
+      margin: 10px;
+      padding: 15px;
+    }
+  
+    .form-group input,
+    .form-group textarea {
+      font-size: 14px;
+    }
+  
+    .btn-submit {
+      font-size: 14px;
+    }
+  }
+  

@@ -1,0 +1,180 @@
+/* src/css/listadoCoches.css */
+
+/* Contenedor principal */
+.listado-coches {
+  padding: 20px;
+}
+
+/* Título */
+.listado-coches h2 {
+  color: var(--color-texto-negro);
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.separador{
+  border-top: 0px;
+    border-right: 0px;
+    border-left: 0px;
+    border-image: initial;
+    border-bottom: 0.0625rem solid var(--color-secundario);
+    display: block;
+    width: 100%;
+}
+
+/* FORMULARIO DE BÚSQUEDA Y FILTROS */
+.search-section-listado {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.search-form{
+  margin-top: 1rem !important;
+}
+
+.filter-selects {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  align-items: center;
+  background-color: var(--color-fundo-blanco);
+  padding: 10px;
+  color: var(--color-texto-claro);
+  margin-bottom: 20px;
+}
+
+.filter-selects .form-label {
+  font-size: 0.9rem;
+  color: var(--color-texto-claro);
+}
+.filter-selects .form-select {
+  background-color: var(--color-fundo-gris);
+  border: 1px solid var(--color-borde-secundario);
+  border-radius: 20px;
+  max-width: 150px;
+  color: var(--color-primario);
+}
+
+.selected-filter {
+  background-color: var(--color-boton-secundario);
+  color: var(--color-texto-negro);
+  padding: 6px 10px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 150px;
+}
+
+.remove-icon {
+  cursor: pointer;
+}
+
+/* Dropdown de sugerencias */
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--color-fundo-blanco);
+  border: 1px solid var(--color-borde-primario);
+  z-index: 2000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.suggestion-item:hover {
+  background-color: var(--color-hover);
+  color: var(--color-fundo-blanco);
+}
+
+/* Mensaje de resultados */
+.results-info {
+  background-color: var(--color-fundo-blanco);
+  padding: 0 15px;
+  color: var(--color-texto-negro);
+}
+
+/* Contenedor de resultados */
+.results-container {
+  background-color: var(--color-fundo-blanco);
+  padding: 15px;
+  border-radius: 5px;
+}
+
+/* Tarjetas de coche */
+.car-card {
+  min-height: 400px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.car-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Contenedor de imagen */
+.img-container {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.img-container img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+/* Placeholder de imagen */
+.card-placeholder {
+  width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-secundario);
+  color: var(--color-fundo-blanco);
+}
+
+/* Etiqueta para combustible */
+.fuel-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background-color: var(--color-terciario);
+  color: var(--color-fundo-blanco);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  z-index: 10;
+}
+
+/* Precio */
+.precio {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--color-primario);
+  margin: 0;
+}
+
+/* Botón de detalle */
+.car-card button {
+  margin-top: auto;
+}
+
+/* resaltar tarjeta seleccionada */
+.selected-card {
+  border: 2px solid var(--color-primario); /* O el color que corresponda a --var-primario */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Opcional: añadir sombra para destacar más */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transform: scale(1.02); /* Aumentar ligeramente el tamaño de la tarjeta seleccionada */
+
+}

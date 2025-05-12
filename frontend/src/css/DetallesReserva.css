@@ -1,0 +1,13 @@
+.detalles-reserva .car-img {
+    max-height: 150px;
+    object-fit: cover;
+  }
+  
+  .bg-primario {
+    background-color: var(--color-primario) !important;
+  }
+  
+  .text-primary {
+    color: var(--color-primario) !important;
+  }
+  
