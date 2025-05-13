@@ -1,0 +1,169 @@
+@startuml esquemadbMOBILITY4YOU
+' ================================
+' Diagrama de clases / tablas MySQL
+' ================================
+
+' Opciones de PlantUML para bases de datos
+skinparam class {
+  BackgroundColor<<Master>> #DDFFDD
+  BackgroundColor<<Lookup>> #FFEECC
+  BackgroundColor<<Transaction>> #FFDDDD
+  BorderColor #333
+}
+
+' ----------------
+package "Catálogos" <<Master>> {
+  ' Tabla de categorías de Vehiculos (Coches | Furgonetas | Otros vehiculos más adelante)'
+  class Categoria {
+    + INT id PK
+    + VARCHAR nombre UNIQUE
+    + TEXT descripcion
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  ' Tabla de grupos de coches (Ej: SUV, Monovolumen, Compacto, etc --> En principio se aplicará a sólo coches, y se usarán segmentos [Segmento A, Segmento B, ...])'
+  class GrupoCoche {
+    + INT id PK
+    + VARCHAR nombre UNIQUE
+    + TEXT descripcion 
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  Categoria "1" <-- "N" GrupoCoche : asigna >
+}
+
+package "Flota" <<Master>> {
+  class Vehiculo {
+    + INT id PK
+    + INT categoria_id FK
+    + INT grupo_id FK
+    + ENUM('Gasolina','Diesel','Híbrido','Eléctrico') combustible
+    + VARCHAR marca
+    + VARCHAR modelo
+    + VARCHAR matricula UNIQUE
+    + YEAR anio
+    + VARCHAR color
+    + TINYINT num_puertas
+    + TINYINT num_pasajeros
+    + INT capacidad_maletero  'en litros'
+    + DECIMAL(8,2) precio_dia
+    + JSON imagenes           'array de URLs'
+    + TINYINT disponible     '0=no,1=sí'
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+  Categoria "1" <-- "N" Vehiculo      : categoría >
+  GrupoCoche "1" <-- "N" Vehiculo     : grupo >
+}
+
+package "Localizaciones" <<Lookup>> {
+  class Lugar {
+    + INT id PK
+    + VARCHAR nombre
+    + VARCHAR direccion
+    + VARCHAR ciudad
+    + VARCHAR provincia
+    + DECIMAL(9,6) latitud
+    + DECIMAL(9,6) longitud
+    + VARCHAR telefono
+    + VARCHAR email
+    + VARCHAR icono_url
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+}
+
+package "Usuarios" <<Master>> {
+  class Usuario {
+    + INT id PK
+    + VARCHAR nombre
+    + VARCHAR apellido
+    + VARCHAR email UNIQUE
+    + CHAR(60) password_hash
+    + VARCHAR telefono
+    + VARCHAR direccion
+    + VARCHAR ciudad
+    + VARCHAR provincia
+    + VARCHAR pais
+    + ENUM('cliente','admin','operador') rol
+    + TINYINT activo
+    + TINYINT registrado
+    + TINYINT verificado
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+}
+
+package "Políticas y precios" <<Lookup>> {
+  class PoliticaPago {
+    + INT id PK
+    + VARCHAR titulo
+    + DECIMAL(10,2) deductible
+    + TEXT descripcion
+    + JSON incluye     'array de strings'
+    + JSON no_incluye  'array de strings'
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+}
+
+package "Reservas" <<Transaction>> {
+  class Reserva {
+    + INT id PK
+    + INT usuario_id FK
+    + INT vehiculo_id FK
+    + INT lugar_recogida_id FK
+    + INT lugar_devolucion_id FK
+    + DATETIME fecha_recogida
+    + DATETIME fecha_devolucion
+    + INT politica_pago_id FK
+    + DECIMAL(10,2) precio_subtotal
+    + DECIMAL(10,2) precio_impuestos
+    + DECIMAL(10,2) precio_total
+    + ENUM('pendiente','confirmada','cancelada') estado
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  Usuario "1" <-- "N" Reserva          : hace >
+  Vehiculo   "1" <-- "N" Reserva          : reserva >
+  Lugar   "1" <-- "N" Reserva : recogida >
+  Lugar   "1" <-- "N" Reserva : devolucion >
+  PoliticaPago "1" <-- "N" Reserva    : aplica >
+}
+
+' Inicialmente no se aplicarán promociones a las reservas, pero se implemtará más adelante'
+package "Promociones" <<Lookup>> {
+  class Promocion {
+    + INT id PK
+    + VARCHAR nombre
+    + TEXT descripcion
+    + DECIMAL(5,2) descuento_pct
+    + DATE fecha_inicio
+    + DATE fecha_fin
+    + TINYINT activo
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+  ' Reserva puede tener promoción (opcional)
+  Promocion "1" o-- "0..N" Reserva : aplica >
+}
+
+package "Contenidos estáticos" <<Lookup>> {
+  class Contenido {
+    + INT id PK
+    + ENUM('blog','faq','legal','info', 'mini_section') tipo
+    + VARCHAR titulo
+    + VARCHAR subtitulo
+    + TEXT cuerpo
+    + TEXT info_adicional
+    + String icono_url
+    + TINYINT publicado
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+}
+
+@enduml
