@@ -31,8 +31,20 @@ package "Catálogos" <<Master>> {
     + DATETIME updated_at
   }
 
+  class ImagenVehiculo {
+    + INT id PK
+    + INT vehiculo_id FK
+    + VARCHAR url
+    + TINYINT portada
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  ImagenVehiculo "1" o-- "0..N" Vehiculo : contiene >
   Categoria "1" <-- "N" GrupoCoche : asigna >
 }
+
+
 
 package "Flota" <<Master>> {
   class Vehiculo {
@@ -119,7 +131,6 @@ package "Reservas" <<Transaction>> {
     + DATETIME fecha_recogida
     + DATETIME fecha_devolucion
     + INT politica_pago_id FK
-    + DECIMAL(10,2) precio_subtotal
     + DECIMAL(10,2) precio_impuestos
     + DECIMAL(10,2) precio_total
     + ENUM('pendiente','confirmada','cancelada') estado

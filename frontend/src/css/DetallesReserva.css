@@ -11,3 +11,19 @@
     color: var(--color-primario) !important;
   }
   
+
+  /* src/css/DetallesReserva.css */
+
+.detalles-reserva .car-img {
+  max-height: 150px;
+  object-fit: cover;
+}
+
+.important-info h6 {
+  margin-bottom: 1rem;
+}
+
+.important-info .card-header {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
