@@ -6,7 +6,9 @@ import { faTimes, faSuitcase, faUser, faIdCard, faCircleCheck, faTimesCircle, fa
 // NUEVAS IMÁGENES SVG
 import manualGear    from '../img/icons/gear-stick-manual.svg';
 import autoGear      from '../img/icons/automatic-gear.svg';
-import carDoorLeft   from '../img/icons/car-door-left.svg';import '../css/FichaCoche.css';
+import carDoorLeft   from '../img/icons/car-door-left.svg';
+
+import '../css/FichaCoche.css';
 import { fr } from 'date-fns/locale';
 
 const FichaCoche = ({ car, onClose }) => {

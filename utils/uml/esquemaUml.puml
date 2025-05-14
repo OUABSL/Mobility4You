@@ -26,6 +26,7 @@ package "Catálogos" <<Master>> {
   class GrupoCoche {
     + INT id PK
     + VARCHAR nombre UNIQUE
+    + INT edad_minima
     + TEXT descripcion 
     + DATETIME created_at
     + DATETIME updated_at

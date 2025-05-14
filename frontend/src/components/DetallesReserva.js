@@ -10,7 +10,9 @@ import {
   Button,
   ListGroup,
   Spinner,
-  Badge
+  Badge,
+  Modal,
+  Image
 } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -25,176 +27,487 @@ import {
   faEuroSign,
   faTimesCircle,
   faEdit,
+  faUser,
+  faUserPlus,
+  faIdCard,
+  faInfoCircle,
+  faDownload,
+  faPhone,
+  faEnvelope,
+  faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 import '../css/DetallesReserva.css';
+
+import carDoorLeft from '../img/icons/car-door-left.svg';
+
+
+// Imágenes de ejemplo (reemplaza con las imágenes reales o usa una API)
 import bmwImage from '../img/coches/BMW-320i-M-Sport.jpg';
 
-const DatosPrueba = {
+
+/**
+ * Componente DetallesReserva - Muestra los detalles completos de una reserva
+ * 
+ * @param {Object} props - Propiedades del componente
+ * @param {boolean} props.isMobile - Indica si el dispositivo es móvil
+ * @returns {JSX.Element} Componente DetallesReserva
+ */
+
+// Datos de prueba para desarrollo
+const datosReservaPrueba = {
   id: 'R12345678',
-  car: {
-    marca: 'Peugeot',
-    modelo: '308',
-    img: bmwImage
+  estado: 'confirmada', // confirmada, pendiente, cancelada
+  fechaRecogida: '2025-05-14T12:30:00',
+  fechaDevolucion: '2025-05-18T08:30:00',
+  
+  // Información del vehículo
+  vehiculo: {
+    id: 7,
+    marca: 'BMW',
+    modelo: '320i',
+    categoria: 'Berlina Premium',
+    grupo: 'Segmento D',
+    combustible: 'Diésel',
+    numPuertas: 5,
+    numPasajeros: 5,
+    capacidadMaletero: 480,
+    imagenPrincipal: bmwImage
   },
-  category: 'Sedán (CDMR)',
-  pickup: { location: 'Aeropuerto Málaga T1', date: '14-05-2025', time: '12:30' },
-  retorno: { location: 'Aeropuerto Málaga T1', date: '18-05-2025', time: '08:30' },
-  protection: {
-    title: 'All Inclusive',
+  
+  // Lugares de recogida y devolución
+  lugarRecogida: {
+    id: 1,
+    nombre: 'Aeropuerto de Málaga (AGP)',
+    direccion: 'Av. Comandante García Morato, s/n, 29004 Málaga',
+    telefono: '+34 951 23 45 67',
+    horario: '08:00 - 22:00'
+  },
+  lugarDevolucion: {
+    id: 1,
+    nombre: 'Aeropuerto de Málaga (AGP)',
+    direccion: 'Av. Comandante García Morato, s/n,, 29004 Málaga',
+    telefono: '+34 951 23 45 67',
+    horario: '08:00 - 22:00'
+  },
+  
+  // Política de pago
+  politicaPago: {
+    id: 1,
+    titulo: 'All Inclusive',
     deductible: 0,
-    includes: ['Cobertura a todo riesgo sin franquicia', 'Kilometraje ilimitado', 'Asistencia 24/7']
+    incluye: [
+      'Cobertura a todo riesgo sin franquicia',
+      'Kilometraje ilimitado',
+      'Asistencia en carretera 24/7',
+      'Conductor adicional gratuito',
+      'Cancelación gratuita hasta 24h antes'
+    ]
   },
-  addOns: ['Asiento infantil', 'Conductor adicional'],
-  driver: { name: 'Juan Pérez', email: 'juan.perez@example.com', phone: '+34 600 123 456' },
-  // ===> Datos de precio
-  priceInfo: {
-    days: 4,
-    subtotal: 369.79,
-    taxIncluded: true
-  }
+  
+  // Extras contratados
+  extras: [
+    { id: 1, nombre: 'Asiento infantil (Grupo 1)', precio: 25.00 },
+    { id: 2, nombre: 'GPS navegador', precio: 15.00 }
+  ],
+  
+  // Conductor principal
+  conductorPrincipal: {
+    id: 123,
+    nombre: 'Juan',
+    apellido: 'Pérez García',
+    email: 'juan.perez@example.com',
+    telefono: '+34 600 123 456',
+    dni: '12345678A',
+    fechaNacimiento: '1985-06-15',
+    direccion: 'Calle Principal 123',
+    ciudad: 'Madrid',
+    provincia: 'Madrid',
+    pais: 'España',
+    esSegundoConductor: false
+  },
+  
+  // Conductor adicional (opcional)
+  segundoConductor: {
+    id: 124,
+    nombre: 'María',
+    apellido: 'López Sánchez',
+    email: 'maria.lopez@example.com',
+    telefono: '+34 600 789 012',
+    dni: '87654321B',
+    fechaNacimiento: '1987-04-22',
+    direccion: 'Calle Secundaria 456',
+    ciudad: 'Madrid',
+    provincia: 'Madrid',
+    pais: 'España',
+    esSegundoConductor: true
+  },
+  
+  // Promoción aplicada (opcional)
+  promocion: {
+    id: 5,
+    nombre: 'Descuento Mayo 2025',
+    descuentoPct: 10.00,
+    fechaInicio: '2025-05-01',
+    fechaFin: '2025-05-31'
+  },
+  
+  // Datos de precio
+  precioDia: 79.00,
+  precioBase: 316.00,     // 79.00 € x 4 días
+  precioExtras: 40.00,    // 25.00 € (asiento) + 15.00 € (GPS)
+  precioImpuestos: 74.76, // 21% de (316.00 € + 40.00 €)
+  descuentoPromocion: 35.60, // 10% de (316.00 € + 40.00 € + 74.76 €)
+  precioTotal: 395.16     // (316.00 € + 40.00 € + 74.76 €) - 35.60 €
 };
 
-// ===> Datos de prueba para contenidos (Important Information)
-const ContenidosPrueba = [
-  { id: 1, titulo: 'What to bring', items: [
-    "Driver's license for each driver",
-    'Passport or national ID card',
-    'Accepted payment methods',
-    'General guidelines',
-    'Please bring the original documents'
-  ]},
-  { id: 2, titulo: 'Security deposit', items: [
-    'Refundable security deposit: 300.00€',
-    'For prepaid bookings, total rental charged + deposit blocked',
-    'For pay-at-arrival bookings, only blocked',
-    'PayPal bookings: rental charged, deposit via card'
-  ]},
-  { id: 3, titulo: 'Cancellation', items: [
-    'Free cancellation for pay-later bookings',
-    'Prepaid: before pickup 99€, after pickup full charge',
-    'Corporate: individual agreements apply'
-  ]}
-];
+// Contenidos para los acordeones
+const contenidosPrueba = {
+  important: [
+    "Llevar licencia de conducir válida para cada conductor",
+    "Presentar pasaporte o DNI en buen estado",
+    "Disponer de tarjeta de crédito a nombre del conductor principal",
+    "Respetar las directrices generales de uso del vehículo",
+    "Presentar documentos originales (no se aceptan fotocopias)"
+  ],
+  deposit: [
+    "Depósito reembolsable de 300,00€ para opciones Economy",
+    "Para reservas prepagadas: cargo total + bloqueo del depósito",
+    "Para pago en recogida: solo se bloquea el importe total + depósito",
+    "Con All Inclusive: sin depósito ni franquicia"
+  ],
+  cancel: [
+    "Cancelación gratuita para reservas con pago en destino hasta 24h antes",
+    "Cancelación con menos de 24h: cargo del 50% del valor total",
+    "Sin presentación (no-show): cargo del importe total",
+    "Reservas corporativas: aplican acuerdos individuales"
+  ],
+  changes: [
+    "No es posible cambiar la forma de pago online",
+    "Para actualizar datos del conductor, contactar con atención al cliente",
+    "Los extras adicionales se pueden pagar en el momento de la recogida",
+    "Modificaciones de fecha/hora sujetas a disponibilidad"
+  ],
+  station: [
+    "Mostrador de recogida ubicado en Terminal 3, planta baja",
+    "Servicio de shuttle gratuito al aparcamiento de vehículos",
+    "Horario de atención: 08:00 - 22:00 todos los días",
+    "Para llegadas fuera de horario, contactar con antelación"
+  ]
+};
 
-// Arrays de testing (luego vendrán de la tabla "Contenido")
-const contenidoImportant = [
-  "1. Licencia de conducir válida",
-  "2. Pasaporte o DNI",
-  "3. Método de pago aceptado",
-  "4. Directrices generales",
-  "5. Presentar documentos originales"
-];
-const contenidoDeposit = [
-  "Depósito reembolsable: 300,00€",
-  "Para prepago: bloqueo de depósito en tarjeta",
-  "Para pagar en recogida: bloqueo de importe total + depósito",
-];
-const contenidoCancel = [
-  "Cancelación gratuita antes de la hora de recogida",
-  "Antes de la hora: 99€ de penalización",
-  "Después de la hora: importe completo"
-];
-const contenidoChanges = [
-  "No se puede cambiar forma de pago online",
-  "Actualizar datos del conductor",
-  "Pagar costes adicionales en el checkout"
-];
-const contenidoStation = [
-  "Ver información de la sucursal con el icono de info",
-];
 
 const DetallesReserva = ({ isMobile = false }) => {
+  // Hooks para obtener parámetros y navegación
   const { reservaId } = useParams();
   const [searchParams] = useSearchParams();
   const email = searchParams.get('email') || '';
   const navigate = useNavigate();
 
+  // Estados del componente
   const [datos, setDatos] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [contenidos, setContenidos] = useState({});
 
-  const [openImportant, setOpenImportant] = useState(false);
-  const [openDeposit, setOpenDeposit]     = useState(false);
-  const [openCancel, setOpenCancel]       = useState(false);
-  const [openChanges, setOpenChanges]     = useState(false);
-  const [openStation, setOpenStation]     = useState(false);
-  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  // Estados para controlar los acordeones
+  const [openAccordions, setOpenAccordions] = useState({
+    important: false,
+    deposit: false,
+    cancel: false,
+    changes: false,
+    station: false
+  });
 
+  // Estados para modals
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showDriverModal, setShowDriverModal] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState(null);
+
+  // Cálculo de días de la reserva (solo si tenemos datos)
+  const calcularDiasReserva = () => {
+    if (!datos) return 0;
+    
+    const fechaRecogida = new Date(datos.fechaRecogida);
+    const fechaDevolucion = new Date(datos.fechaDevolucion);
+    
+    // Cálculo de diferencia en días
+    return Math.ceil((fechaDevolucion - fechaRecogida) / (1000 * 60 * 60 * 24));
+  };
+
+  // Formatear fecha y hora
+  const formatDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return { date: '', time: '' };
+    
+    const date = new Date(dateTimeStr);
+    
+    return {
+      date: date.toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit', year: 'numeric'}),
+      time: date.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})
+    };
+  };
+
+  // Formatear precio como moneda
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('es-ES', { 
+      style: 'currency', 
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  };
+
+  // Toggle para los paneles acordeón
+  const toggleAccordion = (section) => {
+    setOpenAccordions(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Función para mostrar modal de conductor
+  const handleShowDriverDetails = (driver) => {
+    setSelectedDriver(driver);
+    setShowDriverModal(true);
+  };
+
+  // Cargar datos de la reserva
   useEffect(() => {
     const fetchReserva = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
-        // const resp = await axios.get(`/api/reservations/${reservaId}`, { params: { email } });
-        // setDatos(resp.data);
-        setDatos(DatosPrueba); // prueba
+        // Simulación de carga de datos (en producción usaríamos la API real)
+        // const response = await axios.get(`/api/reservations/${reservaId}`, { params: { email } });
+        // setDatos(response.data);
+        
+        // Simulación de datos para desarrollo/testing
+        setTimeout(() => {
+          setDatos(datosReservaPrueba);
+          setContenidos(contenidosPrueba);
+          setLoading(false);
+        }, 500);
       } catch (err) {
-        setError('No se pudo recuperar los detalles de la reserva.');
-      } finally {
+        console.error("Error al cargar los datos de la reserva:", err);
+        setError(
+          err.response?.data?.message || 
+          'No se pudo recuperar los detalles de la reserva. Por favor, verifica el ID y el email proporcionados.'
+        );
         setLoading(false);
       }
     };
-    fetchReserva();
+
+    if (reservaId && email) {
+      fetchReserva();
+    } else {
+      setError('Se requiere ID de reserva y email para consultar los detalles.');
+      setLoading(false);
+    }
   }, [reservaId, email]);
 
-  if (loading) return <Container className="my-5 text-center"><Spinner animation="border" /></Container>;
-  if (error) return <Container className="my-5"><Card bg="danger" text="white" className="p-3">{error}</Card></Container>;
+  // Renderizado de estados de carga y error
+  if (loading) {
+    return (
+      <Container className="detalles-reserva my-5 text-center">
+        <Spinner animation="border" variant="primary" className="me-2" />
+        <span>Cargando detalles de la reserva...</span>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container className="detalles-reserva my-5">
+        <Card bg="danger" text="white" className="p-3 shadow-sm">
+          <Card.Body className="text-center">
+            <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" size="lg" />
+            <span>{error}</span>
+            <div className="mt-3">
+              <Button variant="outline-light" onClick={() => navigate('/reservations')}>
+                Volver a Gestión de Reservas
+              </Button>
+            </div>
+          </Card.Body>
+        </Card>
+      </Container>
+    );
+  }
+
+  // Formatear fechas/horas para mostrar
+  const recogida = formatDateTime(datos.fechaRecogida);
+  const devolucion = formatDateTime(datos.fechaDevolucion);
+  
+  // Calcular número de días de la reserva
+  const diasReserva = calcularDiasReserva();
 
   return (
     <Container className="detalles-reserva my-5">
-      <Button variant="link" onClick={() => navigate(-1)} className="mb-3">← Volver</Button>
+      {/* Botón Volver */}
+      <div className="d-flex align-items-center mb-3">
+        <Button 
+          variant="outline-primary" 
+          onClick={() => navigate(-1)} 
+          className="d-flex align-items-center"
+        >
+          <FontAwesomeIcon icon={faChevronUp} rotation={270} className="me-2" />
+          Volver
+        </Button>
+        
+        <Button 
+          variant="link" 
+          className="ms-auto" 
+          onClick={() => window.print()} 
+          title="Imprimir/Guardar como PDF"
+        >
+          <FontAwesomeIcon icon={faDownload} className="me-1" /> Descargar Reserva
+        </Button>
+      </div>
 
-      <Card className="shadow-sm">
-        <Card.Header className="bg-primario text-white">
-          <FontAwesomeIcon icon={faCarSide} className="me-2" />
-          Reserva Nº {datos.id}
+      {/* Tarjeta Principal */}
+      <Card className="shadow reservation-details-card">
+        <Card.Header className="bg-primario text-white py-3">
+          <div className="d-flex justify-content-between align-items-center">
+            <h4 className="mb-0">
+              <FontAwesomeIcon icon={faCarSide} className="me-2" />
+              Reserva #{datos.id}
+            </h4>
+            <Badge 
+              bg={datos.estado === 'confirmada' ? 'success' : 
+                 datos.estado === 'pendiente' ? 'warning' : 'danger'}
+              className="py-2 px-3"
+            >
+              {datos.estado === 'confirmada' ? 'Confirmada' : 
+               datos.estado === 'pendiente' ? 'Pendiente' : 'Cancelada'}
+            </Badge>
+          </div>
         </Card.Header>
+        
         <Card.Body>
           <Row>
-            {/* ===> Columna principal (izquierda) ===> */}
-            <Col md={8}>
-              {/* Sección Coche */}
-              <Row className="mb-4 align-items-center">
-                <Col md={4}><img src={datos.car.img} alt="" className="img-fluid car-img" /></Col>
-                <Col md={8}>
-                  <h5>
-                    {datos.car.marca} {datos.car.modelo}{' '}
-                    <Badge bg="secondary">{datos.category}</Badge>
-                  </h5>
-                </Col>
-              </Row>
+            {/* Columna principal (izquierda) */}
+            <Col lg={8} className="pe-lg-4">
+              {/* Sección Vehículo */}
+              <Card className="mb-4 vehicle-card">
+                <Card.Body>
+                  <Row className="align-items-center">
+                    <Col md={4} className="text-center">
+                      <img 
+                        src={datos.vehiculo.imagenPrincipal} 
+                        alt={`${datos.vehiculo.marca} ${datos.vehiculo.modelo}`} 
+                        className="img-fluid car-img rounded" 
+                      />
+                    </Col>
+                    <Col md={8}>
+                      <h3 className="vehicle-title">
+                        {datos.vehiculo.marca} {datos.vehiculo.modelo}
+                      </h3>
+                      <div className="d-flex flex-wrap align-items-center vehicle-tags mb-2">
+                        <Badge bg="secondary" className="me-2 mb-1">
+                          {datos.vehiculo.categoria}
+                        </Badge>
+                        <Badge bg="info" className="me-2 mb-1">
+                          {datos.vehiculo.grupo}
+                        </Badge>
+                        <Badge bg="light" text="dark" className="mb-1">
+                          {datos.vehiculo.combustible}
+                        </Badge>
+                      </div>
+                      <div className="vehicle-features">
+                        <span className="me-3">
+                          <FontAwesomeIcon icon={faUser} className="me-1 text-muted" />
+                          {datos.vehiculo.numPasajeros} asientos
+                        </span>
+                        <span className="me-3">
+                          <Image
+                            src={carDoorLeft}
+                            style={{ maxWidth: '18px'}}
+                            alt="Puertas"
+                            className="icon-svg text-secondary mb-1 me-1"
 
-              {/* Fechas y lugares */}
-              <Row className="mb-4">
-                <Col md={6}>
-                  <h6><FontAwesomeIcon icon={faMapMarkerAlt} className="me-1" />Recogida</h6>
-                  <p className="mb-1">{datos.pickup.location}</p>
-                  <p>
-                    <FontAwesomeIcon icon={faCalendarAlt} /> {datos.pickup.date}{' '}
-                    <FontAwesomeIcon icon={faClock} className="ms-3" /> {datos.pickup.time}
-                  </p>
-                </Col>
-                <Col md={6}>
-                  <h6><FontAwesomeIcon icon={faMapMarkerAlt} className="me-1" />Devolución</h6>
-                  <p className="mb-1">{datos.retorno.location}</p>
-                  <p>
-                    <FontAwesomeIcon icon={faCalendarAlt} /> {datos.retorno.date}{' '}
-                    <FontAwesomeIcon icon={faClock} className="ms-3" /> {datos.retorno.time}
-                  </p>
-                </Col>
-              </Row>
+                          />
+                          {datos.vehiculo.numPuertas} puertas
+                        </span>
+                        <span>
+                          <FontAwesomeIcon icon={faShieldAlt} className="me-1 text-success" />
+                          {datos.politicaPago.titulo}
+                        </span>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+
+              {/* Fechas y Lugares */}
+              <Card className="mb-4 locations-card">
+                <Card.Body>
+                  <Row>
+                    <Col md={6} className="border-end pickup-section">
+                      <h5 className="location-title">
+                        <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2 text-primary" />
+                        Recogida
+                      </h5>
+                      <p className="location-name">{datos.lugarRecogida.nombre}</p>
+                      <p className="location-address">{datos.lugarRecogida.direccion}</p>
+                      <div className="date-time mt-3">
+                        <div className="d-flex mb-1">
+                          <div className="icon-wrapper">
+                            <FontAwesomeIcon icon={faCalendarAlt} className="text-muted" />
+                          </div>
+                          <span>{recogida.date}</span>
+                        </div>
+                        <div className="d-flex">
+                          <div className="icon-wrapper">
+                            <FontAwesomeIcon icon={faClock} className="text-muted" />
+                          </div>
+                          <span>{recogida.time}</span>
+                        </div>
+                      </div>
+                    </Col>
+                    
+                    <Col md={6} className="dropoff-section">
+                      <h5 className="location-title">
+                        <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2 text-danger" />
+                        Devolución
+                      </h5>
+                      <p className="location-name">{datos.lugarDevolucion.nombre}</p>
+                      <p className="location-address">{datos.lugarDevolucion.direccion}</p>
+                      <div className="date-time mt-3">
+                        <div className="d-flex mb-1">
+                          <div className="icon-wrapper">
+                            <FontAwesomeIcon icon={faCalendarAlt} className="text-muted" />
+                          </div>
+                          <span>{devolucion.date}</span>
+                        </div>
+                        <div className="d-flex">
+                          <div className="icon-wrapper">
+                            <FontAwesomeIcon icon={faClock} className="text-muted" />
+                          </div>
+                          <span>{devolucion.time}</span>
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
 
               {/* Protección */}
-              <Card className="mb-4">
-                <Card.Header>
-                  <FontAwesomeIcon icon={faShieldAlt} className="me-2" />
-                  Protección: {datos.protection.title}{' '}
-                  {datos.protection.deductible === 0
-                    ? <Badge bg="success">Sin franquicia</Badge>
-                    : <Badge bg="warning">Franquicia {datos.protection.deductible}€</Badge>
-                  }
+              <Card className="mb-4 protection-card">
+                <Card.Header className="d-flex justify-content-between align-items-center">
+                  <h5 className="mb-0">
+                    <FontAwesomeIcon icon={faShieldAlt} className="me-2 text-success" />
+                    Protección: {datos.politicaPago.titulo}
+                  </h5>
+                  {datos.politicaPago.deductible === 0 ? (
+                    <Badge bg="success">Sin franquicia</Badge>
+                  ) : (
+                    <Badge bg="warning" text="dark">
+                      Franquicia: {formatCurrency(datos.politicaPago.deductible)}
+                    </Badge>
+                  )}
                 </Card.Header>
                 <ListGroup variant="flush">
-                  {datos.protection.includes.map((item, i) => (
-                    <ListGroup.Item key={i}>
+                  {datos.politicaPago.incluye.map((item, i) => (
+                    <ListGroup.Item key={i} className="py-3">
                       <FontAwesomeIcon icon={faPlusCircle} className="me-2 text-success" />
                       {item}
                     </ListGroup.Item>
@@ -202,80 +515,222 @@ const DetallesReserva = ({ isMobile = false }) => {
                 </ListGroup>
               </Card>
 
-              {/* Add-Ons */}
-              <Card className="mb-4">
-                <Card.Header>Extras</Card.Header>
-                <ListGroup variant="flush">
-                  {datos.addOns.map((item, i) => (
-                    <ListGroup.Item key={i}>
+              {/* Extras */}
+              {datos.extras && datos.extras.length > 0 && (
+                <Card className="mb-4 extras-card">
+                  <Card.Header>
+                    <h5 className="mb-0">
                       <FontAwesomeIcon icon={faPlusCircle} className="me-2 text-primary" />
-                      {item}
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              </Card>
+                      Extras Contratados
+                    </h5>
+                  </Card.Header>
+                  <ListGroup variant="flush">
+                    {datos.extras.map((extra, i) => (
+                      <ListGroup.Item key={i} className="py-3 d-flex justify-content-between align-items-center">
+                        <span>
+                          <FontAwesomeIcon icon={faPlusCircle} className="me-2 text-primary" />
+                          {extra.nombre}
+                        </span>
+                        <Badge bg="light" text="dark" className="price-badge">
+                          {formatCurrency(extra.precio)}
+                        </Badge>
+                      </ListGroup.Item>
+                    ))}
+                  </ListGroup>
+                </Card>
+              )}
 
-              {/* Datos del conductor */}
-              <Card>
-                <Card.Header>Conductor</Card.Header>
+              {/* Datos de Conductores */}
+              <Card className="drivers-card">
+                <Card.Header>
+                  <h5 className="mb-0">
+                    <FontAwesomeIcon icon={faUser} className="me-2" />
+                    Conductor{datos.segundoConductor ? 'es' : ''}
+                  </h5>
+                </Card.Header>
                 <Card.Body>
-                  <p><strong>Nombre:</strong> {datos.driver.name}</p>
-                  <p><strong>Email:</strong> {datos.driver.email}</p>
-                  <p><strong>Teléfono:</strong> {datos.driver.phone}</p>
+                  {/* Conductor Principal */}
+                  <div className="mb-3 pb-3 border-bottom">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <h6 className="driver-name">
+                        <FontAwesomeIcon icon={faUser} className="me-2 text-primary" />
+                        Conductor Principal
+                      </h6>
+                      
+                      <Button 
+                        variant="outline-primary" 
+                        size="sm"
+                        onClick={() => handleShowDriverDetails(datos.conductorPrincipal)}
+                      >
+                        Ver detalles
+                      </Button>
+                    </div>
+                    
+                    <Row className="mt-2">
+                      <Col md={6} className="mb-2">
+                        <div className="d-flex align-items-center">
+                          <FontAwesomeIcon icon={faUser} className="me-2 text-muted" />
+                          <span>{datos.conductorPrincipal.nombre} {datos.conductorPrincipal.apellido}</span>
+                        </div>
+                      </Col>
+                      <Col md={6} className="mb-2">
+                        <div className="d-flex align-items-center">
+                          <FontAwesomeIcon icon={faIdCard} className="me-2 text-muted" />
+                          <span>{datos.conductorPrincipal.dni}</span>
+                        </div>
+                      </Col>
+                      <Col md={6} className="mb-2">
+                        <div className="d-flex align-items-center">
+                          <FontAwesomeIcon icon={faEnvelope} className="me-2 text-muted" />
+                          <span>{datos.conductorPrincipal.email}</span>
+                        </div>
+                      </Col>
+                      <Col md={6}>
+                        <div className="d-flex align-items-center">
+                          <FontAwesomeIcon icon={faPhone} className="me-2 text-muted" />
+                          <span>{datos.conductorPrincipal.telefono}</span>
+                        </div>
+                      </Col>
+                    </Row>
+                  </div>
+                  
+                  {/* Segundo Conductor (si existe) */}
+                  {datos.segundoConductor && (
+                    <div>
+                      <div className="d-flex justify-content-between align-items-start">
+                        <h6 className="driver-name">
+                          <FontAwesomeIcon icon={faUserPlus} className="me-2 text-primary" />
+                          Conductor Adicional
+                        </h6>
+                        
+                        <Button 
+                          variant="outline-primary" 
+                          size="sm"
+                          onClick={() => handleShowDriverDetails(datos.segundoConductor)}
+                        >
+                          Ver detalles
+                        </Button>
+                      </div>
+                      
+                      <Row className="mt-2">
+                        <Col md={6} className="mb-2">
+                          <div className="d-flex align-items-center">
+                            <FontAwesomeIcon icon={faUser} className="me-2 text-muted" />
+                            <span>{datos.segundoConductor.nombre} {datos.segundoConductor.apellido}</span>
+                          </div>
+                        </Col>
+                        <Col md={6} className="mb-2">
+                          <div className="d-flex align-items-center">
+                            <FontAwesomeIcon icon={faIdCard} className="me-2 text-muted" />
+                            <span>{datos.segundoConductor.dni}</span>
+                          </div>
+                        </Col>
+                        <Col md={6} className="mb-2">
+                          <div className="d-flex align-items-center">
+                            <FontAwesomeIcon icon={faEnvelope} className="me-2 text-muted" />
+                            <span>{datos.segundoConductor.email}</span>
+                          </div>
+                        </Col>
+                        <Col md={6}>
+                          <div className="d-flex align-items-center">
+                            <FontAwesomeIcon icon={faPhone} className="me-2 text-muted" />
+                            <span>{datos.segundoConductor.telefono}</span>
+                          </div>
+                        </Col>
+                      </Row>
+                    </div>
+                  )}
                 </Card.Body>
               </Card>
             </Col>
 
-            {/* Columna derecha: Precio e información importante */}
-            <Col md={4}>
-              {/* Price Information */}
-              <Card className="mb-4">
+            {/* Columna secundaria (derecha) */}
+            <Col lg={4} className="mt-4 mt-lg-0">
+              {/* Resumen de Precio */}
+              <Card className="mb-4 price-summary-card">
                 <Card.Header className="bg-light">
-                  <h6 className="mb-0 text-dark">Price Information</h6>
+                  <h5 className="mb-0 d-flex justify-content-between align-items-center">
+                    <span>Resumen de Precio</span>
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => setShowPriceModal(true)}
+                      title="Ver desglose completo"
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} />
+                    </Button>
+                  </h5>
                 </Card.Header>
                 <Card.Body>
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                      <strong>Total</strong><br/>
-                      <small>({Math.ceil(
-                        (new Date(datos.retorno.date.split('-').reverse().join('-')) - 
-                        new Date(datos.pickup.date.split('-').reverse().join('-'))
-                        )/(1000*60*60*24)
-                      )} días de alquiler)</small>
-                    </div>
-                    <Button
-                      variant="link"
-                      onClick={() => setShowPriceBreakdown(true)}
-                      className="p-0"
-                    >
-                      <FontAwesomeIcon icon={faEuroSign} size="2x" />
-                    </Button>
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span>Duración del alquiler:</span>
+                    <span className="fw-bold">{diasReserva} días</span>
                   </div>
-                  <h3 className="mb-1">
-                    €{(Math.ceil(
-                      (new Date(datos.retorno.date.split('-').reverse().join('-')) -
-                      new Date(datos.pickup.date.split('-').reverse().join('-'))
-                      )/(1000*60*60*24)
-                    ) * datos.precioDia + datos.precioImpuestos).toFixed(2)}
-                  </h3>
-                  <small className="text-muted">Impuestos incluidos</small>
+                  
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span>Precio base:</span>
+                    <span>{formatCurrency(datos.precioBase)}</span>
+                  </div>
+                  
+                  {datos.extras && datos.extras.length > 0 && (
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <span>Extras:</span>
+                      <span>{formatCurrency(datos.precioExtras)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span>Impuestos (IVA 21%):</span>
+                    <span>{formatCurrency(datos.precioImpuestos)}</span>
+                  </div>
+                  
+                  {datos.promocion && (
+                    <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                      <span>Descuento promoción:</span>
+                      <span>-{formatCurrency(datos.descuentoPromocion)}</span>
+                    </div>
+                  )}
+                  
+                  <hr />
+                  
+                  <div className="d-flex justify-content-between align-items-center">
+                    <h5>Total:</h5>
+                    <h4 className="text-primary">{formatCurrency(datos.precioTotal)}</h4>
+                  </div>
+                  
+                  <div className="text-end">
+                    <small className="text-muted">
+                      {datos.politicaPago.deductible > 0 ? (
+                        `Requiere depósito: ${formatCurrency(datos.politicaPago.deductible)}`
+                      ) : (
+                        'Sin depósito requerido'
+                      )}
+                    </small>
+                  </div>
                 </Card.Body>
               </Card>
 
-              {/* Important Information */}
-              <Card className="mb-4">
+              {/* Paneles acordeón con información importante */}
+              {/* Información Importante */}
+              <Card className="mb-3 accordion-card card-info-adicionales">
                 <Card.Header
-                  onClick={() => setOpenImportant(!openImportant)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleAccordion('important')}
                   className="d-flex justify-content-between align-items-center"
+                  style={{ cursor: 'pointer' }}
                 >
-                  <span>Información importante</span>
-                  <FontAwesomeIcon icon={openImportant ? faChevronUp : faChevronDown} />
+                  <span className="accordion-title">
+                    <FontAwesomeIcon icon={faInfoCircle} className="me-2 text-primary" />
+                    Información importante
+                  </span>
+                  <FontAwesomeIcon 
+                    icon={openAccordions.important ? faChevronUp : faChevronDown} 
+                    className="text-muted"
+                  />
                 </Card.Header>
-                {openImportant && (
+                {openAccordions.important && (
                   <ListGroup variant="flush">
-                    {contenidoImportant.map((item, i) => (
-                      <ListGroup.Item key={i}>
+                    {contenidos.important.map((item, i) => (
+                      <ListGroup.Item key={i} className="py-3">
                         <FontAwesomeIcon icon={faPlusCircle} className="me-2 text-primary" />
                         {item}
                       </ListGroup.Item>
@@ -284,20 +739,26 @@ const DetallesReserva = ({ isMobile = false }) => {
                 )}
               </Card>
 
-              {/* Security Deposit */}
-              <Card className="mb-4">
+              {/* Depósito de Seguridad */}
+              <Card className="mb-3 accordion-card">
                 <Card.Header
-                  onClick={() => setOpenDeposit(!openDeposit)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleAccordion('deposit')}
                   className="d-flex justify-content-between align-items-center"
+                  style={{ cursor: 'pointer' }}
                 >
-                  <span>Depósito de seguridad</span>
-                  <FontAwesomeIcon icon={openDeposit ? faChevronUp : faChevronDown} />
+                  <span className="accordion-title">
+                    <FontAwesomeIcon icon={faShieldAlt} className="me-2 text-secondary" />
+                    Depósito de seguridad
+                  </span>
+                  <FontAwesomeIcon 
+                    icon={openAccordions.deposit ? faChevronUp : faChevronDown} 
+                    className="text-muted"
+                  />
                 </Card.Header>
-                {openDeposit && (
+                {openAccordions.deposit && (
                   <ListGroup variant="flush">
-                    {contenidoDeposit.map((item, i) => (
-                      <ListGroup.Item key={i}>
+                    {contenidos.deposit.map((item, i) => (
+                      <ListGroup.Item key={i} className="py-3">
                         <FontAwesomeIcon icon={faShieldAlt} className="me-2 text-secondary" />
                         {item}
                       </ListGroup.Item>
@@ -306,20 +767,26 @@ const DetallesReserva = ({ isMobile = false }) => {
                 )}
               </Card>
 
-              {/* Cancellation Policy */}
-              <Card className="mb-4">
+              {/* Política de Cancelación */}
+              <Card className="mb-3 accordion-card">
                 <Card.Header
-                  onClick={() => setOpenCancel(!openCancel)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleAccordion('cancel')}
                   className="d-flex justify-content-between align-items-center"
+                  style={{ cursor: 'pointer' }}
                 >
-                  <span>Política de cancelación</span>
-                  <FontAwesomeIcon icon={openCancel ? faChevronUp : faChevronDown} />
+                  <span className="accordion-title">
+                    <FontAwesomeIcon icon={faTimesCircle} className="me-2 text-danger" />
+                    Política de cancelación
+                  </span>
+                  <FontAwesomeIcon 
+                    icon={openAccordions.cancel ? faChevronUp : faChevronDown} 
+                    className="text-muted"
+                  />
                 </Card.Header>
-                {openCancel && (
+                {openAccordions.cancel && (
                   <ListGroup variant="flush">
-                    {contenidoCancel.map((item, i) => (
-                      <ListGroup.Item key={i}>
+                    {contenidos.cancel.map((item, i) => (
+                      <ListGroup.Item key={i} className="py-3">
                         <FontAwesomeIcon icon={faTimesCircle} className="me-2 text-danger" />
                         {item}
                       </ListGroup.Item>
@@ -328,20 +795,26 @@ const DetallesReserva = ({ isMobile = false }) => {
                 )}
               </Card>
 
-              {/* Booking Changes */}
-              <Card className="mb-4">
+              {/* Modificaciones de Reserva */}
+              <Card className="mb-3 accordion-card">
                 <Card.Header
-                  onClick={() => setOpenChanges(!openChanges)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleAccordion('changes')}
                   className="d-flex justify-content-between align-items-center"
+                  style={{ cursor: 'pointer' }}
                 >
-                  <span>Modificaciones de reserva</span>
-                  <FontAwesomeIcon icon={openChanges ? faChevronUp : faChevronDown} />
+                  <span className="accordion-title">
+                    <FontAwesomeIcon icon={faEdit} className="me-2 text-warning" />
+                    Modificaciones de reserva
+                  </span>
+                  <FontAwesomeIcon 
+                    icon={openAccordions.changes ? faChevronUp : faChevronDown} 
+                    className="text-muted"
+                  />
                 </Card.Header>
-                {openChanges && (
+                {openAccordions.changes && (
                   <ListGroup variant="flush">
-                    {contenidoChanges.map((item, i) => (
-                      <ListGroup.Item key={i}>
+                    {contenidos.changes.map((item, i) => (
+                      <ListGroup.Item key={i} className="py-3">
                         <FontAwesomeIcon icon={faEdit} className="me-2 text-warning" />
                         {item}
                       </ListGroup.Item>
@@ -350,20 +823,26 @@ const DetallesReserva = ({ isMobile = false }) => {
                 )}
               </Card>
 
-              {/* Station Information */}
-              <Card>
+              {/* Información de la Estación */}
+              <Card className="mb-3 accordion-card">
                 <Card.Header
-                  onClick={() => setOpenStation(!openStation)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleAccordion('station')}
                   className="d-flex justify-content-between align-items-center"
+                  style={{ cursor: 'pointer' }}
                 >
-                  <span>Información de la estación</span>
-                  <FontAwesomeIcon icon={openStation ? faChevronUp : faChevronDown} />
+                  <span className="accordion-title">
+                    <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2 text-info" />
+                    Información de la estación
+                  </span>
+                  <FontAwesomeIcon 
+                    icon={openAccordions.station ? faChevronUp : faChevronDown} 
+                    className="text-muted"
+                  />
                 </Card.Header>
-                {openStation && (
+                {openAccordions.station && (
                   <ListGroup variant="flush">
-                    {contenidoStation.map((item, i) => (
-                      <ListGroup.Item key={i}>
+                    {contenidos.station.map((item, i) => (
+                      <ListGroup.Item key={i} className="py-3">
                         <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2 text-info" />
                         {item}
                       </ListGroup.Item>
@@ -372,12 +851,185 @@ const DetallesReserva = ({ isMobile = false }) => {
                 )}
               </Card>
             </Col>
-
           </Row>
         </Card.Body>
       </Card>
+
+      {/* Modal de Desglose de Precio */}
+      <Modal 
+        show={showPriceModal} 
+        onHide={() => setShowPriceModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton className="bg-primario text-white">
+          <Modal.Title>Desglose del Precio</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <h5 className="mb-4">Resumen del alquiler de {diasReserva} días</h5>
+          
+          <Row className="mb-3 pb-2 border-bottom">
+            <Col xs={8}><strong>Concepto</strong></Col>
+            <Col xs={4} className="text-end">{formatCurrency(datos.precioBase)}</Col>
+          </Row>
+          
+          {/* Desglose de extras si existen */}
+          {datos.extras && datos.extras.length > 0 && (
+            <>
+              <Row className="mb-2">
+                <Col xs={8} className="text-primary">
+                  <strong>Extras contratados</strong>
+                </Col>
+                <Col xs={4}></Col>
+              </Row>
+              
+              {datos.extras.map((extra, idx) => (
+                <Row key={idx} className="mb-2">
+                  <Col xs={8}>· {extra.nombre}</Col>
+                  <Col xs={4} className="text-end">{formatCurrency(extra.precio)}</Col>
+                </Row>
+              ))}
+              
+              <Row className="mb-2">
+                <Col xs={8}><strong>Subtotal extras</strong></Col>
+                <Col xs={4} className="text-end">{formatCurrency(datos.precioExtras)}</Col>
+              </Row>
+            </>
+          )}
+          
+          <Row className="mb-2">
+            <Col xs={8}>Subtotal antes de impuestos</Col>
+            <Col xs={4} className="text-end">{formatCurrency(datos.precioBase + datos.precioExtras)}</Col>
+          </Row>
+          
+          <Row className="mb-2">
+            <Col xs={8}>IVA (21%)</Col>
+            <Col xs={4} className="text-end">{formatCurrency(datos.precioImpuestos)}</Col>
+          </Row>
+          
+          {datos.promocion && (
+            <Row className="mb-2 text-success">
+              <Col xs={8}>
+                Descuento promoción "{datos.promocion.nombre}" ({datos.promocion.descuentoPct}%)
+              </Col>
+              <Col xs={4} className="text-end">-{formatCurrency(datos.descuentoPromocion)}</Col>
+            </Row>
+          )}
+          
+          <Row className="mt-3 pt-2 border-top">
+            <Col xs={8}><h5>TOTAL</h5></Col>
+            <Col xs={4} className="text-end">
+              <h5 className="text-primary">{formatCurrency(datos.precioTotal)}</h5>
+            </Col>
+          </Row>
+          
+          <div className="mt-3 p-3 bg-light rounded">
+            <h6>Información sobre el pago:</h6>
+            <p className="mb-2">
+              <FontAwesomeIcon icon={faInfoCircle} className="me-2 text-primary" />
+              {datos.politicaPago.deductible === 0 
+                ? 'Tu reserva incluye protección All Inclusive sin franquicia ni depósitos.'
+                : `Se requiere un depósito de seguridad de ${formatCurrency(datos.politicaPago.deductible)} que será bloqueado en tu tarjeta.`
+              }
+            </p>
+            <p className="mb-0">
+              <FontAwesomeIcon icon={faInfoCircle} className="me-2 text-primary" />
+              El pago se realizará en el momento de la recogida del vehículo.
+            </p>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPriceModal(false)}>
+            Cerrar
+          </Button>
+          <Button variant="primary" onClick={() => window.print()}>
+            <FontAwesomeIcon icon={faDownload} className="me-2" />
+            Guardar como PDF
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal de Detalles del Conductor */}
+      <Modal
+        show={showDriverModal}
+        onHide={() => setShowDriverModal(false)}
+        centered
+      >
+        <Modal.Header closeButton className="bg-primario text-white">
+          <Modal.Title>
+            <FontAwesomeIcon icon={faUser} className="me-2" />
+            Detalles del Conductor
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedDriver && (
+            <>
+              <Row className="mb-4">
+                <Col xs={12} className="text-center mb-3">
+                  <div className="driver-avatar">
+                    <FontAwesomeIcon icon={faUser} size="4x" className="text-primary" />
+                  </div>
+                  <h4 className="mt-2">{selectedDriver.nombre} {selectedDriver.apellido}</h4>
+                  <Badge 
+                    bg={selectedDriver.esSegundoConductor ? "info" : "primary"}
+                    className="py-1 px-2"
+                  >
+                    {selectedDriver.esSegundoConductor ? "Conductor Adicional" : "Conductor Principal"}
+                  </Badge>
+                </Col>
+              </Row>
+              
+              <Row className="mb-3">
+                <Col xs={4} className="text-muted">Documento:</Col>
+                <Col xs={8}>{selectedDriver.dni}</Col>
+              </Row>
+              
+              <Row className="mb-3">
+                <Col xs={4} className="text-muted">Email:</Col>
+                <Col xs={8}>{selectedDriver.email}</Col>
+              </Row>
+              
+              <Row className="mb-3">
+                <Col xs={4} className="text-muted">Teléfono:</Col>
+                <Col xs={8}>{selectedDriver.telefono}</Col>
+              </Row>
+              
+              <Row className="mb-3">
+                <Col xs={4} className="text-muted">Dirección:</Col>
+                <Col xs={8}>
+                  {selectedDriver.direccion}<br />
+                  {selectedDriver.ciudad}, {selectedDriver.provincia}<br />
+                  {selectedDriver.pais}
+                </Col>
+              </Row>
+              
+              <Row className="mb-3">
+                <Col xs={4} className="text-muted">Fecha Nacimiento:</Col>
+                <Col xs={8}>{new Date(selectedDriver.fechaNacimiento).toLocaleDateString('es-ES')}</Col>
+              </Row>
+              
+              <div className="driver-license p-3 bg-light rounded mt-3">
+                <h6 className="mb-3">
+                  <FontAwesomeIcon icon={faIdCard} className="me-2 text-primary" />
+                  Información del carnet de conducir
+                </h6>
+                <p className="mb-0">
+                  Se verificará el carnet de conducir en el momento de la recogida del vehículo.
+                  Asegúrate de llevar contigo el documento original.
+                </p>
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDriverModal(false)}>
+            Cerrar
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };
+
 
 export default DetallesReserva;
