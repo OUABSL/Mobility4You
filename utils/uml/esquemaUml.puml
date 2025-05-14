@@ -61,8 +61,12 @@ package "Flota" <<Master>> {
     + TINYINT num_pasajeros
     + INT capacidad_maletero  'en litros'
     + DECIMAL(8,2) precio_dia
-    + JSON imagenes           'array de URLs'
-    + TINYINT disponible     '0=no,1=sí'
+    + JSON imagenes         'array de URLs'
+    + TINYINT disponible    '0=no,1=sí'
+    + TINYINT activo        '0=no,1=sí'
+    + TEXT notas_internas
+    + INT fianza 'En euros, podría asignarse posteriormente a una política de pago o a un grupo de coches'
+    + INT kilometraje
     + DATETIME created_at
     + DATETIME updated_at
   }
@@ -93,13 +97,17 @@ package "Usuarios" <<Master>> {
     + VARCHAR nombre
     + VARCHAR apellido
     + VARCHAR email UNIQUE
+    + VARCHAR fecha_nacimiento
     + CHAR(60) password_hash
+    + VARCHAR dni
+    + IMAGEFILE imagen_carnet
     + VARCHAR telefono
     + VARCHAR direccion
     + VARCHAR ciudad
     + VARCHAR provincia
     + VARCHAR pais
-    + ENUM('cliente','admin','operador') rol
+    + ENUM('cliente','admin','empresa') rol
+    + TINYINT esSegundoConductor
     + TINYINT activo
     + TINYINT registrado
     + TINYINT verificado
@@ -125,15 +133,18 @@ package "Reservas" <<Transaction>> {
   class Reserva {
     + INT id PK
     + INT usuario_id FK
+    + INT segundo_conductor_id FK
+    + INT promocion_id FK
+    + INT politica_pago_id FK
     + INT vehiculo_id FK
     + INT lugar_recogida_id FK
     + INT lugar_devolucion_id FK
     + DATETIME fecha_recogida
     + DATETIME fecha_devolucion
-    + INT politica_pago_id FK
     + DECIMAL(10,2) precio_impuestos
     + DECIMAL(10,2) precio_total
     + ENUM('pendiente','confirmada','cancelada') estado
+    + TEXT notas_internas
     + DATETIME created_at
     + DATETIME updated_at
   }
@@ -143,6 +154,8 @@ package "Reservas" <<Transaction>> {
   Lugar   "1" <-- "N" Reserva : recogida >
   Lugar   "1" <-- "N" Reserva : devolucion >
   PoliticaPago "1" <-- "N" Reserva    : aplica >
+  Usuario "1" <-- "0..1" Reserva : segundo_conductor > Segundo conductor (opcional)
+  Promocion "1" <-- "0..1" Reserva : aplica > Promoción (opcional)
 }
 
 ' Inicialmente no se aplicarán promociones a las reservas, pero se implemtará más adelante'
