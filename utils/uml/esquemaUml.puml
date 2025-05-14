@@ -142,6 +142,7 @@ package "Reservas" <<Transaction>> {
     + INT lugar_devolucion_id FK
     + DATETIME fecha_recogida
     + DATETIME fecha_devolucion
+    + DECIMAL(10,2) precio_dia
     + DECIMAL(10,2) precio_impuestos
     + DECIMAL(10,2) precio_total
     + ENUM('pendiente','confirmada','cancelada') estado
