@@ -7,7 +7,16 @@ import 'react-date-range/dist/styles.css'; // Importa estilos básicos
 import 'react-date-range/dist/theme/default.css'; // Importa tema por defecto
 import '../css/ModalCalendario.css'; // Importa tu CSS personalizado
 
-const ModalCalendario = ({ openCalendar, onHideCalendar, initialValues, availableTimes, onSave, isMobile=false }) => {
+const ModalCalendario = ({ 
+    openCalendar, 
+    onHideCalendar, 
+    initialValues, 
+    availableTimes, 
+    onSave, 
+    isMobile=false,
+    useAsEditor=false // Nuevo parámetro para uso en EditReservationModal
+}) => {
+    
     // Estados para fechas y horas
     const [pickupDate, setPickupDate] = useState(initialValues.pickupDate || new Date());
     const [dropoffDate, setDropoffDate] = useState(initialValues.dropoffDate || addDays(new Date(), 1));
@@ -42,11 +51,18 @@ const ModalCalendario = ({ openCalendar, onHideCalendar, initialValues, availabl
 
     return (
         <div>
-
-            {/* Modal con calendario y selección de horas */}
-            <Modal className='modal-calendario' show={openCalendar} onHide={onHideCalendar} centered>
+            <Modal 
+                className='modal-calendario' 
+                show={openCalendar} 
+                onHide={onHideCalendar} 
+                centered
+                size={useAsEditor ? "lg" : "md"} // Ajustar tamaño si se usa como editor
+                backdrop={useAsEditor ? "static" : true} // Evitar cierre accidental en modo editor
+            >
                 <Modal.Header closeButton>
-                    <Modal.Title>Selecciona fechas y horas</Modal.Title>
+                    <Modal.Title>
+                        {useAsEditor ? "Editar fechas de reserva" : "Selecciona fechas y horas"}
+                    </Modal.Title>
                 </Modal.Header>
                 <Modal.Body className="d-flex flex-column align-items-center">
                     {/* Calendario para seleccionar el rango */}

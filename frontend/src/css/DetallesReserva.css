@@ -191,8 +191,12 @@
 }
 
 .accordion-title {
-  color: var(--color-primario);
+  color: var(--color-texto-secundario);
   font-weight: 500;
+}
+
+.extras-card .card-header, .drivers-card .card-header, .protection-card .card-header {
+  color: var(--color-texto-negro);
 }
 
 /* Estilos para impresión */

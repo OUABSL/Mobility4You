@@ -3,6 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Form, Button, Row, Col, Modal } from 'react-bootstrap';
 import { DateRange } from 'react-date-range';
 import { addDays, format } from 'date-fns';
+import ModalCalendario from './ModalCalendario';
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faPlane, 
@@ -18,7 +20,6 @@ import {
   faCarSide
 } from '@fortawesome/free-solid-svg-icons';
 import '../css/FormBusqueda.css';
-import ModalCalendario from './ModalCalendario';
 import { is } from 'date-fns/locale';
 
 // Opciones y datos de ejemplo para ubicaciones (podrías importarlos desde un módulo común)

@@ -83,41 +83,42 @@ const FichaCoche = ({ car, onClose }) => {
         <Row>
           <Col md={6}>
             <Carousel className="mb-3">
-              {(car.imagenes || [car.imagen]).map((img, idx) => (
-                <Carousel.Item key={idx}>
-                  <img className="d-block w-100 ficha-image" src={img} alt={`Coche ${idx + 1}`} />
-                </Carousel.Item>
-              ))}
+              {(car.imagenes && car.imagenes.length > 0) 
+                ? car.imagenes.map((img, idx) => (
+                    <Carousel.Item key={idx}>
+                      <img className="d-block w-100 ficha-image" src={img.url} alt={`${car.marca} ${car.modelo}`} />
+                    </Carousel.Item>
+                  ))
+                : <Carousel.Item>
+                    <img className="d-block w-100 ficha-image" src={car.imagenPrincipal} alt={`${car.marca} ${car.modelo}`} />
+                  </Carousel.Item>
+              }
             </Carousel>
 
-            <div className="car-info-icons d-flex flex-row justify-content-evenly align-items-center flex-wrap">
-              <div><FontAwesomeIcon icon={faUser} /> Asientos: {car.asientos || 5}</div>
-              <div>
-                <Image
-                  src={
-                    car.caja && car.caja.toLowerCase().includes('manual')
-                      ? manualGear
-                      : autoGear
-                  }
-                  style={{ maxWidth: '14px'}}
-                  alt="Caja"
-                  className="icon-svg"
-                />
-                Caja: {car.caja || 'Automática'}
-              </div>
-              <div>
-                <Image
-                  src={carDoorLeft}
-                  style={{ maxWidth: '14px'}}
-                  alt="Puertas"
-                  className="icon-svg"
-
-                />
-                Puertas: {car.puertas || 5}
-              </div>
-              <div><FontAwesomeIcon icon={faSuitcase} /> Maletas: {car.maletas || 2}</div>
-              <div><FontAwesomeIcon icon={faIdCard} /> Edad mínima para conductores jovenes: {car.edadMinima || 18}</div>
+            {/* Información del vehículo */}
+          <div className="car-info-icons d-flex flex-row justify-content-evenly align-items-center flex-wrap">
+            <div><FontAwesomeIcon icon={faUser} /> Asientos: {car.num_pasajeros}</div>
+            <div>
+              <Image
+                src={autoGear} // Aquí podrías añadir lógica para determinar si es manual o automático
+                style={{ maxWidth: '14px'}}
+                alt="Caja"
+                className="icon-svg"
+              />
+              Caja: {car.caja || 'Automática'}
             </div>
+            <div>
+              <Image
+                src={carDoorLeft}
+                style={{ maxWidth: '14px'}}
+                alt="Puertas"
+                className="icon-svg"
+              />
+              Puertas: {car.num_puertas}
+            </div>
+            <div><FontAwesomeIcon icon={faSuitcase} /> Capacidad: {car.capacidad_maletero}L</div>
+            <div><FontAwesomeIcon icon={faIdCard} /> Edad mínima: {car.grupo?.edad_minima || 21} años</div>
+          </div>
           </Col>
 
           <Col md={6} className="d-flex flex-column justify-content-between">
@@ -150,12 +151,13 @@ const FichaCoche = ({ car, onClose }) => {
             <Row className="d-flex justify-content-between align-items-center">
               {/* Nuevo bloque: precio por día  enlace a detalles */}
               <Col className='text-start'>
-                <p className="price-day">
-                  Desde <strong>{car.precio}€</strong>/día
-                  <small className="price-details" onClick={handlePriceModalShow}>
-                    detalles del precio
-                  </small>
-                </p>
+              {/* Precio y botón continuar (actualizar para usar precio_dia en lugar de precio) */}
+              <p className="price-day">
+                Desde <strong>{car.precio_dia}€</strong>/día
+                <small className="price-details" onClick={handlePriceModalShow}>
+                  detalles del precio
+                </small>
+              </p>
               </Col>
               <Col className='text-end'>
                 <Button
@@ -179,10 +181,37 @@ const FichaCoche = ({ car, onClose }) => {
           <Modal.Title>Detalles del precio</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p>Precio base: {car.precio}€</p>
-          <p>IVA (21%): {(car.precio * 0.21).toFixed(2)}€</p>
-          <hr/>
-          <p><strong>Total: {(car.precio * 1.21).toFixed(2)}€</strong></p>
+          <div className="price-breakdown">
+            <div className="d-flex justify-content-between mb-2">
+              <span>Precio base por día:</span>
+              <span>{car.precio_dia}€</span>
+            </div>
+            <div className="d-flex justify-content-between mb-2">
+              <span>IVA (21%):</span>
+              <span>{(car.precio_dia * 0.21).toFixed(2)}€</span>
+            </div>
+            <hr/>
+            <div className="d-flex justify-content-between fw-bold">
+              <span>Total por día:</span>
+              <span>{(car.precio_dia * 1.21).toFixed(2)}€</span>
+            </div>
+            
+            <div className="mt-4 pt-2 border-top">
+              <h6 className="mb-3">Información adicional:</h6>
+              <ul className="price-info-list">
+                <li>
+                  <FontAwesomeIcon icon={faInfoCircle} className="me-2 text-primary" />
+                  El precio puede variar según la temporada y la disponibilidad.
+                </li>
+                <li>
+                  <FontAwesomeIcon icon={faInfoCircle} className="me-2 text-primary" />
+                  {car.fianza > 0 ? 
+                    `Se requiere un depósito de seguridad de ${car.fianza}€.` : 
+                    'No se requiere depósito de seguridad con la protección All Inclusive.'}
+                </li>
+              </ul>
+            </div>
+          </div>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handlePriceModalClose}>

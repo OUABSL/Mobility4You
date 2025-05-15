@@ -59,7 +59,7 @@ const AppFooter = () => (
         {/* Nueva fila para Ayuda con enlaces en línea */}
         <Row className="footer-help py-3">
             <Col>
-                <Nav className="justify-content-start">
+                <Nav className="justify-content-evenly">
                   <Nav.Link href="/info-rental" className="me-4">Información de alquiler</Nav.Link>
                   <Nav.Link href="/terminos" className="me-4">Términos y condiciones</Nav.Link>
                   <Nav.Link href="/privacidad" className="me-4">Política de privacidad</Nav.Link>
