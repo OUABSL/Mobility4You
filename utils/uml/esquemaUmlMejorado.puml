@@ -56,7 +56,6 @@ package "Flota" <<Master>> {
     + TINYINT num_puertas
     + TINYINT num_pasajeros
     + INT capacidad_maletero
-    + DECIMAL(8,2) precio_dia
     + TINYINT disponible
     + TINYINT activo
     + TEXT notas_internas
@@ -104,11 +103,15 @@ package "Usuarios" <<Master>> {
     + VARCHAR email UNIQUE
     + DATE fecha_nacimiento
     + CHAR(60) password_hash
-    + VARCHAR dni
+    + ENUM('masculino','femenino','no_binario') sexo
+    + VARCHAR nacionalidad
+    + ENUM('pasaporte','dni','nif') tipo_documento
+    + VARCHAR documento
     + IMAGEFILE imagen_carnet
     + INT direccion_id FK
     + VARCHAR telefono
     + ENUM('cliente','admin','empresa') rol
+    + VARCHAR idioma
     + TINYINT activo
     + TINYINT registrado
     + TINYINT verificado
@@ -131,6 +134,7 @@ package "Políticas y precios" <<Lookup>> {
 
   class PoliticaIncluye {
     + INT politica_id FK
+    + TINYINT incluye '0=No, 1=Sí Default 1'
     + VARCHAR item
     + PRIMARY_KEY(politica_id, item)
   }
@@ -181,7 +185,7 @@ package "Reservas" <<Transaction>> {
     + PRIMARY_KEY(reserva_id, conductor_id)
   }
 
-  'Tipos predefinidos: Tarifa por hora fuera de horaio, Cubro de un día por retraso de dos horas desde la hora de recogida, Cancelación tarde'
+  'Tipos predefinidos: Tarifa por hora fuera de horaio, Cubro de un día por retraso de dos horas desde la hora de recogida|devolución, Cancelación tarde'
   class TipoPenalizacion {
     + INT id PK
     + VARCHAR nombre UNIQUE 'cancelación | devolución tardía | recogida tardía'
@@ -256,6 +260,22 @@ package "Promociones" <<Lookup>> {
     + DATETIME updated_at
   }
 }
+
+package "Contenidos estáticos" <<Lookup>> {
+  class Contenido {
+    + INT id PK
+    + ENUM('blog','faq','legal','info', 'mini_section') tipo
+    + VARCHAR titulo
+    + VARCHAR subtitulo
+    + TEXT cuerpo
+    + TEXT info_adicional
+    + String icono_url
+    + TINYINT publicado
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+}
+
 
 
 
