@@ -13,6 +13,16 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 import sys
+import environ
+
+
+# If using django-environ, uncomment the following lines:
+env = environ.Env()
+environ.Env.read_env()
+
+# usar os.environ.get en su lugar
+# def env(key, default=None):
+#     return os.environ.get(key, default)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -42,7 +52,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework', # Agregado
     'corsheaders', # Agregado
-    'api' # Agregado
+    'api', # Agregado
+    'payments', # Agregado por Ouael el 18-05
 ]
 
 MIDDLEWARE = [
@@ -159,8 +170,29 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-#Agregado
+# CORS (Cross-Origin Resource Sharing) settings
+# Permitir solicitudes CORS desde el frontend
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # 👈 Cambia esto si React usa otro puerto
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+
 ]
 
+CORS_ALLOW_CREDENTIALS = True
+
+# Configuración CSRF para las notificaciones de Redsys
+CSRF_TRUSTED_ORIGINS = [
+    'https://sis.redsys.es',
+    'https://sis-t.redsys.es',
+]
+
+
+
+# Configuración Redsys
+REDSYS_MERCHANT_CODE = env('REDSYS_MERCHANT_CODE', default='999008881')
+REDSYS_TERMINAL = env('REDSYS_TERMINAL', default='001')
+REDSYS_SECRET_KEY = env('REDSYS_SECRET_KEY', default='sq7HjrUOBfKmC576ILgskD5srU870gJ7')
+REDSYS_ENVIRONMENT = env('REDSYS_ENVIRONMENT', default='test')  # test o production
+
+# URL del frontend para redirecciones
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')

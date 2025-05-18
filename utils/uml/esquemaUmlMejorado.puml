@@ -109,12 +109,13 @@ package "Usuarios" <<Master>> {
     + VARCHAR nacionalidad
     + ENUM('pasaporte','dni','nif') tipo_documento
     + VARCHAR numero_documento
-    + IMAGEFILE imagen_carnet
+    + IMAGEFILE imagen_carnet 'Por defeecto nulo, se solicitará en el check in'
     + INT direccion_id FK
     + VARCHAR telefono
     + ENUM('cliente','admin','empresa') rol
     + VARCHAR idioma
     + TINYINT activo
+    + TINYINT acepta_recibir_ofertas
     + TINYINT registrado
     + TINYINT verificado
     + DATETIME created_at
@@ -122,6 +123,10 @@ package "Usuarios" <<Master>> {
   }
 
   Usuario "0..N" <-- "1" Direccion : vive_en >
+
+  ' A confirmarlo con Soukaina
+  Usuario "1" <-- "0..N" Contrato : firma >
+  Usuario "1" <-- "0..N" Factura : recibe >
 }
 
 package "Políticas y precios" <<Lookup>> {
@@ -232,6 +237,39 @@ package "Reservas" <<Transaction>> {
   PoliticaPago "1" <-- "0..N" PoliticaPenalizacion : aplica >
   TipoPenalizacion "1" <-- "0..N" PoliticaPenalizacion : define >
 
+}
+
+package "Contratos y Facturación" <<Transaction>> {
+  ' Tabla de contratos asociados a una reserva
+  class Contrato {
+    + INT id PK
+    + INT reserva_id FK
+    + VARCHAR numero_contrato UNIQUE
+    + DATE fecha_firma
+    + TEXT condiciones
+    + VARCHAR url_pdf
+    + ENUM('pendiente','firmado','anulado') estado
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  ' Tabla de facturas asociadas a una reserva
+  class Factura {
+    + INT id PK
+    + INT reserva_id FK
+    + VARCHAR numero_factura UNIQUE
+    + DATE fecha_emision
+    + DECIMAL(10,2) base_imponible
+    + DECIMAL(10,2) iva
+    + DECIMAL(10,2) total
+    + VARCHAR url_pdf
+    + ENUM('pendiente','emitida','anulada') estado
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  Reserva "1" <-- "0..1" Contrato : genera >
+  Reserva "1" <-- "0..N" Factura : factura >
 }
 
 package "Mantenimiento" <<Transaction>> {

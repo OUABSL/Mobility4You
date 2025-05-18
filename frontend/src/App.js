@@ -16,10 +16,16 @@ import { fab } from '@fortawesome/free-brands-svg-icons';
 import MyNavbar from './components/MyNavbar';
 import Home from './components/Home';
 import ContactUs from './components/ContactUs';
+import AppFooter from './components/Footer';
+
 import ListadoCoches from './components/ListadoCoches';
 import ReservaCliente from './components/ReservaCliente';
+
+
+import ConsultarReservaCliente from './components/ConsultarReservaCliente';
 import DetallesReserva from './components/DetallesReserva';
-import AppFooter from './components/Footer';
+
+
 // import CarDetail from './components/CarDetail';
 // import UserProfile from './components/UserProfile';
 // import AdminPanel from './components/AdminPanel';
@@ -71,7 +77,8 @@ function App() {
           <Route path="/" element={<Home isMobile={isMobile} />} />
           <Route path="/contactus" element={<ContactUs />} />
           <Route path="/coches" element={<ListadoCoches isMobile={isMobile} />} />
-          <Route path="/reservations" element={<ReservaCliente isMobile={isMobile} />} />
+          <Route path="/reservation-confirmation/*" element={<ReservaCliente isMobile={isMobile} />} />
+          <Route path="/reservations" element={<ConsultarReservaCliente isMobile={isMobile} />} />
           <Route path="/reservations/:reservaId" element={<DetallesReserva isMobile={isMobile}/>}
 />
 

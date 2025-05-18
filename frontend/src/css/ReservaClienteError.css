@@ -1,0 +1,80 @@
+/* src/css/ReservaClienteError.css */
+
+.reserva-error .error-card {
+  max-width: 700px;
+  margin: 2rem auto;
+}
+
+.error-card .card-header {
+  background-color: var(--color-terciario);
+  color: var(--color-fundo-blanco);
+  font-weight: 600;
+}
+
+.error-icon {
+  margin: 2rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  background-color: rgba(231, 76, 60, 0.1);
+  border-radius: 50%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.error-message {
+  font-size: 1.1rem;
+  color: #444;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.error-solutions {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.action-buttons {
+  margin-top: 1.5rem;
+}
+
+.contact-support {
+  margin-top: 2rem;
+  font-size: 0.9rem;
+}
+
+.contact-support a {
+  color: var(--color-primario);
+  text-decoration: none;
+}
+
+.contact-support a:hover {
+  text-decoration: underline;
+  color: var(--color-hover);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .error-message,
+  .error-solutions {
+    max-width: 95%;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .action-buttons .btn {
+    width: 100%;
+    margin: 0.5rem 0;
+  }
+}

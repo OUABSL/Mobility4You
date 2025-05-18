@@ -1,6 +1,7 @@
 // src/components/FichaCoche.js
 import React, { use, useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Carousel, Button, Card, Modal, Badge,Image } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom'; // Importar useNavigate
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faSuitcase, faUser, faIdCard, faCircleCheck, faTimesCircle, faCreditCard, faInfoCircle  } from '@fortawesome/free-solid-svg-icons';
 // NUEVAS IMÁGENES SVG
@@ -11,10 +12,6 @@ import carDoorLeft   from '../img/icons/car-door-left.svg';
 import '../css/FichaCoche.css';
 import { fr } from 'date-fns/locale';
 
-// NUEVO COMPONENTE PARA EXTRAS
-import ReservaClienteExtras from './ReservaPasos/ReservaClienteExtras';
-// NUEVO COMPONENTE PARA CONFIRMACIÓN
-import ReservaClienteConfirmar from './ReservaPasos/ReservaClienteConfirmar';
 
 
   const paymentOptions = [
@@ -56,16 +53,17 @@ import ReservaClienteConfirmar from './ReservaPasos/ReservaClienteConfirmar';
 
 
 const FichaCoche = ({ car, onClose }) => {
+    const navigate = useNavigate(); // Inicializar navigate para redirecciones
   // ESTADOS ORIGINALES
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showPaymentInfo, setShowPaymentInfo] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState(null);
   const [showPriceModal, setShowPriceModal] = useState(false);
   
-  // NUEVOS ESTADOS para flujo de reserva
-  const [reservaStep, setReservaStep] = useState('ficha'); // 'ficha', 'extras', 'confirmar'
-  const [fechasReserva, setFechasReserva] = useState(null);
-  const [datosExtras, setDatosExtras] = useState(null);
+  //FUNCIONES para abrir/cerrar modal de precio
+  const handlePriceModalShow = () => setShowPriceModal(true);
+  const handlePriceModalClose = () => setShowPriceModal(false);
+
 
   const handleSelectPayment = (option) => {
     if (option === selectedPayment) {
@@ -75,10 +73,6 @@ const FichaCoche = ({ car, onClose }) => {
     }
   };
 
-  // NUEVAS FUNCIONES para abrir/cerrar modal de precio
-  const handlePriceModalShow = () => setShowPriceModal(true);
-  const handlePriceModalClose = () => setShowPriceModal(false);
-
   // Mejoras: 
   // - Usa useCallback para handlers.
   // - Permite recibir fechas reales como prop (si existen).
@@ -86,72 +80,33 @@ const FichaCoche = ({ car, onClose }) => {
   // - Valida que haya opción de pago antes de continuar.
 
 
-  // NUEVAS FUNCIONES para manejar el flujo de reserva
-  const handleContinuar = useCallback(() => {
+    // Nueva función para manejar la navegación al flujo de reserva
+  const handleContinuar = () => {
     if (!selectedPayment) return;
-
-    // Permite recibir fechas reales como prop en el futuro
-    const fechasSimuladas = fechasReserva || {
-      pickupLocation: 'Aeropuerto de Málaga',
-      pickupDate: new Date(),
-      pickupTime: '12:00',
-      dropoffLocation: 'Aeropuerto de Málaga',
-      dropoffDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // +3 días
-      dropoffTime: '12:00'
+    
+    // Preparar datos de reserva iniciales
+    const reservaData = {
+      car: {
+        ...car,
+        imagen: car.imagenPrincipal // Asegurar que imagen esté disponible para componentes futuros
+      },
+      paymentOption: selectedPayment,
+      fechas: {
+        pickupLocation: 'Aeropuerto de Málaga',
+        pickupDate: new Date(),
+        pickupTime: '12:00',
+        dropoffLocation: 'Aeropuerto de Málaga',
+        dropoffDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // +3 días
+        dropoffTime: '12:00'
+      }
     };
-
-    setFechasReserva(fechasSimuladas);
-    setReservaStep('extras');
-  }, [selectedPayment, fechasReserva]);
-
-  const handleVolverAFicha = useCallback(() => {
-    setReservaStep('ficha');
-    setDatosExtras(null);
-  }, []);
-
-  const handleContinuarDesdeExtras = useCallback((extras) => {
-    setDatosExtras(extras);
-    setReservaStep('confirmar');
-  }, []);
-
-  const handleVolverAExtras = useCallback(() => {
-    setReservaStep('extras');
-  }, []);
-
-  // Efecto para depuración o side-effects al confirmar
-  useEffect(() => {
-    if (reservaStep === 'confirmar') {
-      // Aquí podrías hacer algo con los datos de la reserva
-      console.log('Datos de la reserva:', {
-        car,
-        selectedPayment,
-        fechasReserva,
-        datosExtras
-      });
-    }
-  }, [reservaStep, car, selectedPayment, fechasReserva, datosExtras]);
-
-  // Renderizado condicional según el paso de la reserva
-  if (reservaStep === 'extras') {
-    return (
-      <ReservaClienteExtras
-        car={car}
-        onVolver={handleVolverAFicha}
-        onContinuar={handleContinuarDesdeExtras}
-      />
-    );
-  }
-  if (reservaStep === 'confirmar') {
-    return (
-      <ReservaClienteConfirmar
-        car={car}
-        selectedPayment={selectedPayment}
-        fechasReserva={fechasReserva}
-        datosExtras={datosExtras}
-        onVolver={handleVolverAExtras}
-      />
-    );
-  }
+    
+    // Guardar los datos en sessionStorage para mantenerlos entre rutas
+    sessionStorage.setItem('reservaData', JSON.stringify(reservaData));
+    
+    // Navegar a la nueva ruta de confirmación de reserva
+    navigate('/reservation-confirmation');
+  };
 
   return (
     <div className="ficha-coche-modal">
