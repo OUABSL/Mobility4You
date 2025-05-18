@@ -14,7 +14,10 @@ import {
   faCreditCard,
   faTimes,
   faHome,
-  faLock
+  faLock,
+  faExclamationTriangle,
+  faInfoCircle,
+  faServer
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import '../../css/ReservaClientePago.css';
@@ -37,6 +40,8 @@ const ReservaClientePago = () => {
   const [redsysLoading, setRedsysLoading] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const formRef = useRef(null);
+
+  const debugMode = true;
 
   // Cargar datos de reserva del sessionStorage al iniciar
   useEffect(() => {
@@ -61,7 +66,7 @@ const ReservaClientePago = () => {
 
   // FUNCIÓN PARA GENERAR DATOS DE REDSYS
   const generateRedsysData = (reservaData, total) => {
-    // Configuración Redsys (valores de ejemplo - deben venir del backend)
+    // Configuración desde variables de entorno
     const merchantCode = process.env.REACT_APP_REDSYS_MERCHANT_CODE || '999008881';
     const terminal = '001';
     const currency = '978'; // EUR
@@ -70,17 +75,21 @@ const ReservaClientePago = () => {
     // Generar número de pedido único
     const orderNumber = `RSV${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
     
-    // Datos básicos para Redsys
+    // URLs para Django backend
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+    const frontendUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
+    
+    // Datos para Redsys
     const redsysParams = {
-      DS_MERCHANT_AMOUNT: Math.round(total * 100).toString(), // Redsys requiere céntimos
+      DS_MERCHANT_AMOUNT: Math.round(total * 100).toString(), // Céntimos
       DS_MERCHANT_ORDER: orderNumber,
       DS_MERCHANT_MERCHANTCODE: merchantCode,
       DS_MERCHANT_CURRENCY: currency,
       DS_MERCHANT_TRANSACTIONTYPE: transactionType,
       DS_MERCHANT_TERMINAL: terminal,
-      DS_MERCHANT_MERCHANTURL: `${window.location.origin}/api/payments/redsys/notify`,
-      DS_MERCHANT_URLOK: `${window.location.origin}/reservation-confirmation/exito`,
-      DS_MERCHANT_URLKO: `${window.location.origin}/reservation-confirmation/error`,
+      DS_MERCHANT_MERCHANTURL: `${backendUrl}/api/payments/redsys/notify/`,
+      DS_MERCHANT_URLOK: `${backendUrl}/api/payments/redsys/success/`,
+      DS_MERCHANT_URLKO: `${backendUrl}/api/payments/redsys/error/`,
       DS_MERCHANT_PRODUCTDESCRIPTION: `Reserva vehículo ${reservaData.car.marca} ${reservaData.car.modelo}`,
       DS_MERCHANT_TITULAR: `${reservaData.conductorPrincipal.nombre} ${reservaData.conductorPrincipal.apellidos}`,
       DS_MERCHANT_MERCHANTDATA: JSON.stringify({
@@ -92,7 +101,7 @@ const ReservaClientePago = () => {
     return { redsysParams, orderNumber };
   };
 
-  // FUNCIÓN PARA PROCESAR PAGO CON REDSYS
+  // 2. ACTUALIZAR LA FUNCIÓN processRedsysPayment para usar Django API
   const processRedsysPayment = async () => {
     setRedsysLoading(true);
     
@@ -111,11 +120,15 @@ const ReservaClientePago = () => {
       // Guardar datos actualizados antes del pago
       sessionStorage.setItem('reservaData', JSON.stringify(updatedReservaData));
       
-      // Llamada al backend para obtener la firma y datos firmados
-      const response = await fetch('/api/payments/redsys/prepare', {
+      // URL del backend Django
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+      
+      // Llamada al endpoint Django para obtener la firma
+      const response = await fetch(`${backendUrl}/api/payments/redsys/prepare/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           redsysParams,
@@ -124,17 +137,18 @@ const ReservaClientePago = () => {
       });
       
       if (!response.ok) {
-        throw new Error('Error al preparar el pago con Redsys');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error HTTP ${response.status}`);
       }
       
       const { merchantParameters, signature, signatureVersion, redsysUrl } = await response.json();
       
       // Configurar datos para envío a Redsys
       setPaymentData({
-        action: redsysUrl || 'https://sis-t.redsys.es:25443/sis/realizarPago', // URL de pruebas
+        action: redsysUrl,
         merchantParameters,
         signature,
-        signatureVersion: signatureVersion || 'HMAC_SHA256_V1'
+        signatureVersion
       });
       
       // Enviar formulario automáticamente después de un breve delay
@@ -146,8 +160,25 @@ const ReservaClientePago = () => {
       
     } catch (error) {
       console.error('Error al procesar pago con Redsys:', error);
-      setError('Ha ocurrido un error al procesar el pago. Por favor, inténtalo de nuevo.');
+      setError(`Ha ocurrido un error al procesar el pago: ${error.message}`);
       setRedsysLoading(false);
+    }
+  };
+
+  // FUNCIÓN PARA VERIFICAR ESTADO DEL PAGO
+  const checkPaymentStatus = async (orderNumber) => {
+    try {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+      const response = await fetch(`${backendUrl}/api/payments/redsys/status/${orderNumber}/`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      return null;
     }
   };
 
@@ -203,6 +234,45 @@ const ReservaClientePago = () => {
       setError('Método de pago no válido para este paso.');
     }
   };
+
+
+  // 4. EFECTO PARA VERIFICAR ESTADO DEL PAGO AL REGRESAR DE REDSYS
+  useEffect(() => {
+    // Verificar si venimos de Redsys con parámetros de éxito/error
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentResult = urlParams.get('payment');
+    const orderNumber = urlParams.get('order');
+    
+    if (paymentResult && orderNumber) {
+      if (paymentResult === 'success') {
+        // Verificar estado del pago en el backend
+        checkPaymentStatus(orderNumber).then(paymentData => {
+          if (paymentData && paymentData.status === 'COMPLETADO') {
+            // Actualizar sessionStorage y redirigir a éxito
+            const completedData = {
+              ...reservaData,
+              reservaId: orderNumber,
+              fechaPago: paymentData.paid_at,
+              estadoPago: 'completado',
+              codigoAutorizacion: paymentData.authorization_code
+            };
+            sessionStorage.setItem('reservaCompletada', JSON.stringify(completedData));
+            navigate('/reservation-confirmation/exito', { replace: true });
+          }
+        });
+      } else if (paymentResult === 'failed') {
+        // Redirigir a error con información del pago fallido
+        navigate('/reservation-confirmation/error', { 
+          state: { 
+            errorType: 'payment',
+            errorMessage: 'El pago con tarjeta no pudo ser procesado. Por favor, inténtalo de nuevo.'
+          },
+          replace: true 
+        });
+      }
+    }
+  }, [navigate, reservaData]);
+
   // Si hay error, mostrar pantalla de error
   if (error) {
     return (
@@ -294,24 +364,45 @@ const ReservaClientePago = () => {
                     <div className="redsys-info-box mb-4 p-3 rounded" style={{backgroundColor: '#f8f9fa', border: '1px solid #dee2e6'}}>
                       <div className="d-flex align-items-center mb-2">
                         <FontAwesomeIcon icon={faLock} className="me-2 text-success" />
-                        <strong>Pago 100% Seguro</strong>
+                        <strong>Pago 100% Seguro con Redsys</strong>
                       </div>
-                      <p className="mb-2">Tu pago será procesado de forma segura a través de <strong>Redsys</strong>, la plataforma de pagos líder en España.</p>
+                      <p className="mb-2">Tu pago será procesado de forma segura a través de <strong>Redsys</strong>, la plataforma de pagos líder en España utilizada por los principales bancos españoles.</p>
                       <ul className="mb-0 small">
-                        <li>Tecnología de encriptación SSL</li>
-                        <li>Cumplimiento PCI DSS</li>
-                        <li>Protección contra fraude</li>
-                        <li>Compatible con 3D Secure</li>
+                        <li>Tecnología de encriptación SSL de máximo nivel</li>
+                        <li>Cumplimiento estricto PCI DSS</li>
+                        <li>Protección avanzada contra fraude</li>
+                        <li>Compatible con 3D Secure para mayor seguridad</li>
+                        <li>Procesado por tu banco de confianza</li>
                       </ul>
+                    </div>
+                    
+                    <div className="backend-status mb-3">
+                      <small className="text-muted">
+                        <FontAwesomeIcon icon={faServer} className="me-1" />
+                        Conectado con servidor Django: {process.env.REACT_APP_BACKEND_URL || 'localhost:8000'}
+                      </small>
                     </div>
                     
                     <div className="accepted-cards mb-4">
                       <h6 className="mb-2">Tarjetas aceptadas:</h6>
-                      <div className="d-flex align-items-center gap-2">
-                        <img src="/img/cards/visa.png" alt="Visa" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
-                        <img src="/img/cards/mastercard.png" alt="Mastercard" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
-                        <img src="/img/cards/maestro.png" alt="Maestro" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
-                        <span className="text-muted small">+ más tarjetas</span>
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <div className="card-brand">
+                          <img src="/img/cards/visa.png" alt="Visa" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <span className="visually-hidden">Visa</span>
+                        </div>
+                        <div className="card-brand">
+                          <img src="/img/cards/mastercard.png" alt="Mastercard" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <span className="visually-hidden">Mastercard</span>
+                        </div>
+                        <div className="card-brand">
+                          <img src="/img/cards/maestro.png" alt="Maestro" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <span className="visually-hidden">Maestro</span>
+                        </div>
+                        <div className="card-brand">
+                          <img src="/img/cards/amex.png" alt="American Express" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <span className="visually-hidden">American Express</span>
+                        </div>
+                        <span className="text-muted small">+ todas las principales tarjetas bancarias</span>
                       </div>
                     </div>
                     
@@ -319,12 +410,25 @@ const ReservaClientePago = () => {
                       <div className="processing-payment text-center p-4">
                         <Spinner animation="border" variant="primary" className="mb-3" />
                         <h6>Preparando pago seguro...</h6>
-                        <p className="text-muted">Serás redirigido a la plataforma de pago en unos segundos.</p>
+                        <p className="text-muted">Estamos configurando tu pago con Redsys. Serás redirigido a la plataforma de pago de tu banco en unos segundos.</p>
+                        <div className="mt-3">
+                          <small className="text-info">
+                            <FontAwesomeIcon icon={faInfoCircle} className="me-1" />
+                            No cierres esta ventana durante el proceso
+                          </small>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {error && (
+                      <div className="alert alert-danger mt-3">
+                        <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" />
+                        {error}
                       </div>
                     )}
                   </div>
                 ) : (
-                  // PAGO CON PAYPAL
+                  // PAGO CON PAYPAL (mantener igual)
                   <div className="paypal-payment-form">
                     <h5 className="mb-3">
                       <img src="/img/paypal-logo.png" alt="PayPal" style={{height: '24px'}} onError={(e) => e.target.style.display = 'none'} />
@@ -336,7 +440,7 @@ const ReservaClientePago = () => {
                         <FontAwesomeIcon icon={faLock} className="me-2 text-success" />
                         <strong>Pago Seguro con PayPal</strong>
                       </div>
-                      <p className="mb-0">Serás redirigido a PayPal para completar tu pago de forma segura. No necesitas crear una cuenta PayPal.</p>
+                      <p className="mb-0">Serás redirigido a PayPal para completar tu pago de forma segura. No necesitas crear una cuenta PayPal, también puedes pagar con tarjeta.</p>
                     </div>
                   </div>
                 )}

@@ -18,6 +18,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import '../../css/ReservaClienteExtras.css';
 
+import wifiLogo from '../../img/extras/wifi.png';
+import gpsLogo from '../../img/extras/gps.png';
+import asientoLogo from '../../img/extras/child-seat.png';
+import conductorLogo from '../../img/extras/secondary-driver.png';
+
 // Datos de prueba para extras disponibles
 const extrasDisponibles = [
   {
@@ -25,28 +30,28 @@ const extrasDisponibles = [
     nombre: 'Asiento infantil',
     descripcion: 'Para niños de 9-18kg (1-4 años)',
     precio: 7.50,
-    imagen: 'https://via.placeholder.com/150x100?text=Asiento+Infantil'
+    imagen: asientoLogo
   },
   {
     id: 2,
     nombre: 'GPS',
     descripcion: 'Navegador con mapas actualizados',
     precio: 8.95,
-    imagen: 'https://via.placeholder.com/150x100?text=GPS'
+    imagen: gpsLogo
   },
   {
     id: 3,
     nombre: 'Conductor adicional',
     descripcion: 'Añade un conductor adicional a tu reserva',
     precio: 5.00,
-    imagen: 'https://via.placeholder.com/150x100?text=Conductor+adicional'
+    imagen: conductorLogo
   },
   {
     id: 4,
     nombre: 'Wi-Fi portátil',
     descripcion: 'Conexión 4G en todo el vehículo',
     precio: 6.95,
-    imagen: 'https://via.placeholder.com/150x100?text=Wi-Fi'
+    imagen: wifiLogo
   }
 ];
 

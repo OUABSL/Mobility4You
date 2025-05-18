@@ -30,6 +30,8 @@ const ReservaClienteConfirmar = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reservaData, setReservaData] = useState(null);
+
+
   // Estado inicial del formulario
   // Se inicializa con valores vacíos y algunos predeterminados
   const [formData, setFormData] = useState({
@@ -126,6 +128,7 @@ const ReservaClienteConfirmar = () => {
         !formData.fechaNacimiento || !formData.nacionalidad || !formData.numeroDocumento || 
         !formData.calle || !formData.ciudad || !formData.provincia || !formData.codigoPostal ||
         !formData.aceptaTerminos) {
+        console.log(JSON.stringify(formData));
       setError('Por favor, completa todos los campos obligatorios del conductor principal.');
       return;
     }
@@ -674,7 +677,7 @@ const ReservaClienteConfirmar = () => {
                     variant="primary" 
                     type="submit"
                     className="confirmacion-btn"
-                    disabled={loading}
+                    disabled={loading || !formData.aceptaTerminos}
                   >
                     {loading ? (
                       <>

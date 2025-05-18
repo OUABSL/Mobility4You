@@ -23,11 +23,13 @@ import '../../css/ReservaClienteExito.css';
 const ReservaClienteExito = () => {
   const navigate = useNavigate();
   const [reservaCompletada, setReservaCompletada] = useState(null);
+  const debugMode = true; 
   
   useEffect(() => {
     // Recuperar datos de la reserva completada
     const storedData = sessionStorage.getItem('reservaCompletada');
-    if (storedData) {
+    if (storedData || debugMode) {
+      // Si estamos en modo debug, usar datos de prueba
       setReservaCompletada(JSON.parse(storedData));
     }
   }, []);

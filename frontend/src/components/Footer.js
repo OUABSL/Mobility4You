@@ -15,7 +15,7 @@ const AppFooter = () => (
     <Container>
       <Row className="footer-top py-5">
         <Col md={4} sm={12} className="mb-4">
-          <h5 className="footer-title">Movility for You</h5>
+          <h5 className="footer-title">Mobility 4 You</h5>
           <p className="footer-text">
             Tu camino hacia el confort.
           </p>
@@ -70,7 +70,7 @@ const AppFooter = () => (
 
       <Row className="footer-bottom py-3">
         <Col md={6} sm={12}>
-          <small>© Movility for You 2025. Todos los derechos reservados.</small>
+          <small>© Mobility 4 You 2025. Todos los derechos reservados.</small>
         </Col>
         <Col md={6} sm={12} className="text-md-end">
           <Nav className="justify-content-md-end">

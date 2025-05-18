@@ -1,5 +1,6 @@
 
 from django.urls import path, include
+from django.contrib import admin
 from rest_framework.routers import DefaultRouter
 from .views import (
 CategoriaViewSet, GrupoCocheViewSet, MantenimientoViewSet, PenalizacionViewSet, PoliticaIncluyeViewSet, RegisterUserView, ReservaConductorViewSet, TarifaVehiculoViewSet, TipoPenalizacionViewSet, UsuarioViewSet, LugarViewSet, VehiculoViewSet,
@@ -28,5 +29,7 @@ router.register(r'mantenimientos', MantenimientoViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('admin/', admin.site.urls),
     path("rest-auth/", include("rest_framework.urls")),
+    path('api/payments/', include('payments.urls')),
 ]
