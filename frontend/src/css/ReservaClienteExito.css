@@ -1,0 +1,178 @@
+/* src/css/ReservaClienteExito.css */
+
+.reserva-exito .card-header {
+  background-color: var(--color-activo);
+  color: var(--color-secundario);
+  font-weight: 600;
+}
+
+.confirmation-message {
+  margin: 2rem 0;
+}
+
+.confirmation-message h4 {
+  color: var(--color-primario);
+  margin-bottom: 1rem;
+}
+
+.confirmation-message .lead {
+  color: var(--color-texto-negro);
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.reservation-details .card-header,
+.customer-details .card-header,
+.payment-summary .card-header {
+  background-color: #f8f9fa;
+  color: var(--color-primario);
+  font-weight: 600;
+}
+
+.reservation-details .table-borderless,
+.customer-details .table-borderless {
+  margin-bottom: 0;
+}
+
+.reservation-details td,
+.customer-details td {
+  padding: 8px 0;
+}
+
+.extras-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.extras-list li {
+  margin-bottom: 4px;
+}
+
+.total-amount {
+  font-size: 1.2rem;
+  color: var(--color-primario);
+}
+
+.next-steps {
+  margin-top: 3rem;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.next-steps h5 {
+  color: var(--color-primario);
+}
+
+/* Estilos para impresión */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .print-area, .print-area * {
+    visibility: visible;
+  }
+  
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  
+  .d-print-none {
+    display: none !important;
+  }
+  
+  .card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+  }
+  
+  .card-header {
+    background-color: #f8f9fa !important;
+    color: #333 !important;
+  }
+}
+
+/* Estilos para la barra de progreso */
+.reservation-progress {
+  margin-bottom: 30px;
+}
+
+.progress-steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin: 0 auto;
+  max-width: 800px;
+}
+
+.progress-steps::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #e9ecef;
+  z-index: -1;
+}
+
+.progress-steps .step {
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  padding: 0 10px;
+}
+
+.progress-steps .step::before {
+  content: '';
+  position: absolute;
+  top: calc(0% - 15px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  background-color: #e9ecef;
+  border-radius: 50%;
+  z-index: -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-steps .step {
+  padding-top: 25px;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.progress-steps .step.active::before {
+  background-color: var(--color-primario);
+}
+
+.progress-steps .step.active {
+  color: var(--color-primario);
+  font-weight: 600;
+}
+
+.progress-steps .step.completed::before {
+  background-color: var(--color-activo);
+}
+
+.progress-steps .step.completed {
+  color: var(--color-activo);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .progress-steps .step {
+    font-size: 12px;
+    padding: 30px 5px 0;
+  }
+}

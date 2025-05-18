@@ -1,6 +1,6 @@
-// src/components/ReservaClienteExtras.js
+// src/components/ReservaPasos/ReservaClienteExtras.js
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, ListGroup, Badge, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, ListGroup, Badge, Spinner, Alert } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faCarSide, 
@@ -11,9 +11,10 @@ import {
   faTimes, 
   faCheck,
   faInfoCircle,
-  faChevronLeft
-} 
-from '@fortawesome/free-solid-svg-icons';
+  faChevronLeft,
+  faHome
+} from '@fortawesome/free-solid-svg-icons';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import '../../css/ReservaClienteExtras.css';
 
@@ -49,17 +50,50 @@ const extrasDisponibles = [
   }
 ];
 
-const ReservaClienteExtras = ({ car, fechas, selectedPayment, onGoBack, onContinue }) => {
+const ReservaClienteExtras = ({ isMobile = false }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   // Estados
   const [extrasSeleccionados, setExtrasSeleccionados] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [reservaData, setReservaData] = useState(null);
   const [detallesReserva, setDetallesReserva] = useState(null);
   const [totalExtras, setTotalExtras] = useState(0);
   
+  // Cargar datos de reserva del sessionStorage al iniciar
+  useEffect(() => {
+    try {
+      const storedData = sessionStorage.getItem('reservaData');
+      if (!storedData) {
+        setError('No se encontraron datos de reserva. Por favor, inicia el proceso desde la selección de vehículo.');
+        return;
+      }
+      
+      const parsedData = JSON.parse(storedData);
+      
+      // Convertir fechas de string a Date
+      if (parsedData.fechas) {
+        if (typeof parsedData.fechas.pickupDate === 'string') {
+          parsedData.fechas.pickupDate = new Date(parsedData.fechas.pickupDate);
+        }
+        if (typeof parsedData.fechas.dropoffDate === 'string') {
+          parsedData.fechas.dropoffDate = new Date(parsedData.fechas.dropoffDate);
+        }
+      }
+      
+      setReservaData(parsedData);
+    } catch (err) {
+      console.error('Error al cargar datos de reserva:', err);
+      setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
+    }
+  }, []);
+  
   // Calcular fechas y días de alquiler
-  const diasAlquiler = fechas ? 
-    Math.ceil((new Date(fechas.dropoffDate) - new Date(fechas.pickupDate)) / (1000 * 60 * 60 * 24)) : 
-    3; // Valor por defecto para testing
+  const diasAlquiler = reservaData?.fechas ? 
+    Math.ceil((new Date(reservaData.fechas.dropoffDate) - new Date(reservaData.fechas.pickupDate)) / (1000 * 60 * 60 * 24)) : 
+    3; // Valor por defecto
 
   // Efecto para calcular y actualizar el total de extras
   useEffect(() => {
@@ -70,23 +104,20 @@ const ReservaClienteExtras = ({ car, fechas, selectedPayment, onGoBack, onContin
     setTotalExtras(total);
   }, [extrasSeleccionados, diasAlquiler]);
 
-  // Efecto para cargar los detalles de la reserva (simulación)
+  // Efecto para calcular los detalles de la reserva
   useEffect(() => {
-    // En una implementación real, aquí se haría una llamada a la API
-    const calcularDetalles = () => {
-      const precioCocheBase = car.precio * diasAlquiler;
-      const iva = precioCocheBase * 0.21;
-      const detalles = {
-        precioCocheBase,
-        iva,
-        precioExtras: totalExtras,
-        total: precioCocheBase + iva + totalExtras
-      };
-      setDetallesReserva(detalles);
-    };
+    if (!reservaData) return;
     
-    calcularDetalles();
-  }, [car, diasAlquiler, totalExtras]);
+    const precioCocheBase = reservaData.car.precio_dia * diasAlquiler;
+    const iva = precioCocheBase * 0.21;
+    const detalles = {
+      precioCocheBase,
+      iva,
+      precioExtras: totalExtras,
+      total: precioCocheBase + iva + totalExtras
+    };
+    setDetallesReserva(detalles);
+  }, [reservaData, diasAlquiler, totalExtras]);
 
   // Manejador para seleccionar/deseleccionar extras
   const toggleExtra = (extraId) => {
@@ -97,48 +128,98 @@ const ReservaClienteExtras = ({ car, fechas, selectedPayment, onGoBack, onContin
     );
   };
 
+  // Manejador para volver a la selección de coches
+  const handleVolver = () => {
+    // Redirigir a la página anterior
+    navigate(-1);
+  };
+
   // Manejador para continuar con la reserva
   const handleContinuar = async () => {
     setLoading(true);
+    
     try {
-      // En producción, aquí iría la llamada real a la API
-      // const response = await axios.post('/api/reservations/extras', {
-      //   carId: car.id,
-      //   fechas,
-      //   paymentOption: selectedPayment,
-      //   extras: extrasSeleccionados
-      // });
+      // Actualizar los datos de la reserva con los extras seleccionados
+      const updatedReservaData = {
+        ...reservaData,
+        extras: extrasSeleccionados.map(id => extrasDisponibles.find(e => e.id === id)),
+        detallesReserva
+      };
       
-      // Simulamos una espera de red
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Guardar datos actualizados en sessionStorage
+      sessionStorage.setItem('reservaData', JSON.stringify(updatedReservaData));
       
-      // Pasamos al componente de confirmación
-      if (onContinue) {
-        onContinue({
-          car,
-          fechas,
-          paymentOption: selectedPayment,
-          extras: extrasSeleccionados.map(id => extrasDisponibles.find(e => e.id === id)),
-          detallesReserva
-        });
-      }
+      // Simulamos una espera de red (opcional en desarrollo)
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Navegar al siguiente paso (confirmación)
+      navigate('/reservation-confirmation/datos');
     } catch (error) {
       console.error('Error al procesar los extras:', error);
-      // Aquí se manejaría el error, mostrando un mensaje al usuario
+      setError('Ha ocurrido un error al procesar tu selección. Por favor, inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Si hay error, mostrar pantalla de error
+  if (error) {
+    return (
+      <Container className="reserva-extras my-5">
+        <Card className="shadow-sm">
+          <Card.Header className="bg-danger text-white">
+            <h5 className="mb-0">Error</h5>
+          </Card.Header>
+          <Card.Body className="text-center py-5">
+            <div className="mb-4">
+              <FontAwesomeIcon icon={faTimes} size="4x" className="text-danger" />
+            </div>
+            <h4 className="mb-4">{error}</h4>
+            <Button 
+              variant="primary" 
+              onClick={() => navigate('/coches')}
+            >
+              <FontAwesomeIcon icon={faHome} className="me-2" />
+              Volver al listado de coches
+            </Button>
+          </Card.Body>
+        </Card>
+      </Container>
+    );
+  }
+
+  // Si no hay datos de reserva, mostrar cargando
+  if (!reservaData) {
+    return (
+      <Container className="reserva-extras my-5">
+        <div className="text-center py-5">
+          <Spinner animation="border" variant="primary" />
+          <p className="mt-3">Cargando datos de la reserva...</p>
+        </div>
+      </Container>
+    );
+  }
+
+  const { car, paymentOption, fechas } = reservaData;
+
   return (
     <Container className="reserva-extras my-4">
+      <div className="reservation-progress mb-4">
+        <div className="progress-steps">
+          <div className="step active">1. Selección de Extras</div>
+          <div className="step">2. Datos del Conductor</div>
+          <div className="step">3. Pago</div>
+          <div className="step">4. Confirmación</div>
+        </div>
+      </div>
+      
       <Card className="shadow-sm">
         <Card.Header className="bg-primario text-white">
           <div className="d-flex justify-content-between align-items-center">
             <Button 
               variant="link" 
               className="text-white p-0" 
-              onClick={onGoBack}
+              onClick={handleVolver}
             >
               <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
               Volver
@@ -160,16 +241,16 @@ const ReservaClienteExtras = ({ car, fechas, selectedPayment, onGoBack, onContin
                 <Card.Body>
                   <div className="d-flex align-items-center mb-3">
                     <img 
-                      src={car.imagen || 'https://via.placeholder.com/150x100?text=Coche'} 
+                      src={car.imagen || car.imagenPrincipal || 'https://via.placeholder.com/150x100?text=Coche'} 
                       alt={`${car.marca} ${car.modelo}`}
                       className="reserva-car-img me-3"
                     />
                     <div>
                       <h5>{car.marca} {car.modelo}</h5>
                       <Badge 
-                        bg={selectedPayment === 'all-inclusive' ? 'success' : 'secondary'}
+                        bg={paymentOption === 'all-inclusive' ? 'success' : 'secondary'}
                       >
-                        {selectedPayment === 'all-inclusive' ? 'All Inclusive' : 'Economy'}
+                        {paymentOption === 'all-inclusive' ? 'All Inclusive' : 'Economy'}
                       </Badge>
                     </div>
                   </div>
@@ -206,7 +287,7 @@ const ReservaClienteExtras = ({ car, fechas, selectedPayment, onGoBack, onContin
 
                   <div className="proteccion mb-3">
                     <FontAwesomeIcon icon={faShieldAlt} className="me-2" />
-                    <strong>Protección:</strong> {selectedPayment === 'all-inclusive' ? 'Todo incluido sin franquicia' : 'Básica con franquicia'}
+                    <strong>Protección:</strong> {paymentOption === 'all-inclusive' ? 'Todo incluido sin franquicia' : 'Básica con franquicia'}
                   </div>
 
                   <hr />
@@ -279,7 +360,7 @@ const ReservaClienteExtras = ({ car, fechas, selectedPayment, onGoBack, onContin
               <div className="mt-4 d-flex justify-content-between">
                 <Button 
                   variant="outline-secondary" 
-                  onClick={onGoBack}
+                  onClick={handleVolver}
                   disabled={loading}
                 >
                   <FontAwesomeIcon icon={faChevronLeft} className="me-2" />

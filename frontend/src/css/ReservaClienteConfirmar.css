@@ -158,10 +158,6 @@
     height: 60px;
   }
   
-  .payment-method {
-    flex-direction: column;
-    align-items: flex-start;
-  }
   
   .payment-check {
     margin-bottom: 0.5rem;

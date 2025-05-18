@@ -1,0 +1,151 @@
+/* src/css/ReservaClientePago.css */
+
+.reserva-pago .card-header {
+  background-color: var(--color-primario);
+  color: var(--color-secundario);
+  font-weight: 600;
+}
+
+.secure-payment-notice {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px 15px;
+  font-size: 14px;
+  color: #2c3e50;
+  border-left: 4px solid var(--color-activo);
+}
+
+.payment-card-form {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.payment-card-form h5 {
+  color: var(--color-primario);
+  margin-bottom: 20px;
+}
+
+.payment-summary-box {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.payment-summary-box h6 {
+  color: var(--color-primario);
+}
+
+.payment-summary-box .fw-bold {
+  color: var(--color-primario);
+  font-size: 1.1rem;
+}
+
+.payment-btn {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+  font-weight: 600;
+  padding: 0.5rem 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.payment-btn:hover {
+  background-color: var(--color-hover);
+  border-color: var(--color-hover);
+  transform: scale(1.05);
+}
+
+.order-summary .card-header {
+  background-color: #f8f9fa;
+  color: var(--color-primario);
+  font-weight: 600;
+}
+
+.reserva-car-img {
+  max-width: 100px;
+  height: 65px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para la barra de progreso */
+.reservation-progress {
+  margin-bottom: 30px;
+}
+
+.progress-steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin: 0 auto;
+  max-width: 800px;
+}
+
+.progress-steps::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #e9ecef;
+  z-index: -1;
+}
+
+.progress-steps .step {
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  padding: 0 10px;
+}
+
+.progress-steps .step::before {
+  content: '';
+  position: absolute;
+  top: calc(0% - 15px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  background-color: #e9ecef;
+  border-radius: 50%;
+  z-index: -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-steps .step {
+  padding-top: 25px;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.progress-steps .step.active::before {
+  background-color: var(--color-primario);
+}
+
+.progress-steps .step.active {
+  color: var(--color-primario);
+  font-weight: 600;
+}
+
+.progress-steps .step.completed::before {
+  background-color: var(--color-activo);
+}
+
+.progress-steps .step.completed {
+  color: var(--color-activo);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .progress-steps .step {
+    font-size: 12px;
+    padding: 30px 5px 0;
+  }
+}

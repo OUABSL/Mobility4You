@@ -109,7 +109,7 @@ package "Usuarios" <<Master>> {
     + VARCHAR nacionalidad
     + ENUM('pasaporte','dni','nif') tipo_documento
     + VARCHAR numero_documento
-    + IMAGEFILE imagen_carnet
+    + IMAGEFILE imagen_carnet 'Por defeecto nulo, se solicitará en el check in'
     + INT direccion_id FK
     + VARCHAR telefono
     + ENUM('cliente','admin','empresa') rol
