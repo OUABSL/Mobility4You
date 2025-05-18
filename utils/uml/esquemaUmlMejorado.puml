@@ -34,6 +34,8 @@ package "Catálogos" <<Master>> {
     + INT vehiculo_id FK
     + VARCHAR url
     + TINYINT portada
+    + INT ancho
+    + INT alto
     + DATETIME created_at
     + DATETIME updated_at
   }
@@ -106,7 +108,7 @@ package "Usuarios" <<Master>> {
     + ENUM('masculino','femenino','no_binario') sexo
     + VARCHAR nacionalidad
     + ENUM('pasaporte','dni','nif') tipo_documento
-    + VARCHAR documento
+    + VARCHAR numero_documento
     + IMAGEFILE imagen_carnet
     + INT direccion_id FK
     + VARCHAR telefono

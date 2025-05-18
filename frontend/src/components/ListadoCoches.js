@@ -2,8 +2,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Container, Row, Col, Card, Button, Form, Spinner, Badge } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faCar, 
+import {
+  faCar,
   faSearch, 
   faFilter, 
   faExclamationTriangle, 
@@ -37,6 +37,7 @@ const ListadoCoches = ({ isMobile = false }) => {
   const [totalCars, setTotalCars] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   
   // Estado para el ID del coche con ficha abierta
   const [openCarId, setOpenCarId] = useState(null);
@@ -78,10 +79,10 @@ const ListadoCoches = ({ isMobile = false }) => {
       capacidad_maletero: 380,
       disponible: 1,
       activo: 1,
-      fianza: 300,
+      fianza: 100,
       kilometraje: 2500,
       descripcion: 'Un coche compacto y elegante.',
-      precio_dia: 50,
+      precio_dia: 12,
       categoria: {
         id: 1,
         nombre: 'Compacto Premium'
