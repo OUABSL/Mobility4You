@@ -11,7 +11,7 @@ import {
 import '../css/Footer.css';
 
 const AppFooter = () => (
-  <footer className="site-footer mt-5">
+  <footer className="site-footer mt-auto">
     <Container>
       <Row className="footer-top py-5">
         <Col md={4} sm={12} className="mb-4">
@@ -59,12 +59,11 @@ const AppFooter = () => (
         {/* Nueva fila para Ayuda con enlaces en línea */}
         <Row className="footer-help py-3">
             <Col>
-                <h6 className="footer-heading mb-3">Ayuda</h6>
-                <Nav className="justify-content-start">
-                <Nav.Link href="/info-rental" className="me-4">Información de alquiler</Nav.Link>
-                <Nav.Link href="/terminos" className="me-4">Términos y condiciones</Nav.Link>
-                <Nav.Link href="/privacidad" className="me-4">Política de privacidad</Nav.Link>
-                <Nav.Link href="/cookies">Gestión de cookies</Nav.Link>
+                <Nav className="justify-content-evenly">
+                  <Nav.Link href="/info-rental" className="me-4">Información de alquiler</Nav.Link>
+                  <Nav.Link href="/terminos" className="me-4">Términos y condiciones</Nav.Link>
+                  <Nav.Link href="/privacidad" className="me-4">Política de privacidad</Nav.Link>
+                  <Nav.Link href="/cookies">Gestión de cookies</Nav.Link>
                 </Nav>
             </Col>
         </Row>

@@ -198,3 +198,65 @@
   filter: brightness(0) saturate(100%) invert(12%) sepia(99%) saturate(5634%) hue-rotate(235deg) brightness(86%) contrast(97%);
 
 }
+
+
+/* Agregar a src/css/FichaCoche.css */
+
+.price-breakdown {
+  padding: 1rem;
+}
+
+.price-info-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.price-info-list li {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.opcion-pago-header .container {
+  width: 100%;
+  padding: 1rem 0;
+}
+
+.opcion-pago-badge {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+}
+
+.payment-card {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.payment-card .card-body {
+  padding: 1.25rem;
+}
+
+.payment-card.active {
+  border: 2px solid var(--color-primario);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.payment-card .card-title {
+  font-weight: 600;
+  color: var(--color-primario);
+}
+
+.no-bullets {
+  padding-left: 0;
+}
+
+.no-bullets li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f2f2f2;
+}
+
+.no-bullets li:last-child {
+  border-bottom: none;
+}

@@ -1,35 +1,21 @@
 // src/components/FichaCoche.js
-import React, { useState } from 'react';
+import React, { use, useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Carousel, Button, Card, Modal, Badge,Image } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faSuitcase, faUser, faIdCard, faCircleCheck, faTimesCircle, faCreditCard, faInfoCircle  } from '@fortawesome/free-solid-svg-icons';
 // NUEVAS IMÁGENES SVG
 import manualGear    from '../img/icons/gear-stick-manual.svg';
 import autoGear      from '../img/icons/automatic-gear.svg';
-import carDoorLeft   from '../img/icons/car-door-left.svg';import '../css/FichaCoche.css';
+import carDoorLeft   from '../img/icons/car-door-left.svg';
+
+import '../css/FichaCoche.css';
 import { fr } from 'date-fns/locale';
 
-const FichaCoche = ({ car, onClose }) => {
-  // NUEVOS ESTADOS para el modal de info de pago
-  const [selectedPayment, setSelectedPayment] = useState(null);
-  const [showPaymentInfo, setShowPaymentInfo] = useState(false);
-  const [paymentInfo, setPaymentInfo]       = useState(null);
-  // NUEVOS ESTADOS para el modal de detalles de precio
-  const [showPriceModal, setShowPriceModal] = useState(false);
+// NUEVO COMPONENTE PARA EXTRAS
+import ReservaClienteExtras from './ReservaPasos/ReservaClienteExtras';
+// NUEVO COMPONENTE PARA CONFIRMACIÓN
+import ReservaClienteConfirmar from './ReservaPasos/ReservaClienteConfirmar';
 
-  // NUEVO manejador para abrir y cerrar el modal de detalles de precio
-  const handleSelectPayment = (option) => {
-    if(option === selectedPayment){
-      setSelectedPayment(null);
-    } else {
-      setSelectedPayment(option);
-    }
-  }
-
-
-  // NUEVAS FUNCIONES para abrir/cerrar modal de precio
-  const handlePriceModalShow = () => setShowPriceModal(true);
-  const handlePriceModalClose = () => setShowPriceModal(false);
 
   const paymentOptions = [
     {
@@ -68,6 +54,105 @@ const FichaCoche = ({ car, onClose }) => {
     }
   ];
 
+
+const FichaCoche = ({ car, onClose }) => {
+  // ESTADOS ORIGINALES
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [showPaymentInfo, setShowPaymentInfo] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState(null);
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  
+  // NUEVOS ESTADOS para flujo de reserva
+  const [reservaStep, setReservaStep] = useState('ficha'); // 'ficha', 'extras', 'confirmar'
+  const [fechasReserva, setFechasReserva] = useState(null);
+  const [datosExtras, setDatosExtras] = useState(null);
+
+  const handleSelectPayment = (option) => {
+    if (option === selectedPayment) {
+      setSelectedPayment(null);
+    } else {
+      setSelectedPayment(option);
+    }
+  };
+
+  // NUEVAS FUNCIONES para abrir/cerrar modal de precio
+  const handlePriceModalShow = () => setShowPriceModal(true);
+  const handlePriceModalClose = () => setShowPriceModal(false);
+
+  // Mejoras: 
+  // - Usa useCallback para handlers.
+  // - Permite recibir fechas reales como prop (si existen).
+  // - Limpia datos al volver atrás.
+  // - Valida que haya opción de pago antes de continuar.
+
+
+  // NUEVAS FUNCIONES para manejar el flujo de reserva
+  const handleContinuar = useCallback(() => {
+    if (!selectedPayment) return;
+
+    // Permite recibir fechas reales como prop en el futuro
+    const fechasSimuladas = fechasReserva || {
+      pickupLocation: 'Aeropuerto de Málaga',
+      pickupDate: new Date(),
+      pickupTime: '12:00',
+      dropoffLocation: 'Aeropuerto de Málaga',
+      dropoffDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // +3 días
+      dropoffTime: '12:00'
+    };
+
+    setFechasReserva(fechasSimuladas);
+    setReservaStep('extras');
+  }, [selectedPayment, fechasReserva]);
+
+  const handleVolverAFicha = useCallback(() => {
+    setReservaStep('ficha');
+    setDatosExtras(null);
+  }, []);
+
+  const handleContinuarDesdeExtras = useCallback((extras) => {
+    setDatosExtras(extras);
+    setReservaStep('confirmar');
+  }, []);
+
+  const handleVolverAExtras = useCallback(() => {
+    setReservaStep('extras');
+  }, []);
+
+  // Efecto para depuración o side-effects al confirmar
+  useEffect(() => {
+    if (reservaStep === 'confirmar') {
+      // Aquí podrías hacer algo con los datos de la reserva
+      console.log('Datos de la reserva:', {
+        car,
+        selectedPayment,
+        fechasReserva,
+        datosExtras
+      });
+    }
+  }, [reservaStep, car, selectedPayment, fechasReserva, datosExtras]);
+
+  // Renderizado condicional según el paso de la reserva
+  if (reservaStep === 'extras') {
+    return (
+      <ReservaClienteExtras
+        car={car}
+        onVolver={handleVolverAFicha}
+        onContinuar={handleContinuarDesdeExtras}
+      />
+    );
+  }
+  if (reservaStep === 'confirmar') {
+    return (
+      <ReservaClienteConfirmar
+        car={car}
+        selectedPayment={selectedPayment}
+        fechasReserva={fechasReserva}
+        datosExtras={datosExtras}
+        onVolver={handleVolverAExtras}
+      />
+    );
+  }
+
   return (
     <div className="ficha-coche-modal">
       <Container fluid>
@@ -81,41 +166,42 @@ const FichaCoche = ({ car, onClose }) => {
         <Row>
           <Col md={6}>
             <Carousel className="mb-3">
-              {(car.imagenes || [car.imagen]).map((img, idx) => (
-                <Carousel.Item key={idx}>
-                  <img className="d-block w-100 ficha-image" src={img} alt={`Coche ${idx + 1}`} />
-                </Carousel.Item>
-              ))}
+              {(car.imagenes && car.imagenes.length > 0) 
+                ? car.imagenes.map((img, idx) => (
+                    <Carousel.Item key={idx}>
+                      <img className="d-block w-100 ficha-image" src={img.url} alt={`${car.marca} ${car.modelo}`} />
+                    </Carousel.Item>
+                  ))
+                : <Carousel.Item>
+                    <img className="d-block w-100 ficha-image" src={car.imagenPrincipal} alt={`${car.marca} ${car.modelo}`} />
+                  </Carousel.Item>
+              }
             </Carousel>
 
-            <div className="car-info-icons d-flex flex-row justify-content-evenly align-items-center flex-wrap">
-              <div><FontAwesomeIcon icon={faUser} /> Asientos: {car.asientos || 5}</div>
-              <div>
-                <Image
-                  src={
-                    car.caja && car.caja.toLowerCase().includes('manual')
-                      ? manualGear
-                      : autoGear
-                  }
-                  style={{ maxWidth: '14px'}}
-                  alt="Caja"
-                  className="icon-svg"
-                />
-                Caja: {car.caja || 'Automática'}
-              </div>
-              <div>
-                <Image
-                  src={carDoorLeft}
-                  style={{ maxWidth: '14px'}}
-                  alt="Puertas"
-                  className="icon-svg"
-
-                />
-                Puertas: {car.puertas || 5}
-              </div>
-              <div><FontAwesomeIcon icon={faSuitcase} /> Maletas: {car.maletas || 2}</div>
-              <div><FontAwesomeIcon icon={faIdCard} /> Edad mínima para conductores jovenes: {car.edadMinima || 18}</div>
+            {/* Información del vehículo */}
+          <div className="car-info-icons d-flex flex-row justify-content-evenly align-items-center flex-wrap">
+            <div><FontAwesomeIcon icon={faUser} /> Asientos: {car.num_pasajeros}</div>
+            <div>
+              <Image
+                src={autoGear} // Aquí podrías añadir lógica para determinar si es manual o automático
+                style={{ maxWidth: '14px'}}
+                alt="Caja"
+                className="icon-svg"
+              />
+              Caja: {car.caja || 'Automática'}
             </div>
+            <div>
+              <Image
+                src={carDoorLeft}
+                style={{ maxWidth: '14px'}}
+                alt="Puertas"
+                className="icon-svg"
+              />
+              Puertas: {car.num_puertas}
+            </div>
+            <div><FontAwesomeIcon icon={faSuitcase} /> Capacidad: {car.capacidad_maletero}L</div>
+            <div><FontAwesomeIcon icon={faIdCard} /> Edad mínima: {car.grupo?.edad_minima || 21} años</div>
+          </div>
           </Col>
 
           <Col md={6} className="d-flex flex-column justify-content-between">
@@ -146,10 +232,10 @@ const FichaCoche = ({ car, onClose }) => {
             
             {/* Nuevo bloque: botón de continuar */}
             <Row className="d-flex justify-content-between align-items-center">
-              {/* Nuevo bloque: precio por día  enlace a detalles */}
+              {/* Nuevo bloque: precio por día enlace a detalles */}
               <Col className='text-start'>
                 <p className="price-day">
-                  Desde <strong>{car.precio}€</strong>/día
+                  Desde <strong>{car.precio_dia}€</strong>/día
                   <small className="price-details" onClick={handlePriceModalShow}>
                     detalles del precio
                   </small>
@@ -160,9 +246,7 @@ const FichaCoche = ({ car, onClose }) => {
                   variant="primary"
                   className="continue-btn"
                   disabled={!selectedPayment}
-                  onClick={() => {
-                    // TODO: navegar a confirmación de reserva
-                  }}
+                  onClick={handleContinuar}
                 >
                   Continuar
                 </Button>
@@ -177,10 +261,37 @@ const FichaCoche = ({ car, onClose }) => {
           <Modal.Title>Detalles del precio</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p>Precio base: {car.precio}€</p>
-          <p>IVA (21%): {(car.precio * 0.21).toFixed(2)}€</p>
-          <hr/>
-          <p><strong>Total: {(car.precio * 1.21).toFixed(2)}€</strong></p>
+          <div className="price-breakdown">
+            <div className="d-flex justify-content-between mb-2">
+              <span>Precio base por día:</span>
+              <span>{car.precio_dia}€</span>
+            </div>
+            <div className="d-flex justify-content-between mb-2">
+              <span>IVA (21%):</span>
+              <span>{(car.precio_dia * 0.21).toFixed(2)}€</span>
+            </div>
+            <hr/>
+            <div className="d-flex justify-content-between fw-bold">
+              <span>Total por día:</span>
+              <span>{(car.precio_dia * 1.21).toFixed(2)}€</span>
+            </div>
+            
+            <div className="mt-4 pt-2 border-top">
+              <h6 className="mb-3">Información adicional:</h6>
+              <ul className="price-info-list">
+                <li>
+                  <FontAwesomeIcon icon={faInfoCircle} className="me-2 text-primary" />
+                  El precio puede variar según la temporada y la disponibilidad.
+                </li>
+                <li>
+                  <FontAwesomeIcon icon={faInfoCircle} className="me-2 text-primary" />
+                  {car.fianza > 0 ? 
+                    `Se requiere un depósito de seguridad de ${car.fianza}€.` : 
+                    'No se requiere depósito de seguridad con la protección All Inclusive.'}
+                </li>
+              </ul>
+            </div>
+          </div>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handlePriceModalClose}>

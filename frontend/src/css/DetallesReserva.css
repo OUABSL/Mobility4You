@@ -1,13 +1,265 @@
-.detalles-reserva .car-img {
-    max-height: 150px;
-    object-fit: cover;
+/* src/css/DetallesReserva.css */
+
+/* Estilos generales para la página de detalles */
+.detalles-reserva {
+  font-family: ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT', 'Arial Rounded MT Bold', Calibri, sans-serif;
+}
+
+/* Estilos para la tarjeta principal */
+.reservation-details-card {
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: box-shadow 0.3s ease;
+}
+
+.reservation-details-card:hover {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.reservation-details-card .card-header {
+  padding: 1rem 1.5rem;
+}
+
+/* Estilos para la sección del vehículo */
+.vehicle-card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.vehicle-card .card-body {
+  padding: 1.5rem;
+}
+
+.car-img {
+  max-height: 150px;
+  object-fit: cover;
+  border-radius: 8px;
+  transition: transform 0.3s ease;
+}
+
+.car-img:hover {
+  transform: scale(1.03);
+}
+
+.vehicle-title {
+  color: var(--color-primario);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.vehicle-tags {
+  margin-bottom: 0.8rem;
+}
+
+.vehicle-features {
+  color: #555;
+  font-size: 0.9rem;
+}
+
+/* Estilos para la sección de ubicaciones */
+.locations-card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.locations-card .card-body {
+  padding: 1.5rem;
+}
+
+.location-title {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--color-primario);
+}
+
+.location-name {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  font-size: 1.1rem;
+}
+
+.location-address {
+  color: #666;
+  margin-bottom: 0;
+}
+
+.date-time {
+  color: #555;
+}
+
+.icon-wrapper {
+  width: 24px;
+  margin-right: 10px;
+  display: inline-block;
+  text-align: center;
+}
+
+/* Estilos para la protección */
+.protection-card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.protection-card .card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Estilos para extras */
+.extras-card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.extras-card .card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.price-badge {
+  font-weight: 500;
+}
+
+/* Estilos para datos de conductores */
+.drivers-card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.drivers-card .card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.driver-name {
+  font-weight: 600;
+  color: var(--color-primario);
+}
+
+.driver-avatar {
+  background-color: #f8f9fa;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+/* Estilos para el resumen de precio */
+.price-summary-card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.price-summary-card .card-header {
+  color: var(--color-primario);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.price-summary-card .card-body {
+  padding: 1.5rem;
+}
+
+/* Estilos para los paneles acordeón */
+.accordion-card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+}
+
+
+
+.accordion-card:hover {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.accordion-card .card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  padding: 1rem 1.5rem;
+}
+
+.accordion-title {
+  color: var(--color-texto-secundario);
+  font-weight: 500;
+}
+
+.extras-card .card-header, .drivers-card .card-header, .protection-card .card-header {
+  color: var(--color-texto-negro);
+}
+
+/* Estilos para impresión */
+@media print {
+  .detalles-reserva {
+    width: 100%;
+    padding: 0;
+    margin: 0;
   }
   
-  .bg-primario {
-    background-color: var(--color-primario) !important;
+  button, .btn, .nav-tabs {
+    display: none !important;
   }
   
-  .text-primary {
-    color: var(--color-primario) !important;
+  .card {
+    break-inside: avoid;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
   }
   
+  .card-header {
+    background-color: #f8f9fa !important;
+    color: #000 !important;
+  }
+  
+  .col-md-4, .col-md-8, 
+  .col-lg-4, .col-lg-8 {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+}
+
+/* Estilos responsivos */
+@media (max-width: 768px) {
+  .detalles-reserva .card-body {
+    padding: 1rem;
+  }
+  
+  .pickup-section {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .location-title {
+    margin-top: 0.5rem;
+  }
+  
+  .icon-wrapper {
+    width: 20px;
+  }
+  
+  .price-badge {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+
+
+.icon-svg {
+  filter: brightness(0) saturate(100%) invert(14%) sepia(42%) saturate(2602%) hue-rotate(187deg) brightness(96%) contrast(105%) !important;
+  fill: var(--bs-secondary-color) !important;
+}

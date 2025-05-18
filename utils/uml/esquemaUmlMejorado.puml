@@ -1,0 +1,286 @@
+@startuml esquemadbMOBILITY4YOU
+' ================================
+' Diagrama de clases / tablas MySQL (actualizado con TipoPenalizacion, índices compuestos y normalización de Direccion)
+' ================================
+
+skinparam class {
+  BackgroundColor<<Master>> #DDFFDD
+  BackgroundColor<<Lookup>> #FFEECC
+  BackgroundColor<<Transaction>> #FFDDDD
+  BorderColor #333
+}
+
+' ----------------
+package "Catálogos" <<Master>> {
+  class Categoria {
+    + INT id PK
+    + VARCHAR nombre UNIQUE
+    + TEXT descripcion
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  class GrupoCoche {
+    + INT id PK
+    + VARCHAR nombre UNIQUE
+    + INT edad_minima
+    + TEXT descripcion
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  class ImagenVehiculo {
+    + INT id PK
+    + INT vehiculo_id FK
+    + VARCHAR url
+    + TINYINT portada
+    + INT ancho
+    + INT alto
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  Categoria "1" <-- "N" GrupoCoche : asigna >
+  ImagenVehiculo "1" o-- "0..N" Vehiculo : contiene >
+}
+
+package "Flota" <<Master>> {
+  class Vehiculo {
+    + INT id PK
+    + INT categoria_id FK
+    + INT grupo_id FK
+    + ENUM('Gasolina','Diesel','Híbrido','Eléctrico') combustible
+    + VARCHAR marca
+    + VARCHAR modelo
+    + VARCHAR matricula UNIQUE
+    + YEAR anio
+    + VARCHAR color
+    + TINYINT num_puertas
+    + TINYINT num_pasajeros
+    + INT capacidad_maletero
+    + TINYINT disponible
+    + TINYINT activo
+    + TEXT notas_internas
+    + INT fianza
+    + INT kilometraje
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  Categoria "1" <-- "N" Vehiculo      : categoría_id >
+  GrupoCoche "1" <-- "N" Vehiculo     : grupo_id >
+}
+
+package "Localizaciones" <<Lookup>> {
+  class Direccion {
+    + INT id PK
+    + VARCHAR calle
+    + VARCHAR ciudad  'convertir a minúscula mediante TRIGGER antes de INSERT/UPDATE'
+    + VARCHAR provincia 'convertir a minúscula'
+    + VARCHAR pais     'convertir a minúscula'
+    + VARCHAR codigo_postal
+  }
+
+  class Lugar {
+    + INT id PK
+    + VARCHAR nombre
+    + INT direccion_id FK
+    + DECIMAL(9,6) latitud
+    + DECIMAL(9,6) longitud
+    + VARCHAR telefono
+    + VARCHAR email
+    + VARCHAR icono_url
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  Lugar "1" <-- "1" Direccion : ubicacion >
+}
+
+package "Usuarios" <<Master>> {
+  class Usuario {
+    + INT id PK
+    + VARCHAR nombre
+    + VARCHAR apellido
+    + VARCHAR email UNIQUE
+    + DATE fecha_nacimiento
+    + CHAR(60) password_hash
+    + ENUM('masculino','femenino','no_binario') sexo
+    + VARCHAR nacionalidad
+    + ENUM('pasaporte','dni','nif') tipo_documento
+    + VARCHAR numero_documento
+    + IMAGEFILE imagen_carnet
+    + INT direccion_id FK
+    + VARCHAR telefono
+    + ENUM('cliente','admin','empresa') rol
+    + VARCHAR idioma
+    + TINYINT activo
+    + TINYINT registrado
+    + TINYINT verificado
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  Usuario "0..N" <-- "1" Direccion : vive_en >
+}
+
+package "Políticas y precios" <<Lookup>> {
+  class PoliticaPago {
+    + INT id PK
+    + VARCHAR titulo
+    + DECIMAL(10,2) deductible
+    + TEXT descripcion
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  class PoliticaIncluye {
+    + INT politica_id FK
+    + TINYINT incluye '0=No, 1=Sí Default 1'
+    + VARCHAR item
+    + PRIMARY_KEY(politica_id, item)
+  }
+
+  PoliticaPago "1" <-- "0..N" PoliticaIncluye : incluye >
+}
+
+package "Tarifas" <<Lookup>> {
+  class TarifaVehiculo {
+    + INT vehiculo_id FK
+    + DATE fecha_inicio
+    + DATE fecha_fin
+    + DECIMAL(8,2) precio_dia
+    + PRIMARY_KEY(vehiculo_id, fecha_inicio)
+    ' Índice compuesto para búsquedas de tarifa vigente:
+    ' INDEX idx_tarifa_vehiculo_periodo (vehiculo_id, fecha_inicio, fecha_fin)
+  }
+
+  Vehiculo "1" <-- "0..N" TarifaVehiculo : tarifa_periodica >
+}
+
+package "Reservas" <<Transaction>> {
+  class Reserva {
+    + INT id PK
+    + INT usuario_id FK
+    + INT promocion_id FK
+    + INT politica_pago_id FK
+    + INT vehiculo_id FK
+    + INT lugar_recogida_id FK
+    + INT lugar_devolucion_id FK
+    + DATETIME fecha_recogida
+    + DATETIME fecha_devolucion
+    + DECIMAL(10,2) precio_dia
+    + DECIMAL(10,2) precio_impuestos
+    + DECIMAL(10,2) precio_total
+    + ENUM('pendiente','confirmada','cancelada') estado
+    + TEXT notas_internas
+    + DATETIME created_at
+    + DATETIME updated_at
+    ' Índice compuesto para búsquedas de disponibilidad:
+    ' INDEX idx_reserva_fechas (fecha_recogida, fecha_devolucion)
+  }
+
+  class ReservaConductor {
+    + INT reserva_id FK
+    + INT conductor_id FK
+    + ENUM('principal','secundario') rol
+    + PRIMARY_KEY(reserva_id, conductor_id)
+  }
+
+  'Tipos predefinidos: Tarifa por hora fuera de horaio, Cubro de un día por retraso de dos horas desde la hora de recogida|devolución, Cancelación tarde'
+  class TipoPenalizacion {
+    + INT id PK
+    + VARCHAR nombre UNIQUE 'cancelación | devolución tardía | recogida tardía'
+    + ENUM('porcentaje','fijo', 'importe_dia') tipo_tarifa
+    + DECIMAL valor_tarifa 'A decidir por la empresa, si se aplicará un importe fijo o un porcentaje del precio de la reserva o el importe de un día de la reserva'
+    + TEXT descripcion
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  class Penalizacion {
+    + INT id PK
+    + INT reserva_id FK
+    + INT tipo_penalizacion_id FK
+    + DECIMAL(10,2) importe
+    + DATETIME fecha
+    + TEXT descripcion
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  class PoliticaPenalizacion {
+    + INT politica_pago_id FK
+    + INT tipo_penalizacion_id FK
+    + INT horas_previas 'Umbral de aplicación en horas (ej. cancelación < 24h)'
+    + PRIMARY_KEY(politica_pago_id, tipo_penalizacion_id)
+  }
+
+
+  Usuario "1" <-- "N" Reserva           : hace >
+  Vehiculo "1" <-- "N" Reserva         : reserva >
+  Lugar   "1" <-- "N" Reserva         : recogida >
+  Lugar   "1" <-- "N" Reserva         : devolucion >
+  PoliticaPago "1" <-- "N" Reserva     : aplica >
+  Promocion "1" <-- "0..1" Reserva      : aplica >
+
+  Reserva "1" <-- "0..N" ReservaConductor : tiene >
+  Usuario "1" <-- "0..N" ReservaConductor : es_conductor >
+  Reserva "1" <-- "0..N" Penalizacion      : genera >
+
+  TipoPenalizacion "1" <-- "0..N" Penalizacion : clasifica >
+  PoliticaPago "1" <-- "0..N" PoliticaPenalizacion : aplica >
+  TipoPenalizacion "1" <-- "0..N" PoliticaPenalizacion : define >
+
+}
+
+package "Mantenimiento" <<Transaction>> {
+  class Mantenimiento {
+    + INT id PK
+    + INT vehiculo_id FK
+    + DATETIME fecha
+    + VARCHAR tipo_servicio
+    + DECIMAL(10,2) coste
+    + TEXT notas
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  Vehiculo "1" <-- "0..N" Mantenimiento : recibe_servicio >
+}
+
+package "Promociones" <<Lookup>> {
+  class Promocion {
+    + INT id PK
+    + VARCHAR nombre
+    + TEXT descripcion
+    + DECIMAL(5,2) descuento_pct
+    + DATE fecha_inicio
+    + DATE fecha_fin
+    + TINYINT activo
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+}
+
+package "Contenidos estáticos" <<Lookup>> {
+  class Contenido {
+    + INT id PK
+    + ENUM('blog','faq','legal','info', 'mini_section') tipo
+    + VARCHAR titulo
+    + VARCHAR subtitulo
+    + TEXT cuerpo
+    + TEXT info_adicional
+    + String icono_url
+    + TINYINT publicado
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+}
+
+
+
+
+'Nota: Para controlar la disponibilidad de un vehículo por reserva o mantenimiento sería interesante crear una vista o tabla materializada EstadoVehiculo (vehiculo_id, fecha, estado) que combine reservas confirmadas y mantenimientos.'
+
+@enduml

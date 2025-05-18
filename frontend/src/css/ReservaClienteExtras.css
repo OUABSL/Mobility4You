@@ -1,0 +1,153 @@
+/* src/css/ReservaClienteExtras.css */
+
+.reserva-extras .card-header {
+  background-color: var(--color-primario);
+  color: var(--color-secundario);
+  font-weight: 600;
+}
+
+/* Estilos para el resumen de la reserva */
+.resumen-reserva {
+  height: 100%;
+  border: 1px solid var(--color-borde-primario);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.resumen-reserva .card-header {
+  font-weight: 600;
+  padding: 0.85rem 1rem;
+}
+
+.resumen-reserva .card-body {
+  padding: 1.25rem;
+}
+
+.reserva-car-img {
+  max-width: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fecha-reserva {
+  color: var(--color-texto-negro);
+  font-size: 0.95rem;
+}
+
+.proteccion {
+  color: var(--color-primario);
+  font-size: 0.95rem;
+}
+
+.detalles-precio {
+  font-size: 0.95rem;
+}
+
+.detalles-precio .fw-bold {
+  font-size: 1.1rem;
+  color: var(--color-primario);
+}
+
+/* Estilos para las tarjetas de extras */
+.extra-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 100%;
+  border: 1px solid var(--color-borde-primario);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.extra-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.extra-card.selected {
+  border: 2px solid var(--color-primario);
+  box-shadow: 0 0 0 1px var(--color-primario);
+}
+
+.extra-card-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.extra-img-container {
+  position: relative;
+  height: 100px;
+  overflow: hidden;
+}
+
+.extra-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.extra-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  background-color: var(--color-fundo-blanco);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.extra-details {
+  padding: 1rem;
+}
+
+.extra-details h6 {
+  margin-bottom: 0.5rem;
+  color: var(--color-primario);
+  font-weight: 600;
+}
+
+.extra-description {
+  font-size: 0.85rem;
+  color: var(--color-texto-negro);
+  margin-bottom: 0.5rem;
+  min-height: 40px;
+}
+
+.extra-price {
+  font-size: 0.9rem;
+  color: var(--color-primario);
+  margin-bottom: 0;
+}
+
+/* Botones de navegación */
+.continue-btn {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+  font-weight: 600;
+  padding: 0.5rem 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.continue-btn:hover {
+  background-color: var(--color-hover);
+  border-color: var(--color-hover);
+  transform: scale(1.05);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .reserva-car-img {
+    max-width: 80px;
+  }
+  
+  .reserva-extras .card-body {
+    padding: 1rem;
+  }
+  
+  .extra-description {
+    min-height: auto;
+  }
+}

@@ -1,0 +1,173 @@
+/* src/css/ReservaClienteConfirmar.css */
+
+.reserva-confirmar .card-header {
+  background-color: var(--color-primario);
+  color: var(--color-secundario);
+  font-weight: 600;
+}
+
+/* Estilos para el resumen de la reserva */
+.resumen-reserva {
+  height: 100%;
+  border: 1px solid var(--color-borde-primario);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.resumen-reserva .card-header {
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  padding: 0.85rem 1rem;
+}
+
+.resumen-reserva .card-body {
+  padding: 1.25rem;
+}
+
+.reserva-car-img {
+  max-width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fecha-reserva {
+  color: var(--color-texto-negro);
+  font-size: 0.95rem;
+}
+
+.proteccion {
+  color: var(--color-primario);
+  font-size: 0.95rem;
+}
+
+.extras-list {
+  margin-top: 1rem;
+  padding-left: 0;
+  list-style: none;
+}
+
+.extras-list li {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.extras-list li .fa-plus {
+  color: var(--color-primario);
+  margin-right: 0.5rem;
+}
+
+.detalles-precio {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
+
+.detalles-precio .fw-bold {
+  font-size: 1.1rem;
+  color: var(--color-primario);
+}
+
+/* Estilos para los métodos de pago */
+.payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.payment-method {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--color-borde-primario);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.payment-method:hover {
+  border-color: var(--color-hover);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.payment-method.selected {
+  border: 2px solid var(--color-primario);
+  background-color: rgba(13, 53, 217, 0.05);
+}
+
+.payment-check {
+  margin-right: 1rem;
+}
+
+.payment-logo {
+  margin-right: 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.payment-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-details span {
+  font-weight: 600;
+  color: var(--color-texto-negro);
+}
+
+.payment-details small {
+  color: #666;
+}
+
+/* Estilos para la confirmación exitosa */
+.confirmation-icon {
+  margin: 2rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  background-color: rgba(39, 174, 96, 0.1);
+  border-radius: 50%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Botones de navegación */
+.confirmacion-btn {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+  font-weight: 600;
+  padding: 0.5rem 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.confirmacion-btn:hover {
+  background-color: var(--color-hover);
+  border-color: var(--color-hover);
+  transform: scale(1.05);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .reserva-car-img {
+    max-width: 80px;
+    height: 60px;
+  }
+  
+  .payment-method {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .payment-check {
+    margin-bottom: 0.5rem;
+  }
+  
+  .payment-logo {
+    margin-bottom: 0.5rem;
+  }
+}
