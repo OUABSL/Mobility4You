@@ -1,40 +1,87 @@
+/* src/css/ConsultarReservaCliente.css */
+
 /* Tarjeta centrada y moderna */
 .reserva-cliente-card {
   border: none;
   border-radius: 0.75rem;
   overflow: hidden;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-.card-header{
-  background-color: var(--color-primario);
-  color: white;
-  font-size: 1.25rem;
-  font-weight: 600;
-  text-align: center;
+.reserva-cliente-card:hover {
+  box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px);
 }
 
 /* Header con color primario */
 .reserva-cliente-card .card-header {
-  padding: 1rem 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-hover) 100%);
+  border-bottom: none;
 }
 
 /* Cuerpo con espacio */
 .reserva-cliente-card .card-body {
-  padding: 1.5rem;
+  padding: 2rem;
 }
 
 /* Aumentar contraste de labels */
 .reserva-cliente-card .form-label {
   font-weight: 600;
   color: var(--color-primario);
+  margin-bottom: 0.75rem;
 }
 
-/* Ajustes de botón más grande */
+/* Estilizar los inputs */
+.reserva-cliente-card .form-control {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border-color: #dee2e6;
+  transition: all 0.2s ease;
+}
+
+.reserva-cliente-card .form-control:focus {
+  border-color: var(--color-primario);
+  box-shadow: 0 0 0 0.25rem rgba(13, 53, 217, 0.25);
+}
+
+/* Ajustes de botón */
 .reserva-cliente-card .btn-primario {
   font-size: 1.05rem;
+  border-radius: 0.5rem;
+  padding: 0.75rem 2rem;
+  transition: all 0.3s ease;
 }
 
-/* Sombra suave */
-.reserva-cliente-card.shadow-sm {
-  box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+.reserva-cliente-card .btn-primario:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(13, 53, 217, 0.25);
+}
+
+/* Mejoras responsive */
+@media (max-width: 768px) {
+  .reserva-cliente-card .card-header {
+    padding: 1.25rem;
+  }
+  
+  .reserva-cliente-card .card-body {
+    padding: 1.5rem;
+  }
+}
+
+/* Animaciones */
+.reserva-cliente .alert {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

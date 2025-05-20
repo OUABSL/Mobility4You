@@ -36,17 +36,25 @@ import {
   faEnvelope,
   faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
+
+
 import '../css/DetallesReserva.css';
 
 import carDoorLeft from '../assets/img/icons/car-door-left.svg';
 
 import "../css/ReservationModals.css";
+
+import { findReservation, DEBUG_MODE, datosReservaPrueba } from '../services/reservationServices';
+import { withTimeout } from '../services/func';
+import { useAlertContext } from '../context/AlertContext';
+
 import DeleteReservationModal from './Modals/DeleteReservationModal';
 import EditReservationModal from './Modals/EditReservationModal';
 
 
 // Imágenes de ejemplo (reemplaza con las imágenes reales o usa una API)
 import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
+import { is } from 'date-fns/locale';
 
 
 /**
@@ -57,208 +65,7 @@ import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
  * @returns {JSX.Element} Componente DetallesReserva
  */
 
-// Datos de prueba para desarrollo
-// Datos de prueba adaptados al nuevo esquema
-const datosReservaPrueba = {
-  id: 'R12345678',
-  estado: 'confirmada', // confirmada, pendiente, cancelada
-  fechaRecogida: '2025-05-14T12:30:00',
-  fechaDevolucion: '2025-05-18T08:30:00',
-  
-  // Información del vehículo - Adaptado al nuevo esquema
-  vehiculo: {
-    id: 7,
-    categoria_id: 2,
-    grupo_id: 3,
-    combustible: 'Diésel',
-    marca: 'BMW',
-    modelo: '320i',
-    matricula: 'ABC1234',
-    anio: 2023,
-    color: 'Negro',
-    num_puertas: 5,
-    num_pasajeros: 5,
-    capacidad_maletero: 480,
-    disponible: 1,
-    activo: 1,
-    fianza: 0, // Este valor viene ahora de política de pago
-    kilometraje: 10500,
-    // Nueva estructura para categoría y grupo
-    categoria: {
-      id: 2,
-      nombre: 'Berlina Premium'
-    },
-    grupo: {
-      id: 3,
-      nombre: 'Segmento D',
-      edad_minima: 21
-    },
-    imagenPrincipal: bmwImage,
-    // Las imágenes ahora vienen como una colección de ImagenVehiculo
-    imagenes: [
-      { id: 1, vehiculo_id: 7, url: bmwImage, portada: 1 }
-    ]
-  },
-  
-  // Lugares de recogida y devolución - Adaptados con la normalización de Direccion
-  lugarRecogida: {
-    id: 1,
-    nombre: 'Aeropuerto de Málaga (AGP)',
-    direccion_id: 5,
-    telefono: '+34 951 23 45 67',
-    email: 'malaga@mobility4you.com',
-    icono_url: 'faPlane',
-    direccion: {
-      id: 5,
-      calle: 'Av. Comandante García Morato, s/n',
-      ciudad: 'málaga',
-      provincia: 'málaga',
-      pais: 'españa',
-      codigo_postal: '29004'
-    }
-  },
-  lugarDevolucion: {
-    id: 1,
-    nombre: 'Aeropuerto de Málaga (AGP)',
-    direccion_id: 5,
-    telefono: '+34 951 23 45 67',
-    email: 'malaga@mobility4you.com',
-    icono_url: 'faPlane',
-    direccion: {
-      id: 5,
-      calle: 'Av. Comandante García Morato, s/n',
-      ciudad: 'málaga',
-      provincia: 'málaga',
-      pais: 'españa',
-      codigo_postal: '29004'
-    }
-  },
-  
-  // Política de pago - Adaptada a la nueva estructura con PoliticaIncluye
-  politicaPago: {
-    id: 1,
-    titulo: 'All Inclusive',
-    deductible: 0,
-    descripcion: 'Cobertura completa sin franquicia y con kilometraje ilimitado',
-    // Ahora los items incluidos vienen en formato {item, incluye}
-    items: [
-      { politica_id: 1, item: 'Cobertura a todo riesgo sin franquicia', incluye: 1 },
-      { politica_id: 1, item: 'Kilometraje ilimitado', incluye: 1 },
-      { politica_id: 1, item: 'Asistencia en carretera 24/7', incluye: 1 },
-      { politica_id: 1, item: 'Conductor adicional gratuito', incluye: 1 },
-      { politica_id: 1, item: 'Cancelación gratuita hasta 24h antes', incluye: 1 },
-      { politica_id: 1, item: 'Daños bajo efectos del alcohol o drogas', incluye: 0 }
-    ],
-    // Penalizaciones asociadas con esta política
-    penalizaciones: [
-      { 
-        politica_pago_id: 1, 
-        tipo_penalizacion_id: 1, 
-        horas_previas: 24,
-        tipo_penalizacion: {
-          id: 1,
-          nombre: 'cancelación',
-          tipo_tarifa: 'porcentaje',
-          valor_tarifa: 50.00,
-          descripcion: 'Cancelación con menos de 24h: cargo del 50% del valor total'
-        }
-      }
-    ]
-  },
-  
-  // Extras contratados - Sin cambios
-  extras: [
-    { id: 1, nombre: 'Asiento infantil (Grupo 1)', precio: 25.00 },
-    { id: 2, nombre: 'GPS navegador', precio: 15.00 }
-  ],
-  
-  // Conductores - Ahora usando ReservaConductor según el nuevo esquema
-  conductores: [
-    {
-      reserva_id: 'R12345678',
-      conductor_id: 123,
-      rol: 'principal',
-      conductor: {
-        id: 123,
-        nombre: 'Juan',
-        apellido: 'Pérez García',
-        email: 'juan.perez@example.com',
-        fecha_nacimiento: '1985-06-15',
-        sexo: 'masculino',
-        nacionalidad: 'española',
-        tipo_documento: 'dni',
-        documento: '12345678A',
-        telefono: '+34 600 123 456',
-        direccion_id: 10,
-        rol: 'cliente',
-        idioma: 'es',
-        activo: 1,
-        registrado: 1,
-        verificado: 1,
-        direccion: {
-          id: 10,
-          calle: 'Calle Principal 123',
-          ciudad: 'madrid',
-          provincia: 'madrid',
-          pais: 'españa',
-          codigo_postal: '28001'
-        }
-      }
-    },
-    {
-      reserva_id: 'R12345678',
-      conductor_id: 124,
-      rol: 'secundario',
-      conductor: {
-        id: 124,
-        nombre: 'María',
-        apellido: 'López Sánchez',
-        email: 'maria.lopez@example.com',
-        fecha_nacimiento: '1987-04-22',
-        sexo: 'femenino',
-        nacionalidad: 'española',
-        tipo_documento: 'dni',
-        documento: '87654321B',
-        telefono: '+34 600 789 012',
-        direccion_id: 11,
-        rol: 'cliente',
-        idioma: 'es',
-        activo: 1,
-        registrado: 1,
-        verificado: 1,
-        direccion: {
-          id: 11,
-          calle: 'Calle Secundaria 456',
-          ciudad: 'madrid',
-          provincia: 'madrid',
-          pais: 'españa',
-          codigo_postal: '28002'
-        }
-      }
-    }
-  ],
-  
-  // Promoción aplicada - Acorde al esquema
-  promocion: {
-    id: 5,
-    nombre: 'Descuento Mayo 2025',
-    descuento_pct: 10.00,
-    fecha_inicio: '2025-05-01',
-    fecha_fin: '2025-05-31',
-    activo: 1
-  },
-  
-  // Penalizaciones (si hay)
-  penalizaciones: [],
-  
-  // Datos de precio
-  precio_dia: 79.00,
-  precioBase: 316.00,
-  precioExtras: 40.00,
-  precioImpuestos: 74.76,
-  descuentoPromocion: 35.60,
-  precioTotal: 395.16
-};
+
 
 // Contenidos para los acordeones
 const contenidosPrueba = {
@@ -313,6 +120,14 @@ const DetallesReserva = ({ isMobile = false }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Contexto de alertas
+  const { showError } = useAlertContext();
+
+
+  // referencia para el timer
+  const retryTimerRef = React.useRef(null);
+
 
   // Función para manejar la edición de la reserva
   const handleEditReservation = (reservaData) => {
@@ -406,60 +221,83 @@ const DetallesReserva = ({ isMobile = false }) => {
   };
 
   // Cargar datos de la reserva
-  useEffect(() => {
-    const fetchReserva = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        // Simulación de carga de datos (en producción usaríamos la API real)
-        // const response = await axios.get(`/api/reservations/${reservaId}`, { 
-        //   params: { email },
-        //   headers: {
-        //     'Authorization': `Bearer ${localStorage.getItem('token')}` // Si hay autenticación
-        //   }
-        // });
-        // const reservaData = response.data;
-        // setDatos(reservaData);
+  const fetchReserva = async (isRetry = false) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      if (DEBUG_MODE) {
+        // Simulación de carga de datos
+        await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Simulación de datos para desarrollo/testing
-        setTimeout(() => {
-          setDatos(datosReservaPrueba);
-          setContenidos(contenidosPrueba);
-          
-          // Preparar los conductores principal y adicional para la interfaz
-          const conductorPrincipal = datosReservaPrueba.conductores.find(c => c.rol === 'principal')?.conductor;
-          const segundoConductor = datosReservaPrueba.conductores.find(c => c.rol === 'secundario')?.conductor;
-          
-          if (conductorPrincipal) {
-            // Añadir la propiedad para identificar en la UI
-            conductorPrincipal.esSegundoConductor = false;
-            datosReservaPrueba.conductorPrincipal = conductorPrincipal;
-          }
-          
-          if (segundoConductor) {
-            segundoConductor.esSegundoConductor = true;
-            datosReservaPrueba.segundoConductor = segundoConductor;
-          }
-          
-          setLoading(false);
-        }, 500);
-      } catch (err) {
-        console.error("Error al cargar los datos de la reserva:", err);
-        setError(
-          err.response?.data?.message || 
-          'No se pudo recuperar los detalles de la reserva. Por favor, verifica el ID y el email proporcionados.'
-        );
+        // Usar los datos de prueba del servicio
+        const reservaData = { ...datosReservaPrueba, id: reservaId };
+        
+        // Preparar los conductores principal y adicional para la interfaz
+        const conductorPrincipal = reservaData.conductores.find(c => c.rol === 'principal')?.conductor;
+        const segundoConductor = reservaData.conductores.find(c => c.rol === 'secundario')?.conductor;
+        
+        if (conductorPrincipal) {
+          conductorPrincipal.esSegundoConductor = false;
+          reservaData.conductorPrincipal = conductorPrincipal;
+        }
+        
+        if (segundoConductor) {
+          segundoConductor.esSegundoConductor = true;
+          reservaData.segundoConductor = segundoConductor;
+        }
+        
+        setDatos(reservaData);
+        setContenidos(contenidosPrueba);
+        setLoading(false);
+      } else {
+        // Llamada real a la API
+        const reservaData = await withTimeout(findReservation(reservaId, email), 10000);
+        setDatos(reservaData);
+        
+        // Preparar los conductores para la interfaz
+        const conductorPrincipal = reservaData.conductores.find(c => c.rol === 'principal')?.conductor;
+        const segundoConductor = reservaData.conductores.find(c => c.rol === 'secundario')?.conductor;
+        
+        if (conductorPrincipal) {
+          conductorPrincipal.esSegundoConductor = false;
+          reservaData.conductorPrincipal = conductorPrincipal;
+        }
+        
+        if (segundoConductor) {
+          segundoConductor.esSegundoConductor = true;
+          reservaData.segundoConductor = segundoConductor;
+        }
+        
         setLoading(false);
       }
-    };
-
-    if (reservaId && email) {
-      fetchReserva();
-    } else {
-      setError('Se requiere ID de reserva y email para consultar los detalles.');
+   } catch (err) {
+      setError(
+        err.message ||
+        'No se pudo recuperar los detalles de la reserva. Por favor, verifica el ID y el email proporcionados.'
+      );
+      showError(
+        err.message ||
+        'No se pudo recuperar los detalles de la reserva. Por favor, verifica el ID y el email proporcionados.'
+      );
       setLoading(false);
+      // Si es un reintento, no volver a reintentar
+      if (!isRetry) {
+        // Esperar 10 segundos y reintentar una vez
+        retryTimerRef.current = setTimeout(() => {
+          fetchReserva(true);
+        }, 10000);
+      }
     }
+  };
+
+  // Llamar a fetchReserva al montar y limpiar el timer al desmontar
+  useEffect(() => {
+    fetchReserva();
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+    // eslint-disable-next-line
   }, [reservaId, email]);
 
 
@@ -501,15 +339,25 @@ const DetallesReserva = ({ isMobile = false }) => {
   return (
     <Container className="detalles-reserva my-5">
       {/* Botón Volver y botones de acción */}
-      <div className="d-flex align-items-center mb-3">
+      <div className="botonera-superior d-flex align-items-center mb-3">
         <Button 
-          variant="outline-primary" 
+          variant="link" 
           onClick={() => navigate(-1)} 
           className="d-flex align-items-center"
         >
           <FontAwesomeIcon icon={faChevronUp} rotation={270} className="me-2" />
           Volver
         </Button>
+
+        {isMobile && (
+          <Button 
+            variant="link" 
+            onClick={() => window.print()} 
+            title="Imprimir/Guardar como PDF"
+          >
+            <FontAwesomeIcon icon={faDownload} className="me-1" /> Descargar
+          </Button>
+        )}
         
         <div className="ms-auto d-flex gap-2">
           <Button 
@@ -530,19 +378,21 @@ const DetallesReserva = ({ isMobile = false }) => {
             <FontAwesomeIcon icon={faTimesCircle} className="me-1" /> Cancelar Reserva
           </Button>
           
-          <Button 
-            variant="link" 
-            onClick={() => window.print()} 
-            title="Imprimir/Guardar como PDF"
-          >
-            <FontAwesomeIcon icon={faDownload} className="me-1" /> Descargar
-          </Button>
+          {!isMobile && (
+            <Button 
+              variant="link" 
+              onClick={() => window.print()} 
+              title="Imprimir/Guardar como PDF"
+            >
+              <FontAwesomeIcon icon={faDownload} className="me-1" /> Descargar
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Tarjeta Principal */}
       <Card className="shadow reservation-details-card">
-        <Card.Header className="bg-primario text-white py-3">
+        <Card.Header className="bg-primario py-3">
           <div className="d-flex justify-content-between align-items-center">
             <h4 className="mb-0">
               <FontAwesomeIcon icon={faCarSide} className="me-2" />

@@ -220,16 +220,16 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       
       <Card className="shadow-sm">
         <Card.Header className="bg-primario text-white">
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="d-flex justify-content-between align-items-center header-extras">
             <Button 
               variant="link" 
-              className="text-white p-0" 
+              className="text-white p-0 header-volver" 
               onClick={handleVolver}
             >
               <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
               Volver
             </Button>
-            <h5 className="mb-0">Extras y Detalles de Reserva</h5>
+            <h5 className="mb-0 header-titulo">Extras y Detalles de Reserva</h5>
             <div style={{ width: '80px' }}></div> {/* Espacio para equilibrar el header */}
           </div>
         </Card.Header>
@@ -325,7 +325,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
             </Col>
 
             {/* Columna derecha: Selección de extras */}
-            <Col md={7}>
+            <Col md={7} xs={12} className='columna-derecha'>
               <h5 className="mb-3">
                 <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
                 Añade extras a tu reserva (opcional)
@@ -333,7 +333,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
               
               <Row>
                 {extrasDisponibles.map(extra => (
-                  <Col md={6} className="mb-3" key={extra.id}>
+                  <Col md={6} xs={6} className="mb-3" key={extra.id}>
                     <Card 
                       className={`extra-card ${extrasSeleccionados.includes(extra.id) ? 'selected' : ''}`}
                       onClick={() => toggleExtra(extra.id)}

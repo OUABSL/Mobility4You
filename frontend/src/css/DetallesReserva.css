@@ -258,8 +258,88 @@
 }
 
 
+/* Botonera superior responsiva */
+.botonera-superior {
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.botonera-superior > .btn {
+  margin-bottom: 0.5rem;
+}
+.botonera-superior .ms-auto {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
 
-.icon-svg {
+@media (max-width: 768px) {
+  .botonera-superior {
+    flex-direction: row;
+    align-items: center !important;
+    justify-content: space-evenly;
+    margin-bottom: 1.5rem;
+    padding: 0 0.5rem;
+  }
+  .botonera-superior .ms-auto {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-evenly;
+    margin-left: 0 !important;
+  }
+  .botonera-superior .btn {
+    width: 160px;
+    font-size: 0.8rem;
+  }
+  .detalles-reserva {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* Limitar ancho de tarjetas y centrar */
+.detalles-reserva .card,
+.detalles-reserva .reservation-details-card,
+.detalles-reserva .price-summary-card,
+.detalles-reserva .vehicle-card,
+.detalles-reserva .locations-card,
+.detalles-reserva .protection-card,
+.detalles-reserva .extras-card,
+.detalles-reserva .drivers-card,
+.detalles-reserva .accordion-card,
+.detalles-reserva .not-included-card {
+  max-width: 95%;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 768px) {
+  .detalles-reserva .card,
+  .detalles-reserva .reservation-details-card,
+  .detalles-reserva .price-summary-card,
+  .detalles-reserva .vehicle-card,
+  .detalles-reserva .locations-card,
+  .detalles-reserva .protection-card,
+  .detalles-reserva .extras-card,
+  .detalles-reserva .drivers-card,
+  .detalles-reserva .accordion-card,
+  .detalles-reserva .not-included-card {
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+/* Espaciado entre tarjetas en móvil */
+@media (max-width: 768px) {
+  .detalles-reserva .card {
+    margin-bottom: 1rem !important;
+  }
+}
+
+
+/* .icon-svg {
   filter: brightness(0) saturate(100%) invert(14%) sepia(42%) saturate(2602%) hue-rotate(187deg) brightness(96%) contrast(105%) !important;
   fill: var(--bs-secondary-color) !important;
-}
+} */
