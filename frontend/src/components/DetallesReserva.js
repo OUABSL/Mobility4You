@@ -38,7 +38,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import '../css/DetallesReserva.css';
 
-import carDoorLeft from '../img/icons/car-door-left.svg';
+import carDoorLeft from '../assets/img/icons/car-door-left.svg';
 
 import "../css/ReservationModals.css";
 import DeleteReservationModal from './Modals/DeleteReservationModal';
@@ -46,7 +46,7 @@ import EditReservationModal from './Modals/EditReservationModal';
 
 
 // Imágenes de ejemplo (reemplaza con las imágenes reales o usa una API)
-import bmwImage from '../img/coches/BMW-320i-M-Sport.jpg';
+import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
 
 
 /**

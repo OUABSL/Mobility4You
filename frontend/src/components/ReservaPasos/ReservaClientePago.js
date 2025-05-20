@@ -387,19 +387,19 @@ const ReservaClientePago = () => {
                       <h6 className="mb-2">Tarjetas aceptadas:</h6>
                       <div className="d-flex align-items-center gap-2 flex-wrap">
                         <div className="card-brand">
-                          <img src="/img/cards/visa.png" alt="Visa" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <img src="/assets/img/cards/visa.png" alt="Visa" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
                           <span className="visually-hidden">Visa</span>
                         </div>
                         <div className="card-brand">
-                          <img src="/img/cards/mastercard.png" alt="Mastercard" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <img src="/assets/img/cards/mastercard.png" alt="Mastercard" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
                           <span className="visually-hidden">Mastercard</span>
                         </div>
                         <div className="card-brand">
-                          <img src="/img/cards/maestro.png" alt="Maestro" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <img src="/assets/img/cards/maestro.png" alt="Maestro" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
                           <span className="visually-hidden">Maestro</span>
                         </div>
                         <div className="card-brand">
-                          <img src="/img/cards/amex.png" alt="American Express" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <img src="/assets/img/cards/amex.png" alt="American Express" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
                           <span className="visually-hidden">American Express</span>
                         </div>
                         <span className="text-muted small">+ todas las principales tarjetas bancarias</span>
@@ -431,7 +431,7 @@ const ReservaClientePago = () => {
                   // PAGO CON PAYPAL (mantener igual)
                   <div className="paypal-payment-form">
                     <h5 className="mb-3">
-                      <img src="/img/paypal-logo.png" alt="PayPal" style={{height: '24px'}} onError={(e) => e.target.style.display = 'none'} />
+                      <img src="/assets/img/paypal-logo.png" alt="PayPal" style={{height: '24px'}} onError={(e) => e.target.style.display = 'none'} />
                       Pago con PayPal
                     </h5>
                     

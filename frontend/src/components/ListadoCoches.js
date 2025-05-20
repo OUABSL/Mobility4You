@@ -28,8 +28,8 @@ import FormBusqueda from './FormBusqueda';
 import FiltroSelect from './FiltroSelect';
 
 // Ejemplo de imágenes locales
-import bmwImage from '../img/coches/BMW-320i-M-Sport.jpg';
-import a3Image from '../img/coches/audi-a3-2020-660x375.jpg';
+import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
+import a3Image from '../assets/img/coches/audi-a3-2020-660x375.jpg';
 
 const ListadoCoches = ({ isMobile = false }) => {
   // Estados principales

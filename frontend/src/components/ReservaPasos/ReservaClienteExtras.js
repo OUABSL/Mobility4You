@@ -18,10 +18,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import '../../css/ReservaClienteExtras.css';
 
-import wifiLogo from '../../img/extras/wifi.png';
-import gpsLogo from '../../img/extras/gps.png';
-import asientoLogo from '../../img/extras/child-seat.png';
-import conductorLogo from '../../img/extras/secondary-driver.png';
+import wifiLogo from '../../assets/img/extras/wifi.png';
+import gpsLogo from '../../assets/img/extras/gps.png';
+import asientoLogo from '../../assets/img/extras/child-seat.png';
+import conductorLogo from '../../assets/img/extras/secondary-driver.png';
 
 // Datos de prueba para extras disponibles
 const extrasDisponibles = [

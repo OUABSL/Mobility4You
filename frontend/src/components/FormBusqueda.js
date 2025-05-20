@@ -17,32 +17,13 @@ import {
   faEdit,
   faInfoCircle,
   faTruck,
-  faCarSide
+  faCarSide,
+  faMapMarkerAlt
 } from '@fortawesome/free-solid-svg-icons';
 import '../css/FormBusqueda.css';
 import { is } from 'date-fns/locale';
 
-// Opciones y datos de ejemplo para ubicaciones (podrías importarlos desde un módulo común)
-const locations = [
-  {
-    name: "Aeropuerto de Málaga",
-    icon: faPlane,
-    info: {
-      address: "Avenida Comandante García Morato, s/n, 29004 Málaga, España",
-      hours: "Lunes - Domingo: 06:00 - 23:00",
-      holidays: "06:00 - 23:00"
-    }
-  },
-  {
-    name: "Centro de Málaga",
-    icon: faCity,
-    info: {
-      address: "Calle Larios, 29005 Málaga, España",
-      hours: "Lunes - Domingo: 09:00 - 21:00",
-      holidays: "09:00 - 21:00"
-    }
-  }
-];
+
 // Opciones de horarios disponibles (podrías importarlos desde un módulo común)
 const availableTimes = ["11:00", "11:30", "12:00", "13:30"];
 
@@ -96,7 +77,16 @@ const carGroups = [
  * - Diseño plegable para optimizar el espacio en pantalla.
  * - Funcionalidad para detectar el scroll y fijar el formulario en la parte superior.
  */
-const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, listado=false, isMobile=false}) => {
+const FormBusqueda = ({ 
+  collapsible = false, 
+  onSearch, 
+  initialValues = {}, 
+  listado = false, 
+  isMobile = false,
+  locations = [], // Nueva prop para las ubicaciones
+  isMainSection = false // Nueva prop para identificar uso en sección principal
+  }) => {
+  
   // Estado para la ubicación de recogida
   const [pickupLocation, setPickupLocation] = useState(initialValues.pickupLocation || '');
   // Estado para la ubicación de devolución
@@ -200,11 +190,11 @@ useEffect(() => {
     const value = e.target.value;
     setLocation(value);
     if (value) {
-      setSuggestions(
-        locations.filter(location =>
-          location.name.toLowerCase().includes(value.toLowerCase())
-        )
+      // Filtrar las ubicaciones recibidas por props
+      const filteredLocations = locations.filter(location =>
+        location.nombre.toLowerCase().includes(value.toLowerCase())
       );
+      setSuggestions(filteredLocations);
     } else {
       setSuggestions([]);
     }
@@ -212,25 +202,37 @@ useEffect(() => {
 
   // Función para renderizar las sugerencias de ubicaciones
   const renderSuggestions = (suggestions, setLocation, setSuggestions) => {
-    return suggestions.map((location, index) => (
-      <div
-        key={index}
-        className="suggestion-option"
-        onClick={() => {
-          setLocation(location.name);
-          setSuggestions([]);
-        }}
-      >
-        <div className="suggestion-main">
-          <FontAwesomeIcon className="me-2" icon={location.icon} /> {location.name}
+    return suggestions.map((location, index) => {
+      // Mapear iconos de string a componentes
+      const getIcon = (iconName) => {
+        switch(iconName) {
+          case 'faPlane': return faPlane;
+          case 'faCity': return faCity;
+          default: return faMapMarkerAlt;
+        }
+      };
+
+      return (
+        <div
+          key={index}
+          className="suggestion-option"
+          onClick={() => {
+            setLocation(location.nombre);
+            setSuggestions([]);
+          }}
+        >
+          <div className="suggestion-main">
+            <FontAwesomeIcon className="me-2" icon={getIcon(location.icono_url)} /> 
+            {location.nombre}
+          </div>
+          <div className="suggestion-detail">
+            <p><strong>Dirección:</strong> {location.direccion?.calle}, {location.direccion?.ciudad}</p>
+            <p><strong>Teléfono:</strong> {location.telefono}</p>
+            <p><strong>Email:</strong> {location.email}</p>
+          </div>
         </div>
-        <div className="suggestion-detail">
-          <p><strong>Dirección:</strong> {location.info.address}</p>
-          <p><strong>Horario:</strong> {location.info.hours}</p>
-          <p><strong>Festivos:</strong> {location.info.holidays}</p>
-        </div>
-      </div>
-    ));
+      );
+    });
   };
 
   // Función para guardar las fechas seleccionadas en el calendario modal
@@ -258,6 +260,8 @@ useEffect(() => {
       onSearch(searchParams);
     }
   };
+
+  
 
 
 
@@ -413,8 +417,8 @@ useEffect(() => {
                         icon={faTimes}
                         className="reset-search"
                         onClick={() => {
-                          setDropoffLocation('');
-                          setDropoffSuggestions(locations);
+                          setPickupLocation(''); 
+                          setPickupSuggestions(locations);
                         }}
                       />
                     </div>
@@ -486,7 +490,7 @@ useEffect(() => {
           <Col className="d-flex flex-row align-items-center align-self-end justify-content-start flex-nowrap">
             <Form.Check
               type="checkbox"
-              label="Conductor mayor de 21 años"
+              label="Mayor de 21 años"
               checked={mayor21}
               onChange={(e) => setMayor21(e.target.checked)}
             />

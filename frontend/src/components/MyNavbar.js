@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import '../css/MyNavbar.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Image } from 'react-bootstrap';
-import logo from '../img/general/logo_mobility4you.png';
+import logo from '../assets/img/general/logo_mobility4you.png';
 
 
 const MyNavbar = () => {

@@ -5,9 +5,9 @@ import { useNavigate } from 'react-router-dom'; // Importar useNavigate
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faSuitcase, faUser, faIdCard, faCircleCheck, faTimesCircle, faCreditCard, faInfoCircle  } from '@fortawesome/free-solid-svg-icons';
 // NUEVAS IMÁGENES SVG
-import manualGear    from '../img/icons/gear-stick-manual.svg';
-import autoGear      from '../img/icons/automatic-gear.svg';
-import carDoorLeft   from '../img/icons/car-door-left.svg';
+import manualGear    from '../assets/img/icons/gear-stick-manual.svg';
+import autoGear      from '../assets/img/icons/automatic-gear.svg';
+import carDoorLeft   from '../assets/img/icons/car-door-left.svg';
 
 import '../css/FichaCoche.css';
 import { fr } from 'date-fns/locale';

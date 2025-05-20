@@ -20,8 +20,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../../css/ReservaClienteConfirmar.css';
-import CardLogo from '../../img/general/logo_visa_mastercard.png';
-import paypalLogo from '../../img/general/paypal_logo.png';
+import CardLogo from '../../assets/img/general/logo_visa_mastercard.png';
+import paypalLogo from '../../assets/img/general/paypal_logo.png';
 
 const ReservaClienteConfirmar = () => {
   const navigate = useNavigate();
