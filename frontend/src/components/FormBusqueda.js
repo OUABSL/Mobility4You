@@ -4,6 +4,7 @@ import { Form, Button, Row, Col, Modal } from 'react-bootstrap';
 import { DateRange } from 'react-date-range';
 import { addDays, format } from 'date-fns';
 import ModalCalendario from './ModalCalendario';
+import { useNavigate, useLocation } from 'react-router-dom'; // Agrega esta línea
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -20,12 +21,26 @@ import {
   faCarSide,
   faMapMarkerAlt
 } from '@fortawesome/free-solid-svg-icons';
+
+import { useAlertContext } from '../context/AlertContext'; // Importar el contexto de alertas
+import { 
+  fetchLocations, 
+  performSearch, 
+  saveSearchParams, 
+  getStoredSearchParams,
+  validateSearchForm,
+  locationsData,
+  availableTimes as apiAvailableTimes
+} from '../services/searchServices';
+
+
 import '../css/FormBusqueda.css';
 import { is } from 'date-fns/locale';
 
 
 // Opciones de horarios disponibles (podrías importarlos desde un módulo común)
-const availableTimes = ["11:00", "11:30", "12:00", "13:30"];
+const availableTimes = apiAvailableTimes;
+
 
 // Tipos de búsqueda (vehículos)
 const searchTypes = [
@@ -130,16 +145,45 @@ const FormBusqueda = ({
   const [navbarHeight, setNavbarHeight] = useState(0);
 
   // Tipo de búsqueda y grupo seleccionado
-const [tipoBusqueda, setTipoBusqueda] = useState('coches');
-const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
+  const [tipoBusqueda, setTipoBusqueda] = useState('coches');
+  const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
 
-// Simular llamada a API para tipos y grupos
-useEffect(() => {
-  // Aquí se haría el fetch('/api/search-types')…
-  // Por simplicidad, estamos usando datos estáticos en este ejemplo
-  //setTipoBusqueda('coches'); // Cambia esto según la lógica de tu aplicación
-  //setGrupoSeleccionado(carGroups[0]); // Selecciona el primer grupo por defecto
-}, []);
+  // Estados de alertas
+  const { showSuccess, showError, showWarning } = useAlertContext();
+
+  // Navegación
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Simular llamada a API para tipos y grupos
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        // Cargar ubicaciones
+        const locationsData = await fetchLocations();
+        
+        // Verificar si hay datos guardados en sessionStorage
+        const storedParams = getStoredSearchParams();
+        if (storedParams) {
+          setPickupLocation(storedParams.pickupLocation || '');
+          setDropoffLocation(storedParams.dropoffLocation || '');
+          setShowDropoffLocation(storedParams.dropoffLocation ? true : false);
+          setSameLocation(!storedParams.dropoffLocation);
+          setPickupDate(storedParams.pickupDate || new Date());
+          setDropoffDate(storedParams.dropoffDate || addDays(new Date(), 1));
+          setPickupTime(storedParams.pickupTime || availableTimes[0]);
+          setDropoffTime(storedParams.dropoffTime || availableTimes[0]);
+          setMayor21(storedParams.mayor21 || false);
+        }
+      } catch (error) {
+        showWarning('No se pudieron cargar todas las ubicaciones. Por favor, intenta más tarde.', {
+          timeout: 7000
+        });
+      }
+    };
+
+    loadInitialData();
+  }, [showWarning]);
 
   // Efecto para manejar el scroll y fijar el formulario si es necesario
   useEffect(() => {
@@ -244,24 +288,63 @@ useEffect(() => {
   };
 
   // Función para manejar el envío del formulario y generar los parámetros de búsqueda
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Crear objeto con los datos de búsqueda
     const searchParams = {
       pickupLocation,
       dropoffLocation: showDropoffLocation ? dropoffLocation : pickupLocation,
-      pickupDate: format(pickupDate, 'dd-MM'),
+      pickupDate: format(pickupDate, 'yyyy-MM-dd'),
       pickupTime,
-      dropoffDate: format(dropoffDate, 'dd-MM'),
+      dropoffDate: format(dropoffDate, 'yyyy-MM-dd'),
       dropoffTime,
       tipo: tipoBusqueda,
       grupo: grupoSeleccionado,
+      mayor21
     };
-    if (onSearch) {
-      onSearch(searchParams);
+    
+    // Validar formulario
+    const { isValid, errors } = validateSearchForm({
+      ...searchParams,
+      checkMayor21: mayor21
+    });
+    
+    if (!isValid) {
+      // Mostrar errores
+      const errorMessage = Object.values(errors).join('. ');
+      showError(errorMessage, { timeout: 8000 });
+      return;
+    }
+    
+     try {
+      // Guardar parámetros en sessionStorage
+      saveSearchParams(searchParams);
+
+      // Realizar búsqueda
+      await performSearch(searchParams);
+
+      // Mostrar mensaje de éxito
+      showSuccess('Búsqueda realizada con éxito', { timeout: 3000 });
+
+      // Llamar a la función onSearch para pasar los resultados al componente padre
+      if (onSearch) {
+        onSearch(searchParams);
+      }
+      
+      
+      // Si ya estamos en /coches, forzar recarga
+      if (location.pathname === '/coches') {
+        navigate(0); // Recarga la ruta actual
+      } else {
+        // Navegar a la página de resultados
+        navigate('/coches');
+      }
+    } catch (error) {
+      // Mostrar mensaje de error
+      showError(error.message || 'Error al realizar la búsqueda', { timeout: 8000 });
     }
   };
-
-  
 
 
 

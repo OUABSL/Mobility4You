@@ -41,7 +41,7 @@ const AlertComponent = () => {
     if (alert.show && alert.timeout !== 0) {
       const timeout = setTimeout(() => {
         hideAlert();
-      }, alert.timeout || 5000);
+      }, alert.timeout || 300000);
       
       return () => clearTimeout(timeout);
     }
@@ -88,7 +88,8 @@ const AlertComponent = () => {
 export const alertStyles = `
   /* Estilos para el contenedor de alertas */
   .global-alert-container {
-    position: fixed;
+    position: absolute;
+    top: 200px;
     left: 0;
     right: 0;
     z-index: 1100;

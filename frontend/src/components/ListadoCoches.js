@@ -30,6 +30,9 @@ import FiltroSelect from './FiltroSelect';
 
 import backgroundHero from '../assets/img/general/audi_wallpaper.png';
 
+import { useAlertContext } from '../context/AlertContext'; // Importar el contexto de alertas
+import { validateSearchForm, saveSearchParams } from  '../services/searchServices';
+
 // Datos de prueba (testing)
 import testingCars from '../assets/testingData/testingData';
 
@@ -41,6 +44,9 @@ const ListadoCoches = ({ isMobile = false }) => {
   const [error, setError] = useState(null);
   const [openCarId, setOpenCarId] = useState(null);
   const [hasBusquedaData, setHasBusquedaData] = useState(false);
+  // Contexto de alertas
+  const { showSuccess, showError, showWarning } = useAlertContext();
+
   
   // Estado para los filtros
   const [filterValues, setFilterValues] = useState({
@@ -65,38 +71,38 @@ const ListadoCoches = ({ isMobile = false }) => {
 
 
   // Verificar si hay datos de búsqueda en sessionStorage al cargar
-useEffect(() => {
-  const checkReservaData = () => {
-    const storedData = sessionStorage.getItem('reservaData');
-    if (storedData) {
-      try {
-        const data = JSON.parse(storedData);
-        if (data.fechas && 
-            data.fechas.pickupLocation && 
-            data.fechas.pickupDate && 
-            data.fechas.dropoffDate) {
-          setHasBusquedaData(true);
-        } else {
+  useEffect(() => {
+    const checkReservaData = () => {
+      const storedData = sessionStorage.getItem('reservaData');
+      if (storedData) {
+        try {
+          const data = JSON.parse(storedData);
+          if (data.fechas && 
+              data.fechas.pickupLocation && 
+              data.fechas.pickupDate && 
+              data.fechas.dropoffDate) {
+            setHasBusquedaData(true);
+          } else {
+            setHasBusquedaData(false);
+          }
+        } catch (err) {
+          console.error("Error parsing reservaData:", err);
           setHasBusquedaData(false);
         }
-      } catch (err) {
-        console.error("Error parsing reservaData:", err);
+      } else {
         setHasBusquedaData(false);
       }
+    };
+    
+    checkReservaData();
+    
+    // Actualizar el estado de carga según si tenemos datos de búsqueda
+    if (hasBusquedaData) {
+      fetchCars();
     } else {
-      setHasBusquedaData(false);
+      setLoading(false);
     }
-  };
-  
-  checkReservaData();
-  
-  // Actualizar el estado de carga según si tenemos datos de búsqueda
-  if (hasBusquedaData) {
-    fetchCars();
-  } else {
-    setLoading(false);
-  }
-}, [hasBusquedaData]);
+  }, [hasBusquedaData]);
 
 
   // Función para extraer opciones únicas de los coches
@@ -193,36 +199,41 @@ useEffect(() => {
 
   // Manejar búsqueda desde el formulario
   const handleSearch = async (dataBusqueda) => {
-    // Validar que los datos mínimos estén presentes
-    if (!dataBusqueda.pickupLocation || !dataBusqueda.pickupDate || !dataBusqueda.dropoffDate) {
-      setError('Por favor, completa todos los campos obligatorios de la búsqueda.');
+    // Validar los datos de búsqueda
+    const { isValid, errors } = validateSearchForm({
+      ...dataBusqueda,
+      checkMayor21: dataBusqueda.mayor21
+    });
+    
+    if (!isValid) {
+      // Mostrar errores
+      const errorMessage = Object.values(errors).join('. ');
+      showError(errorMessage, { timeout: 8000 });
       return;
     }
     
     // Guardar datos en sessionStorage
-    const storedData = sessionStorage.getItem('reservaData') || '{}';
-    const currentData = JSON.parse(storedData);
+    const saved = saveSearchParams(dataBusqueda);
+    if (!saved) {
+      showWarning('No se pudieron guardar los datos de búsqueda', { timeout: 5000 });
+    }
     
-    const updatedData = {
-      ...currentData,
-      fechas: {
-        pickupLocation: dataBusqueda.pickupLocation,
-        pickupDate: new Date(dataBusqueda.pickupDate),
-        pickupTime: dataBusqueda.pickupTime,
-        dropoffLocation: dataBusqueda.dropoffLocation || dataBusqueda.pickupLocation,
-        dropoffDate: new Date(dataBusqueda.dropoffDate),
-        dropoffTime: dataBusqueda.dropoffTime
-      }
-    };
-    
-    sessionStorage.setItem('reservaData', JSON.stringify(updatedData));
+    // Indicar que tenemos datos de búsqueda
     setHasBusquedaData(true);
     setLoading(true);
     
-    // Cargar coches después de actualizar los datos
-    fetchCars();
+    try {
+      // Cargar coches
+      await fetchCars();
+      showSuccess('Búsqueda realizada con éxito', { timeout: 3000 });
+    } catch (error) {
+      showError('Error al buscar vehículos disponibles', { timeout: 7000 });
+      setError('No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.');
+      setLoading(false);
+    }
   };
 
+  
   // Función para manejar la apertura/cierre de la ficha
   const handleVerDetalle = (carId) => {
     const newId = openCarId === carId ? null : carId;

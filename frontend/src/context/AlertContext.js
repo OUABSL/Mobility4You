@@ -22,7 +22,7 @@ export const AlertProvider = ({ children }) => {
     message: '',
     variant: 'info', // 'success', 'danger', 'warning', 'info'
     icon: null,
-    timeout: 5000, // tiempo en ms antes de ocultar automáticamente
+    timeout: 30000, // tiempo en ms antes de ocultar automáticamente
     position: 'top', // 'top', 'bottom'
   });
   
