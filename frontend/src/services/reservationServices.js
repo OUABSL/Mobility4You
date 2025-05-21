@@ -30,7 +30,8 @@ export const createReservation = async (data) => {
       return crearReservaPrueba(data);
     }
     // Producción: llamada real a la API
-    const response = await axios.post(`${API_URL}/reservations/`, data);
+    const mappedData = mapReservationDataToBackend(data);
+    const response = await axios.post(`${API_URL}/reservations/`, mappedData);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Error al crear la reserva.' };
@@ -81,7 +82,8 @@ export const calculateReservationPrice = async (data) => {
       };
     }
     // Producción: llamada real a la API
-    const response = await axios.post(`${API_URL}/reservations/calculate-price`, data);
+    const mappedData = mapReservationDataToBackend(data);
+    const response = await axios.post(`${API_URL}/reservations/calculate-price`, mappedData);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Error al calcular el precio.' };
@@ -103,7 +105,8 @@ export const editReservation = async (reservaId, data) => {
       return updated;
     }
     // Producción: llamada real a la API
-    const response = await axios.put(`${API_URL}/reservations/${reservaId}`, data);
+    const mappedData = mapReservationDataToBackend(data);
+    const response = await axios.put(`${API_URL}/reservations/${reservaId}`, mappedData);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Error al editar la reserva.' };
@@ -379,5 +382,38 @@ function crearReservaPrueba(data) {
   };
   reservasPrueba.push(nueva);
   return nueva;
+}
+
+// Mapeo de datos de reserva del frontend (camelCase/anidado) a backend (snake_case/relacional)
+function mapReservationDataToBackend(data) {
+  // Mapea campos principales
+  return {
+    vehiculo: data.car?.id || data.vehiculo?.id || data.vehiculo,
+    lugar_recogida: data.fechas?.pickupLocation?.id || data.lugarRecogida?.id || data.lugar_recogida,
+    lugar_devolucion: data.fechas?.dropoffLocation?.id || data.lugarDevolucion?.id || data.lugar_devolucion,
+    fecha_recogida: data.fechas?.pickupDate || data.fechaRecogida || data.fecha_recogida,
+    fecha_devolucion: data.fechas?.dropoffDate || data.fechaDevolucion || data.fecha_devolucion,
+    precio_dia: data.car?.precio_dia || data.precio_dia,
+    precio_base: data.precioBase || data.precio_base,
+    precio_extras: data.precioExtras || data.precio_extras,
+    precio_impuestos: data.precioImpuestos || data.precio_impuestos,
+    descuento_promocion: data.descuentoPromocion || data.descuento_promocion,
+    precio_total: data.precioTotal || data.precio_total,
+    metodo_pago_inicial: data.metodo_pago_inicial || data.metodoPago || 'tarjeta',
+    importe_pagado_inicial: data.importe_pagado_inicial || 0,
+    importe_pendiente_inicial: data.importe_pendiente_inicial || 0,
+    importe_pagado_extra: data.importe_pagado_extra || 0,
+    importe_pendiente_extra: data.importe_pendiente_extra || 0,
+    usuario: data.usuario || null, // Si hay login
+    politica_pago: data.politicaPago?.id || data.politica_pago,
+    promocion: data.promocion?.id || data.promocion,
+    extras: Array.isArray(data.extras) ? data.extras.map(e => e.id || e) : [],
+    conductores: Array.isArray(data.conductores) ? data.conductores.map(c => ({
+      conductor: c.conductor?.id || c.conductor_id || c.id,
+      rol: c.rol || 'principal',
+    })) : [],
+    notas_internas: data.notas_internas || '',
+    referencia_externa: data.referencia_externa || '',
+  };
 }
 

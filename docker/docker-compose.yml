@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Servicio para la base de datos
+  # Se utiliza MariaDB como base de datos
+  db:
+    image: mariadb:10.6
+    container_name: mobility4you_db
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    networks:
+      - mobility4you_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Servicio para el backend Django
+  # Se utiliza Gunicorn como servidor WSGI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend/Dockerfile
+    container_name: mobility4you_backend
+    restart: always
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DB_HOST=db
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USER=${MYSQL_USER}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOST=${ALLOWED_HOST}
+      - REDIS_URL=redis://redis:6379/1
+    networks:
+      - mobility4you_network
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4
+
+
+  # Servicio para el frontend React
+  # Se utiliza Nginx como servidor web
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend/Dockerfile
+      args:
+        - REACT_APP_API_URL=${REACT_APP_API_URL}
+        - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+    container_name: mobility4you_frontend
+    restart: always
+    volumes:
+      - ./frontend:/usr/app
+      - /usr/app/node_modules
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    networks:
+      - mobility4you_network
+
+  # Servicio para Nginx
+  # Se utiliza Nginx como proxy inverso
+  nginx:
+    image: nginx:1.21
+    container_name: mobility4you_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+      - static_volume:/usr/share/nginx/static
+      - media_volume:/usr/share/nginx/media
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - mobility4you_network
+    restart: always
+
+  redis:
+    image: redis:6.2
+    container_name: mobility4you_redis
+    restart: always
+    networks:
+      - mobility4you_network
+
+
+volumes:
+  db_data:
+  static_volume:
+  media_volume:
+
+networks:
+  mobility4you_network:
+    driver: bridge

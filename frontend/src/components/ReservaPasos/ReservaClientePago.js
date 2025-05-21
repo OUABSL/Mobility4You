@@ -119,63 +119,39 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
   // 2. ACTUALIZAR LA FUNCIÓN processRedsysPayment para usar Django API
   const processRedsysPayment = async () => {
     setRedsysLoading(true);
-    
+    setError(null);
     try {
-      const total = reservaData.detallesReserva.total;
-      const { redsysParams, orderNumber } = generateRedsysData(reservaData, total);
-      
-      // Actualizar datos de reserva con número de pedido
-      const updatedReservaData = {
-        ...reservaData,
-        ordenPago: orderNumber,
-        metodoPagoDetalle: 'redsys',
-        fechaInicioPago: new Date().toISOString()
-      };
-      
-      // Guardar datos actualizados antes del pago
-      sessionStorage.setItem('reservaData', JSON.stringify(updatedReservaData));
-      
-      // URL del backend Django
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-      
-      // Llamada al endpoint Django para obtener la firma
+      const total = diferencia || reservaData?.detallesReserva?.total || reservaData?.total || 0;
+      const { redsysParams, orderNumber } = generateRedsysData(reservaData, total);
       const response = await fetch(`${backendUrl}/api/payments/redsys/prepare/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          redsysParams,
-          reservaData: updatedReservaData
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redsysParams, reservaData })
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error HTTP ${response.status}`);
+      if (!response.ok) throw new Error('Error preparando pago con Redsys');
+      const data = await response.json();
+      setPaymentData(data);
+      // Redirigir a Redsys
+      if (data.redsysUrl && data.merchantParameters && data.signature) {
+        // Crear y enviar formulario a Redsys
+        const form = document.createElement('form');
+        form.action = data.redsysUrl;
+        form.method = 'POST';
+        form.style.display = 'none';
+        form.innerHTML = `
+          <input type="hidden" name="Ds_SignatureVersion" value="${data.signatureVersion}" />
+          <input type="hidden" name="Ds_MerchantParameters" value="${data.merchantParameters}" />
+          <input type="hidden" name="Ds_Signature" value="${data.signature}" />
+        `;
+        document.body.appendChild(form);
+        form.submit();
+      } else {
+        throw new Error('Respuesta de Redsys incompleta');
       }
-      
-      const { merchantParameters, signature, signatureVersion, redsysUrl } = await response.json();
-      
-      // Configurar datos para envío a Redsys
-      setPaymentData({
-        action: redsysUrl,
-        merchantParameters,
-        signature,
-        signatureVersion
-      });
-      
-      // Enviar formulario automáticamente después de un breve delay
-      setTimeout(() => {
-        if (formRef.current) {
-          formRef.current.submit();
-        }
-      }, 1000);
-      
     } catch (error) {
-      console.error('Error al procesar pago con Redsys:', error);
-      setError(`Ha ocurrido un error al procesar el pago: ${error.message}`);
+      setError(error.message || 'Error al procesar el pago con Redsys.');
+    } finally {
       setRedsysLoading(false);
     }
   };
@@ -185,7 +161,6 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
       const response = await fetch(`${backendUrl}/api/payments/redsys/status/${orderNumber}/`);
-      
       if (response.ok) {
         const data = await response.json();
         return data;

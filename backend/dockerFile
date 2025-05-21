@@ -1,25 +1,41 @@
 # Usa una imagen oficial de Python como base
-FROM python:3.9-slim
+FROM python:3.10-slim-bullseye
 
-# Actualiza los repositorios e instala dependencias necesarias
+# Establecer variables de entorno
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
+
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     pkg-config \
     default-libmysqlclient-dev \
     build-essential \
+    gettext \
+    libpq-dev \
+    libffi-dev \
+    gcc \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Establece el directorio de trabajo en el contenedor
 WORKDIR /app
 
-# Copia el archivo de requerimientos e instala las dependencias de Python
+# Copiar requirements primero para aprovechar la caché
 COPY requirements.txt /app/
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# Copia el resto del código fuente al contenedor
+# Copiar el resto del código fuente al contenedor
 COPY . /app/
 
-# Expone el puerto (por ejemplo, 8000) para Django
+# Crear directorio de logs
+RUN mkdir -p /app/logs && touch /app/logs/django.log && chmod 666 /app/logs/django.log
+
+# Exponer puerto
 EXPOSE 8000
 
-# Comando para iniciar la aplicación Django
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Definir comandos para ejecutar en inicio del contenedor
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4"]
