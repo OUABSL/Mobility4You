@@ -88,13 +88,14 @@ const AlertComponent = () => {
 export const alertStyles = `
   /* Estilos para el contenedor de alertas */
   .global-alert-container {
-    position: absolute;
+    position: fixed;
     top: 200px;
     left: 0;
     right: 0;
     z-index: 1100;
     padding: 1rem;
     transition: all 0.3s ease-in-out;
+    pointer-events: none;
   }
   
   .alert-top {
@@ -103,6 +104,10 @@ export const alertStyles = `
   
   .alert-bottom {
     bottom: 0;
+  }
+
+  .global-alert-container .alert {
+    pointer-events: auto; /* Permite interacción con la alerta */
   }
   
   /* Estilos para las alertas */

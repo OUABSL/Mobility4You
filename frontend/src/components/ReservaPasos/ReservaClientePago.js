@@ -21,9 +21,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import '../../css/ReservaClientePago.css';
+import { editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
 
 // Componente placeholder para futura implementación completa
-const ReservaClientePago = () => {
+const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferencia = false }) => {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
@@ -46,18 +47,32 @@ const ReservaClientePago = () => {
   // Cargar datos de reserva del sessionStorage al iniciar
   useEffect(() => {
     try {
-      const storedData = sessionStorage.getItem('reservaData');
-      if (!storedData) {
-        setError('No se encontraron datos de reserva. Por favor, inicia el proceso desde la selección de vehículo.');
-        return;
+      let storedData;
+      if (modoDiferencia && reservaId) {
+        // Buscar la reserva por ID (DEBUG_MODE o API)
+        if (DEBUG_MODE) {
+          storedData = sessionStorage.getItem('reservaData');
+        } else {
+          // Aquí podrías hacer un fetch real si es necesario
+        }
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          setReservaData({ ...parsed, diferenciaPendiente: diferencia });
+        } else {
+          setError('No se encontraron datos de reserva para pago de diferencia.');
+        }
+      } else {
+        storedData = sessionStorage.getItem('reservaData');
+        if (!storedData) {
+          setError('No se encontraron datos de reserva.');
+          return;
+        }
+        setReservaData(JSON.parse(storedData));
       }
-      
-      setReservaData(JSON.parse(storedData));
     } catch (err) {
-      console.error('Error al cargar datos de reserva:', err);
-      setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
+      setError('Error al cargar datos de reserva.');
     }
-  }, []);
+  }, [diferencia, reservaId, modoDiferencia]);
 
 
   const handleVolver = () => {
@@ -182,56 +197,43 @@ const ReservaClientePago = () => {
     }
   };
 
-  // FUNCIÓN PARA PROCESAR PAGO CON PAYPAL (simulado)
-  const processPayPalPayment = async () => {
-    setLoading(true);
-    
-    try {
-      // Simulación de redirección a PayPal
-      const total = reservaData.detallesReserva.total;
-      
-      // En una implementación real, aquí se haría la integración con PayPal
-      alert(`Redirección a PayPal por un monto de ${total.toFixed(2)}€\n(Funcionalidad en desarrollo)`);
-      
-      // Simular procesamiento
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Generar ID de reserva
-      const reservaId = 'R' + Math.floor(Math.random() * 1000000).toString().padStart(8, '0');
-      
-      const updatedData = {
-        ...reservaData,
-        reservaId: reservaId,
-        fechaPago: new Date().toISOString(),
-        estadoPago: 'completado',
-        metodoPagoDetalle: 'paypal'
-      };
-      
-      sessionStorage.setItem('reservaCompletada', JSON.stringify(updatedData));
-      navigate('/reservation-confirmation/exito');
-      
-    } catch (error) {
-      console.error('Error al procesar pago con PayPal:', error);
-      setError('Ha ocurrido un error al procesar el pago con PayPal.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    const metodoPago = reservaData.metodoPago;
-    
-    if (metodoPago === 'tarjeta') {
-      // Procesar con Redsys
-      await processRedsysPayment();
-    } else if (metodoPago === 'paypal') {
-      // Procesar con PayPal
-      await processPayPalPayment();
-    } else {
-      setError('Método de pago no válido para este paso.');
+    setLoading(true);
+    setError(null);
+    try {
+      if (!reservaData) throw new Error('No hay datos de reserva.');
+      let result;
+      // Calcular importe de extras/diferencia
+      let importeExtra = 0;
+      if (modoDiferencia && diferencia) {
+        importeExtra = diferencia;
+      } else if (reservaData.detallesReserva && reservaData.detallesReserva.total) {
+        importeExtra = reservaData.detallesReserva.total;
+      }
+      // Actualizar campos de pago extra
+      const updatedReserva = {
+        ...reservaData,
+        importe_pagado_extra: (reservaData.importe_pagado_extra || 0) + importeExtra,
+        importe_pendiente_extra: 0,
+      };
+      if (DEBUG_MODE) {
+        result = await editReservation(reservaData.id, updatedReserva);
+      } else {
+        result = await editReservation(reservaData.id, updatedReserva);
+      }
+      sessionStorage.setItem('reservaData', JSON.stringify(result));
+      if (modoDiferencia) {
+        navigate(`/reservations/${reservaData.id}?email=${reservaData.conductor?.email || ''}`, { replace: true });
+      } else {
+        navigate('/reservation-confirmation/exito');
+      }
+    } catch (err) {
+      setError(err.message || 'Error al procesar el pago.');
+    } finally {
+      setLoading(false);
     }
   };
 

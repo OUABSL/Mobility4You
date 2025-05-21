@@ -280,7 +280,7 @@ const ListadoCoches = ({ isMobile = false }) => {
           </Row>
           
           <Row className="justify-content-center">
-            <Col lg={12} xl={10} className="search-form-container">
+            <Col lg={12} xl={12} className="search-form-container">
               <div className="search-card">
                 <div className="search-card-header">
                   <h4 className="mb-0">

@@ -9,6 +9,35 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 // Constante para modo debug
 export const DEBUG_MODE = true; // Cambiar a false en producción
 
+/*
+  * Función para crear una nueva reserva
+  * @param {Object} data - Datos de la reserva
+  * @returns {Promise<Object>} - Reserva creada
+  * @throws {Error} - Error si la reserva no se puede crear
+  * @description
+  * Esta función crea una nueva reserva. En modo DEBUG_MODE, simula la creación de una reserva
+  * utilizando datos de prueba. En producción, realiza una llamada a la API para crear la reserva.
+  * @example
+  * const nuevaReserva = await createReservation(datosReserva);
+  * console.log(nuevaReserva);
+  * @returns {Promise<Object>} - Reserva creada
+  * @throws {Error} - Error si la reserva no se puede crear
+*/
+export const createReservation = async (data) => {
+  try {
+    if (DEBUG_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return crearReservaPrueba(data);
+    }
+    // Producción: llamada real a la API
+    const response = await axios.post(`${API_URL}/reservations/`, data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Error al crear la reserva.' };
+  }
+};
+
+
 /**
  * Función para buscar una reserva por ID y email
  * @param {string} reservaId - ID de la reserva
@@ -18,26 +47,18 @@ export const DEBUG_MODE = true; // Cambiar a false en producción
 export const findReservation = async (reservaId, email) => {
   try {
     if (DEBUG_MODE) {
-      // Simulamos la respuesta de API en modo debug
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular latencia
-      
-      // Para pruebas, aceptar cualquier ID que empiece con 'R' y un email que contenga '@'
-      if (reservaId && reservaId.startsWith('R') && email && email.includes('@')) {
-        return { ...datosReservaPrueba, id: reservaId };
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const reserva = buscarReservaPrueba(reservaId);
+      if (reserva && reserva.conductores.some(c => c.conductor.email === email)) {
+        return reserva;
       }
-      
       throw new Error('Reserva no encontrada con los datos proporcionados');
     }
-    
-    // En modo producción, llamada real a la API
-    const response = await axios.get(`${API_URL}/reservations/${reservaId}`, {
-      params: { email }
-    });
-    
+    // En modo producción, llamada real a la API usando POST
+    const response = await axios.post(`${API_URL}/reservations/${reservaId}/find/`, { email });
     return response.data;
   } catch (error) {
-    console.error('Error al buscar la reserva:', error);
-    throw error.response?.data || { message: 'Error al buscar la reserva. Por favor, verifique los datos e intente nuevamente.' };
+    throw error.response?.data || { message: 'Error al buscar la reserva.' };
   }
 };
 
@@ -47,21 +68,24 @@ export const findReservation = async (reservaId, email) => {
  * @returns {Promise<Object>} - Objeto con originalPrice, newPrice y difference
  */
 export const calculateReservationPrice = async (data) => {
-  if (DEBUG_MODE) {
-    // Simulación: sumar 10€ por cada extra y 20€ si cambia la fecha
-    const base = 316;
-    const extras = (data.extras?.length || 0) * 10;
-    const dateDiff = (data.fechaRecogida !== datosReservaPrueba.fechaRecogida || data.fechaDevolucion !== datosReservaPrueba.fechaDevolucion) ? 20 : 0;
-    const newPrice = base + extras + dateDiff;
-    return {
-      originalPrice: base,
-      newPrice,
-      difference: newPrice - base
-    };
+  try {
+    if (DEBUG_MODE) {
+      const base = 316;
+      const extras = (data.extras?.length || 0) * 10;
+      const dateDiff = (data.fechaRecogida !== datosReservaPrueba.fechaRecogida || data.fechaDevolucion !== datosReservaPrueba.fechaDevolucion) ? 20 : 0;
+      const newPrice = base + extras + dateDiff;
+      return {
+        originalPrice: base,
+        newPrice,
+        difference: newPrice - base
+      };
+    }
+    // Producción: llamada real a la API
+    const response = await axios.post(`${API_URL}/reservations/calculate-price`, data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Error al calcular el precio.' };
   }
-  // Producción: llamada real a la API
-  const response = await axios.post(`${API_URL}/reservations/calculate-price`, data);
-  return response.data;
 };
 
 /**
@@ -71,17 +95,19 @@ export const calculateReservationPrice = async (data) => {
  * @returns {Promise<Object>} - Reserva actualizada
  */
 export const editReservation = async (reservaId, data) => {
-  if (DEBUG_MODE) {
-    // Simulación: devolver los datos actualizados
-    return {
-      ...datosReservaPrueba,
-      ...data,
-      id: reservaId
-    };
+  try {
+    if (DEBUG_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const updated = editarReservaPrueba(reservaId, data);
+      if (!updated) throw new Error('Reserva no encontrada para editar');
+      return updated;
+    }
+    // Producción: llamada real a la API
+    const response = await axios.put(`${API_URL}/reservations/${reservaId}`, data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Error al editar la reserva.' };
   }
-  // Producción: llamada real a la API
-  const response = await axios.put(`${API_URL}/reservations/${reservaId}`, data);
-  return response.data;
 };
 
 /**
@@ -90,13 +116,18 @@ export const editReservation = async (reservaId, data) => {
  * @returns {Promise<void>}
  */
 export const deleteReservation = async (reservaId) => {
-  if (DEBUG_MODE) {
-    // Simulación: simplemente esperar y resolver
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return;
+  try {
+    if (DEBUG_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const idx = reservasPrueba.findIndex(r => r.id === reservaId);
+      if (idx !== -1) reservasPrueba.splice(idx, 1);
+      return;
+    }
+    // Producción: llamada real a la API
+    await axios.delete(`${API_URL}/reservations/${reservaId}`);
+  } catch (error) {
+    throw error.response?.data || { message: 'Error al cancelar la reserva.' };
   }
-  // Producción: llamada real a la API
-  await axios.delete(`${API_URL}/reservations/${reservaId}`);
 };
 
 // Datos de prueba actualizados según esquema (usar el mismo que ya se usa en DetallesReserva)
@@ -286,6 +317,67 @@ export const datosReservaPrueba = {
   precioExtras: 40.00,
   precioImpuestos: 74.76,
   descuentoPromocion: 35.60,
-  precioTotal: 395.16
+  precioTotal: 395.16,
+  diferenciaPendiente: 0,
+  metodoPagoDiferencia: null,
+  diferenciaPagada: null,
+
+  // NUEVOS CAMPOS DE CONTROL DE PAGOS
+  metodo_pago_inicial: 'tarjeta', // o 'efectivo'
+  importe_pagado_inicial: 395.16, // Si es tarjeta, todo pagado; si es efectivo, 0
+  importe_pendiente_inicial: 0.00, // Si es tarjeta, 0; si es efectivo, todo el total
+  importe_pagado_extra: 0.00, // Importe pagado posteriormente (extras/diferencias)
+  importe_pendiente_extra: 0.00 // Importe pendiente de extras/diferencias
 };
+
+// Array de reservas de prueba para simular flujo completo en DEBUG_MODE
+let reservasPrueba = [ { ...datosReservaPrueba } ];
+
+// Función para buscar una reserva en el array de prueba
+function buscarReservaPrueba(reservaId) {
+  return reservasPrueba.find(r => r.id === reservaId);
+}
+
+// Función para editar una reserva en el array de prueba
+function editarReservaPrueba(reservaId, data) {
+  const idx = reservasPrueba.findIndex(r => r.id === reservaId);
+  if (idx === -1) return null;
+  reservasPrueba[idx] = {
+    ...reservasPrueba[idx],
+    ...data,
+    // Actualizar los nuevos campos de pagos si vienen en data
+    metodo_pago_inicial: data.metodo_pago_inicial ?? reservasPrueba[idx].metodo_pago_inicial,
+    importe_pagado_inicial: data.importe_pagado_inicial ?? reservasPrueba[idx].importe_pagado_inicial,
+    importe_pendiente_inicial: data.importe_pendiente_inicial ?? reservasPrueba[idx].importe_pendiente_inicial,
+    importe_pagado_extra: data.importe_pagado_extra ?? reservasPrueba[idx].importe_pagado_extra,
+    importe_pendiente_extra: data.importe_pendiente_extra ?? reservasPrueba[idx].importe_pendiente_extra,
+  };
+  return reservasPrueba[idx];
+}
+
+// Función para crear una nueva reserva en el array de prueba
+function crearReservaPrueba(data) {
+  // Inicializar los campos de pago según el método
+  let metodo_pago_inicial = data.metodo_pago_inicial || data.metodoPago || 'tarjeta';
+  let importe_pagado_inicial = 0;
+  let importe_pendiente_inicial = 0;
+  if (metodo_pago_inicial === 'tarjeta') {
+    importe_pagado_inicial = data.precioTotal || 0;
+    importe_pendiente_inicial = 0;
+  } else {
+    importe_pagado_inicial = 0;
+    importe_pendiente_inicial = data.precioTotal || 0;
+  }
+  const nueva = {
+    ...data,
+    id: `R${Math.floor(Math.random()*1e8)}`,
+    metodo_pago_inicial,
+    importe_pagado_inicial,
+    importe_pendiente_inicial,
+    importe_pagado_extra: 0,
+    importe_pendiente_extra: 0
+  };
+  reservasPrueba.push(nueva);
+  return nueva;
+}
 

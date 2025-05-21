@@ -1,7 +1,6 @@
 // src/components/DetallesReserva.js
 import React, { useEffect, useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Row,
@@ -34,7 +33,8 @@ import {
   faDownload,
   faPhone,
   faEnvelope,
-  faExclamationTriangle
+  faExclamationTriangle,
+  faCreditCard
 } from '@fortawesome/free-solid-svg-icons';
 
 
@@ -44,17 +44,13 @@ import carDoorLeft from '../assets/img/icons/car-door-left.svg';
 
 import "../css/ReservationModals.css";
 
-import { findReservation, DEBUG_MODE, datosReservaPrueba } from '../services/reservationServices';
-import { withTimeout } from '../services/func';
+import { findReservation, editReservation, deleteReservation, DEBUG_MODE, datosReservaPrueba } from '../services/reservationServices';
 import { useAlertContext } from '../context/AlertContext';
 
 import DeleteReservationModal from './Modals/DeleteReservationModal';
 import EditReservationModal from './Modals/EditReservationModal';
 
 
-// Imágenes de ejemplo (reemplaza con las imágenes reales o usa una API)
-import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
-import { is } from 'date-fns/locale';
 
 
 /**
@@ -106,8 +102,9 @@ const contenidosPrueba = {
 const DetallesReserva = ({ isMobile = false }) => {
   // Hooks para obtener parámetros y navegación
   const { reservaId } = useParams();
-  const [searchParams] = useSearchParams();
-  const email = searchParams.get('email') || '';
+  const location = useLocation();
+  // Obtener email desde location.state si existe
+  const email = location.state?.email || '';
   const navigate = useNavigate();
 
   // Estados del componente
@@ -221,85 +218,59 @@ const DetallesReserva = ({ isMobile = false }) => {
   };
 
   // Cargar datos de la reserva
-  const fetchReserva = async (isRetry = false) => {
-    setLoading(true);
+  useEffect(() => {
+    const fetchReserva = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Cambiar a POST para enviar el email
+        const data = await findReservation(reservaId, email);
+        setDatos(data);
+      } catch (err) {
+        setError('No se pudo cargar la reserva.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (reservaId && email) {
+      fetchReserva();
+    }
+  }, [reservaId, email]);
+
+  // Función para manejar la edición de la reserva (centralizada)
+  const handleEditReservationCentral = async (updatedData) => {
+    setIsProcessing(true);
     setError(null);
-    
     try {
-      if (DEBUG_MODE) {
-        // Simulación de carga de datos
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Usar los datos de prueba del servicio
-        const reservaData = { ...datosReservaPrueba, id: reservaId };
-        
-        // Preparar los conductores principal y adicional para la interfaz
-        const conductorPrincipal = reservaData.conductores.find(c => c.rol === 'principal')?.conductor;
-        const segundoConductor = reservaData.conductores.find(c => c.rol === 'secundario')?.conductor;
-        
-        if (conductorPrincipal) {
-          conductorPrincipal.esSegundoConductor = false;
-          reservaData.conductorPrincipal = conductorPrincipal;
-        }
-        
-        if (segundoConductor) {
-          segundoConductor.esSegundoConductor = true;
-          reservaData.segundoConductor = segundoConductor;
-        }
-        
-        setDatos(reservaData);
-        setContenidos(contenidosPrueba);
-        setLoading(false);
-      } else {
-        // Llamada real a la API
-        const reservaData = await withTimeout(findReservation(reservaId, email), 10000);
-        setDatos(reservaData);
-        
-        // Preparar los conductores para la interfaz
-        const conductorPrincipal = reservaData.conductores.find(c => c.rol === 'principal')?.conductor;
-        const segundoConductor = reservaData.conductores.find(c => c.rol === 'secundario')?.conductor;
-        
-        if (conductorPrincipal) {
-          conductorPrincipal.esSegundoConductor = false;
-          reservaData.conductorPrincipal = conductorPrincipal;
-        }
-        
-        if (segundoConductor) {
-          segundoConductor.esSegundoConductor = true;
-          reservaData.segundoConductor = segundoConductor;
-        }
-        
-        setLoading(false);
-      }
-   } catch (err) {
-      setError(
-        err.message ||
-        'No se pudo recuperar los detalles de la reserva. Por favor, verifica el ID y el email proporcionados.'
-      );
-      showError(
-        err.message ||
-        'No se pudo recuperar los detalles de la reserva. Por favor, verifica el ID y el email proporcionados.'
-      );
-      setLoading(false);
-      // Si es un reintento, no volver a reintentar
-      if (!isRetry) {
-        // Esperar 10 segundos y reintentar una vez
-        retryTimerRef.current = setTimeout(() => {
-          fetchReserva(true);
-        }, 10000);
-      }
+      const updated = await editReservation(datos.id, updatedData);
+      setDatos(updated);
+      setShowEditModal(false);
+    } catch (err) {
+      setError(err.message || 'Error al editar la reserva.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  // Llamar a fetchReserva al montar y limpiar el timer al desmontar
-  useEffect(() => {
-    fetchReserva();
-    return () => {
-      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-    };
-    // eslint-disable-next-line
-  }, [reservaId, email]);
-
+  // Función para manejar la eliminación de la reserva (centralizada)
+  const handleDeleteReservationCentral = async (reservaId) => {
+    setIsProcessing(true);
+    setError(null);
+    try {
+      await deleteReservation(reservaId);
+      setShowDeleteModal(false);
+      navigate('/reservations', {
+        state: {
+          message: 'Reserva cancelada correctamente',
+          alertType: 'success'
+        }
+      });
+    } catch (err) {
+      setError(err.message || 'Error al cancelar la reserva.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Renderizado de estados de carga y error
   if (loading) {
@@ -332,9 +303,44 @@ const DetallesReserva = ({ isMobile = false }) => {
   // Formatear fechas/horas para mostrar
   const recogida = formatDateTime(datos.fechaRecogida);
   const devolucion = formatDateTime(datos.fechaDevolucion);
-  
-  // Calcular número de días de la reserva
   const diasReserva = calcularDiasReserva();
+
+  // NUEVO: Resumen de pagos
+  const resumenPagos = (
+    <div className="mb-4">
+      <h5 className="mb-3"><FontAwesomeIcon icon={faCreditCard} /> Resumen de Pagos</h5>
+      <table className="table table-bordered table-sm w-auto">
+        <tbody>
+          <tr>
+            <th>Método de pago inicial</th>
+            <td>{datos.metodo_pago_inicial || '-'}</td>
+          </tr>
+          <tr>
+            <th>Importe pagado inicial</th>
+            <td>{formatCurrency(datos.importe_pagado_inicial || 0)}</td>
+          </tr>
+          <tr>
+            <th>Importe pendiente inicial</th>
+            <td>{formatCurrency(datos.importe_pendiente_inicial || 0)}</td>
+          </tr>
+          <tr>
+            <th>Importe pagado extra</th>
+            <td>{formatCurrency(datos.importe_pagado_extra || 0)}</td>
+          </tr>
+          <tr>
+            <th>Importe pendiente extra</th>
+            <td>{formatCurrency(datos.importe_pendiente_extra || 0)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+
+  // --- NUEVO: Estado de pago de diferencia ---
+  const mostrarPagoDiferencia =
+    typeof datos.diferenciaPendiente === 'number' && datos.diferenciaPendiente > 0;
+  const diferenciaPagada = datos.diferenciaPagada === true || datos.diferenciaPagada === 1;
+  const metodoPagoDiferencia = datos.metodoPagoDiferencia;
 
   return (
     <Container className="detalles-reserva my-5">
@@ -582,17 +588,25 @@ const DetallesReserva = ({ isMobile = false }) => {
                     </h5>
                   </Card.Header>
                   <ListGroup variant="flush">
-                    {datos.extras.map((extra, i) => (
-                      <ListGroup.Item key={i} className="py-3 d-flex justify-content-between align-items-center">
-                        <span>
-                          <FontAwesomeIcon icon={faPlusCircle} className="me-2 text-primary" />
-                          {extra.nombre}
-                        </span>
-                        <Badge bg="light" text="dark" className="price-badge">
-                          {formatCurrency(extra.precio)}
-                        </Badge>
+                    {datos.extras
+                      .filter(extra => extra && typeof extra === 'object' && extra.nombre && typeof extra.precio === 'number')
+                      .map((extra, i) => (
+                        <ListGroup.Item key={i} className="py-3 d-flex justify-content-between align-items-center">
+                          <span>
+                            <FontAwesomeIcon icon={faPlusCircle} className="me-2 text-primary" />
+                            {extra.nombre}
+                          </span>
+                          <Badge bg="light" text="dark" className="price-badge">
+                            {formatCurrency(extra.precio)}
+                          </Badge>
+                        </ListGroup.Item>
+                      ))}
+                    {/* Si no hay extras válidos, mostrar mensaje */}
+                    {datos.extras.filter(extra => extra && typeof extra === 'object' && extra.nombre && typeof extra.precio === 'number').length === 0 && (
+                      <ListGroup.Item className="py-3 text-muted text-center">
+                        No hay extras contratados.
                       </ListGroup.Item>
-                    ))}
+                    )}
                   </ListGroup>
                 </Card>
               )}
@@ -735,6 +749,39 @@ const DetallesReserva = ({ isMobile = false }) => {
                   </div>
                 </Card.Body>
               </Card>
+
+              {/* Estado de pago de diferencia si aplica */}
+              {mostrarPagoDiferencia && (
+                <Card className="mb-4 diferencia-pago-card">
+                  <Card.Header className="bg-warning text-dark">
+                    <FontAwesomeIcon icon={faCreditCard} className="me-2" />
+                    Pago de diferencia pendiente
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="mb-2">
+                      <strong>Importe pendiente:</strong> {formatCurrency(datos.diferenciaPendiente)}
+                    </div>
+                    <div className="mb-2">
+                      <strong>Método elegido:</strong> {metodoPagoDiferencia === 'tarjeta' ? 'Tarjeta (Redsys)' : metodoPagoDiferencia === 'efectivo' ? 'Efectivo en oficina' : 'No especificado'}
+                    </div>
+                    <div className="mb-2">
+                      <strong>Estado:</strong> {diferenciaPagada ? (
+                        <span className="text-success">Pagado</span>
+                      ) : (
+                        <span className="text-danger">Pendiente de pago</span>
+                      )}
+                    </div>
+                    {!diferenciaPagada && (
+                      <div className="mt-3">
+                        <Button variant="success" onClick={() => navigate(`/pago-diferencia/${datos.id}`)}>
+                          <FontAwesomeIcon icon={faCreditCard} className="me-2" />
+                          Pagar diferencia ahora
+                        </Button>
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
+              )}
 
               {/* Paneles acordeón con información importante */}
               {/* Información Importante */}
@@ -1065,11 +1112,7 @@ const DetallesReserva = ({ isMobile = false }) => {
           show={showEditModal}
           onHide={() => setShowEditModal(false)}
           reservationData={datos}
-          onSave={(updatedData) => {
-            // Actualizar los datos locales después de la edición
-            setDatos({...datos, ...updatedData});
-            setShowEditModal(false);
-          }}
+          onSave={handleEditReservationCentral}
         />
       )}
 
@@ -1079,15 +1122,7 @@ const DetallesReserva = ({ isMobile = false }) => {
           show={showDeleteModal}
           onHide={() => setShowDeleteModal(false)}
           reservationId={datos.id}
-          onConfirm={() => {
-            // Redireccionar después de confirmar la eliminación
-            navigate('/reservations', { 
-              state: { 
-                message: 'Reserva cancelada correctamente',
-                alertType: 'success'
-              } 
-            });
-          }}
+          onConfirm={() => handleDeleteReservationCentral(datos.id)}
         />
       )}
     </Container>

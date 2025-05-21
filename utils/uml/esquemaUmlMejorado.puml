@@ -177,6 +177,11 @@ package "Reservas" <<Transaction>> {
     + DECIMAL(10,2) precio_dia
     + DECIMAL(10,2) precio_impuestos
     + DECIMAL(10,2) precio_total
+    + ENUM('tarjeta','efectivo') metodo_pago_inicial
+    + DECIMAL(10,2) importe_pagado_inicial
+    + DECIMAL(10,2) importe_pendiente_inicial
+    + DECIMAL(10,2) importe_pagado_extra
+    + DECIMAL(10,2) importe_pendiente_extra
     + ENUM('pendiente','confirmada','cancelada') estado
     + TEXT notas_internas
     + DATETIME created_at
@@ -197,10 +202,6 @@ package "Reservas" <<Transaction>> {
     + INT id PK
     + VARCHAR nombre UNIQUE 'cancelación | devolución tardía | recogida tardía'
     + ENUM('porcentaje','fijo', 'importe_dia') tipo_tarifa
-    + DECIMAL valor_tarifa 'A decidir por la empresa, si se aplicará un importe fijo o un porcentaje del precio de la reserva o el importe de un día de la reserva'
-    + TEXT descripcion
-    + DATETIME created_at
-    + DATETIME updated_at
   }
 
   class Penalizacion {

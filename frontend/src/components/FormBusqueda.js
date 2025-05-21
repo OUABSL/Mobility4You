@@ -351,31 +351,24 @@ const FormBusqueda = ({
   if (collapsible && !expanded) {
     return (
       <div
-        className={`form-busqueda-collapsed ${isFixedForm ? 'fixed-search' : ''} w-100 d-flex flex-row justify-content-between align-items-center`}
-        style={{ top: isFixedForm ? `${navbarHeight}px` : 'auto' }}
+      className={`form-busqueda-collapsed ${isFixedForm ? 'fixed-search' : ''} w-100 d-flex flex-row justify-content-between align-items-center`}
+      style={{ top: isFixedForm ? `${navbarHeight}px` : 'auto' }}
       >
-        <Row className="align-items-center" style={{ display: 'contents' }}>
-          <Col>
-            <span><strong>Recogida:</strong> {pickupLocation || "No definido"}</span>
-          </Col>
-          <Col>
-            <span>
-              <strong>Devolución:</strong>{" "}
-              {showDropoffLocation
-                ? dropoffLocation || "No definido"
-                : pickupLocation || "Igual que recogida"}
-            </span>
-          </Col>
-          <Col>
-            <span>
-              <strong>Fechas:</strong> {format(pickupDate, 'd MMM')} - {format(dropoffDate, 'd MMM')}
-            </span>
-          </Col>
-        </Row>
-        {/* NUEVO BLOQUE: Botón para modificar y expandir formulario */}
+      <div className="d-flex flex-row align-items-center justify-content-between w-100 flex-wrap">
+        <span className="me-3 ms-1"><strong>Recogida:</strong> {pickupLocation || "No definido"}</span>
+        <span className="me-3 ms-1">
+        <strong>Devolución:</strong>{" "}
+        {showDropoffLocation
+          ? dropoffLocation || "No definido"
+          : pickupLocation || "Igual que recogida"}
+        </span>
+        <span className="me-3 ms-1">
+        <strong>Fechas:</strong> {format(pickupDate, 'd MMM')} - {format(dropoffDate, 'd MMM')}
+        </span>
         <Button onClick={handleExpand} className="btn-modificar d-flex align-items-center justify-content-center bg-none">
-          <FontAwesomeIcon icon={faEdit} className="me-1" />
+        <FontAwesomeIcon icon={faEdit} className="me-1" />
         </Button>
+      </div>
       </div>
     );
   }
@@ -383,46 +376,45 @@ const FormBusqueda = ({
 
   return (
     <div className="search-section w-100" style={{ position: 'relative' }}>
-      <div className={`search-form bg-light text-dark mt-5 mx-5 p-3 rounded ${isMobile ? 'mobile-form' : ''}`}>
-        <Form onSubmit={handleSubmit}>
-          {/* Icono de cierre para formulario expandido */}
-          {listado && (
-          <div
-            className="expand-close-icon align-end"
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '60px',
-              justifySelf: 'flex-end',
-              cursor: 'pointer',
-              fontSize: '1.5rem'
-            }}
-            onClick={handleCloseExpand}
-          >
-            <FontAwesomeIcon icon={faTimes} />
-          </div>
-          )}
-          {/* Selección de tipo de búsqueda */}
-          <Row className={`mb-3 ${isMobile ? 'flex-nowrap overflow-auto' : ''}`}>
-            <Col>
-              <div className={`d-flex ${isMobile ? 'flex-row' : 'flex-wrap'}`}>
-                {searchTypes.map(type => (
-                  <Button
-                    key={type.id}
-                    variant={tipoBusqueda === type.id ? 'primario' : 'outline-primario'}
-                    className={`me-2 mb-2 tipo-btn`}
-                    onClick={() => {
-                      setTipoBusqueda(type.id);
-                        setGrupoSeleccionado(null);
-                      }}
-                      >
-                      <FontAwesomeIcon icon={type.icon} className="me-1" />
-                      {type.label}
-                      </Button>
-                    ))}
-                    </div>
-                  </Col>
-                  </Row>
+      <div className={`search-form bg-light text-dark mt-5 p-3 rounded ${isMobile ? 'mobile-form' : ''} ${isFixedForm ? '' : 'mx-5'}`}>        <Form onSubmit={handleSubmit}>
+        {/* Icono de cierre para formulario expandido */}
+        {listado && (
+        <div
+          className="expand-close-icon align-end"
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '60px',
+            justifySelf: 'flex-end',
+            cursor: 'pointer',
+            fontSize: '1.5rem'
+          }}
+          onClick={handleCloseExpand}
+        >
+          <FontAwesomeIcon icon={faTimes} />
+        </div>
+        )}
+        {/* Selección de tipo de búsqueda */}
+        <Row className={`mb-3 ${isMobile ? 'flex-nowrap overflow-auto' : ''}`}>
+          <Col>
+            <div className={`d-flex ${isMobile ? 'flex-row' : 'flex-wrap'}`}>
+              {searchTypes.map(type => (
+              <Button
+                key={type.id}
+                variant={tipoBusqueda === type.id ? 'primario' : 'outline-primario'}
+                className={`me-2 mb-2 tipo-btn`}
+                onClick={() => {
+                  setTipoBusqueda(type.id);
+                  setGrupoSeleccionado(null);
+                }}
+              >
+                <FontAwesomeIcon icon={type.icon} className="me-1" />
+                {type.label}
+              </Button>
+                ))}
+            </div>
+          </Col>
+        </Row>
 
                   
           {/* Selección de ubicaciones de recogida y devolución */}

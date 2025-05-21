@@ -68,27 +68,38 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
     
     // Validar campos
     if (!reservaIdValid || !emailValid) {
-      setError('Por favor, complete correctamente ambos campos.');
+      setError('Por favor, completa correctamente ambos campos.');
       return;
     }
     
     setLoading(true);
     setError(null);
+    setSuccess(null);
     
     try {
       // Intentar buscar la reserva
       await findReservation(reservaId, email);
       
       // Si llegamos aquí, la reserva existe
+      setLoading(false);
+      setSuccess('Reserva encontrada. Redirigiendo...');
+      
       // Redirigir a la página de detalles
-      navigate(`/reservations/${reservaId}?email=${encodeURIComponent(email)}`);
+      setTimeout(() => {
+        navigate(`/reservations/${reservaId}`, { 
+          state: { 
+            email,
+            // Pasamos a la página de detalles que venimos de la consulta
+            source: 'consulta'
+          } 
+        });
+      }, 1200);
     } catch (err) {
       console.error('Error al buscar reserva:', err);
       setError(
         err.message || 
         'No se encontró ninguna reserva con esos datos. Por favor, verifique y vuelva a intentar.'
       );
-    } finally {
       setLoading(false);
     }
   };

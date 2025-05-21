@@ -22,6 +22,7 @@ import axios from 'axios';
 import '../../css/ReservaClienteConfirmar.css';
 import CardLogo from '../../assets/img/general/logo_visa_mastercard.png';
 import paypalLogo from '../../assets/img/general/paypal_logo.png';
+import { createReservation, editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
 
 const ReservaClienteConfirmar = () => {
   const navigate = useNavigate();
@@ -72,22 +73,8 @@ const ReservaClienteConfirmar = () => {
         setError('No se encontraron datos de reserva. Por favor, inicia el proceso desde la selección de vehículo.');
         return;
       }
-      
-      const parsedData = JSON.parse(storedData);
-      
-      // Convertir fechas de string a Date si es necesario
-      if (parsedData.fechas) {
-        if (typeof parsedData.fechas.pickupDate === 'string') {
-          parsedData.fechas.pickupDate = new Date(parsedData.fechas.pickupDate);
-        }
-        if (typeof parsedData.fechas.dropoffDate === 'string') {
-          parsedData.fechas.dropoffDate = new Date(parsedData.fechas.dropoffDate);
-        }
-      }
-      
-      setReservaData(parsedData);
+      setReservaData(JSON.parse(storedData));
     } catch (err) {
-      console.error('Error al cargar datos de reserva:', err);
       setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
     }
   }, []);
@@ -122,72 +109,59 @@ const ReservaClienteConfirmar = () => {
   // Validar los datos del formulario antes de enviarlos
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validación del conductor principal
-    if (!formData.nombre || !formData.apellidos || !formData.email || !formData.telefono || 
-        !formData.fechaNacimiento || !formData.nacionalidad || !formData.numeroDocumento || 
-        !formData.calle || !formData.ciudad || !formData.provincia || !formData.codigoPostal ||
-        !formData.aceptaTerminos) {
-        console.log(JSON.stringify(formData));
-      setError('Por favor, completa todos los campos obligatorios del conductor principal.');
-      return;
-    }
-
-    // Validación del segundo conductor si está seleccionado
-    if (formData.tieneSegundoConductor) {
-      if (!formData.segundoConductor.nombre || !formData.segundoConductor.apellidos || 
-          !formData.segundoConductor.email || !formData.segundoConductor.fechaNacimiento) {
-        setError('Por favor, completa todos los campos obligatorios del segundo conductor.');
-        return;
-      }
-    }
-
     setLoading(true);
     setError(null);
-
     try {
-      // Actualizar datos de reserva con información completa
-      const datosConductor = {
-        ...reservaData,
-        conductorPrincipal: {
-          nombre: formData.nombre,
-          apellidos: formData.apellidos,
-          email: formData.email,
-          telefono: formData.telefono,
-          fechaNacimiento: formData.fechaNacimiento,
-          nacionalidad: formData.nacionalidad,
-          tipoDocumento: formData.tipoDocumento,
-          numeroDocumento: formData.numeroDocumento,
-          direccion: {
-            calle: formData.calle,
-            ciudad: formData.ciudad,
-            provincia: formData.provincia,
-            pais: formData.pais,
-            codigoPostal: formData.codigoPostal
-          }
-        },
-        tieneSegundoConductor: formData.tieneSegundoConductor,
-        segundoConductor: formData.tieneSegundoConductor ? formData.segundoConductor : null,
-        metodoPago: formData.metodoPago
-      };
-      
-      // Guardar en sessionStorage para mantener los datos
-      sessionStorage.setItem('reservaData', JSON.stringify(datosConductor));
-      
-      // Simular procesamiento
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Redireccionar según método de pago
-      if (formData.metodoPago === 'efectivo') {
-        // Para efectivo, ir directamente a confirmación
-        navigate('/reservation-confirmation/exito');
-      } else {
-        // Para tarjeta/PayPal, ir a proceso de pago
-        navigate('/reservation-confirmation/pago');
+      // Validación básica
+      if (!formData.nombre || !formData.apellidos || !formData.email || !formData.telefono || 
+          !formData.fechaNacimiento || !formData.nacionalidad || !formData.numeroDocumento || 
+          !formData.calle || !formData.ciudad || !formData.provincia || !formData.codigoPostal ||
+          !formData.aceptaTerminos) {
+        setError('Por favor, completa todos los campos obligatorios y acepta los términos.');
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Error al procesar los datos del conductor:', error);
-      setError('Ha ocurrido un error al procesar tus datos. Por favor, inténtalo de nuevo.');
+      if (!reservaData) throw new Error('No hay datos de reserva.');
+      // Calcular importes pagados/pendientes según método de pago
+      let metodo_pago_inicial = formData.metodoPago;
+      let importe_pagado_inicial = 0;
+      let importe_pendiente_inicial = 0;
+      const total = reservaData.detallesReserva?.total || reservaData.precioTotal || 0;
+      if (metodo_pago_inicial === 'tarjeta' || metodo_pago_inicial === 'paypal') {
+        importe_pagado_inicial = total;
+        importe_pendiente_inicial = 0;
+      } else {
+        importe_pagado_inicial = 0;
+        importe_pendiente_inicial = total;
+      }
+      // Actualizar datos de reserva
+      const updatedReserva = {
+        ...reservaData,
+        conductor: formData,
+        metodo_pago_inicial,
+        importe_pagado_inicial,
+        importe_pendiente_inicial,
+        importe_pagado_extra: 0,
+        importe_pendiente_extra: 0
+      };
+      let result;
+      if (DEBUG_MODE) {
+        if (updatedReserva.id) {
+          result = await editReservation(updatedReserva.id, updatedReserva);
+        } else {
+          result = await createReservation(updatedReserva);
+        }
+      } else {
+        if (updatedReserva.id) {
+          result = await editReservation(updatedReserva.id, updatedReserva);
+        } else {
+          result = await createReservation(updatedReserva);
+        }
+      }
+      sessionStorage.setItem('reservaData', JSON.stringify(result));
+      navigate('/reservation-confirmation/pago');
+    } catch (err) {
+      setError(err.message || 'Error al confirmar la reserva.');
     } finally {
       setLoading(false);
     }
@@ -760,10 +734,12 @@ const ReservaClienteConfirmar = () => {
                     <div className="extras mb-3">
                       <strong>Extras seleccionados:</strong>
                       <ul className="extras-list">
-                        {extras.map((extra, index) => (
+                        {extras.filter(extra => extra && typeof extra === 'object' && extra.nombre).map((extra, index) => (
                           <li key={index}>
                             <FontAwesomeIcon icon={faPlus} className="me-2" />
-                            {extra.nombre} ({extra.precio.toFixed(2)}€/día)
+                            {extra.nombre} (
+                              {typeof extra.precio === 'number' ? extra.precio.toFixed(2) : '0.00'}€/día
+                            )
                           </li>
                         ))}
                       </ul>
@@ -773,26 +749,26 @@ const ReservaClienteConfirmar = () => {
                   <hr />
 
                   {/* Detalles del precio */}
-                  {detallesReserva && (
+                  {detallesReserva && typeof detallesReserva.precioCocheBase === 'number' && (
                     <div className="detalles-precio">
                       <div className="d-flex justify-content-between mb-2">
                         <span>Precio base:</span>
-                        <span>{detallesReserva.precioCocheBase.toFixed(2)}€</span>
+                        <span>{typeof detallesReserva.precioCocheBase === 'number' ? detallesReserva.precioCocheBase.toFixed(2) : '0.00'}€</span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
                         <span>IVA (21%):</span>
-                        <span>{detallesReserva.iva.toFixed(2)}€</span>
+                        <span>{typeof detallesReserva.iva === 'number' ? detallesReserva.iva.toFixed(2) : '0.00'}€</span>
                       </div>
                       {detallesReserva.precioExtras > 0 && (
                         <div className="d-flex justify-content-between mb-2">
                           <span>Extras:</span>
-                          <span>{detallesReserva.precioExtras.toFixed(2)}€</span>
+                          <span>{typeof detallesReserva.precioExtras === 'number' ? detallesReserva.precioExtras.toFixed(2) : '0.00'}€</span>
                         </div>
                       )}
                       <hr />
                       <div className="d-flex justify-content-between fw-bold">
                         <span>Total:</span>
-                        <span>{detallesReserva.total.toFixed(2)}€</span>
+                        <span>{typeof detallesReserva.total === 'number' ? detallesReserva.total.toFixed(2) : '0.00'}€</span>
                       </div>
                     </div>
                   )}

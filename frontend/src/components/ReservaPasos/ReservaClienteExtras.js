@@ -17,6 +17,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import '../../css/ReservaClienteExtras.css';
+import { createReservation, editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
 
 import wifiLogo from '../../assets/img/extras/wifi.png';
 import gpsLogo from '../../assets/img/extras/gps.png';
@@ -72,26 +73,12 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     try {
       const storedData = sessionStorage.getItem('reservaData');
       if (!storedData) {
-        setError('No se encontraron datos de reserva. Por favor, inicia el proceso desde la selección de vehículo.');
+        setError('No se encontraron datos de reserva.');
         return;
       }
-      
-      const parsedData = JSON.parse(storedData);
-      
-      // Convertir fechas de string a Date
-      if (parsedData.fechas) {
-        if (typeof parsedData.fechas.pickupDate === 'string') {
-          parsedData.fechas.pickupDate = new Date(parsedData.fechas.pickupDate);
-        }
-        if (typeof parsedData.fechas.dropoffDate === 'string') {
-          parsedData.fechas.dropoffDate = new Date(parsedData.fechas.dropoffDate);
-        }
-      }
-      
-      setReservaData(parsedData);
+      setReservaData(JSON.parse(storedData));
     } catch (err) {
-      console.error('Error al cargar datos de reserva:', err);
-      setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
+      setError('Error al cargar datos de reserva.');
     }
   }, []);
   
@@ -142,26 +129,35 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   // Manejador para continuar con la reserva
   const handleContinuar = async () => {
     setLoading(true);
-    
+    setError(null);
     try {
-      // Actualizar los datos de la reserva con los extras seleccionados
-      const updatedReservaData = {
+      if (!reservaData) throw new Error('No hay datos de reserva.');
+      const updatedReserva = {
         ...reservaData,
-        extras: extrasSeleccionados.map(id => extrasDisponibles.find(e => e.id === id)),
-        detallesReserva
+        extras: extrasSeleccionados,
+        detallesReserva,
+        totalExtras
       };
-      
-      // Guardar datos actualizados en sessionStorage
-      sessionStorage.setItem('reservaData', JSON.stringify(updatedReservaData));
-      
-      // Simulamos una espera de red (opcional en desarrollo)
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Navegar al siguiente paso (confirmación)
+      let result;
+      if (DEBUG_MODE) {
+        // Simula crear o editar según si ya tiene id
+        if (updatedReserva.id) {
+          result = await editReservation(updatedReserva.id, updatedReserva);
+        } else {
+          result = await createReservation(updatedReserva);
+        }
+      } else {
+        // Producción: igual
+        if (updatedReserva.id) {
+          result = await editReservation(updatedReserva.id, updatedReserva);
+        } else {
+          result = await createReservation(updatedReserva);
+        }
+      }
+      sessionStorage.setItem('reservaData', JSON.stringify(result));
       navigate('/reservation-confirmation/datos');
-    } catch (error) {
-      console.error('Error al procesar los extras:', error);
-      setError('Ha ocurrido un error al procesar tu selección. Por favor, inténtalo de nuevo.');
+    } catch (err) {
+      setError(err.message || 'Error al continuar con la reserva.');
     } finally {
       setLoading(false);
     }

@@ -132,11 +132,24 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
       setError('Por favor calcule el precio antes de guardar los cambios');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
+      // Si hay diferencia positiva, redirigir a pago de diferencia
+      if (priceEstimate.difference > 0) {
+        // Guardar datos temporales para el pago de diferencia
+        sessionStorage.setItem('editReservaData', JSON.stringify({
+          id: reservationData.id,
+          formData,
+          priceEstimate
+        }));
+        // Redirigir a la pantalla de pago de diferencia
+        window.location.href = `/pago-diferencia/${reservationData.id}`;
+        return;
+      }
+      // Si no hay diferencia positiva, guardar normalmente
       const updatedData = await editReservation(
         reservationData.id,
         {
