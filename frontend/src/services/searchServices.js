@@ -3,7 +3,7 @@ import axios from 'axios';
 import { withTimeout } from './func';
 
 // Constante para modo debug
-export const DEBUG_MODE = true; // Cambiar a false en producción
+export const DEBUG_MODE = false; // Cambiar a false en producción
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 /**

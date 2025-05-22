@@ -15,30 +15,35 @@ import os
 import sys
 import environ
 
-
-# If using django-environ, uncomment the following lines:
-env = environ.Env()
-environ.Env.read_env()
-
-# usar os.environ.get en su lugar
-# def env(key, default=None):
-#     return os.environ.get(key, default)
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Detectar entorno y cargar el archivo .env adecuado
+env = environ.Env()
+DJANGO_ENV = os.environ.get('DJANGO_ENV', 'development')
+if DJANGO_ENV == 'production':
+    env_file = os.path.join(BASE_DIR, '.env.prod')
+else:
+    env_file = os.path.join(BASE_DIR, '.env.dev')
+environ.Env.read_env(env_file)
+
+# Secret key y debug desde el entorno
+SECRET_KEY = env('SECRET_KEY', default='claveprivadatemporal')
+DEBUG = env.bool('DEBUG', default=(DJANGO_ENV != 'production'))
+ALLOWED_HOSTS = env.list('ALLOWED_HOST', default=['localhost', '127.0.0.1'])
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-f16j8h&!wzwu5(kuuoru==z1#r7j85_hxhntu0uj7a(vr7ud2o'
+# SECRET_KEY = 'django-insecure-f16j8h&!wzwu5(kuuoru==z1#r7j85_hxhntu0uj7a(vr7ud2o'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
 
 #Cambiar ALLOWED_HOSTS para permitir conexiones locales:
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -92,11 +97,17 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': env('MYSQL_DATABASE', default='mobility4you'),
+        'USER': env('MYSQL_USER', default='mobility'),
+        'PASSWORD': env('MYSQL_PASSWORD', default='miclave'),
+        'HOST': env('DB_HOST', default='db'),  # 'db' para Docker Compose, 'localhost' para local
+        'PORT': env('DB_PORT', default='3306'),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 

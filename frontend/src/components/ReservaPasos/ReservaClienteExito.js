@@ -57,7 +57,7 @@ const ReservaClienteExito = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `reserva_${reservaCompletada.id || 'movility4you'}.json`;
+        a.download = `reserva_${reservaCompletada.id || 'mobility4you'}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

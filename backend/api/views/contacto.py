@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from ..serializers.contacto import ContactoSerializer
-from ..services.notificaciones import enviar_email_contacto
+from ..services.notifications import enviar_email_contacto
 
 class ContactoView(APIView):
     """

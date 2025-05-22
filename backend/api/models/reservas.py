@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from .vehiculos import Vehiculo
 from .lugares import Lugar
 from .politicasPago import PoliticaPago, TipoPenalizacion
-from .marketing import Promocion
+from .promociones import Promocion
 
 class Reserva(models.Model):
     ESTADO_CHOICES = [
@@ -71,30 +71,22 @@ class Reserva(models.Model):
     referencia_externa = models.CharField(_("Referencia externa"), max_length=100, blank=True)
     
     # Campos de control
-    creado = models.DateTimeField(auto_now_add=True)
-    actualizado = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Reserva")
         verbose_name_plural = _("Reservas")
-        ordering = ['-fecha_recogida']
+        ordering = ['-created_at']
         indexes = [
             models.Index(
                 fields=['fecha_recogida', 'fecha_devolucion'],
                 name='idx_reserva_fechas'
             ),
-            models.Index(
-                fields=['estado', 'fecha_recogida'],
-                name='idx_reserva_estado_fecha'
-            ),
-            models.Index(
-                fields=['usuario', 'estado'],
-                name='idx_reserva_usuario_estado'
-            ),
         ]
     
     def __str__(self):
-        return f"R{self.id} - {self.vehiculo} ({self.fecha_recogida:%d/%m/%Y})"
+        return f"Reserva {self.pk} - {self.usuario} - {self.vehiculo}"
     
     def dias_alquiler(self):
         """Calcula el número de días de alquiler"""
@@ -112,9 +104,7 @@ class Reserva(models.Model):
     
     def generar_codigo_reserva(self):
         """Genera un código de reserva único"""
-        if not self.id:
-            return None
-        return f"R{self.id:08d}"
+        return f"R{self.pk:06d}"
     
     def calcular_precios(self):
         """Calcula/recalcula todos los precios de la reserva"""
@@ -170,13 +160,19 @@ class ReservaExtra(models.Model):
     nombre = models.CharField(_("Nombre"), max_length=100)
     descripcion = models.TextField(_("Descripción"), blank=True)
     precio = models.DecimalField(_("Precio"), max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Extra de reserva")
         verbose_name_plural = _("Extras de reserva")
+        ordering = ["nombre"]
+        indexes = [
+            models.Index(fields=["reserva", "nombre"]),
+        ]
     
     def __str__(self):
-        return f"{self.nombre} - {self.precio}€"
+        return f"{self.nombre} ({self.reserva})"
 
 class ReservaConductor(models.Model):
     ROL_CHOICES = [
@@ -205,18 +201,20 @@ class ReservaConductor(models.Model):
     pais = models.CharField(_("País"), max_length=100)
     codigo_postal = models.CharField(_("Código Postal"), max_length=10)
     
+    # Campos de control
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     class Meta:
-        verbose_name = _("Conductor")
-        verbose_name_plural = _("Conductores")
-        constraints = [
-            models.UniqueConstraint(
-                fields=['reserva', 'rol'],
-                name='unique_reserva_rol'
-            )
+        verbose_name = _("Conductor de reserva")
+        verbose_name_plural = _("Conductores de reserva")
+        unique_together = (('reserva', 'email'),)
+        indexes = [
+            models.Index(fields=['reserva', 'rol']),
         ]
     
     def __str__(self):
-        return f"{self.nombre} {self.apellidos} - {self.get_rol_display()}"
+        return f"{self.nombre_completo()} - {self.rol} ({self.reserva})"
     
     def nombre_completo(self):
         """Retorna nombre completo del conductor"""
@@ -225,8 +223,6 @@ class ReservaConductor(models.Model):
     def edad(self):
         """Calcula la edad del conductor"""
         from django.utils import timezone
-        import datetime
-        
         hoy = timezone.now().date()
         return hoy.year - self.fecha_nacimiento.year - (
             (hoy.month, hoy.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
@@ -239,17 +235,21 @@ class Penalizacion(models.Model):
     )
     tipo_penalizacion = models.ForeignKey(
         TipoPenalizacion, related_name="penalizaciones",
-        on_delete=models.RESTRICT
+        on_delete=models.CASCADE
     )
     importe = models.DecimalField(_("Importe"), max_digits=10, decimal_places=2)
-    fecha = models.DateTimeField(_("Fecha"))
+    fecha = models.DateTimeField(_("Fecha"), auto_now_add=True)
     descripcion = models.TextField(_("Descripción"), blank=True)
-    aplicada = models.BooleanField(_("Aplicada"), default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Penalización")
         verbose_name_plural = _("Penalizaciones")
         ordering = ['-fecha']
+        indexes = [
+            models.Index(fields=['reserva', 'tipo_penalizacion']),
+        ]
     
     def __str__(self):
-        return f"{self.tipo_penalizacion} - {self.importe}€"
+        return f"{self.reserva} - {self.tipo_penalizacion}: {self.importe}€"

@@ -7,7 +7,7 @@ import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 // Constante para modo debug
-export const DEBUG_MODE = true; // Cambiar a false en producción
+export const DEBUG_MODE = false; // Cambiar a false en producción
 
 /*
   * Función para crear una nueva reserva

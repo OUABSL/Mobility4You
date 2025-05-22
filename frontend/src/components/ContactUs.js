@@ -29,7 +29,7 @@ import '../css/ContactUs.css';
 
 // Para código de producción/desarrollo
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = false;
 
 const ContactUs = () => {
   // Estados para el formulario

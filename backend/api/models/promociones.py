@@ -13,11 +13,16 @@ class Promocion(models.Model):
     limitada = models.BooleanField(_("Limitada"), default=False)
     limite_usos = models.PositiveIntegerField(_("Límite de usos"), null=True, blank=True)
     usos_actuales = models.PositiveIntegerField(_("Usos actuales"), default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Promoción")
         verbose_name_plural = _("Promociones")
         ordering = ['-fecha_inicio']
+        indexes = [
+            models.Index(fields=['activo', 'fecha_inicio', 'fecha_fin']),
+        ]
     
     def __str__(self):
         return f"{self.nombre} ({self.descuento_pct}%)"
@@ -34,30 +39,3 @@ class Promocion(models.Model):
             return False
             
         return self.fecha_inicio <= hoy <= self.fecha_fin
-
-class Contenido(models.Model):
-    TIPO_CHOICES = [
-        ('blog', _('Blog')),
-        ('faq', _('FAQ')),
-        ('legal', _('Legal')),
-        ('info', _('Información')),
-        ('mini_section', _('Sección mínima')),
-    ]
-    
-    tipo = models.CharField(_("Tipo"), max_length=20, choices=TIPO_CHOICES)
-    titulo = models.CharField(_("Título"), max_length=255)
-    subtitulo = models.CharField(_("Subtítulo"), max_length=255, blank=True)
-    cuerpo = models.TextField(_("Cuerpo"))
-    icono_url = models.CharField(_("Icono"), max_length=100, blank=True)
-    info_adicional = models.JSONField(_("Información adicional"), default=dict, blank=True)
-    publicado = models.BooleanField(_("Publicado"), default=False)
-    destacado = models.BooleanField(_("Destacado"), default=False)
-    orden = models.PositiveSmallIntegerField(_("Orden"), default=0)
-    
-    class Meta:
-        verbose_name = _("Contenido")
-        verbose_name_plural = _("Contenidos")
-        ordering = ['tipo', 'orden', 'titulo']
-    
-    def __str__(self):
-        return f"{self.get_tipo_display()}: {self.titulo}"

@@ -1,8 +1,10 @@
 # api/views/contenidos.py
 from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend
-from ..models.marketing import Contenido, Promocion, Testimonio
-from ..serializers.marketing import ContenidoSerializer, PromocionSerializer, TestimonioSerializer
+from ..models.promociones import Promocion
+from ..models.contenidos import Contenido
+from ..serializers.promociones import PromocionSerializer
+from ..serializers.contenidos import ContenidoSerializer
 
 class ContenidoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Contenido.objects.filter(publicado=True)
@@ -25,7 +27,3 @@ class PromocionViewSet(viewsets.ReadOnlyModelViewSet):
             fecha_inicio__lte=hoy,
             fecha_fin__gte=hoy
         )
-
-class TestimonioViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Testimonio.objects.filter(activo=True)
-    serializer_class = TestimonioSerializer

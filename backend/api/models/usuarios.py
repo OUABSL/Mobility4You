@@ -10,19 +10,16 @@ class Perfil(models.Model):
         ('nie', 'NIE'),
         ('pasaporte', 'Pasaporte'),
     ]
-    
     SEXO_CHOICES = [
         ('masculino', 'Masculino'),
         ('femenino', 'Femenino'),
         ('no_binario', 'No binario'),
     ]
-    
     ROL_CHOICES = [
         ('cliente', 'Cliente'),
         ('admin', 'Administrador'),
         ('empresa', 'Empresa'),
     ]
-    
     usuario = models.OneToOneField(
         User, on_delete=models.CASCADE,
         related_name='perfil'
@@ -43,27 +40,15 @@ class Perfil(models.Model):
     idioma = models.CharField(_("Idioma"), max_length=10, default='es')
     acepta_marketing = models.BooleanField(_("Acepta marketing"), default=False)
     verificado = models.BooleanField(_("Verificado"), default=False)
-    
-    # Campos para testimonios
-    es_testimonio = models.BooleanField(_("Es testimonio"), default=False)
-    testimonio_texto = models.TextField(_("Texto del testimonio"), blank=True)
-    testimonio_rating = models.PositiveSmallIntegerField(_("Valoración"), null=True, blank=True)
-    testimonio_destacado = models.BooleanField(_("Testimonio destacado"), default=False)
-    
-    # Campos de control
-    creado = models.DateTimeField(auto_now_add=True)
-    actualizado = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Perfil")
         verbose_name_plural = _("Perfiles")
-        indexes = [
-            models.Index(fields=['rol', 'verificado']),
-            models.Index(fields=['es_testimonio']),
-        ]
     
     def __str__(self):
-        return f"{self.usuario.get_full_name() or self.usuario.username} ({self.rol})"
+        return f"{self.usuario.username} ({self.rol})"
     
     def nombre_completo(self):
         """Retorna nombre completo del usuario"""

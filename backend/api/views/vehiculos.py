@@ -3,9 +3,7 @@ from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
-import logging
-
+from django.utils.dateparse import parse_datetime
 from ..models.vehiculos import Categoria, GrupoCoche, Vehiculo, ImagenVehiculo
 from ..serializers.vehiculos import (
     CategoriaSerializer, GrupoCocheSerializer, 
@@ -13,6 +11,7 @@ from ..serializers.vehiculos import (
     ImagenVehiculoSerializer
 )
 from ..filters import VehiculoFilter
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +43,7 @@ class VehiculoViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['post'])
     def disponibilidad(self, request):
         """Verifica disponibilidad de vehículos en fechas específicas"""
-        from django.utils.dateparse import parse_datetime
         from api.serializers.vehiculos import VehiculoDisponibleSerializer
-        import logging
-        logger = logging.getLogger(__name__)
 
         try:
             fecha_inicio = parse_datetime(request.data.get('fecha_inicio'))
@@ -60,7 +56,7 @@ class VehiculoViewSet(viewsets.ReadOnlyModelViewSet):
 
             if not fecha_inicio or not fecha_fin:
                 logger.warning("Fechas inválidas en la búsqueda de disponibilidad")
-                raise ValidationError({'error': 'Fechas inválidas'})
+                return Response({'error': 'Fechas inválidas'}, status=400)
 
             # Filtrar vehículos disponibles
             from api.services.vehiculos import buscar_vehiculos_disponibles
@@ -71,10 +67,6 @@ class VehiculoViewSet(viewsets.ReadOnlyModelViewSet):
             serializer = VehiculoDisponibleSerializer(vehiculos, many=True, context={'request': request})
             logger.info(f"{vehiculos.count()} vehículos disponibles encontrados")
             return Response(serializer.data, status=200)
-
-        except ValidationError as e:
-            logger.error(f"Error de validación: {e}")
-            return Response({'error': str(e)}, status=400)
 
         except Exception as e:
             logger.exception("Error inesperado al verificar disponibilidad")

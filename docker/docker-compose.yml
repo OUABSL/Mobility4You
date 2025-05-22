@@ -26,8 +26,8 @@ services:
   # Se utiliza Gunicorn como servidor WSGI
   backend:
     build:
-      context: ./backend
-      dockerfile: ../docker/backend/Dockerfile
+      context: ../backend
+      dockerfile: Dockerfile
     container_name: mobility4you_backend
     restart: always
     volumes:
@@ -55,8 +55,8 @@ services:
   # Se utiliza Nginx como servidor web
   frontend:
     build:
-      context: ./frontend
-      dockerfile: ../docker/frontend/Dockerfile
+      context: ../frontend
+      dockerfile: ./Dockerfile
       args:
         - REACT_APP_API_URL=${REACT_APP_API_URL}
         - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}

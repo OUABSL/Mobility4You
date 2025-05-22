@@ -36,7 +36,7 @@ const extrasDisponibles = [
   {
     id: 2,
     nombre: 'GPS',
-    descripcion: 'Navegador con mapas actualizados',
+    descripcion: 'Navegador con mapas updated_ats',
     precio: 8.95,
     imagen: gpsLogo
   },

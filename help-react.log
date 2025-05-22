@@ -3,13 +3,13 @@ Primero, muévete a la raíz del proyecto y crea la carpeta frontend:
 
 
 
-cd movility-for-you
+cd mobility4you
 npx create-react-app frontend  # Crea el proyecto React
 Esto generará una estructura como esta:
 
 bash
 
-movility-for-you/
+mobility4you/
 │── backend/          # Proyecto Django
 │── frontend/         # Proyecto React
 │── venv/             # Entorno virtual

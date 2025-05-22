@@ -6,7 +6,8 @@ from .models.vehiculos import Categoria, GrupoCoche, Vehiculo, ImagenVehiculo, T
 from .models.lugares import Direccion, Lugar
 from .models.reservas import Reserva, ReservaExtra, ReservaConductor, Penalizacion
 from .models.politicasPago import PoliticaPago, PoliticaIncluye, TipoPenalizacion, PoliticaPenalizacion
-from .models.marketing import Promocion, Contenido
+from .models.promociones import Promocion
+from .models.contenidos import Contenido
 
 # Inlines
 class GrupoCocheInline(admin.TabularInline):
@@ -67,7 +68,7 @@ class VehiculoAdmin(admin.ModelAdmin):
                     'precio_actual', 'disponible', 'activo')
     list_filter = ('disponible', 'activo', 'categoria', 'grupo', 'combustible')
     search_fields = ('marca', 'modelo', 'matricula')
-    readonly_fields = ('creado', 'actualizado')
+    readonly_fields = ('created_at', 'updated_at')
     inlines = [ImagenVehiculoInline, TarifaVehiculoInline]
     fieldsets = (
         ('Información básica', {
@@ -84,7 +85,7 @@ class VehiculoAdmin(admin.ModelAdmin):
             'fields': ('notas_internas',)
         }),
         ('Información del sistema', {
-            'fields': ('creado', 'actualizado'),
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
@@ -142,7 +143,7 @@ class ReservaAdmin(admin.ModelAdmin):
                   'estado', 'precio_total', 'importe_pendiente_total')
     list_filter = ('estado', 'fecha_recogida', 'metodo_pago_inicial')
     search_fields = ('id', 'vehiculo__marca', 'vehiculo__modelo')
-    readonly_fields = ('creado', 'actualizado', 'dias_alquiler', 'generar_codigo_reserva')
+    readonly_fields = ('created_at', 'updated_at', 'dias_alquiler', 'generar_codigo_reserva')
     inlines = [ReservaConductorInline, ReservaExtraInline, PenalizacionInline]
     date_hierarchy = 'fecha_recogida'
     
@@ -166,7 +167,7 @@ class ReservaAdmin(admin.ModelAdmin):
             'fields': ('generar_codigo_reserva', 'referencia_externa', 'notas_internas')
         }),
         ('Información del sistema', {
-            'fields': ('creado', 'actualizado'),
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )

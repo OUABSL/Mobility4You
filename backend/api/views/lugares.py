@@ -17,6 +17,15 @@ class LugarViewSet(viewsets.ReadOnlyModelViewSet):
     def destinos(self, request):
         """Devuelve los destinos destacados o todos los lugares activos"""
         queryset = self.get_queryset().filter(activo=True)
-        # Aquí puedes filtrar por algún criterio de destino si lo necesitas
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def por_ciudad(self, request):
+        """Filtra lugares por ciudad (query param: ciudad)"""
+        ciudad = request.query_params.get('ciudad')
+        if not ciudad:
+            return Response({'error': 'Debe indicar la ciudad'}, status=400)
+        queryset = self.get_queryset().filter(direccion__ciudad__iexact=ciudad)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

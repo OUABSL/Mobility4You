@@ -62,7 +62,7 @@ def calcular_precio_alquiler(vehiculo_id, fecha_inicio, fecha_fin, extras=None,
     from django.utils import timezone
     from datetime import datetime
     import math
-    from ..models.marketing import Promocion
+    from ..models.promociones import Promocion
     
     try:
         # Obtener vehículo

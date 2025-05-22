@@ -5,11 +5,16 @@ from django.utils.translation import gettext_lazy as _
 class Categoria(models.Model):
     nombre = models.CharField(_("Nombre"), max_length=100, unique=True)
     descripcion = models.TextField(_("Descripción"), blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Categoría")
         verbose_name_plural = _("Categorías")
         ordering = ['nombre']
+        indexes = [
+            models.Index(fields=["nombre"]),
+        ]
     
     def __str__(self):
         return self.nombre
@@ -26,11 +31,16 @@ class GrupoCoche(models.Model):
     )
     edad_minima = models.PositiveSmallIntegerField(_("Edad mínima"), default=21)
     descripcion = models.TextField(_("Descripción"), blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Grupo de coche")
         verbose_name_plural = _("Grupos de coches")
         ordering = ['nombre']
+        indexes = [
+            models.Index(fields=["nombre"]),
+        ]
     
     def __str__(self):
         return f"{self.nombre} ({self.categoria.nombre})"
@@ -67,8 +77,8 @@ class Vehiculo(models.Model):
     notas_internas = models.TextField(_("Notas internas"), blank=True)
     
     # Campos de control
-    creado = models.DateTimeField(auto_now_add=True)
-    actualizado = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Vehículo")
@@ -125,13 +135,19 @@ class ImagenVehiculo(models.Model):
     portada = models.BooleanField(_("Imagen de portada"), default=False)
     ancho = models.PositiveIntegerField(_("Ancho"), null=True, blank=True)
     alto = models.PositiveIntegerField(_("Alto"), null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Imagen de vehículo")
         verbose_name_plural = _("Imágenes de vehículos")
+        ordering = ["vehiculo", "-portada"]
+        indexes = [
+            models.Index(fields=["vehiculo", "portada"]),
+        ]
     
     def __str__(self):
-        return f"Imagen {self.id} de {self.vehiculo}"
+        return f"{self.vehiculo} - {self.url}"
 
 class TarifaVehiculo(models.Model):
     vehiculo = models.ForeignKey(
@@ -145,21 +161,13 @@ class TarifaVehiculo(models.Model):
     class Meta:
         verbose_name = _("Tarifa de vehículo")
         verbose_name_plural = _("Tarifas de vehículos")
-        constraints = [
-            models.UniqueConstraint(
-                fields=['vehiculo', 'fecha_inicio'],
-                name='unique_tarifa_vehiculo'
-            )
-        ]
+        unique_together = (('vehiculo', 'fecha_inicio'),)
         indexes = [
-            models.Index(
-                fields=['vehiculo', 'fecha_inicio', 'fecha_fin'],
-                name='idx_tarifa_vehiculo_periodo'
-            )
+            models.Index(fields=['vehiculo', 'fecha_inicio', 'fecha_fin'], name='idx_tarifa_vehiculo_periodo'),
         ]
     
     def __str__(self):
-        return f"{self.vehiculo} - {self.precio_dia}€ ({self.fecha_inicio} a {self.fecha_fin})"
+        return f"{self.vehiculo} - {self.fecha_inicio} a {self.fecha_fin}: {self.precio_dia}€"
 
 class Mantenimiento(models.Model):
     vehiculo = models.ForeignKey(
@@ -170,11 +178,16 @@ class Mantenimiento(models.Model):
     tipo_servicio = models.CharField(_("Tipo de servicio"), max_length=200)
     coste = models.DecimalField(_("Coste"), max_digits=10, decimal_places=2)
     notas = models.TextField(_("Notas"), blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = _("Mantenimiento")
         verbose_name_plural = _("Mantenimientos")
-        ordering = ['-fecha']
+        ordering = ["-fecha"]
+        indexes = [
+            models.Index(fields=["vehiculo", "fecha"]),
+        ]
     
     def __str__(self):
-        return f"{self.tipo_servicio} - {self.vehiculo} ({self.fecha})"
+        return f"{self.vehiculo} - {self.tipo_servicio} ({self.fecha})"

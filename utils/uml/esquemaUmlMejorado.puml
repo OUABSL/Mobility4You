@@ -1,6 +1,6 @@
 @startuml esquemadbMOBILITY4YOU
 ' ================================
-' Diagrama de clases / tablas MySQL (actualizado con TipoPenalizacion, índices compuestos y normalización de Direccion)
+' Diagrama de clases / tablas MySQL (updated_at con TipoPenalizacion, índices compuestos y normalización de Direccion)
 ' ================================
 
 skinparam class {
