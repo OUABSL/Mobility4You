@@ -20,7 +20,7 @@ class PoliticaPenalizacionSerializer(serializers.ModelSerializer):
 
 class PoliticaPagoSerializer(serializers.ModelSerializer):
     items = PoliticaIncluyeSerializer(many=True, read_only=True)
-    penalizaciones = PoliticaPenalizacionSerializer(many=True, read_only=True, source='penalizaciones')
+    penalizaciones = PoliticaPenalizacionSerializer(many=True, read_only=True)
     class Meta:
         model = PoliticaPago
         fields = ['id', 'titulo', 'descripcion', 'deductible', 'items', 'penalizaciones', 'created_at', 'updated_at']

@@ -19,7 +19,7 @@ export const fetchLocations = async () => {
     
     // CAMBIADO: usar el endpoint correcto según urls.py
     const response = await withTimeout(
-      axios.get(`${API_URL}/lugares`),
+      axios.get(`${API_URL}/lugares/`),
       8000
     );
     return response.data;
@@ -105,7 +105,7 @@ export const performSearch = async (searchParams) => {
     
     // CAMBIADO: usar el endpoint correcto
     const response = await withTimeout(
-      axios.post(`${API_URL}/vehiculos/disponibilidad`, searchParams),
+      axios.post(`${API_URL}/vehiculos/disponibilidad/`, searchParams),
       12000
     );
     
