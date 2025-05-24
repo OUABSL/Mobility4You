@@ -1,19 +1,18 @@
 from rest_framework import viewsets, filters
-from django.contrib.auth import get_user_model
-from ..models.usuarios import Perfil
-from ..serializers.usuarios import PerfilSerializer
+from ..models.usuarios import Usuario
+from ..serializers.usuarios import UsuarioSerializer
 
 class UsuarioViewSet(viewsets.ModelViewSet):
-    queryset = Perfil.objects.select_related('usuario').all()
-    serializer_class = PerfilSerializer
+    queryset = Usuario.objects.all()
+    serializer_class = UsuarioSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['usuario__username', 'usuario__email', 'nacionalidad', 'tipo_documento', 'numero_documento']
-    ordering_fields = ['usuario__username', 'fecha_nacimiento', 'rol', 'verificado']
+    search_fields = ['username', 'email', 'nacionalidad', 'tipo_documento', 'numero_documento']
+    ordering_fields = ['username', 'fecha_nacimiento']
 
     def get_queryset(self):
         user = self.request.user
         if user.is_staff:
-            return Perfil.objects.all()
-        return Perfil.objects.filter(usuario=user)
+            return Usuario.objects.all()
+        return Usuario.objects.filter(id=user.id)
 
     # Puedes agregar acciones custom aquí si lo necesitas

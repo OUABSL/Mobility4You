@@ -4,8 +4,7 @@ from django.utils import timezone
 from ..models.vehiculos import Vehiculo
 from ..models.reservas import Reserva
 
-def buscar_vehiculos_disponibles(fecha_inicio, fecha_fin, lugar_id=None, 
-                                 categoria_id=None, grupo_id=None):
+def buscar_vehiculos_disponibles(fecha_inicio, fecha_fin, lugar_id=None, categoria_id=None, grupo_id=None):
     """
     Busca vehículos disponibles según criterios
     
@@ -22,9 +21,9 @@ def buscar_vehiculos_disponibles(fecha_inicio, fecha_fin, lugar_id=None,
     # Base: vehículos activos
     vehiculos = Vehiculo.objects.filter(activo=True)
 
-    # Filtrar por lugar si se especifica
+    # Filtrar por lugar si se especifica (lugar de recogida)
     if lugar_id:
-        vehiculos = vehiculos.filter(lugar_id=lugar_id)
+        vehiculos = vehiculos.filter(lugar_actual_id=lugar_id)
 
     # Filtrar por categoría si se especifica
     if categoria_id:
@@ -35,18 +34,19 @@ def buscar_vehiculos_disponibles(fecha_inicio, fecha_fin, lugar_id=None,
         vehiculos = vehiculos.filter(grupo_id=grupo_id)
 
     # Excluir vehículos con reservas que se solapen con las fechas
-    reservas = Reserva.objects.filter(
-        Q(fecha_recogida__lt=fecha_fin) & Q(fecha_devolucion__gt=fecha_inicio)
-    )
-    vehiculos_ocupados = reservas.values_list('vehiculo_id', flat=True)
-    vehiculos = vehiculos.exclude(id__in=vehiculos_ocupados)
+    reservas_solapadas = Reserva.objects.filter(
+        vehiculo_id__in=vehiculos.values_list('id', flat=True),
+        estado__in=['pendiente', 'confirmada'],
+        fecha_recogida__lt=fecha_fin,
+        fecha_devolucion__gt=fecha_inicio
+    ).values_list('vehiculo_id', flat=True)
+    vehiculos = vehiculos.exclude(id__in=reservas_solapadas)
 
     return vehiculos
 
-def calcular_precio_alquiler(vehiculo_id, fecha_inicio, fecha_fin, extras=None, 
-                              promocion_id=None):
+def calcular_precio_alquiler(vehiculo_id, fecha_inicio, fecha_fin, extras=None, promocion_id=None):
     """
-    Calcula el precio para un alquiler con todos los componentes
+    Calcula el precio total del alquiler de un vehículo
     
     Args:
         vehiculo_id: ID del vehículo
@@ -58,79 +58,39 @@ def calcular_precio_alquiler(vehiculo_id, fecha_inicio, fecha_fin, extras=None,
     Returns:
         Dict con desglose de precios
     """
-    from decimal import Decimal
-    from django.utils import timezone
-    from datetime import datetime
-    import math
+    from ..models.vehiculos import Vehiculo
     from ..models.promociones import Promocion
-    
-    try:
-        # Obtener vehículo
-        vehiculo = Vehiculo.objects.get(id=vehiculo_id)
-        
-        # Calcular días de alquiler
-        if isinstance(fecha_inicio, str):
-            fecha_inicio = datetime.fromisoformat(fecha_inicio.replace('Z', '+00:00'))
-        if isinstance(fecha_fin, str):
-            fecha_fin = datetime.fromisoformat(fecha_fin.replace('Z', '+00:00'))
-            
-        delta = fecha_fin - fecha_inicio
-        dias = math.ceil(delta.total_seconds() / (24 * 3600))
-        
-        # Obtener precio por día vigente
-        tarifa = vehiculo.tarifas.filter(
-            fecha_inicio__lte=fecha_inicio.date(),
-            fecha_fin__gte=fecha_fin.date()
-        ).order_by('-fecha_inicio').first()
-        
-        precio_dia = tarifa.precio_dia if tarifa else vehiculo.precio_base
-        
-        # Calcular precio base
-        precio_base = Decimal(str(precio_dia)) * Decimal(str(dias))
-        
-        # Calcular precio de extras
-        precio_extras = Decimal('0.00')
-        if extras:
-            # Aquí se implementaría la lógica para calcular el costo de extras
-            # según los extras seleccionados
+    from dateutil.relativedelta import relativedelta
+    from decimal import Decimal
+    import math
+
+    vehiculo = Vehiculo.objects.get(id=vehiculo_id)
+    dias = (fecha_fin - fecha_inicio).days
+    if dias < 1:
+        dias = 1
+    precio_base = vehiculo.precio_dia * Decimal(dias)
+
+    # Sumar extras
+    total_extras = Decimal('0.00')
+    if extras:
+        for extra in extras:
+            total_extras += Decimal(str(extra.get('precio', 0)))
+
+    # Aplicar promoción si corresponde
+    descuento = Decimal('0.00')
+    if promocion_id:
+        try:
+            promo = Promocion.objects.get(id=promocion_id, activo=True)
+            descuento = (precio_base + total_extras) * (promo.descuento_pct / Decimal('100'))
+        except Promocion.DoesNotExist:
             pass
-        
-        # Calcular impuestos (21% IVA)
-        subtotal = precio_base + precio_extras
-        impuestos = subtotal * Decimal('0.21')
-        
-        # Aplicar descuento de promoción si aplica
-        descuento = Decimal('0.00')
-        if promocion_id:
-            try:
-                promocion = Promocion.objects.get(
-                    id=promocion_id,
-                    activo=True,
-                    fecha_inicio__lte=timezone.now().date(),
-                    fecha_fin__gte=timezone.now().date()
-                )
-                
-                porcentaje_descuento = promocion.descuento_pct / Decimal('100.00')
-                descuento = subtotal * porcentaje_descuento
-            except Promocion.DoesNotExist:
-                pass
-        
-        # Calcular total
-        total = subtotal + impuestos - descuento
-        
-        return {
-            'vehiculo_id': vehiculo.id,
-            'dias_alquiler': dias,
-            'precio_dia': float(precio_dia),
-            'precio_base': float(precio_base),
-            'precio_extras': float(precio_extras),
-            'subtotal': float(subtotal),
-            'impuestos': float(impuestos),
-            'descuento': float(descuento),
-            'total': float(total)
-        }
-    
-    except Vehiculo.DoesNotExist:
-        raise ValueError("Vehículo no encontrado")
-    except Exception as e:
-        raise ValueError(f"Error al calcular precio: {str(e)}")
+
+    total = precio_base + total_extras - descuento
+    if total < 0:
+        total = Decimal('0.00')
+    return {
+        'precio_base': precio_base,
+        'total_extras': total_extras,
+        'descuento': descuento,
+        'total': total
+    }

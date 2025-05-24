@@ -30,8 +30,8 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         
-        # Solo administradores pueden hacer cambios
-        return request.user.is_staff
+        # Solo administradores pueden hacer cambios - ✅ AGREGAR VERIFICACIÓN
+        return request.user and request.user.is_staff  # ← CAMBIAR ESTA LÍNEA
 
 class AllowAnyForContactOnly(permissions.BasePermission):
     """

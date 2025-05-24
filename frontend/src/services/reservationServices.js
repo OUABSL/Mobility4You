@@ -4,7 +4,7 @@ import axios from 'axios';
 import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
 
 // URL base de la API
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 // Constante para modo debug
 export const DEBUG_MODE = false; // Cambiar a false en producción
@@ -29,8 +29,19 @@ export const createReservation = async (data) => {
       await new Promise(resolve => setTimeout(resolve, 500));
       return crearReservaPrueba(data);
     }
-    // Producción: llamada real a la API
+    
+    // Preparar datos con lógica de pagos
     const mappedData = mapReservationDataToBackend(data);
+    
+    // Calcular importes según método de pago
+    if (mappedData.metodo_pago === 'tarjeta') {
+      mappedData.importe_pagado_inicial = mappedData.precio_total;
+      mappedData.importe_pendiente_inicial = 0;
+    } else { // efectivo
+      mappedData.importe_pagado_inicial = 0;
+      mappedData.importe_pendiente_inicial = mappedData.precio_total;
+    }
+    
     const response = await axios.post(`${API_URL}/reservations/`, mappedData);
     return response.data;
   } catch (error) {
@@ -326,12 +337,36 @@ export const datosReservaPrueba = {
   diferenciaPagada: null,
 
   // NUEVOS CAMPOS DE CONTROL DE PAGOS
-  metodo_pago_inicial: 'tarjeta', // o 'efectivo'
+  metodo_pago: 'tarjeta', // o 'efectivo'
   importe_pagado_inicial: 395.16, // Si es tarjeta, todo pagado; si es efectivo, 0
   importe_pendiente_inicial: 0.00, // Si es tarjeta, 0; si es efectivo, todo el total
   importe_pagado_extra: 0.00, // Importe pagado posteriormente (extras/diferencias)
   importe_pendiente_extra: 0.00 // Importe pendiente de extras/diferencias
 };
+
+// TODO: PLANTEAR LA LÓGICA DE PROCESAMIENTO DE PAGO: Existen otras funciones pendientes de migrar en components/reservaPasos/ReservaClientePago.js
+// 3. Nueva función para procesar pagos
+// export const processPayment = async (reservaId, paymentData) => {
+//   try {
+//     if (DEBUG_MODE) {
+//       await new Promise(resolve => setTimeout(resolve, 500));
+//       // Simular procesamiento de pago
+//       return {
+//         message: 'Pago procesado correctamente',
+//         importe_pendiente_total: 0
+//       };
+//     }
+    
+//     const response = await axios.post(
+//       `${API_URL}/reservations/${reservaId}/procesar_pago/`,
+//       paymentData
+//     );
+//     return response.data;
+//   } catch (error) {
+//     throw error.response?.data || { message: 'Error al procesar el pago.' };
+//   }
+// };
+
 
 // Array de reservas de prueba para simular flujo completo en DEBUG_MODE
 let reservasPrueba = [ { ...datosReservaPrueba } ];
@@ -349,7 +384,7 @@ function editarReservaPrueba(reservaId, data) {
     ...reservasPrueba[idx],
     ...data,
     // Actualizar los nuevos campos de pagos si vienen en data
-    metodo_pago_inicial: data.metodo_pago_inicial ?? reservasPrueba[idx].metodo_pago_inicial,
+    metodo_pago: data.metodo_pago ?? reservasPrueba[idx].metodo_pago,
     importe_pagado_inicial: data.importe_pagado_inicial ?? reservasPrueba[idx].importe_pagado_inicial,
     importe_pendiente_inicial: data.importe_pendiente_inicial ?? reservasPrueba[idx].importe_pendiente_inicial,
     importe_pagado_extra: data.importe_pagado_extra ?? reservasPrueba[idx].importe_pagado_extra,
@@ -360,60 +395,78 @@ function editarReservaPrueba(reservaId, data) {
 
 // Función para crear una nueva reserva en el array de prueba
 function crearReservaPrueba(data) {
-  // Inicializar los campos de pago según el método
-  let metodo_pago_inicial = data.metodo_pago_inicial || data.metodoPago || 'tarjeta';
+  // Calcular importes según método de pago
+  const metodoPago = data.metodo_pago || data.metodoPago || 'tarjeta';
+  const precioTotal = data.precioTotal || 395.16;
+  
   let importe_pagado_inicial = 0;
   let importe_pendiente_inicial = 0;
-  if (metodo_pago_inicial === 'tarjeta') {
-    importe_pagado_inicial = data.precioTotal || 0;
+  
+  if (metodoPago === 'tarjeta') {
+    importe_pagado_inicial = precioTotal;
     importe_pendiente_inicial = 0;
   } else {
     importe_pagado_inicial = 0;
-    importe_pendiente_inicial = data.precioTotal || 0;
+    importe_pendiente_inicial = precioTotal;
   }
+  
   const nueva = {
     ...data,
     id: `R${Math.floor(Math.random()*1e8)}`,
-    metodo_pago_inicial,
+    estado: metodoPago === 'tarjeta' ? 'confirmada' : 'pendiente',
+    metodo_pago: metodoPago,
     importe_pagado_inicial,
     importe_pendiente_inicial,
     importe_pagado_extra: 0,
-    importe_pendiente_extra: 0
+    importe_pendiente_extra: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
+  
   reservasPrueba.push(nueva);
   return nueva;
 }
-
 // Mapeo de datos de reserva del frontend (camelCase/anidado) a backend (snake_case/relacional)
 function mapReservationDataToBackend(data) {
-  // Mapea campos principales
+  // Mapea campos principales incluyendo nuevos campos de pago
   return {
+    // Campos existentes
     vehiculo: data.car?.id || data.vehiculo?.id || data.vehiculo,
     lugar_recogida: data.fechas?.pickupLocation?.id || data.lugarRecogida?.id || data.lugar_recogida,
     lugar_devolucion: data.fechas?.dropoffLocation?.id || data.lugarDevolucion?.id || data.lugar_devolucion,
     fecha_recogida: data.fechas?.pickupDate || data.fechaRecogida || data.fecha_recogida,
     fecha_devolucion: data.fechas?.dropoffDate || data.fechaDevolucion || data.fecha_devolucion,
+    
+    // Precios
     precio_dia: data.car?.precio_dia || data.precio_dia,
-    precio_base: data.precioBase || data.precio_base,
-    precio_extras: data.precioExtras || data.precio_extras,
     precio_impuestos: data.precioImpuestos || data.precio_impuestos,
-    descuento_promocion: data.descuentoPromocion || data.descuento_promocion,
     precio_total: data.precioTotal || data.precio_total,
-    metodo_pago_inicial: data.metodo_pago_inicial || data.metodoPago || 'tarjeta',
+    
+    // NUEVOS CAMPOS DE PAGO
+    metodo_pago: data.metodo_pago || data.metodoPago || 'tarjeta',
     importe_pagado_inicial: data.importe_pagado_inicial || 0,
     importe_pendiente_inicial: data.importe_pendiente_inicial || 0,
     importe_pagado_extra: data.importe_pagado_extra || 0,
     importe_pendiente_extra: data.importe_pendiente_extra || 0,
-    usuario: data.usuario || null, // Si hay login
+    
+    // Relaciones
+    usuario: data.usuario || null,
     politica_pago: data.politicaPago?.id || data.politica_pago,
     promocion: data.promocion?.id || data.promocion,
-    extras: Array.isArray(data.extras) ? data.extras.map(e => e.id || e) : [],
+    
+    // Arrays relacionados
+    extras: Array.isArray(data.extras) ? data.extras.map(e => ({
+      extra_id: e.id || e.extra_id,
+      cantidad: e.cantidad || 1
+    })) : [],
+    
     conductores: Array.isArray(data.conductores) ? data.conductores.map(c => ({
-      conductor: c.conductor?.id || c.conductor_id || c.id,
+      conductor_id: c.conductor?.id || c.conductor_id || c.id,
       rol: c.rol || 'principal',
     })) : [],
+    
+    // Otros campos
     notas_internas: data.notas_internas || '',
-    referencia_externa: data.referencia_externa || '',
+    estado: data.estado || 'pendiente',
   };
 }
-

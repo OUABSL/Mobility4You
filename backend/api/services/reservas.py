@@ -59,7 +59,7 @@ def crear_reserva(datos_reserva):
         precio_impuestos=precios['impuestos'],
         descuento_promocion=precios['descuento'],
         precio_total=precios['total'],
-        metodo_pago_inicial=metodo_pago,
+        metodo_pago=metodo_pago,
         estado='pendiente'
     )
     
@@ -72,15 +72,13 @@ def crear_reserva(datos_reserva):
         reserva.importe_pendiente_inicial = Decimal(str(precios['total']))
     
     reserva.save()
-    
     # Crear extras
-    extras_data = datos_reserva.get('extras_detalles', [])
-    for extra_data in extras_data:
+    extras_data = datos_reserva.get('extras', [])
+    for extra in extras_data:
         ReservaExtra.objects.create(
             reserva=reserva,
-            nombre=extra_data['nombre'],
-            descripcion=extra_data.get('descripcion', ''),
-            precio=extra_data['precio']
+            extra_id=extra['extra_id'],
+            cantidad=extra.get('cantidad', 1)
         )
     
     # Crear conductores

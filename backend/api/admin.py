@@ -2,22 +2,18 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
-from .models.vehiculos import Categoria, GrupoCoche, Vehiculo, ImagenVehiculo, TarifaVehiculo, Mantenimiento
+from .models.vehiculos import Categoria, Vehiculo, ImagenVehiculo, TarifaVehiculo, Mantenimiento
 from .models.lugares import Direccion, Lugar
-from .models.reservas import Reserva, ReservaExtra, ReservaConductor, Penalizacion
+from .models.reservas import Reserva, ReservaConductor, Penalizacion, ReservaExtra, Extras
 from .models.politicasPago import PoliticaPago, PoliticaIncluye, TipoPenalizacion, PoliticaPenalizacion
 from .models.promociones import Promocion
 from .models.contenidos import Contenido
 
 # Inlines
-class GrupoCocheInline(admin.TabularInline):
-    model = GrupoCoche
-    extra = 1
-
 class ImagenVehiculoInline(admin.TabularInline):
     model = ImagenVehiculo
     extra = 1
-    fields = ('url', 'portada', 'ancho', 'alto')
+    fields = ('url', 'portada')  # Eliminados 'ancho', 'alto' porque no existen en el modelo
 
 class TarifaVehiculoInline(admin.TabularInline):
     model = TarifaVehiculo
@@ -31,10 +27,6 @@ class PoliticaPenalizacionInline(admin.TabularInline):
     model = PoliticaPenalizacion
     extra = 1
 
-class ReservaExtraInline(admin.TabularInline):
-    model = ReservaExtra
-    extra = 1
-
 class ReservaConductorInline(admin.TabularInline):
     model = ReservaConductor
     extra = 1
@@ -45,22 +37,20 @@ class PenalizacionInline(admin.TabularInline):
     extra = 0
     readonly_fields = ('fecha',)
 
+class ReservaExtraInline(admin.TabularInline):
+    model = ReservaExtra
+    extra = 1
+    fields = ('extra', 'cantidad')
+
 # Admin para Vehículos
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'vehiculos_count')
     search_fields = ('nombre',)
-    inlines = [GrupoCocheInline]
     
     def vehiculos_count(self, obj):
         return obj.vehiculos.count()
     vehiculos_count.short_description = 'Vehículos'
-
-@admin.register(GrupoCoche)
-class GrupoCocheAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'categoria', 'edad_minima')
-    list_filter = ('categoria', 'edad_minima')
-    search_fields = ('nombre', 'categoria__nombre')
 
 @admin.register(Vehiculo)
 class VehiculoAdmin(admin.ModelAdmin):
@@ -91,8 +81,12 @@ class VehiculoAdmin(admin.ModelAdmin):
     )
     
     def precio_actual(self, obj):
-        precio = obj.precio_actual()
-        return f"{precio}€" if precio else "No definido"
+        from django.utils import timezone
+        today = timezone.now().date()
+        tarifa = obj.tarifavehiculo_set.filter(fecha_inicio__lte=today, fecha_fin__gte=today).order_by('-fecha_inicio').first()
+        if tarifa:
+            return f"{tarifa.precio_dia} €"
+        return "-"
     precio_actual.short_description = 'Precio actual'
 
 @admin.register(Mantenimiento)
@@ -111,12 +105,12 @@ class DireccionAdmin(admin.ModelAdmin):
 
 @admin.register(Lugar)
 class LugarAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'direccion_ciudad', 'telefono', 'email', 'activo')
-    list_filter = ('activo', 'direccion__ciudad', 'direccion__pais')
+    list_display = ('id', 'nombre', 'direccion', 'direccion_ciudad')  # Añadido 'direccion_ciudad'
+    list_filter = ('direccion__ciudad',)
     search_fields = ('nombre', 'direccion__calle', 'direccion__ciudad')
     
     def direccion_ciudad(self, obj):
-        return obj.direccion.ciudad if obj.direccion else "-"
+        return obj.direccion.ciudad if obj.direccion else ""
     direccion_ciudad.short_description = 'Ciudad'
 
 # Admin para Políticas
@@ -132,7 +126,7 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
 
 @admin.register(TipoPenalizacion)
 class TipoPenalizacionAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'tipo_tarifa', 'valor_tarifa')
+    list_display = ('id', 'nombre', 'tipo_tarifa')
     list_filter = ('tipo_tarifa',)
     search_fields = ('nombre',)
 
@@ -141,97 +135,35 @@ class TipoPenalizacionAdmin(admin.ModelAdmin):
 class ReservaAdmin(admin.ModelAdmin):
     list_display = ('id', 'vehiculo_info', 'fecha_recogida', 'fecha_devolucion', 
                   'estado', 'precio_total', 'importe_pendiente_total')
-    list_filter = ('estado', 'fecha_recogida', 'metodo_pago_inicial')
-    search_fields = ('id', 'vehiculo__marca', 'vehiculo__modelo')
-    readonly_fields = ('created_at', 'updated_at', 'dias_alquiler', 'generar_codigo_reserva')
-    inlines = [ReservaConductorInline, ReservaExtraInline, PenalizacionInline]
-    date_hierarchy = 'fecha_recogida'
-    
-    fieldsets = (
-        ('Información básica', {
-            'fields': ('estado', 'usuario', 'vehiculo', 'politica_pago', 'promocion')
-        }),
-        ('Fechas y lugares', {
-            'fields': (('fecha_recogida', 'lugar_recogida'), 
-                      ('fecha_devolucion', 'lugar_devolucion'), 'dias_alquiler')
-        }),
-        ('Precios', {
-            'fields': (('precio_dia', 'precio_base'), ('precio_extras', 'precio_impuestos'),
-                      ('descuento_promocion', 'precio_total'))
-        }),
-        ('Métodos de pago', {
-            'fields': ('metodo_pago_inicial', ('importe_pagado_inicial', 'importe_pendiente_inicial'),
-                      ('importe_pagado_extra', 'importe_pendiente_extra'))
-        }),
-        ('Referencia', {
-            'fields': ('generar_codigo_reserva', 'referencia_externa', 'notas_internas')
-        }),
-        ('Información del sistema', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    
+    list_filter = ('estado', 'fecha_recogida', 'metodo_pago')
+    inlines = [ReservaExtraInline, ReservaConductorInline, PenalizacionInline]
+
     def vehiculo_info(self, obj):
-        return f"{obj.vehiculo.marca} {obj.vehiculo.modelo} ({obj.vehiculo.matricula})"
+        if obj.vehiculo:
+            return f"{obj.vehiculo.marca} {obj.vehiculo.modelo} ({obj.vehiculo.matricula})"
+        return "-"
     vehiculo_info.short_description = 'Vehículo'
-    
+
     def importe_pendiente_total(self, obj):
-        return obj.importe_pendiente_inicial + obj.importe_pendiente_extra
-    importe_pendiente_total.short_description = 'Pendiente total'
-    
-    actions = ['cancelar_reservas', 'confirmar_reservas']
-    
-    def cancelar_reservas(self, request, queryset):
-        from api.services.reservas import cancelar_reserva
-        count = 0
-        errors = []
-        
-        for reserva in queryset:
-            try:
-                cancelar_reserva(reserva)
-                count += 1
-            except Exception as e:
-                errors.append(f"Error al cancelar reserva {reserva.id}: {str(e)}")
-        
-        if errors:
-            self.message_user(request, f"Se cancelaron {count} reservas con {len(errors)} errores", level='WARNING')
-        else:
-            self.message_user(request, f"Se cancelaron {count} reservas correctamente")
-    cancelar_reservas.short_description = 'Cancelar reservas seleccionadas'
-    
-    def confirmar_reservas(self, request, queryset):
-        count = queryset.filter(estado='pendiente').update(estado='confirmada')
-        self.message_user(request, f"Se confirmaron {count} reservas")
-    confirmar_reservas.short_description = 'Confirmar reservas pendientes'
+        return (obj.importe_pendiente_inicial or 0) + (obj.importe_pendiente_extra or 0)
+    importe_pendiente_total.short_description = 'Importe pendiente total'
 
 # Admin para Marketing
 @admin.register(Promocion)
 class PromocionAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'descuento_pct', 'fecha_inicio', 'fecha_fin', 
-                    'activo', 'esta_vigente')
+    list_display = ('nombre', 'descuento_pct', 'activo', 'fecha_inicio', 'fecha_fin')
+    search_fields = ('nombre', 'descripcion')
     list_filter = ('activo', 'fecha_inicio', 'fecha_fin')
-    search_fields = ('nombre', 'codigo')
-    date_hierarchy = 'fecha_inicio'
-    
-    def esta_vigente(self, obj):
-        return obj.esta_vigente()
-    esta_vigente.boolean = True
-    esta_vigente.short_description = 'Vigente'
 
+# Ajustes en ContenidoAdmin
 @admin.register(Contenido)
 class ContenidoAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'tipo', 'publicado', 'destacado')
-    list_filter = ('tipo', 'publicado', 'destacado')
-    search_fields = ('titulo', 'subtitulo', 'cuerpo')
-    fieldsets = (
-        ('Información básica', {
-            'fields': ('tipo', 'titulo', 'subtitulo', 'icono_url')
-        }),
-        ('Contenido', {
-            'fields': ('cuerpo',)
-        }),
-        ('Configuración', {
-            'fields': ('info_adicional', 'publicado', 'destacado', 'orden')
-        }),
-    )
+    list_display = ('id', 'titulo', 'tipo', 'activo')
+    search_fields = ('titulo', 'tipo')
+    list_filter = ('tipo', 'activo')
+
+@admin.register(Extras)
+class ExtrasAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'precio', 'descripcion')
+    search_fields = ('nombre',)
+    ordering = ('nombre',)

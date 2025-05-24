@@ -3,9 +3,16 @@ from .base import *
 import os
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+import environ
+
+
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+env = environ.Env()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 # Hosts permitidos
 ALLOWED_HOSTS = [
@@ -17,14 +24,13 @@ ALLOWED_HOSTS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT', '3306'),
+        'NAME': env('MYSQL_DATABASE', default='mobility4you'),
+        'USER': env('MYSQL_USER', default='mobility'),
+        'PASSWORD': env('MYSQL_PASSWORD', default='miclave'),
+        'HOST': env('DB_HOST', default='db'),  # 'db' para Docker Compose, 'localhost' para local
+        'PORT': env('DB_PORT', default='3306'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            'charset': 'utf8mb4',
         },
     }
 }
@@ -111,9 +117,11 @@ sentry_sdk.init(
 )
 
 # REST Framework
-REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = [
-    'rest_framework.renderers.JSONRenderer',
-]
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ]
+}
 
 # Redsys
 REDSYS_MERCHANT_CODE = os.environ.get('REDSYS_MERCHANT_CODE')

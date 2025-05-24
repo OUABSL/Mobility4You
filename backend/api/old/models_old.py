@@ -408,7 +408,7 @@ class Contenido(models.Model):
     cuerpo = models.TextField(default="", blank=True)
     info_adicional = models.TextField(default="", blank=True)
     icono_url = models.CharField(max_length=255, default="", blank=True)    
-    publicado = models.BooleanField(default=False)
+    activo = models.BooleanField(default=False)
     tipo = models.CharField(max_length=20, choices=[
         ('blog', 'Blog'),
         ('faq', 'FAQ'),

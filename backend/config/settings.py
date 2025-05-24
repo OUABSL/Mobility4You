@@ -24,7 +24,7 @@ DJANGO_ENV = os.environ.get('DJANGO_ENV', 'development')
 if DJANGO_ENV == 'production':
     env_file = os.path.join(BASE_DIR, '.env.prod')
 else:
-    env_file = os.path.join(BASE_DIR, '.env.dev')
+    env_file = os.path.join(BASE_DIR, '.env')
 environ.Env.read_env(env_file)
 
 # Secret key y debug desde el entorno
@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'corsheaders', # Agregado
     'api', # Agregado
     'payments', # Agregado por Ouael el 18-05
+    'django_filters', # Agregado por Ouael el 22-05
 ]
 
 MIDDLEWARE = [
@@ -147,16 +148,35 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 #Agregado
+# REST_FRAMEWORK = {
+#     'DEFAULT_PERMISSION_CLASSES': [
+#         'rest_framework.permissions.AllowAny',  # Permite acceso público (ajústalo según necesidad)
+#     ],
+#     'DEFAULT_AUTHENTICATION_CLASSES': [
+#         'rest_framework.authentication.SessionAuthentication',
+#         'rest_framework.authentication.BasicAuthentication',
+#     ],
+# }
+
+
+#NUEVO 
+# También agregar la configuración de filtros en REST_FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # Permite acceso público (ajústalo según necesidad)
+        'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ],
+    'DEFAULT_FILTER_BACKENDS': [  # ← AGREGAR ESTAS LÍNEAS
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # ← OPCIONAL
+    'PAGE_SIZE': 20  # ← OPCIONAL
 }
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
@@ -173,7 +193,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

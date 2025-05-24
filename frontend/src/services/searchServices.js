@@ -13,23 +13,22 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 export const fetchLocations = async () => {
   try {
     if (DEBUG_MODE) {
-      // En modo debug, simular tiempo de respuesta del servidor
       await new Promise(resolve => setTimeout(resolve, 300));
       return locationsData;
     }
     
-    // En producción, llamada real a la API
+    // CAMBIADO: usar el endpoint correcto según urls.py
     const response = await withTimeout(
-      axios.get(`${API_URL}/locations`),
-      8000 // 8 segundos de timeout
+      axios.get(`${API_URL}/lugares`),
+      8000
     );
     return response.data;
   } catch (error) {
     console.error('Error fetching locations:', error);
-    // En caso de error, devolver un array vacío y propagar el error
     throw new Error('No se pudieron cargar las ubicaciones. Por favor, inténtalo de nuevo más tarde.');
   }
 };
+
 
 /**
  * Valida los datos del formulario de búsqueda
@@ -90,51 +89,42 @@ export const validateSearchForm = (formData) => {
  */
 export const performSearch = async (searchParams) => {
   try {
-    // Validar los datos de búsqueda
     const { isValid, errors } = validateSearchForm(searchParams);
     if (!isValid) {
-      // Crear un mensaje con todos los errores
       const errorMessage = Object.values(errors).join('. ');
       throw new Error(errorMessage);
     }
     
     if (DEBUG_MODE) {
-      // En modo debug, simular tiempo de respuesta del servidor
       await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Simular resultado exitoso
       return {
         success: true,
         message: 'Búsqueda realizada con éxito',
-        // Más datos podrían incluirse aquí
       };
     }
     
-    // En producción, llamada real a la API
+    // CAMBIADO: usar el endpoint correcto
     const response = await withTimeout(
-      axios.post(`${API_URL}/search`, searchParams),
-      12000 // 12 segundos de timeout
+      axios.post(`${API_URL}/vehiculos/disponibilidad`, searchParams),
+      12000
     );
     
     return response.data;
   } catch (error) {
     console.error('Error performing search:', error);
-    // Propagar el error para manejo en el componente
     throw error.response?.data?.message || error.message || 'Error al realizar la búsqueda';
   }
 };
-
 /**
  * Guarda los parámetros de búsqueda en sessionStorage
  * @param {Object} searchParams - Parámetros de búsqueda
  */
 export const saveSearchParams = (searchParams) => {
   try {
-    // Recuperar datos existentes, si hay
     const storedData = sessionStorage.getItem('reservaData') || '{}';
     const currentData = JSON.parse(storedData);
     
-    // Actualizar fechas con los nuevos valores
+    // Actualizar con estructura consistente con el backend
     const updatedData = {
       ...currentData,
       fechas: {
@@ -145,10 +135,14 @@ export const saveSearchParams = (searchParams) => {
         dropoffDate: searchParams.dropoffDate,
         dropoffTime: searchParams.dropoffTime
       },
-      mayor21: searchParams.mayor21
+      mayor21: searchParams.mayor21,
+      // Agregar información del lugar para no tener que volver a buscarla
+      lugares: {
+        recogida: searchParams.pickupLocationData,
+        devolucion: searchParams.dropoffLocationData || searchParams.pickupLocationData
+      }
     };
     
-    // Guardar en sessionStorage
     sessionStorage.setItem('reservaData', JSON.stringify(updatedData));
     return true;
   } catch (error) {
@@ -156,7 +150,6 @@ export const saveSearchParams = (searchParams) => {
     return false;
   }
 };
-
 /**
  * Recupera los parámetros de búsqueda guardados
  * @returns {Object|null} - Parámetros de búsqueda o null si no hay

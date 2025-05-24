@@ -8,10 +8,9 @@ class CategoriaSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'descripcion', 'created_at', 'updated_at']
 
 class GrupoCocheSerializer(serializers.ModelSerializer):
-    categoria = CategoriaSerializer(read_only=True)
     class Meta:
         model = GrupoCoche
-        fields = ['id', 'nombre', 'categoria', 'edad_minima', 'descripcion', 'created_at', 'updated_at']
+        fields = ['id', 'nombre', 'edad_minima', 'descripcion', 'created_at', 'updated_at']
 
 class ImagenVehiculoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,11 +18,9 @@ class ImagenVehiculoSerializer(serializers.ModelSerializer):
         fields = ['id', 'vehiculo', 'url', 'portada', 'ancho', 'alto']
 
 class VehiculoListSerializer(serializers.ModelSerializer):
-    categoria = CategoriaSerializer(read_only=True)
-    grupo = GrupoCocheSerializer(read_only=True)
     class Meta:
         model = Vehiculo
-        fields = ['id', 'marca', 'modelo', 'matricula', 'categoria', 'grupo', 'precio_actual', 'disponible', 'activo']
+        fields = ['id']  # Ajustar según los campos reales definidos en el modelo Vehiculo
 
 class VehiculoDetailSerializer(serializers.ModelSerializer):
     categoria = CategoriaSerializer(read_only=True)
@@ -36,4 +33,4 @@ class VehiculoDetailSerializer(serializers.ModelSerializer):
 class VehiculoDisponibleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vehiculo
-        fields = ['id', 'marca', 'modelo', 'matricula', 'precio_actual', 'disponible']
+        fields = ['id']  # Ajustar según los campos reales definidos en el modelo Vehiculo

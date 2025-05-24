@@ -10,13 +10,13 @@ class PoliticaIncluyeSerializer(serializers.ModelSerializer):
 class TipoPenalizacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TipoPenalizacion
-        fields = ['id', 'nombre', 'tipo_tarifa', 'valor_tarifa', 'descripcion', 'created_at', 'updated_at']
+        fields = ['id', 'nombre', 'tipo_tarifa']
 
 class PoliticaPenalizacionSerializer(serializers.ModelSerializer):
     tipo_penalizacion = TipoPenalizacionSerializer(read_only=True)
     class Meta:
         model = PoliticaPenalizacion
-        fields = ['id', 'politica', 'tipo_penalizacion', 'horas_previas']
+        fields = ['id', 'politica_pago', 'tipo_penalizacion']
 
 class PoliticaPagoSerializer(serializers.ModelSerializer):
     items = PoliticaIncluyeSerializer(many=True, read_only=True)

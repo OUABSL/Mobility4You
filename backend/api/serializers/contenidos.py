@@ -5,4 +5,4 @@ from ..models.contenidos import Contenido
 class ContenidoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contenido
-        fields = ['id', 'tipo', 'titulo', 'subtitulo', 'cuerpo', 'icono_url', 'info_adicional', 'publicado', 'destacado', 'orden', 'created_at', 'updated_at']
+        fields = ['id', 'tipo', 'titulo', 'subtitulo', 'cuerpo', 'icono_url', 'info_adicional', 'activo', 'created_at', 'updated_at']

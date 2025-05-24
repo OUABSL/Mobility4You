@@ -26,7 +26,6 @@ class PoliticaPagoViewSet(viewsets.ModelViewSet):
         data = [
             {
                 'tipo': p.tipo_penalizacion.nombre,
-                'valor': p.tipo_penalizacion.valor_tarifa,
                 'tipo_tarifa': p.tipo_penalizacion.get_tipo_tarifa_display(),
                 'horas_previas': p.horas_previas
             }

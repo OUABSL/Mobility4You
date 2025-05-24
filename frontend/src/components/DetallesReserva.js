@@ -313,7 +313,7 @@ const DetallesReserva = ({ isMobile = false }) => {
         <tbody>
           <tr>
             <th>Método de pago inicial</th>
-            <td>{datos.metodo_pago_inicial || '-'}</td>
+            <td>{datos.metodo_pago || '-'}</td>
           </tr>
           <tr>
             <th>Importe pagado inicial</th>

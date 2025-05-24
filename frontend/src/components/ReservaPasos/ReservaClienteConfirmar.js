@@ -123,11 +123,11 @@ const ReservaClienteConfirmar = () => {
       }
       if (!reservaData) throw new Error('No hay datos de reserva.');
       // Calcular importes pagados/pendientes según método de pago
-      let metodo_pago_inicial = formData.metodoPago;
+      let metodo_pago = formData.metodoPago;
       let importe_pagado_inicial = 0;
       let importe_pendiente_inicial = 0;
       const total = reservaData.detallesReserva?.total || reservaData.precioTotal || 0;
-      if (metodo_pago_inicial === 'tarjeta' || metodo_pago_inicial === 'paypal') {
+      if (metodo_pago === 'tarjeta' || metodo_pago === 'paypal') {
         importe_pagado_inicial = total;
         importe_pendiente_inicial = 0;
       } else {
@@ -138,7 +138,7 @@ const ReservaClienteConfirmar = () => {
       const updatedReserva = {
         ...reservaData,
         conductor: formData,
-        metodo_pago_inicial,
+        metodo_pago,
         importe_pagado_inicial,
         importe_pendiente_inicial,
         importe_pagado_extra: 0,

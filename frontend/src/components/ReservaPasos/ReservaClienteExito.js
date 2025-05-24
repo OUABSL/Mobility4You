@@ -94,7 +94,7 @@ const ReservaClienteExito = () => {
   }
 
   // Extraer datos relevantes
-  const { id, car, fechas, paymentOption, extras, detallesReserva, conductor, fechaPago, metodo_pago_inicial, importe_pagado_inicial, importe_pendiente_inicial, importe_pagado_extra, importe_pendiente_extra } = reservaCompletada;
+  const { id, car, fechas, paymentOption, extras, detallesReserva, conductor, fechaPago, metodo_pago, importe_pagado_inicial, importe_pendiente_inicial, importe_pagado_extra, importe_pendiente_extra } = reservaCompletada;
   // Formatear fecha de pago
   const fechaPagoFormateada = fechaPago ? new Date(fechaPago).toLocaleString() : 'No disponible';
 
@@ -170,7 +170,7 @@ const ReservaClienteExito = () => {
                   </tr>
                   <tr>
                     <th>Método de pago inicial</th>
-                    <td>{metodo_pago_inicial}</td>
+                    <td>{metodo_pago}</td>
                   </tr>
                   <tr>
                     <th>Importe pagado inicial</th>

@@ -98,7 +98,7 @@ def enviar_email_confirmacion_reserva(reserva):
             'lugar_devolucion': reserva.lugar_devolucion.nombre,
             'total': reserva.precio_total,
             'politica': reserva.politica_pago.titulo,
-            'metodo_pago': reserva.get_metodo_pago_inicial_display()
+            'metodo_pago': reserva.get_metodo_pago_display()
         }
         
         # Enviar email

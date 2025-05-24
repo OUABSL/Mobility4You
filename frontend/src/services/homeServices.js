@@ -17,6 +17,7 @@ import {
   faArrowRight,
   faPlay,
 } from '@fortawesome/free-solid-svg-icons';
+import { act } from "react";
 
 // Basado en tabla Lugar con Direccion normalizada
 const locationsData = [
@@ -65,6 +66,7 @@ const estadisticasGlobales = [
     subtitulo: '150+ Países y territorios',
     cuerpo: 'Operamos en más de 150 países y territorios alrededor del mundo',
     icono_url: 'faGlobe',
+    activo: true,
     info_adicional: JSON.stringify({ color: 'primary', numero: '150+' })
   },
   {
@@ -74,6 +76,7 @@ const estadisticasGlobales = [
     subtitulo: '2,500+ Oficinas en el mundo',
     cuerpo: 'Contamos con más de 2,500 oficinas para brindarte el mejor servicio',
     icono_url: 'faMapMarkerAlt',
+    activo: true,
     info_adicional: JSON.stringify({ color: 'success', numero: '2,500+' })
   },
   {
@@ -83,6 +86,7 @@ const estadisticasGlobales = [
     subtitulo: '50K+ Vehículos disponibles',
     cuerpo: 'Una flota de más de 50,000 vehículos premium para elegir',
     icono_url: 'faCar',
+    activo: true,
     info_adicional: JSON.stringify({ color: 'warning', numero: '50K+' })
   },
   {
@@ -92,6 +96,7 @@ const estadisticasGlobales = [
     subtitulo: '2M+ Clientes satisfechos', 
     cuerpo: 'Más de 2 millones de clientes confían en nuestro servicio',
     icono_url: 'faUsers',
+    activo: true,
     info_adicional: JSON.stringify({ color: 'info', numero: '2M+' })
   }
 ];
@@ -274,32 +279,38 @@ const destinosPopulares = [
     const debug = true;
     
     if (debug) {
-      return estadisticasGlobales.map(item => ({
-        icono: item.icono_url,
-        numero: JSON.parse(item.info_adicional).numero,
-        texto: item.subtitulo,
-        color: JSON.parse(item.info_adicional).color
-      }));
+      return estadisticasGlobales
+        .filter(item => item.activo) // CAMBIADO de activo a activo
+        .map(item => ({
+          icono: item.icono_url,
+          numero: JSON.parse(item.info_adicional).numero,
+          texto: item.subtitulo,
+          color: JSON.parse(item.info_adicional).color
+        }));
     }
     
     try {
-      const response = await axios.get('/api/content', { 
-        params: { tipo: 'info' } 
+      const response = await axios.get('/api/contenidos', { // CAMBIADO de /api/content a /api/contenidos
+        params: { tipo: 'info', activo: true } // CAMBIADO de activo a activo
       });
-      return response.data.map(item => ({
-        icono: item.icono_url,
-        numero: JSON.parse(item.info_adicional).numero,
-        texto: item.subtitulo,
-        color: JSON.parse(item.info_adicional).color
-      }));
+      return response.data
+        .filter(item => item.activo)
+        .map(item => ({
+          icono: item.icono_url,
+          numero: JSON.parse(item.info_adicional).numero,
+          texto: item.subtitulo,
+          color: JSON.parse(item.info_adicional).color
+        }));
     } catch (error) {
       console.error('Error fetching estadisticas:', error);
-      return estadisticasGlobales.map(item => ({
-        icono: item.icono_url,
-        numero: JSON.parse(item.info_adicional).numero,
-        texto: item.subtitulo,
-        color: JSON.parse(item.info_adicional).color
-      }));
+      return estadisticasGlobales
+        .filter(item => item.activo)
+        .map(item => ({
+          icono: item.icono_url,
+          numero: JSON.parse(item.info_adicional).numero,
+          texto: item.subtitulo,
+          color: JSON.parse(item.info_adicional).color
+        }));
     }
   };
 
@@ -317,12 +328,12 @@ const destinosPopulares = [
     }
     
     try {
-      const response = await axios.get('/api/politicas-pago');
+      const response = await axios.get('/api/politicas-pago'); // Verificar endpoint correcto
       return response.data.map(item => ({
-        icono: JSON.parse(item.info_adicional).icono,
+        icono: item.info_adicional ? JSON.parse(item.info_adicional).icono : 'faShieldAlt',
         titulo: item.titulo,
         descripcion: item.descripcion,
-        color: JSON.parse(item.info_adicional).color
+        color: item.info_adicional ? JSON.parse(item.info_adicional).color : 'primary'
       }));
     } catch (error) {
       console.error('Error fetching características:', error);
@@ -383,47 +394,47 @@ const destinosPopulares = [
   };
 
   // Fetch para destinos
-  const fetchDestinos = async () => {
-    const debug = true;
-    
-    if (debug) {
-      return destinosPopulares.map(lugar => {
-        const extra = JSON.parse(lugar.info_adicional);
-        return {
-          nombre: extra.paises,
-          ciudades: extra.ciudades,
-          imagen: extra.imagen
-        };
-      });
-    }
-    
-    try {
-      const response = await axios.get('/api/locations/destinations');
-      return response.data.map(lugar => {
-        const extra = JSON.parse(lugar.info_adicional);
-        return {
-          nombre: extra.paises,
-          ciudades: extra.ciudades,
-          imagen: extra.imagen
-        };
-      });
-    } catch (error) {
-      console.error('Error fetching destinos:', error);
-      return destinosPopulares.map(lugar => {
-        const extra = JSON.parse(lugar.info_adicional);
-        return {
-          nombre: extra.paises,
-          ciudades: extra.ciudades,
-          imagen: extra.imagen
-        };
-      });
-    }
-  };
+ const fetchDestinos = async () => {
+  const debug = true;
+  
+  if (debug) {
+    return destinosPopulares.map(lugar => {
+      const extra = JSON.parse(lugar.info_adicional);
+      return {
+        nombre: extra.paises,
+        ciudades: extra.ciudades,
+        imagen: extra.imagen
+      };
+    });
+  }
+  
+  try {
+    const response = await axios.get('/api/lugares/destinos'); // CAMBIADO de /api/locations/destinations
+    return response.data.map(lugar => {
+      const extra = lugar.info_adicional ? JSON.parse(lugar.info_adicional) : {};
+      return {
+        nombre: extra.paises || lugar.nombre,
+        ciudades: extra.ciudades || lugar.direccion?.ciudad,
+        imagen: extra.imagen || 'default.jpg'
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching destinos:', error);
+    return destinosPopulares.map(lugar => {
+      const extra = JSON.parse(lugar.info_adicional);
+      return {
+        nombre: extra.paises,
+        ciudades: extra.ciudades,
+        imagen: extra.imagen
+      };
+    });
+  }
+};
 
-    export {
-        fetchLocations,
-        fetchEstadisticas,
-        fetchCaracteristicas,
-        fetchTestimonios,
-        fetchDestinos
-    };
+export {
+    fetchLocations,
+    fetchEstadisticas,
+    fetchCaracteristicas,
+    fetchTestimonios,
+    fetchDestinos
+};

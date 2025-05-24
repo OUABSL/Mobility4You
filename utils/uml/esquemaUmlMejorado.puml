@@ -44,7 +44,7 @@ package "Catálogos" <<Master>> {
   ImagenVehiculo "1" o-- "0..N" Vehiculo : contiene >
 }
 
-package "Flota" <<Master>> {
+package "Vehículos" <<Master>> {
   class Vehiculo {
     + INT id PK
     + INT categoria_id FK
@@ -67,6 +67,32 @@ package "Flota" <<Master>> {
     + DATETIME updated_at
   }
 
+  class TarifaVehiculo {
+    + INT vehiculo_id FK
+    + DATE fecha_inicio
+    + DATE fecha_fin
+    + DECIMAL(8,2) precio_dia
+    + PRIMARY_KEY(vehiculo_id, fecha_inicio)
+    ' Índice compuesto para búsquedas de tarifa vigente:
+    ' INDEX idx_tarifa_vehiculo_periodo (vehiculo_id, fecha_inicio, fecha_fin)
+  }
+
+
+  class Mantenimiento {
+    + INT id PK
+    + INT vehiculo_id FK
+    + DATETIME fecha
+    + VARCHAR tipo_servicio
+    + DECIMAL(10,2) coste
+    + TEXT notas
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  Vehiculo "1" <-- "0..N" TarifaVehiculo : tarifa_periodica >
+
+  Vehiculo "1" <-- "0..N" Mantenimiento : recibe_servicio >
+
   Categoria "1" <-- "N" Vehiculo      : categoría_id >
   GrupoCoche "1" <-- "N" Vehiculo     : grupo_id >
 }
@@ -75,7 +101,7 @@ package "Localizaciones" <<Lookup>> {
   class Direccion {
     + INT id PK
     + VARCHAR calle
-    + VARCHAR ciudad  'convertir a minúscula mediante TRIGGER antes de INSERT/UPDATE'
+    + VARCHAR ciudad  'convertir a minúscula antes de INSERT/UPDATE'
     + VARCHAR provincia 'convertir a minúscula'
     + VARCHAR pais     'convertir a minúscula'
     + VARCHAR codigo_postal
@@ -103,11 +129,11 @@ package "Usuarios" <<Master>> {
     + VARCHAR nombre
     + VARCHAR apellido
     + VARCHAR email UNIQUE
-    + DATE fecha_nacimiento
-    + CHAR(60) password_hash
+    + DATE fecha_nacimiento ' Formato: YYYY-MM-DD NOT NULL'
+    + CHAR(60) password_hash NULL 'Almacenar hash de contraseña con bcrypt'
     + ENUM('masculino','femenino','no_binario') sexo
     + VARCHAR nacionalidad
-    + ENUM('pasaporte','dni','nif') tipo_documento
+    + ENUM('pasaporte','dni','nif', 'nie') tipo_documento
     + VARCHAR numero_documento
     + IMAGEFILE imagen_carnet 'Por defeecto nulo, se solicitará en el check in'
     + INT direccion_id FK
@@ -149,40 +175,27 @@ package "Políticas y precios" <<Lookup>> {
   PoliticaPago "1" <-- "0..N" PoliticaIncluye : incluye >
 }
 
-package "Tarifas" <<Lookup>> {
-  class TarifaVehiculo {
-    + INT vehiculo_id FK
-    + DATE fecha_inicio
-    + DATE fecha_fin
-    + DECIMAL(8,2) precio_dia
-    + PRIMARY_KEY(vehiculo_id, fecha_inicio)
-    ' Índice compuesto para búsquedas de tarifa vigente:
-    ' INDEX idx_tarifa_vehiculo_periodo (vehiculo_id, fecha_inicio, fecha_fin)
-  }
-
-  Vehiculo "1" <-- "0..N" TarifaVehiculo : tarifa_periodica >
-}
 
 package "Reservas" <<Transaction>> {
   class Reserva {
     + INT id PK
-    + INT usuario_id FK
-    + INT promocion_id FK
-    + INT politica_pago_id FK
-    + INT vehiculo_id FK
-    + INT lugar_recogida_id FK
-    + INT lugar_devolucion_id FK
-    + DATETIME fecha_recogida
-    + DATETIME fecha_devolucion
-    + DECIMAL(10,2) precio_dia
-    + DECIMAL(10,2) precio_impuestos
-    + DECIMAL(10,2) precio_total
-    + ENUM('tarjeta','efectivo') metodo_pago_inicial
-    + DECIMAL(10,2) importe_pagado_inicial
-    + DECIMAL(10,2) importe_pendiente_inicial
-    + DECIMAL(10,2) importe_pagado_extra
-    + DECIMAL(10,2) importe_pendiente_extra
-    + ENUM('pendiente','confirmada','cancelada') estado
+    + INT usuario_id FK NOT NULL ' Usuario que realiza la reserva
+    + INT promocion_id FK NULL 'Puede ser NULL si no se aplica promoción'
+    + INT politica_pago_id FK NOT NULL ' Política de pago asociada a la reserva
+    + INT vehiculo_id FK NOT NULL ' Vehículo asociado a la reserva
+    + INT lugar_recogida_id FK NOT NULL ' Lugar de recogida del vehículo
+    + INT lugar_devolucion_id FK NOT NULL ' Lugar de devolución del vehículo
+    + DATETIME fecha_recogida NOT NULL ' Fecha y hora de recogida del vehículo
+    + DATETIME fecha_devolucion NOT NULL ' Fecha y hora de devolución del 
+    + DECIMAL(10,2) precio_dia NOT NULL ' Precio por día de la reserva
+    + DECIMAL(10,2) precio_impuestos NOT NULL ' Importe de impuestos aplicables a la reserva
+    + DECIMAL(10,2) precio_total NOT NULL ' Importe total de la reserva (precio_dia + precio_impuestos)
+    + ENUM('tarjeta','efectivo') metodo_pago NOT NULL ' Método de pago utilizado para la reserva
+    + DECIMAL(10,2) importe_pagado_inicial NOT NULL ' Importe pagado al realizar la reserva
+    + DECIMAL(10,2) importe_pendiente_inicial NOT NULL ' Importe pendiente de pago al realizar la reserva
+    + DECIMAL(10,2) importe_pagado_extra NULL ' Importe pagado por extras adicionales (opcional, Ya que considera sólo extras agregados después de la reserva)
+    + DECIMAL(10,2) importe_pendiente_extra NULL ' Importe
+    + ENUM('pendiente','confirmada','cancelada') estado NOT NULL ' Estado de la reserva (pendiente, confirmada, cancelada)
     + TEXT notas_internas
     + DATETIME created_at
     + DATETIME updated_at
@@ -204,6 +217,14 @@ package "Reservas" <<Transaction>> {
     + ENUM('porcentaje','fijo', 'importe_dia') tipo_tarifa
   }
 
+  class PoliticaPenalizacion {
+    + INT politica_pago_id FK
+    + INT tipo_penalizacion_id FK
+    + INT horas_previas NOT NULL DEFAULT 0 'Umbral de aplicación en horas (ej. cancelación < 24h)'
+    + PRIMARY_KEY(politica_pago_id, tipo_penalizacion_id)
+  }
+
+
   class Penalizacion {
     + INT id PK
     + INT reserva_id FK
@@ -215,12 +236,6 @@ package "Reservas" <<Transaction>> {
     + DATETIME updated_at
   }
 
-  class PoliticaPenalizacion {
-    + INT politica_pago_id FK
-    + INT tipo_penalizacion_id FK
-    + INT horas_previas 'Umbral de aplicación en horas (ej. cancelación < 24h)'
-    + PRIMARY_KEY(politica_pago_id, tipo_penalizacion_id)
-  }
 
 
   Usuario "1" <-- "N" Reserva           : hace >
@@ -246,7 +261,7 @@ package "Contratos y Facturación" <<Transaction>> {
     + INT id PK
     + INT reserva_id FK
     + VARCHAR numero_contrato UNIQUE
-    + DATE fecha_firma
+    + DATE fecha_firma NULL 
     + TEXT condiciones
     + VARCHAR url_pdf
     + ENUM('pendiente','firmado','anulado') estado
@@ -273,20 +288,7 @@ package "Contratos y Facturación" <<Transaction>> {
   Reserva "1" <-- "0..N" Factura : factura >
 }
 
-package "Mantenimiento" <<Transaction>> {
-  class Mantenimiento {
-    + INT id PK
-    + INT vehiculo_id FK
-    + DATETIME fecha
-    + VARCHAR tipo_servicio
-    + DECIMAL(10,2) coste
-    + TEXT notas
-    + DATETIME created_at
-    + DATETIME updated_at
-  }
 
-  Vehiculo "1" <-- "0..N" Mantenimiento : recibe_servicio >
-}
 
 package "Promociones" <<Lookup>> {
   class Promocion {
@@ -311,12 +313,36 @@ package "Contenidos estáticos" <<Lookup>> {
     + TEXT cuerpo
     + TEXT info_adicional
     + String icono_url
-    + TINYINT publicado
+    + TINYINT activo
     + DATETIME created_at
     + DATETIME updated_at
   }
 }
 
+package "Extras" <<Lookup>> {
+  class Extras {
+    + INT id PK
+    + VARCHAR nombre
+    + TEXT descripcion
+    + DECIMAL(10,2) precio
+    + VARCHAR imagen
+    + DATETIME created_at
+    + DATETIME updated_at
+  }
+
+  class ReservaExtra {
+    + INT id PK
+    + INT reserva_id FK
+    + INT extra_id FK
+    + INT cantidad
+    + DATETIME created_at
+    + DATETIME updated_at
+    + PRIMARY_KEY(id)
+  }
+
+  Reserva "1" <-- "0..N" ReservaExtra : tiene >
+  Extras "1" <-- "0..N" ReservaExtra : es_extra >
+}
 
 
 

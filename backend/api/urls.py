@@ -7,6 +7,7 @@ from .views.lugares import LugarViewSet
 from .views.reservas import ReservaViewSet
 from .views.promociones import PromocionViewSet
 from .views.politicasPago import PoliticaPagoViewSet
+from .views.facturacion import ContratoViewSet, FacturaViewSet
 # from .views.contacto import ContactoView
 # from .views.usuarios import UsuarioViewSet  # Descomentar si implementas UsuarioViewSet
 
@@ -19,6 +20,8 @@ router.register(r'reservas', ReservaViewSet, basename='reserva')
 router.register(r'contenidos', ContenidoViewSet)
 router.register(r'promociones', PromocionViewSet)
 router.register(r'politicas-pago', PoliticaPagoViewSet)
+router.register(r'contratos', ContratoViewSet)
+router.register(r'facturas', FacturaViewSet)
 # router.register(r'usuarios', UsuarioViewSet)  # Descomentar si implementas UsuarioViewSet
 
 urlpatterns = [

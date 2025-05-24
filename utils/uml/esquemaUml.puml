@@ -188,7 +188,7 @@ package "Contenidos estáticos" <<Lookup>> {
     + TEXT cuerpo
     + TEXT info_adicional
     + String icono_url
-    + TINYINT publicado
+    + TINYINT activo
     + DATETIME created_at
     + DATETIME updated_at
   }
