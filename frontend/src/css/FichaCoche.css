@@ -1,262 +1,516 @@
-/* src/css/FichaCoche.css */
+/* src/css/FichaCoche.css - Versión mejorada */
+
 .ficha-coche-modal {
-    background: #fff;
-    position: relative;
-    border: 2px solid var(--color-primario);
-    border-radius: '10px'
-  }
-  
-  .close-icon {
-    cursor: pointer;
-    font-size: 1.5rem;
-  }
-  
-  .ficha-image {
-    max-height: 400px;
-    object-fit: cover;
-  }
-  
-  .ficha-details p {
-    margin: 0.5rem 0;
-  }
-  
-  .payment-options .payment-option {
-    cursor: pointer;
-  }
-  
-  .payment-option .active {
-    border: 2px solid #007bff;
-  }
-  
-  /* Responsive: en dispositivos móviles la ficha ocupa toda la pantalla */
-  @media (max-width: 576px) {
-    .ficha-coche-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      overflow-y: auto;
-      z-index: 1100;
-      border-radius: 0;
-    }
-  }
-  
-
-  /* NUEVO */
-
-  /* src/css/FichaCoche.css */
-.ficha-coche-modal {
-  background: var(--color-fundo-blanco);
-  border: 2px solid var(--color-primario);
-  border-radius: 12px;
-  padding: 20px;
-  margin: 20px 0;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  margin-bottom: 2rem;
 }
 
-.close-icon {
-  cursor: pointer;
-  font-size: 1.5rem;
-  color: var(--color-terciario);
+/* Header */
+.ficha-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.ficha-image {
-  max-height: 350px;
-  object-fit: cover;
-  border-radius: 10px;
-}
-
-.car-info-icons {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  font-size: 1rem;
-  padding: 1rem 0;
+.ficha-title {
+  font-weight: 700;
+  margin-bottom: 0;
   color: var(--color-primario);
 }
 
-.car-info-icons div {
+.ficha-close-btn {
+  font-size: 1.2rem;
+  color: #6c757d;
+  padding: 0;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.payment-options h5 {
-  margin-bottom: 1rem;
-  color: var(--color-primario);
-}
-
-.payment-card {
-  cursor: pointer;
+  justify-content: center;
+  border-radius: 50%;
   transition: all 0.3s ease;
 }
 
+.ficha-close-btn:hover {
+  background-color: #f8f9fa;
+  color: var(--color-primario);
+}
+
+/* Body */
+.ficha-body {
+  padding: 1.5rem;
+}
+
+/* Imágenes */
+.ficha-carousel {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.ficha-image {
+  height: 300px;
+  object-fit: cover;
+}
+
+/* Características */
+.car-specs-card {
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.specs-title {
+  color: var(--color-primario);
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.specs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+
+
+.spec-icon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primario);
+  border-radius: 10%;
+  margin-right: 0.75rem;
+}
+
+.spec-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.spec-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 0.25rem;
+}
+
+.spec-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.car-description {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.car-description p {
+  margin-bottom: 0;
+  font-size: 0.95rem;
+}
+
+/* Tarjetas de pago */
+.payment-section {
+  padding: 0 0.5rem;
+}
+
+.payment-title {
+  color: var(--color-primario);
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.payment-card {
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
 .payment-card:hover {
-  border-color: var(--color-hover);
-  box-shadow: 0 4px 10px rgba(0, 46, 93, 0.1);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
 .payment-card.active {
   border: 2px solid var(--color-primario);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(13, 53, 217, 0.2);
 }
 
-.payment-details ul {
+.payment-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.payment-check {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.payment-check.active {
+  transform: scale(1.2);
+}
+
+.payment-card-badge .protection-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+  border-radius: 50px;
+}
+
+.info-icon {
+  color: var(--color-primario);
+  font-size: 1.25rem;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+.info-icon:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.payment-card-features {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding-top: 1rem;
+}
+
+.features-list {
   list-style: none;
   padding-left: 0;
-  margin-bottom: 0;
+  margin-bottom: 0.5rem;
 }
 
-.payment-details li {
+.feature-item {
+  font-size: 0.9rem;
   margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
 }
 
-@media (max-width: 768px) {
-  .ficha-coche-modal {
-    padding: 15px;
-  }
-
-  .car-info-icons {
-    font-size: 0.95rem;
-  }
+.feature-item:last-child {
+  margin-bottom: 0;
 }
 
-
-/* src/css/FichaCoche.css */
-
-/* Nuevo bloque: estilo precio por día */
-.price-day {
-  font-size: 1.1rem;
-  color: var(--color-primario);
-  margin: 0;
-}
-.price-day .price-details {
+.show-more-btn {
   font-size: 0.85rem;
-  color: var(--color-hover);
-  cursor: pointer;
-  margin-left: 8px;
+  padding: 0;
+  color: var(--color-primario);
+  text-decoration: none;
 }
 
-/* Nuevo bloque: estilo botón continuar */
+.show-more-btn:hover {
+  text-decoration: underline;
+}
+
+/* Precio */
+.price-section {
+  background: #f8f9fa;
+  padding: 1.25rem;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.price-value {
+  font-weight: 700;
+  color: var(--color-primario);
+  font-size: 1.5rem;
+}
+
+.price-period {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.price-details-btn {
+  font-size: 0.85rem;
+  color: var(--color-primario);
+  text-decoration: none;
+  padding: 0;
+}
+
+.price-details-btn:hover {
+  text-decoration: underline;
+}
+
 .continue-btn {
-  background-color: var(--color-primario);
-  font-size: 1.2rem;
-}
-
-.continue-btn:hover {
-  background-color: var(--color-hover);
-  color: var(--color-texto-claro);
-  border: 1px solid var(--color-primario);
-  transform: scale(1.05);
+  font-weight: 600;
+  border-radius: 50px;
+  padding: 0.6rem 1.5rem;
   transition: all 0.3s ease;
 }
 
-/* Ajustes responsive si fuesen necesarios (ya existentes) */
-@media (max-width: 768px) {
-  .price-day { font-size: 1rem; }
+.continue-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(13, 53, 217, 0.3);
 }
 
-/* Icono de info junto al título de la tarjeta de pago */
-.info-icon {
-  cursor: pointer;
+.select-option-alert {
+  font-size: 0.85rem;
   color: var(--color-primario);
-  font-size: 1.25rem;
-  transition: color 0.2s;
-}
-.info-icon:hover {
-  color: var(--color-hover);
+  text-align: center;
+  padding: 0.5rem;
+  background: rgba(13, 53, 217, 0.05);
+  border-radius: 8px;
 }
 
+/* Modales */
+.modal-title {
+  color: var(--color-primario);
+  font-weight: 600;
+}
 
-.opcion-pago-header {
+.modal-protection-header {
+  background: var(--color-primario);
+  color: white;
+  border-bottom: none;
+}
+
+.modal-protection-title {
+  color: white;
+  font-weight: 600;
+}
+
+.modal-protection-badge {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.4rem 1rem;
+}
+
+.protection-details {
+  padding: 0.5rem;
+}
+
+.includes-title, 
+.excludes-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.includes-list,
+.excludes-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.include-item,
+.exclude-item {
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+}
+
+.divider {
+  margin: 1.5rem 0;
+  opacity: 0.1;
+}
+
+.protection-info-box {
+  background: #f8f9fa;
   padding: 1rem;
-  background-color: var(--color-primario);
+  border-radius: 8px;
+  font-size: 0.9rem;
 }
 
-.opcion-pago-titulo {
-  font-size: 1.5rem;
-  color: var(--color-texto-claro);
+.price-breakdown-header {
+  text-align: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.opcion-pago-header .btn-close {
-  color: var(--color-terciario);
-  /* filter: brightness(0%) saturate(50%) invert(37%) sepia(100%) saturate(729%) hue-rotate(327deg) brightness(91%) contrast(100%); */
-  filter: brightness(0) saturate(100%) invert(12%) sepia(99%) saturate(5634%) hue-rotate(235deg) brightness(86%) contrast(97%);
-  font-size: 1.2rem;
-  cursor: pointer;
+.category-badge {
+  font-weight: 500;
+  padding: 0.4rem 0.8rem;
+  border-radius: 50px;
 }
 
-.icon-svg {
-  max-width: 16px;
-  fill: var(--color-primario);
-  /* filter: brightness(0) saturate(100%) invert(14%) sepia(42%) saturate(2602%) hue-rotate(187deg) brightness(96%) contrast(105%) */
-  filter: brightness(0) saturate(100%) invert(12%) sepia(99%) saturate(5634%) hue-rotate(235deg) brightness(86%) contrast(97%);
-
+.price-breakdown-content {
+  padding: 1rem 0;
 }
 
+.price-item {
+  font-size: 0.95rem;
+  color: #555;
+}
 
-/* Agregar a src/css/FichaCoche.css */
+.price-total {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--color-primario);
+}
 
-.price-breakdown {
-  padding: 1rem;
+.price-info-box {
+  background: #f8f9fa;
+  padding: 1.25rem;
+  border-radius: 8px;
 }
 
 .price-info-list {
   list-style: none;
   padding-left: 0;
+  margin-bottom: 0;
 }
 
 .price-info-list li {
-  margin-bottom: 0.75rem;
   font-size: 0.9rem;
-  color: #555;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: flex-start;
 }
 
-.opcion-pago-header .container {
-  width: 100%;
-  padding: 1rem 0;
+.price-info-list li:last-child {
+  margin-bottom: 0;
 }
 
-.opcion-pago-badge {
-  font-size: 0.8rem;
+.price-info-list li svg {
+  margin-top: 0.25rem;
+}
+
+/* Iconos SVG */
+.icon-svg {
+  max-width: 20px;
+  fill: var(--color-primario);
+  filter: brightness(0) saturate(100%) invert(12%) sepia(99%) saturate(5794%) hue-rotate(227deg) brightness(85%) contrast(110%) !important;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+  .specs-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .ficha-image {
+    height: 250px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .ficha-header {
+    padding: 1.25rem;
+  }
+  
+  .ficha-body {
+    padding: 1rem;
+  }
+  
+  .specs-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .ficha-image {
+    height: 200px;
+  }
+  
+  .price-value {
+    font-size: 1.25rem;
+  }
+  
+  .continue-btn {
+    padding: 0.5rem 1.25rem;
+  }
+}
+
+
+/* Estilos para la etiqueta de combustible en la galería y características compactas */
+.ficha-carousel-item {
+  position: relative;
+}
+
+.ficha-image-container {
+  position: relative;
+}
+
+.ficha-fuel-tag {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background-color: var(--color-primario);
+  color: white;
   font-weight: 500;
-  padding: 0.35rem 0.75rem;
+  border-radius: 50px;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  z-index: 10;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
 }
 
-.payment-card {
-  border-radius: 10px;
-  overflow: hidden;
+/* Estilos para características compactas */
+.specs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-.payment-card .card-body {
-  padding: 1.25rem;
+.spec-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  text-align: center;
 }
 
-.payment-card.active {
-  border: 2px solid var(--color-primario);
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.payment-card .card-title {
-  font-weight: 600;
+.spec-icon {
+  margin-bottom: 0.5rem;
+  margin-left: 0.2rem;
+  width: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--color-primario);
 }
 
-.no-bullets {
-  padding-left: 0;
+.spec-value {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
 }
 
-.no-bullets li {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #f2f2f2;
+/* Ajustes responsivos */
+@media (max-width: 767.98px) {
+  .specs-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .spec-icon {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    font-size: 0.8rem;
+  }
+  
+  .spec-value {
+    font-size: 0.8rem;
+  }
+  
+  .ficha-fuel-tag {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.75rem;
+    top: 10px;
+    left: 10px;
+  }
 }
 
-.no-bullets li:last-child {
-  border-bottom: none;
-}

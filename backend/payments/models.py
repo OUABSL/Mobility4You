@@ -92,28 +92,35 @@ class PagoRedsys(models.Model):
     
     @property
     def datos_conductor(self):
-        """Extrae datos del conductor principal del JSON de reserva"""
-        try:
-            return self.datos_reserva.get('conductorPrincipal', {})
-        except (AttributeError, TypeError):
-            return {}
-    
+        # Extrae datos del conductor principal de la reserva si existen
+        if self.reserva and hasattr(self.reserva, 'usuario') and self.reserva.usuario:
+            return {
+                'nombre': self.reserva.usuario.first_name,
+                'apellidos': self.reserva.usuario.last_name,
+                'email': self.reserva.usuario.email
+            }
+        return {}
+
     @property
     def datos_vehiculo(self):
-        """Extrae datos del vehículo del JSON de reserva"""
-        try:
-            return self.datos_reserva.get('car', {})
-        except (AttributeError, TypeError):
-            return {}
-    
+        # Extrae datos del vehículo de la reserva si existen
+        if self.reserva and hasattr(self.reserva, 'vehiculo') and self.reserva.vehiculo:
+            return {
+                'marca': getattr(self.reserva.vehiculo, 'marca', ''),
+                'modelo': getattr(self.reserva.vehiculo, 'modelo', ''),
+                'matricula': getattr(self.reserva.vehiculo, 'matricula', '')
+            }
+        return {}
+
     def es_pago_exitoso(self):
         """Verifica si el pago fue exitoso"""
         return self.estado == 'COMPLETADO' and self.codigo_autorizacion
     
     def obtener_email_cliente(self):
-        """Obtiene el email del cliente para envío de confirmación"""
-        conductor = self.datos_conductor
-        return conductor.get('email', '')
+        # Devuelve el email del usuario asociado a la reserva
+        if self.reserva and hasattr(self.reserva, 'usuario') and self.reserva.usuario:
+            return self.reserva.usuario.email
+        return ''
 
 
 # archivo: payments/serializers.py

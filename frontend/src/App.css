@@ -36,3 +36,13 @@
     transform: rotate(360deg);
   }
 }
+
+
+@font-face {
+  font-family: 'Aqua Sans Serif'; /* El nombre que usarás en tu CSS */
+  src: url('./assets/fonts/aqua-webfont.woff2') format('woff2'),
+       url('./assets/fonts/aqua-webfont.woff') format('woff');
+  font-weight: normal; /* Define el peso de la fuente (por ejemplo, 400 para normal) */
+  font-style: normal;
+  font-display: swap; /* Opción para cómo se muestra la fuente mientras se carga */
+}

@@ -1,0 +1,337 @@
+/* Contenedor principal */
+.pago-diferencia-container {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* Tarjeta principal mejorada */
+.pago-diferencia-card {
+  border: none;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.12);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: var(--color-fundo-blanco);
+}
+
+.pago-diferencia-card:hover {
+  box-shadow: 0 0.75rem 2.5rem rgba(0, 0, 0, 0.18);
+  transform: translateY(-3px);
+}
+
+/* Header estilizado */
+.pago-diferencia-card .card-header {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-hover) 100%);
+  border-bottom: none;
+  color: var(--color-fundo-blanco);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.pago-diferencia-card .card-header .fa-car-side {
+  font-size: 1.4rem;
+  margin-right: 0.75rem;
+}
+
+/* Estilo mejorado para el cuerpo de la tarjeta */
+.pago-diferencia-card .card-body {
+  padding: 2rem;
+}
+
+/* Estilos para el importe */
+.importe-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(13, 53, 217, 0.05);
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--color-primario);
+}
+
+.importe-label {
+  font-weight: 600;
+  color: var(--color-texto-secundario);
+  font-size: 1.1rem;
+}
+
+.importe-value {
+  font-weight: 700;
+  font-size: 1.75rem;
+  color: var(--color-primario);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Aviso de pago seguro */
+.secure-payment-info {
+  display: flex;
+  align-items: center;
+  background-color: rgba(39, 174, 96, 0.08);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--color-activo);
+}
+
+.secure-payment-info .fa-lock {
+  color: var(--color-activo);
+  font-size: 1.2rem;
+  margin-right: 0.75rem;
+}
+
+.secure-payment-text {
+  color: #2c3e50;
+  font-size: 0.95rem;
+  margin-bottom: 0;
+}
+
+/* Opciones de métodos de pago */
+.payment-methods-container {
+  margin-bottom: 2rem;
+}
+
+.method-title {
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--color-texto-secundario);
+  font-size: 1.1rem;
+}
+
+.payment-method-option {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.payment-method-option:hover {
+  background-color: #f0f0f0;
+}
+
+.payment-method-option.selected {
+  border-color: var(--color-primario);
+  background-color: rgba(13, 53, 217, 0.05);
+}
+
+.payment-method-radio {
+  margin-right: 1rem;
+}
+
+.payment-method-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-method-name {
+  font-weight: 600;
+  color: var(--color-texto-secundario);
+}
+
+.payment-method-description {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+}
+
+/* Botones de acción */
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.btn-pagar {
+  background-color: var(--color-activo);
+  border-color: var(--color-activo);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s ease;
+  border-radius: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+}
+
+.btn-pagar:hover {
+  background-color: #219653;
+  transform: translateY(-3px);
+  box-shadow: 0 0.5rem 1rem rgba(39, 174, 96, 0.25);
+}
+
+.btn-pagar:focus {
+  box-shadow: 0 0 0 0.25rem rgba(39, 174, 96, 0.25);
+}
+
+.btn-pagar .fa-credit-card {
+  margin-right: 0.75rem;
+}
+
+.btn-volver {
+  color: var(--color-texto-secundario);
+  background-color: transparent;
+  border-color: #dee2e6;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s ease;
+  border-radius: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-volver:hover {
+  background-color: #f8f9fa;
+  color: var(--color-texto-negro);
+  transform: translateY(-2px);
+}
+
+.btn-volver .fa-chevron-left {
+  margin-right: 0.75rem;
+}
+
+/* Estado de éxito */
+.success-container {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.success-icon {
+  font-size: 4rem;
+  color: var(--color-activo);
+  margin-bottom: 1.5rem;
+  animation: successPulse 2s ease-in-out;
+}
+
+.success-title {
+  font-weight: 700;
+  color: var(--color-texto-negro);
+  margin-bottom: 1rem;
+  font-size: 1.75rem;
+}
+
+.success-message {
+  color: var(--color-texto-secundario);
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+.btn-details {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  transition: all 0.3s ease;
+  border-radius: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 250px;
+}
+
+.btn-details:hover {
+  background-color: var(--color-hover);
+  transform: translateY(-3px);
+  box-shadow: 0 0.5rem 1rem rgba(13, 53, 217, 0.25);
+}
+
+/* Estados de carga y error */
+.loader-container {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.loader-spinner {
+  color: var(--color-primario);
+  margin-bottom: 1.5rem;
+}
+
+.error-container {
+  margin-bottom: 2rem;
+}
+
+.error-alert {
+  border-radius: 0.75rem;
+  border: none;
+}
+
+/* Animaciones */
+@keyframes successPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pago-diferencia-card .card-header {
+    padding: 1.25rem;
+  }
+  
+  .pago-diferencia-card .card-body {
+    padding: 1.5rem;
+  }
+  
+  .importe-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .importe-value {
+    font-size: 1.5rem;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .btn-pagar,
+  .btn-volver {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .pago-diferencia-card .card-header {
+    padding: 1rem;
+  }
+  
+  .pago-diferencia-card .card-body {
+    padding: 1.25rem;
+  }
+  
+  .importe-value {
+    font-size: 1.25rem;
+  }
+  
+  .secure-payment-info {
+    padding: 0.75rem 1rem;
+  }
+  
+  .payment-method-option {
+    padding: 0.75rem;
+  }
+}

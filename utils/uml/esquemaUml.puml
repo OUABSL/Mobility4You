@@ -84,6 +84,8 @@ package "Localizaciones" <<Lookup>> {
     + VARCHAR provincia
     + DECIMAL(9,6) latitud
     + DECIMAL(9,6) longitud
+    + TINYINT activo
+    + STRING horario
     + VARCHAR telefono
     + VARCHAR email
     + VARCHAR icono_url
@@ -186,7 +188,7 @@ package "Contenidos estáticos" <<Lookup>> {
     + TEXT cuerpo
     + TEXT info_adicional
     + String icono_url
-    + TINYINT publicado
+    + TINYINT activo
     + DATETIME created_at
     + DATETIME updated_at
   }

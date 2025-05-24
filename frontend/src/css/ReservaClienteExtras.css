@@ -139,6 +139,15 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+
+  .header-extras .header-volver {
+    text-wrap-mode: nowrap;
+    font-size: 0.8rem;
+  }
+
+  .header-extras .header-titulo {
+    font-size: 1.1rem;
+  }
   .reserva-car-img {
     max-width: 80px;
   }
@@ -149,5 +158,25 @@
   
   .extra-description {
     min-height: auto;
+  }
+  
+  .extra-card {
+    max-width: 200px;
+  } 
+
+  .extra-description {
+   font-size: 0.7rem;
+
+  }
+  .extra-price {
+      font-size: 0.75rem;
+  }
+
+  .columna-derecha {
+    margin-top: 1rem;
+  }
+
+  .columna-derecha h5 {
+    font-size: 1.1rem;
   }
 }

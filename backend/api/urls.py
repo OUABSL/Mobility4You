@@ -1,35 +1,37 @@
-
+# api/urls.py
 from django.urls import path, include
-from django.contrib import admin
 from rest_framework.routers import DefaultRouter
-from .views import (
-CategoriaViewSet, GrupoCocheViewSet, MantenimientoViewSet, PenalizacionViewSet, PoliticaIncluyeViewSet, RegisterUserView, ReservaConductorViewSet, TarifaVehiculoViewSet, TipoPenalizacionViewSet, UsuarioViewSet, LugarViewSet, VehiculoViewSet,
-    ImagenVehiculoViewSet, PoliticaPagoViewSet, PromocionViewSet, ReservaViewSet, ContenidoViewSet
-)
+from .views.contenidos import ContenidoViewSet
+from .views.vehiculos import CategoriaViewSet, GrupoCocheViewSet, VehiculoViewSet
+from .views.lugares import LugarViewSet
+from .views.reservas import ReservaViewSet
+from .views.promociones import PromocionViewSet
+from .views.politicasPago import PoliticaPagoViewSet
+from .views.facturacion import ContratoViewSet, FacturaViewSet
+# from .views.contacto import ContactoView
+# from .views.usuarios import UsuarioViewSet  # Descomentar si implementas UsuarioViewSet
 
 router = DefaultRouter()
 router.register(r'categorias', CategoriaViewSet)
 router.register(r'grupos', GrupoCocheViewSet)
-router.register(r'usuarios', UsuarioViewSet)
-router.register(r'lugares', LugarViewSet)
 router.register(r'vehiculos', VehiculoViewSet)
-router.register(r'imagenes', ImagenVehiculoViewSet)
-router.register(r'politicas', PoliticaPagoViewSet)
-router.register(r'promociones', PromocionViewSet)
-router.register(r'reservas', ReservaViewSet)
+router.register(r'lugares', LugarViewSet)
+router.register(r'reservas', ReservaViewSet, basename='reserva')
 router.register(r'contenidos', ContenidoViewSet)
-router.register(r'registrar', RegisterUserView)
-router.register(r'tarifas-vehiculos', TarifaVehiculoViewSet)
-router.register(r'reservas-conductor', ReservaConductorViewSet)
-router.register(r'penalizaciones', PenalizacionViewSet)
-router.register(r'tipos-penalizacion', TipoPenalizacionViewSet)
-router.register(r'politicas-incluye', PoliticaIncluyeViewSet)
-router.register(r'mantenimientos', MantenimientoViewSet)
-
+router.register(r'promociones', PromocionViewSet)
+router.register(r'politicas-pago', PoliticaPagoViewSet)
+router.register(r'contratos', ContratoViewSet)
+router.register(r'facturas', FacturaViewSet)
+# router.register(r'usuarios', UsuarioViewSet)  # Descomentar si implementas UsuarioViewSet
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('admin/', admin.site.urls),
-    path("rest-auth/", include("rest_framework.urls")),
-    path('api/payments/', include('payments.urls')),
+    # path('contact/', ContactoView.as_view(), name='contact'),
+    path('search/', VehiculoViewSet.as_view({'post': 'disponibilidad'}), name='search'),
+    path('reservations/<str:reserva_id>/find/', ReservaViewSet.as_view({'post': 'buscar'}), name='find-reserva'),
+    path('locations/', LugarViewSet.as_view({'get': 'list'}), name='locations'),
+    path('reservations/calculate-price/', ReservaViewSet.as_view({'post': 'calcular_precio'}), name='calculate-reservation-price'),
+    path('politicas-pago/<int:pk>/incluye/', PoliticaPagoViewSet.as_view({'get': 'incluye'}), name='politica-incluye'),
+    path('politicas-pago/<int:pk>/penalizaciones/', PoliticaPagoViewSet.as_view({'get': 'penalizaciones'}), name='politica-penalizaciones'),
+    path('locations/destinations/', LugarViewSet.as_view({'get': 'destinos'}), name='locations-destinations'),
 ]

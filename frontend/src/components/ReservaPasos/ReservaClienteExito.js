@@ -23,268 +23,191 @@ import '../../css/ReservaClienteExito.css';
 const ReservaClienteExito = () => {
   const navigate = useNavigate();
   const [reservaCompletada, setReservaCompletada] = useState(null);
+  const [error, setError] = useState(null);
   const debugMode = true; 
   
   useEffect(() => {
-    // Recuperar datos de la reserva completada
-    const storedData = sessionStorage.getItem('reservaCompletada');
-    if (storedData || debugMode) {
-      // Si estamos en modo debug, usar datos de prueba
+    try {
+      // Recuperar datos de la reserva completada
+      const storedData = sessionStorage.getItem('reservaData');
+      if (!storedData) {
+        setError('No se encontraron datos de la reserva completada.');
+        return;
+      }
       setReservaCompletada(JSON.parse(storedData));
+    } catch (err) {
+      setError('Error al cargar los datos de la reserva.');
     }
   }, []);
 
+  // Imprimir la reserva
   const handleImprimirReserva = () => {
-    window.print();
+    try {
+      window.print();
+    } catch (err) {
+      setError('No se pudo imprimir la reserva.');
+    }
   };
 
+  // Descargar la reserva como JSON
   const handleDescargarReserva = () => {
-    // Implementación futura: generación de PDF
-    alert('Funcionalidad de descarga en desarrollo');
+    try {
+      if (reservaCompletada) {
+        const blob = new Blob([JSON.stringify(reservaCompletada, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reserva_${reservaCompletada.id || 'mobility4you'}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      setError('No se pudo descargar la reserva.');
+    }
   };
 
+  // Volver al inicio
   const handleVolverInicio = () => {
-    // Limpiar datos de reserva al volver al inicio
-    sessionStorage.removeItem('reservaData');
-    sessionStorage.removeItem('reservaCompletada');
-    navigate('/');
+    try {
+      navigate('/');
+    } catch (err) {
+      setError('No se pudo volver al inicio.');
+    }
   };
 
+  // Ir a gestión de reservas
   const handleGestionReservas = () => {
-    // Redireccionar a la gestión de reservas
-    navigate('/reservations');
+    try {
+      navigate('/mis-reservas');
+    } catch (err) {
+      setError('No se pudo acceder a la gestión de reservas.');
+    }
   };
 
-  // Si no hay datos de reserva, mostrar mensaje de redirección
+  if (error) {
+    return <div className="error">{error}</div>;
+  }
   if (!reservaCompletada) {
-    return (
-      <Container className="reserva-exito my-5">
-        <Card className="shadow-sm">
-          <Card.Header className="bg-warning text-dark">
-            <h5 className="mb-0">Información no disponible</h5>
-          </Card.Header>
-          <Card.Body className="text-center py-5">
-            <h4 className="mb-4">No se encontraron datos de una reserva completada</h4>
-            <p>Es posible que hayas accedido a esta página directamente sin completar el proceso de reserva.</p>
-            <Button 
-              variant="primary" 
-              onClick={() => navigate('/coches')}
-              className="mt-3"
-            >
-              <FontAwesomeIcon icon={faHome} className="me-2" />
-              Ir al listado de coches
-            </Button>
-          </Card.Body>
-        </Card>
-      </Container>
-    );
+    return <div className="loading">Cargando datos de la reserva...</div>;
   }
 
   // Extraer datos relevantes
-  const { reservaId, car, fechas, paymentOption, extras, detallesReserva, conductor, fechaPago } = reservaCompletada;
-  
+  const { id, car, fechas, paymentOption, extras, detallesReserva, conductor, fechaPago, metodo_pago, importe_pagado_inicial, importe_pendiente_inicial, importe_pagado_extra, importe_pendiente_extra } = reservaCompletada;
   // Formatear fecha de pago
   const fechaPagoFormateada = fechaPago ? new Date(fechaPago).toLocaleString() : 'No disponible';
 
+  // Función para formatear moneda
+  const formatCurrency = (value) => {
+    if (typeof value !== 'number') return '-';
+    return value.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+  };
+
+  // Renderizado principal
   return (
-    <Container className="reserva-exito my-4">
-      <div className="reservation-progress mb-4">
-        <div className="progress-steps">
-          <div className="step completed">1. Selección de Extras</div>
-          <div className="step completed">2. Datos del Conductor</div>
-          <div className="step completed">3. Pago</div>
-          <div className="step active">4. Confirmación</div>
-        </div>
-      </div>
-      
-      <Card className="shadow-sm print-area">
-        <Card.Header className="bg-success text-white">
-          <div className="d-flex justify-content-between align-items-center">
-            <h5 className="mb-0">¡Reserva Completada Exitosamente!</h5>
-            <div className="print-download-buttons d-print-none">
-              <Button 
-                variant="light" 
-                size="sm" 
-                className="me-2" 
-                onClick={handleImprimirReserva}
-              >
-                <FontAwesomeIcon icon={faPrint} className="me-1" />
-                Imprimir
-              </Button>
-              <Button 
-                variant="light" 
-                size="sm" 
-                onClick={handleDescargarReserva}
-              >
-                <FontAwesomeIcon icon={faDownload} className="me-1" />
-                Descargar
-              </Button>
-            </div>
-          </div>
-        </Card.Header>
-        
-        <Card.Body>
-          <div className="confirmation-message text-center mb-4">
-            <FontAwesomeIcon icon={faCheckCircle} size="4x" className="text-success mb-3" />
-            <h4>¡Gracias por tu reserva!</h4>
-            <p className="lead">
-              ID de Reserva: <strong>{reservaId}</strong>
-            </p>
-            <p>
-              Hemos enviado un correo electrónico de confirmación a <strong>{conductor?.email}</strong> con todos los detalles.
-            </p>
-          </div>
-          
-          <Row>
-            <Col md={6}>
-              <Card className="mb-4 reservation-details">
-                <Card.Header>
-                  <h5 className="mb-0">Detalles de la Reserva</h5>
-                </Card.Header>
-                <Card.Body>
-                  <Table className="table-borderless">
-                    <tbody>
-                      <tr>
-                        <td><strong>Vehículo:</strong></td>
-                        <td>{car?.marca} {car?.modelo}</td>
-                      </tr>
-                      <tr>
-                        <td><strong>Protección:</strong></td>
-                        <td>
-                          {paymentOption === 'all-inclusive' ? 
-                            <Badge bg="success">All Inclusive</Badge> : 
-                            <Badge bg="secondary">Economy</Badge>
-                          }
-                        </td>
-                      </tr>
-                      <tr>
-                        <td><strong>Recogida:</strong></td>
-                        <td>
-                          {fechas?.pickupLocation}
-                          <br />
-                          {fechas?.pickupDate ? new Date(fechas.pickupDate).toLocaleDateString() : ""} a las {fechas?.pickupTime}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td><strong>Devolución:</strong></td>
-                        <td>
-                          {fechas?.dropoffLocation}
-                          <br />
-                          {fechas?.dropoffDate ? new Date(fechas.dropoffDate).toLocaleDateString() : ""} a las {fechas?.dropoffTime}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td><strong>Extras:</strong></td>
-                        <td>
-                          {extras && extras.length > 0 ? (
-                            <ul className="extras-list mb-0">
-                              {extras.map((extra, index) => (
-                                <li key={index}>{extra.nombre}</li>
-                              ))}
-                            </ul>
-                          ) : (
-                            "Ninguno seleccionado"
-                          )}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </Table>
-                </Card.Body>
-              </Card>
-            </Col>
-            
-            <Col md={6}>
-              <Card className="mb-4 customer-details">
-                <Card.Header>
-                  <h5 className="mb-0">Datos del Conductor</h5>
-                </Card.Header>
-                <Card.Body>
-                  <Table className="table-borderless">
-                    <tbody>
-                      <tr>
-                        <td><FontAwesomeIcon icon={faUser} className="me-2" />Nombre:</td>
-                        <td>{conductor?.nombre} {conductor?.apellidos}</td>
-                      </tr>
-                      <tr>
-                        <td><FontAwesomeIcon icon={faEnvelope} className="me-2" />Email:</td>
-                        <td>{conductor?.email}</td>
-                      </tr>
-                      <tr>
-                        <td><FontAwesomeIcon icon={faPhone} className="me-2" />Teléfono:</td>
-                        <td>{conductor?.telefono}</td>
-                      </tr>
-                      <tr>
-                        <td><FontAwesomeIcon icon={faIdCard} className="me-2" />Documento:</td>
-                        <td>{conductor?.tipoDocumento.toUpperCase()}: {conductor?.numeroDocumento}</td>
-                      </tr>
-                    </tbody>
-                  </Table>
-                </Card.Body>
-              </Card>
-              
-              <Card className="payment-summary">
-                <Card.Header>
-                  <h5 className="mb-0">Resumen de Pago</h5>
-                </Card.Header>
-                <Card.Body>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Fecha de Pago:</span>
-                    <span>{fechaPagoFormateada}</span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Método de Pago:</span>
-                    <span>Tarjeta de Crédito</span>
-                  </div>
-                  <hr />
-                  {detallesReserva && (
-                    <div className="detalles-precio">
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>Precio base:</span>
-                        <span>{detallesReserva.precioCocheBase.toFixed(2)}€</span>
-                      </div>
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>IVA (21%):</span>
-                        <span>{detallesReserva.iva.toFixed(2)}€</span>
-                      </div>
-                      {detallesReserva.precioExtras > 0 && (
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Extras:</span>
-                          <span>{detallesReserva.precioExtras.toFixed(2)}€</span>
-                        </div>
+    <Container className="reserva-exito-container mt-4 mb-4">
+      <Row className="justify-content-center">
+        <Col md={8}>
+          <Card className="shadow-lg">
+            <Card.Body>
+              <div className="text-center mb-4">
+                <FontAwesomeIcon icon={faCheckCircle} size="3x" color="#28a745" />
+                <h2 className="mt-3">¡Reserva completada con éxito!</h2>
+                <p className="lead">Tu reserva ha sido procesada correctamente. Te hemos enviado un email con los detalles.</p>
+              </div>
+              <Table bordered responsive className="mb-4">
+                <tbody>
+                  <tr>
+                    <th>ID Reserva</th>
+                    <td><Badge bg="success">{id}</Badge></td>
+                  </tr>
+                  <tr>
+                    <th><FontAwesomeIcon icon={faCarSide} /> Vehículo</th>
+                    <td>{car?.marca} {car?.modelo} ({car?.matricula})</td>
+                  </tr>
+                  <tr>
+                    <th><FontAwesomeIcon icon={faCalendarAlt} /> Fechas</th>
+                    <td>{fechas?.recogida} - {fechas?.devolucion}</td>
+                  </tr>
+                  <tr>
+                    <th><FontAwesomeIcon icon={faMapMarkerAlt} /> Recogida</th>
+                    <td>{detallesReserva?.lugarRecogida?.nombre}</td>
+                  </tr>
+                  <tr>
+                    <th><FontAwesomeIcon icon={faMapMarkerAlt} /> Devolución</th>
+                    <td>{detallesReserva?.lugarDevolucion?.nombre}</td>
+                  </tr>
+                  <tr>
+                    <th><FontAwesomeIcon icon={faUser} /> Conductor</th>
+                    <td>{conductor?.nombre} {conductor?.apellido} ({conductor?.email})</td>
+                  </tr>
+                  <tr>
+                    <th><FontAwesomeIcon icon={faShieldAlt} /> Opción de pago</th>
+                    <td>{paymentOption?.nombre || paymentOption}</td>
+                  </tr>
+                  <tr>
+                    <th><FontAwesomeIcon icon={faClock} /> Fecha de pago</th>
+                    <td>{fechaPagoFormateada}</td>
+                  </tr>
+                  <tr>
+                    <th>Extras</th>
+                    <td>
+                      {extras && extras.length > 0 ? (
+                        <ul className="mb-0">
+                          {extras.map((extra, idx) => (
+                            <li key={idx}>{extra.nombre} ({formatCurrency(extra.precio)})</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span>No se añadieron extras</span>
                       )}
-                      <hr />
-                      <div className="d-flex justify-content-between fw-bold total-amount">
-                        <span>Total:</span>
-                        <span>{detallesReserva.total.toFixed(2)}€</span>
-                      </div>
-                    </div>
-                  )}
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-          
-          <div className="next-steps mt-4 text-center d-print-none">
-            <h5 className="mb-3">¿Qué hacer ahora?</h5>
-            <p>Puedes gestionar tu reserva o realizar una nueva búsqueda.</p>
-            <div className="d-flex justify-content-center mt-3">
-              <Button 
-                variant="primary" 
-                className="me-3"
-                onClick={handleGestionReservas}
-              >
-                Gestionar mis Reservas
-              </Button>
-              <Button 
-                variant="outline-primary"
-                onClick={handleVolverInicio}
-              >
-                Volver al Inicio
-              </Button>
-            </div>
-          </div>
-        </Card.Body>
-      </Card>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>Total pagado</th>
+                    <td>{formatCurrency(detallesReserva?.precioTotal)}</td>
+                  </tr>
+                  <tr>
+                    <th>Método de pago inicial</th>
+                    <td>{metodo_pago}</td>
+                  </tr>
+                  <tr>
+                    <th>Importe pagado inicial</th>
+                    <td>{formatCurrency(importe_pagado_inicial)}</td>
+                  </tr>
+                  <tr>
+                    <th>Importe pendiente inicial</th>
+                    <td>{formatCurrency(importe_pendiente_inicial)}</td>
+                  </tr>
+                  <tr>
+                    <th>Importe pagado extra</th>
+                    <td>{formatCurrency(importe_pagado_extra)}</td>
+                  </tr>
+                  <tr>
+                    <th>Importe pendiente extra</th>
+                    <td>{formatCurrency(importe_pendiente_extra)}</td>
+                  </tr>
+                </tbody>
+              </Table>
+              <div className="d-flex justify-content-between">
+                <Button variant="outline-primary" onClick={handleImprimirReserva}>
+                  <FontAwesomeIcon icon={faPrint} className="me-2" /> Imprimir
+                </Button>
+                <Button variant="outline-success" onClick={handleDescargarReserva}>
+                  <FontAwesomeIcon icon={faDownload} className="me-2" /> Descargar
+                </Button>
+                <Button variant="secondary" onClick={handleGestionReservas}>
+                  Gestionar mis reservas
+                </Button>
+                <Button variant="primary" onClick={handleVolverInicio}>
+                  Volver al inicio
+                </Button>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
     </Container>
   );
 };

@@ -1,8 +1,16 @@
 // src/components/FiltroSelect.js - Versión mejorada
 import React from 'react';
-import { Row, Col, Form, Badge } from 'react-bootstrap';
+import { Row, Col, Form, Badge, Button } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTimes, faFilter, faSort, faCar, faGasPump } from '@fortawesome/free-solid-svg-icons';
+import { 
+  faTimes, 
+  faFilter, 
+  faSort, 
+  faCar, 
+  faGasPump, 
+  faSliders,
+  faChevronDown
+} from '@fortawesome/free-solid-svg-icons';
 
 const FiltroSelect = ({ filters, setFilters, options }) => {
   const handleChange = (e) => {
@@ -24,71 +32,83 @@ const FiltroSelect = ({ filters, setFilters, options }) => {
     }
   };
 
-  // Cada bloque: si ya se seleccionó una opción se muestra como etiqueta con un icono; si no, se muestra el select.
+  const clearAllFilters = () => {
+    setFilters({
+      marca: '',
+      modelo: '',
+      combustible: '',
+      orden: ''
+    });
+  };
+
+  // Calcular cuántos filtros están aplicados
+  const activeFiltersCount = Object.values(filters).filter(Boolean).length;
+
   return (
-    <div className="filter-container p-3 mb-4 rounded shadow-sm">
-      <h5 className="mb-3">
-        <FontAwesomeIcon icon={faFilter} className="me-2" />
-        Filtrar y ordenar resultados
-      </h5>
-      <Row className="filter-selects d-flex justify-content-start align-items-center flex-wrap">
+    <div className="filter-container p-4 mb-4 rounded-lg">
+      <div className="filter-header d-flex justify-content-between align-items-center mb-3">
+        <h5 className="mb-0 filter-title">
+          <FontAwesomeIcon icon={faSliders} className="me-2" />
+          Filtrar y ordenar resultados
+        </h5>
+        
+        {activeFiltersCount > 0 && (
+          <Button 
+            variant="link" 
+            size="sm" 
+            className="filter-clear-btn"
+            onClick={clearAllFilters}
+          >
+            Limpiar filtros ({activeFiltersCount})
+          </Button>
+        )}
+      </div>
+      
+      <Row className="filter-selects g-3">
         {Object.entries(filters).map(([filterName, filterValue]) => (
-          <Col key={filterName} md={3} sm={6} xs={12} className="mb-3 d-flex align-items-stretch">
+          <Col key={filterName} md={3} sm={6} xs={12}>
             {filterValue ? (
-              <Badge 
-                bg="primary" 
-                className="selected-filter-badge shadow-sm px-3 py-2"
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  width: '100%', 
-                  fontSize: '1rem', 
-                  gap: '0.5rem',
-                  letterSpacing: '0.01em'
-                }}
-              >
-                <FontAwesomeIcon icon={getFilterIcon(filterName)} className="me-2" />
-                <span className="me-2 fw-semibold">{filterName.charAt(0).toUpperCase() + filterName.slice(1)}:</span>
-                <span className="filter-value">{filterValue}</span>
-                <FontAwesomeIcon 
-                  icon={faTimes} 
-                  className="ms-2 remove-filter-icon"
-                  onClick={() => removeFilter(filterName)}
-                  style={{ cursor: 'pointer', marginLeft: 'auto' }}
-                  title="Quitar filtro"
-                />
-              </Badge>
-            ) : (
-              <Form.Group controlId={filterName} className="filter-group w-100">
-                <div className="form-filters">
-                  <Form.Select 
-                    name={filterName} 
-                    value={filterValue} 
-                    onChange={handleChange}
-                    className="filter-select shadow-sm"
-                    id={`floating-${filterName}`}
-                    style={{fontSize: '1rem', borderRadius: 10}} 
+              <div className="selected-filter-badge">
+                <div className="selected-filter-inner">
+                  <div className="filter-badge-content">
+                    <FontAwesomeIcon icon={getFilterIcon(filterName)} className="filter-badge-icon" />
+                    <div className="filter-badge-text">
+                      <span className="filter-badge-label">{filterName === 'orden' ? 'Orden' : filterName}</span>
+                      <span className="filter-badge-value">{filterValue}</span>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="link" 
+                    className="filter-remove-btn"
+                    onClick={() => removeFilter(filterName)}
+                    aria-label={`Quitar filtro de ${filterName}`}
                   >
-                    <option value="" disabled>
-                      {filterName}
-                    </option>
-                    {options[filterName]?.map((opt, idx) => (
-                      <option key={idx} value={opt}>{opt}</option>
-                    ))}
-                  </Form.Select>
+                    <FontAwesomeIcon icon={faTimes} />
+                  </Button>
                 </div>
-              </Form.Group>
+              </div>
+            ) : (
+              <div className="filter-select-wrapper">
+                <FontAwesomeIcon icon={getFilterIcon(filterName)} className="filter-select-icon" />
+                <Form.Select 
+                  name={filterName} 
+                  value={filterValue} 
+                  onChange={handleChange}
+                  className="filter-select"
+                >
+                  <option value="">
+                    {filterName === 'orden' ? 'Ordenar por' : `Filtrar por ${filterName}`}
+                  </option>
+                  {options[filterName]?.map((opt, idx) => (
+                    <option key={idx} value={opt}>{opt}</option>
+                  ))}
+                </Form.Select>
+                <FontAwesomeIcon icon={faChevronDown} className="filter-select-arrow" />
+              </div>
             )}
           </Col>
         ))}
       </Row>
-      <div className="filter-count text-end mt-2">
-        {Object.values(filters).filter(v => v).length > 0 && (
-          <small className="text-muted">
-            {Object.values(filters).filter(v => v).length} filtros aplicados
-          </small>
-        )}
-      </div>
     </div>
   );
 };

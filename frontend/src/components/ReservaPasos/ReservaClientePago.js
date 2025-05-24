@@ -21,9 +21,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import '../../css/ReservaClientePago.css';
+import { editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
 
 // Componente placeholder para futura implementación completa
-const ReservaClientePago = () => {
+const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferencia = false }) => {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
@@ -46,18 +47,32 @@ const ReservaClientePago = () => {
   // Cargar datos de reserva del sessionStorage al iniciar
   useEffect(() => {
     try {
-      const storedData = sessionStorage.getItem('reservaData');
-      if (!storedData) {
-        setError('No se encontraron datos de reserva. Por favor, inicia el proceso desde la selección de vehículo.');
-        return;
+      let storedData;
+      if (modoDiferencia && reservaId) {
+        // Buscar la reserva por ID (DEBUG_MODE o API)
+        if (DEBUG_MODE) {
+          storedData = sessionStorage.getItem('reservaData');
+        } else {
+          // Aquí podrías hacer un fetch real si es necesario
+        }
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          setReservaData({ ...parsed, diferenciaPendiente: diferencia });
+        } else {
+          setError('No se encontraron datos de reserva para pago de diferencia.');
+        }
+      } else {
+        storedData = sessionStorage.getItem('reservaData');
+        if (!storedData) {
+          setError('No se encontraron datos de reserva.');
+          return;
+        }
+        setReservaData(JSON.parse(storedData));
       }
-      
-      setReservaData(JSON.parse(storedData));
     } catch (err) {
-      console.error('Error al cargar datos de reserva:', err);
-      setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
+      setError('Error al cargar datos de reserva.');
     }
-  }, []);
+  }, [diferencia, reservaId, modoDiferencia]);
 
 
   const handleVolver = () => {
@@ -104,63 +119,39 @@ const ReservaClientePago = () => {
   // 2. ACTUALIZAR LA FUNCIÓN processRedsysPayment para usar Django API
   const processRedsysPayment = async () => {
     setRedsysLoading(true);
-    
+    setError(null);
     try {
-      const total = reservaData.detallesReserva.total;
-      const { redsysParams, orderNumber } = generateRedsysData(reservaData, total);
-      
-      // Actualizar datos de reserva con número de pedido
-      const updatedReservaData = {
-        ...reservaData,
-        ordenPago: orderNumber,
-        metodoPagoDetalle: 'redsys',
-        fechaInicioPago: new Date().toISOString()
-      };
-      
-      // Guardar datos actualizados antes del pago
-      sessionStorage.setItem('reservaData', JSON.stringify(updatedReservaData));
-      
-      // URL del backend Django
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-      
-      // Llamada al endpoint Django para obtener la firma
+      const total = diferencia || reservaData?.detallesReserva?.total || reservaData?.total || 0;
+      const { redsysParams, orderNumber } = generateRedsysData(reservaData, total);
       const response = await fetch(`${backendUrl}/api/payments/redsys/prepare/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          redsysParams,
-          reservaData: updatedReservaData
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redsysParams, reservaData })
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error HTTP ${response.status}`);
+      if (!response.ok) throw new Error('Error preparando pago con Redsys');
+      const data = await response.json();
+      setPaymentData(data);
+      // Redirigir a Redsys
+      if (data.redsysUrl && data.merchantParameters && data.signature) {
+        // Crear y enviar formulario a Redsys
+        const form = document.createElement('form');
+        form.action = data.redsysUrl;
+        form.method = 'POST';
+        form.style.display = 'none';
+        form.innerHTML = `
+          <input type="hidden" name="Ds_SignatureVersion" value="${data.signatureVersion}" />
+          <input type="hidden" name="Ds_MerchantParameters" value="${data.merchantParameters}" />
+          <input type="hidden" name="Ds_Signature" value="${data.signature}" />
+        `;
+        document.body.appendChild(form);
+        form.submit();
+      } else {
+        throw new Error('Respuesta de Redsys incompleta');
       }
-      
-      const { merchantParameters, signature, signatureVersion, redsysUrl } = await response.json();
-      
-      // Configurar datos para envío a Redsys
-      setPaymentData({
-        action: redsysUrl,
-        merchantParameters,
-        signature,
-        signatureVersion
-      });
-      
-      // Enviar formulario automáticamente después de un breve delay
-      setTimeout(() => {
-        if (formRef.current) {
-          formRef.current.submit();
-        }
-      }, 1000);
-      
     } catch (error) {
-      console.error('Error al procesar pago con Redsys:', error);
-      setError(`Ha ocurrido un error al procesar el pago: ${error.message}`);
+      setError(error.message || 'Error al procesar el pago con Redsys.');
+    } finally {
       setRedsysLoading(false);
     }
   };
@@ -170,7 +161,6 @@ const ReservaClientePago = () => {
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
       const response = await fetch(`${backendUrl}/api/payments/redsys/status/${orderNumber}/`);
-      
       if (response.ok) {
         const data = await response.json();
         return data;
@@ -182,56 +172,43 @@ const ReservaClientePago = () => {
     }
   };
 
-  // FUNCIÓN PARA PROCESAR PAGO CON PAYPAL (simulado)
-  const processPayPalPayment = async () => {
-    setLoading(true);
-    
-    try {
-      // Simulación de redirección a PayPal
-      const total = reservaData.detallesReserva.total;
-      
-      // En una implementación real, aquí se haría la integración con PayPal
-      alert(`Redirección a PayPal por un monto de ${total.toFixed(2)}€\n(Funcionalidad en desarrollo)`);
-      
-      // Simular procesamiento
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Generar ID de reserva
-      const reservaId = 'R' + Math.floor(Math.random() * 1000000).toString().padStart(8, '0');
-      
-      const updatedData = {
-        ...reservaData,
-        reservaId: reservaId,
-        fechaPago: new Date().toISOString(),
-        estadoPago: 'completado',
-        metodoPagoDetalle: 'paypal'
-      };
-      
-      sessionStorage.setItem('reservaCompletada', JSON.stringify(updatedData));
-      navigate('/reservation-confirmation/exito');
-      
-    } catch (error) {
-      console.error('Error al procesar pago con PayPal:', error);
-      setError('Ha ocurrido un error al procesar el pago con PayPal.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    const metodoPago = reservaData.metodoPago;
-    
-    if (metodoPago === 'tarjeta') {
-      // Procesar con Redsys
-      await processRedsysPayment();
-    } else if (metodoPago === 'paypal') {
-      // Procesar con PayPal
-      await processPayPalPayment();
-    } else {
-      setError('Método de pago no válido para este paso.');
+    setLoading(true);
+    setError(null);
+    try {
+      if (!reservaData) throw new Error('No hay datos de reserva.');
+      let result;
+      // Calcular importe de extras/diferencia
+      let importeExtra = 0;
+      if (modoDiferencia && diferencia) {
+        importeExtra = diferencia;
+      } else if (reservaData.detallesReserva && reservaData.detallesReserva.total) {
+        importeExtra = reservaData.detallesReserva.total;
+      }
+      // Actualizar campos de pago extra
+      const updatedReserva = {
+        ...reservaData,
+        importe_pagado_extra: (reservaData.importe_pagado_extra || 0) + importeExtra,
+        importe_pendiente_extra: 0,
+      };
+      if (DEBUG_MODE) {
+        result = await editReservation(reservaData.id, updatedReserva);
+      } else {
+        result = await editReservation(reservaData.id, updatedReserva);
+      }
+      sessionStorage.setItem('reservaData', JSON.stringify(result));
+      if (modoDiferencia) {
+        navigate(`/reservations/${reservaData.id}?email=${reservaData.conductor?.email || ''}`, { replace: true });
+      } else {
+        navigate('/reservation-confirmation/exito');
+      }
+    } catch (err) {
+      setError(err.message || 'Error al procesar el pago.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -387,19 +364,19 @@ const ReservaClientePago = () => {
                       <h6 className="mb-2">Tarjetas aceptadas:</h6>
                       <div className="d-flex align-items-center gap-2 flex-wrap">
                         <div className="card-brand">
-                          <img src="/img/cards/visa.png" alt="Visa" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <img src="/assets/img/cards/visa.png" alt="Visa" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
                           <span className="visually-hidden">Visa</span>
                         </div>
                         <div className="card-brand">
-                          <img src="/img/cards/mastercard.png" alt="Mastercard" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <img src="/assets/img/cards/mastercard.png" alt="Mastercard" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
                           <span className="visually-hidden">Mastercard</span>
                         </div>
                         <div className="card-brand">
-                          <img src="/img/cards/maestro.png" alt="Maestro" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <img src="/assets/img/cards/maestro.png" alt="Maestro" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
                           <span className="visually-hidden">Maestro</span>
                         </div>
                         <div className="card-brand">
-                          <img src="/img/cards/amex.png" alt="American Express" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
+                          <img src="/assets/img/cards/amex.png" alt="American Express" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
                           <span className="visually-hidden">American Express</span>
                         </div>
                         <span className="text-muted small">+ todas las principales tarjetas bancarias</span>
@@ -431,7 +408,7 @@ const ReservaClientePago = () => {
                   // PAGO CON PAYPAL (mantener igual)
                   <div className="paypal-payment-form">
                     <h5 className="mb-3">
-                      <img src="/img/paypal-logo.png" alt="PayPal" style={{height: '24px'}} onError={(e) => e.target.style.display = 'none'} />
+                      <img src="/assets/img/paypal-logo.png" alt="PayPal" style={{height: '24px'}} onError={(e) => e.target.style.display = 'none'} />
                       Pago con PayPal
                     </h5>
                     

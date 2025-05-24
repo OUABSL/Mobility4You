@@ -17,11 +17,12 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import '../../css/ReservaClienteExtras.css';
+import { createReservation, editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
 
-import wifiLogo from '../../img/extras/wifi.png';
-import gpsLogo from '../../img/extras/gps.png';
-import asientoLogo from '../../img/extras/child-seat.png';
-import conductorLogo from '../../img/extras/secondary-driver.png';
+import wifiLogo from '../../assets/img/extras/wifi.png';
+import gpsLogo from '../../assets/img/extras/gps.png';
+import asientoLogo from '../../assets/img/extras/child-seat.png';
+import conductorLogo from '../../assets/img/extras/secondary-driver.png';
 
 // Datos de prueba para extras disponibles
 const extrasDisponibles = [
@@ -35,7 +36,7 @@ const extrasDisponibles = [
   {
     id: 2,
     nombre: 'GPS',
-    descripcion: 'Navegador con mapas actualizados',
+    descripcion: 'Navegador con mapas updated_ats',
     precio: 8.95,
     imagen: gpsLogo
   },
@@ -72,26 +73,12 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     try {
       const storedData = sessionStorage.getItem('reservaData');
       if (!storedData) {
-        setError('No se encontraron datos de reserva. Por favor, inicia el proceso desde la selección de vehículo.');
+        setError('No se encontraron datos de reserva.');
         return;
       }
-      
-      const parsedData = JSON.parse(storedData);
-      
-      // Convertir fechas de string a Date
-      if (parsedData.fechas) {
-        if (typeof parsedData.fechas.pickupDate === 'string') {
-          parsedData.fechas.pickupDate = new Date(parsedData.fechas.pickupDate);
-        }
-        if (typeof parsedData.fechas.dropoffDate === 'string') {
-          parsedData.fechas.dropoffDate = new Date(parsedData.fechas.dropoffDate);
-        }
-      }
-      
-      setReservaData(parsedData);
+      setReservaData(JSON.parse(storedData));
     } catch (err) {
-      console.error('Error al cargar datos de reserva:', err);
-      setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
+      setError('Error al cargar datos de reserva.');
     }
   }, []);
   
@@ -142,26 +129,35 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   // Manejador para continuar con la reserva
   const handleContinuar = async () => {
     setLoading(true);
-    
+    setError(null);
     try {
-      // Actualizar los datos de la reserva con los extras seleccionados
-      const updatedReservaData = {
+      if (!reservaData) throw new Error('No hay datos de reserva.');
+      const updatedReserva = {
         ...reservaData,
-        extras: extrasSeleccionados.map(id => extrasDisponibles.find(e => e.id === id)),
-        detallesReserva
+        extras: extrasSeleccionados,
+        detallesReserva,
+        totalExtras
       };
-      
-      // Guardar datos actualizados en sessionStorage
-      sessionStorage.setItem('reservaData', JSON.stringify(updatedReservaData));
-      
-      // Simulamos una espera de red (opcional en desarrollo)
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Navegar al siguiente paso (confirmación)
+      let result;
+      if (DEBUG_MODE) {
+        // Simula crear o editar según si ya tiene id
+        if (updatedReserva.id) {
+          result = await editReservation(updatedReserva.id, updatedReserva);
+        } else {
+          result = await createReservation(updatedReserva);
+        }
+      } else {
+        // Producción: igual
+        if (updatedReserva.id) {
+          result = await editReservation(updatedReserva.id, updatedReserva);
+        } else {
+          result = await createReservation(updatedReserva);
+        }
+      }
+      sessionStorage.setItem('reservaData', JSON.stringify(result));
       navigate('/reservation-confirmation/datos');
-    } catch (error) {
-      console.error('Error al procesar los extras:', error);
-      setError('Ha ocurrido un error al procesar tu selección. Por favor, inténtalo de nuevo.');
+    } catch (err) {
+      setError(err.message || 'Error al continuar con la reserva.');
     } finally {
       setLoading(false);
     }
@@ -220,16 +216,16 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       
       <Card className="shadow-sm">
         <Card.Header className="bg-primario text-white">
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="d-flex justify-content-between align-items-center header-extras">
             <Button 
               variant="link" 
-              className="text-white p-0" 
+              className="text-white p-0 header-volver" 
               onClick={handleVolver}
             >
               <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
               Volver
             </Button>
-            <h5 className="mb-0">Extras y Detalles de Reserva</h5>
+            <h5 className="mb-0 header-titulo">Extras y Detalles de Reserva</h5>
             <div style={{ width: '80px' }}></div> {/* Espacio para equilibrar el header */}
           </div>
         </Card.Header>
@@ -325,7 +321,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
             </Col>
 
             {/* Columna derecha: Selección de extras */}
-            <Col md={7}>
+            <Col md={7} xs={12} className='columna-derecha'>
               <h5 className="mb-3">
                 <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
                 Añade extras a tu reserva (opcional)
@@ -333,7 +329,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
               
               <Row>
                 {extrasDisponibles.map(extra => (
-                  <Col md={6} className="mb-3" key={extra.id}>
+                  <Col md={6} xs={6} className="mb-3" key={extra.id}>
                     <Card 
                       className={`extra-card ${extrasSeleccionados.includes(extra.id) ? 'selected' : ''}`}
                       onClick={() => toggleExtra(extra.id)}

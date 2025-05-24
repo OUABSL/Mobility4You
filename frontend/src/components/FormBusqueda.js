@@ -4,6 +4,7 @@ import { Form, Button, Row, Col, Modal } from 'react-bootstrap';
 import { DateRange } from 'react-date-range';
 import { addDays, format } from 'date-fns';
 import ModalCalendario from './ModalCalendario';
+import { useNavigate, useLocation } from 'react-router-dom'; // Agrega esta línea
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -17,34 +18,29 @@ import {
   faEdit,
   faInfoCircle,
   faTruck,
-  faCarSide
+  faCarSide,
+  faMapMarkerAlt
 } from '@fortawesome/free-solid-svg-icons';
+
+import { useAlertContext } from '../context/AlertContext'; // Importar el contexto de alertas
+import { 
+  fetchLocations, 
+  performSearch, 
+  saveSearchParams, 
+  getStoredSearchParams,
+  validateSearchForm,
+  locationsData,
+  availableTimes as apiAvailableTimes
+} from '../services/searchServices';
+
+
 import '../css/FormBusqueda.css';
 import { is } from 'date-fns/locale';
 
-// Opciones y datos de ejemplo para ubicaciones (podrías importarlos desde un módulo común)
-const locations = [
-  {
-    name: "Aeropuerto de Málaga",
-    icon: faPlane,
-    info: {
-      address: "Avenida Comandante García Morato, s/n, 29004 Málaga, España",
-      hours: "Lunes - Domingo: 06:00 - 23:00",
-      holidays: "06:00 - 23:00"
-    }
-  },
-  {
-    name: "Centro de Málaga",
-    icon: faCity,
-    info: {
-      address: "Calle Larios, 29005 Málaga, España",
-      hours: "Lunes - Domingo: 09:00 - 21:00",
-      holidays: "09:00 - 21:00"
-    }
-  }
-];
+
 // Opciones de horarios disponibles (podrías importarlos desde un módulo común)
-const availableTimes = ["11:00", "11:30", "12:00", "13:30"];
+const availableTimes = apiAvailableTimes;
+
 
 // Tipos de búsqueda (vehículos)
 const searchTypes = [
@@ -96,7 +92,16 @@ const carGroups = [
  * - Diseño plegable para optimizar el espacio en pantalla.
  * - Funcionalidad para detectar el scroll y fijar el formulario en la parte superior.
  */
-const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, listado=false, isMobile=false}) => {
+const FormBusqueda = ({ 
+  collapsible = false, 
+  onSearch, 
+  initialValues = {}, 
+  listado = false, 
+  isMobile = false,
+  locations = [], // Nueva prop para las ubicaciones
+  isMainSection = false // Nueva prop para identificar uso en sección principal
+  }) => {
+  
   // Estado para la ubicación de recogida
   const [pickupLocation, setPickupLocation] = useState(initialValues.pickupLocation || '');
   // Estado para la ubicación de devolución
@@ -140,16 +145,45 @@ const FormBusqueda = ({ collapsible = false, onSearch, initialValues = {}, lista
   const [navbarHeight, setNavbarHeight] = useState(0);
 
   // Tipo de búsqueda y grupo seleccionado
-const [tipoBusqueda, setTipoBusqueda] = useState('coches');
-const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
+  const [tipoBusqueda, setTipoBusqueda] = useState('coches');
+  const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
 
-// Simular llamada a API para tipos y grupos
-useEffect(() => {
-  // Aquí se haría el fetch('/api/search-types')…
-  // Por simplicidad, estamos usando datos estáticos en este ejemplo
-  //setTipoBusqueda('coches'); // Cambia esto según la lógica de tu aplicación
-  //setGrupoSeleccionado(carGroups[0]); // Selecciona el primer grupo por defecto
-}, []);
+  // Estados de alertas
+  const { showSuccess, showError, showWarning } = useAlertContext();
+
+  // Navegación
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Simular llamada a API para tipos y grupos
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        // Cargar ubicaciones
+        const locationsData = await fetchLocations();
+        
+        // Verificar si hay datos guardados en sessionStorage
+        const storedParams = getStoredSearchParams();
+        if (storedParams) {
+          setPickupLocation(storedParams.pickupLocation || '');
+          setDropoffLocation(storedParams.dropoffLocation || '');
+          setShowDropoffLocation(storedParams.dropoffLocation ? true : false);
+          setSameLocation(!storedParams.dropoffLocation);
+          setPickupDate(storedParams.pickupDate || new Date());
+          setDropoffDate(storedParams.dropoffDate || addDays(new Date(), 1));
+          setPickupTime(storedParams.pickupTime || availableTimes[0]);
+          setDropoffTime(storedParams.dropoffTime || availableTimes[0]);
+          setMayor21(storedParams.mayor21 || false);
+        }
+      } catch (error) {
+        showWarning('No se pudieron cargar todas las ubicaciones. Por favor, intenta más tarde.', {
+          timeout: 7000
+        });
+      }
+    };
+
+    loadInitialData();
+  }, [showWarning]);
 
   // Efecto para manejar el scroll y fijar el formulario si es necesario
   useEffect(() => {
@@ -200,11 +234,11 @@ useEffect(() => {
     const value = e.target.value;
     setLocation(value);
     if (value) {
-      setSuggestions(
-        locations.filter(location =>
-          location.name.toLowerCase().includes(value.toLowerCase())
-        )
+      // Filtrar las ubicaciones recibidas por props
+      const filteredLocations = locations.filter(location =>
+        location.nombre.toLowerCase().includes(value.toLowerCase())
       );
+      setSuggestions(filteredLocations);
     } else {
       setSuggestions([]);
     }
@@ -212,25 +246,37 @@ useEffect(() => {
 
   // Función para renderizar las sugerencias de ubicaciones
   const renderSuggestions = (suggestions, setLocation, setSuggestions) => {
-    return suggestions.map((location, index) => (
-      <div
-        key={index}
-        className="suggestion-option"
-        onClick={() => {
-          setLocation(location.name);
-          setSuggestions([]);
-        }}
-      >
-        <div className="suggestion-main">
-          <FontAwesomeIcon className="me-2" icon={location.icon} /> {location.name}
+    return suggestions.map((location, index) => {
+      // Mapear iconos de string a componentes
+      const getIcon = (iconName) => {
+        switch(iconName) {
+          case 'faPlane': return faPlane;
+          case 'faCity': return faCity;
+          default: return faMapMarkerAlt;
+        }
+      };
+
+      return (
+        <div
+          key={index}
+          className="suggestion-option"
+          onClick={() => {
+            setLocation(location.nombre);
+            setSuggestions([]);
+          }}
+        >
+          <div className="suggestion-main">
+            <FontAwesomeIcon className="me-2" icon={getIcon(location.icono_url)} /> 
+            {location.nombre}
+          </div>
+          <div className="suggestion-detail">
+            <p><strong>Dirección:</strong> {location.direccion?.calle}, {location.direccion?.ciudad}</p>
+            <p><strong>Teléfono:</strong> {location.telefono}</p>
+            <p><strong>Email:</strong> {location.email}</p>
+          </div>
         </div>
-        <div className="suggestion-detail">
-          <p><strong>Dirección:</strong> {location.info.address}</p>
-          <p><strong>Horario:</strong> {location.info.hours}</p>
-          <p><strong>Festivos:</strong> {location.info.holidays}</p>
-        </div>
-      </div>
-    ));
+      );
+    });
   };
 
   // Función para guardar las fechas seleccionadas en el calendario modal
@@ -242,20 +288,61 @@ useEffect(() => {
   };
 
   // Función para manejar el envío del formulario y generar los parámetros de búsqueda
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Crear objeto con los datos de búsqueda
     const searchParams = {
       pickupLocation,
       dropoffLocation: showDropoffLocation ? dropoffLocation : pickupLocation,
-      pickupDate: format(pickupDate, 'dd-MM'),
+      pickupDate: format(pickupDate, 'yyyy-MM-dd'),
       pickupTime,
-      dropoffDate: format(dropoffDate, 'dd-MM'),
+      dropoffDate: format(dropoffDate, 'yyyy-MM-dd'),
       dropoffTime,
       tipo: tipoBusqueda,
       grupo: grupoSeleccionado,
+      mayor21
     };
-    if (onSearch) {
-      onSearch(searchParams);
+    
+    // Validar formulario
+    const { isValid, errors } = validateSearchForm({
+      ...searchParams,
+      checkMayor21: mayor21
+    });
+    
+    if (!isValid) {
+      // Mostrar errores
+      const errorMessage = Object.values(errors).join('. ');
+      showError(errorMessage, { timeout: 8000 });
+      return;
+    }
+    
+     try {
+      // Guardar parámetros en sessionStorage
+      saveSearchParams(searchParams);
+
+      // Realizar búsqueda
+      await performSearch(searchParams);
+
+      // Mostrar mensaje de éxito
+      showSuccess('Búsqueda realizada con éxito', { timeout: 3000 });
+
+      // Llamar a la función onSearch para pasar los resultados al componente padre
+      if (onSearch) {
+        onSearch(searchParams);
+      }
+      
+      
+      // Si ya estamos en /coches, forzar recarga
+      if (location.pathname === '/coches') {
+        navigate(0); // Recarga la ruta actual
+      } else {
+        // Navegar a la página de resultados
+        navigate('/coches');
+      }
+    } catch (error) {
+      // Mostrar mensaje de error
+      showError(error.message || 'Error al realizar la búsqueda', { timeout: 8000 });
     }
   };
 
@@ -264,31 +351,24 @@ useEffect(() => {
   if (collapsible && !expanded) {
     return (
       <div
-        className={`form-busqueda-collapsed ${isFixedForm ? 'fixed-search' : ''} w-100 d-flex flex-row justify-content-between align-items-center`}
-        style={{ top: isFixedForm ? `${navbarHeight}px` : 'auto' }}
+      className={`form-busqueda-collapsed ${isFixedForm ? 'fixed-search' : ''} w-100 d-flex flex-row justify-content-between align-items-center`}
+      style={{ top: isFixedForm ? `${navbarHeight}px` : 'auto' }}
       >
-        <Row className="align-items-center" style={{ display: 'contents' }}>
-          <Col>
-            <span><strong>Recogida:</strong> {pickupLocation || "No definido"}</span>
-          </Col>
-          <Col>
-            <span>
-              <strong>Devolución:</strong>{" "}
-              {showDropoffLocation
-                ? dropoffLocation || "No definido"
-                : pickupLocation || "Igual que recogida"}
-            </span>
-          </Col>
-          <Col>
-            <span>
-              <strong>Fechas:</strong> {format(pickupDate, 'd MMM')} - {format(dropoffDate, 'd MMM')}
-            </span>
-          </Col>
-        </Row>
-        {/* NUEVO BLOQUE: Botón para modificar y expandir formulario */}
+      <div className="d-flex flex-row align-items-center justify-content-between w-100 flex-wrap">
+        <span className="me-3 ms-1"><strong>Recogida:</strong> {pickupLocation || "No definido"}</span>
+        <span className="me-3 ms-1">
+        <strong>Devolución:</strong>{" "}
+        {showDropoffLocation
+          ? dropoffLocation || "No definido"
+          : pickupLocation || "Igual que recogida"}
+        </span>
+        <span className="me-3 ms-1">
+        <strong>Fechas:</strong> {format(pickupDate, 'd MMM')} - {format(dropoffDate, 'd MMM')}
+        </span>
         <Button onClick={handleExpand} className="btn-modificar d-flex align-items-center justify-content-center bg-none">
-          <FontAwesomeIcon icon={faEdit} className="me-1" />
+        <FontAwesomeIcon icon={faEdit} className="me-1" />
         </Button>
+      </div>
       </div>
     );
   }
@@ -296,46 +376,45 @@ useEffect(() => {
 
   return (
     <div className="search-section w-100" style={{ position: 'relative' }}>
-      <div className={`search-form bg-light text-dark mt-5 mx-5 p-3 rounded ${isMobile ? 'mobile-form' : ''}`}>
-        <Form onSubmit={handleSubmit}>
-          {/* Icono de cierre para formulario expandido */}
-          {listado && (
-          <div
-            className="expand-close-icon align-end"
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '60px',
-              justifySelf: 'flex-end',
-              cursor: 'pointer',
-              fontSize: '1.5rem'
-            }}
-            onClick={handleCloseExpand}
-          >
-            <FontAwesomeIcon icon={faTimes} />
-          </div>
-          )}
-          {/* Selección de tipo de búsqueda */}
-          <Row className={`mb-3 ${isMobile ? 'flex-nowrap overflow-auto' : ''}`}>
-            <Col>
-              <div className={`d-flex ${isMobile ? 'flex-row' : 'flex-wrap'}`}>
-                {searchTypes.map(type => (
-                  <Button
-                    key={type.id}
-                    variant={tipoBusqueda === type.id ? 'primario' : 'outline-primario'}
-                    className={`me-2 mb-2 tipo-btn`}
-                    onClick={() => {
-                      setTipoBusqueda(type.id);
-                        setGrupoSeleccionado(null);
-                      }}
-                      >
-                      <FontAwesomeIcon icon={type.icon} className="me-1" />
-                      {type.label}
-                      </Button>
-                    ))}
-                    </div>
-                  </Col>
-                  </Row>
+      <div className={`search-form bg-light text-dark mt-5 p-3 rounded ${isMobile ? 'mobile-form' : ''} ${isFixedForm ? '' : 'mx-5'}`}>        <Form onSubmit={handleSubmit}>
+        {/* Icono de cierre para formulario expandido */}
+        {listado && (
+        <div
+          className="expand-close-icon align-end"
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '60px',
+            justifySelf: 'flex-end',
+            cursor: 'pointer',
+            fontSize: '1.5rem'
+          }}
+          onClick={handleCloseExpand}
+        >
+          <FontAwesomeIcon icon={faTimes} />
+        </div>
+        )}
+        {/* Selección de tipo de búsqueda */}
+        <Row className={`mb-3 ${isMobile ? 'flex-nowrap overflow-auto' : ''}`}>
+          <Col>
+            <div className={`d-flex ${isMobile ? 'flex-row' : 'flex-wrap'}`}>
+              {searchTypes.map(type => (
+              <Button
+                key={type.id}
+                variant={tipoBusqueda === type.id ? 'primario' : 'outline-primario'}
+                className={`me-2 mb-2 tipo-btn`}
+                onClick={() => {
+                  setTipoBusqueda(type.id);
+                  setGrupoSeleccionado(null);
+                }}
+              >
+                <FontAwesomeIcon icon={type.icon} className="me-1" />
+                {type.label}
+              </Button>
+                ))}
+            </div>
+          </Col>
+        </Row>
 
                   
           {/* Selección de ubicaciones de recogida y devolución */}
@@ -413,8 +492,8 @@ useEffect(() => {
                         icon={faTimes}
                         className="reset-search"
                         onClick={() => {
-                          setDropoffLocation('');
-                          setDropoffSuggestions(locations);
+                          setPickupLocation(''); 
+                          setPickupSuggestions(locations);
                         }}
                       />
                     </div>
@@ -486,7 +565,7 @@ useEffect(() => {
           <Col className="d-flex flex-row align-items-center align-self-end justify-content-start flex-nowrap">
             <Form.Check
               type="checkbox"
-              label="Conductor mayor de 21 años"
+              label="Mayor de 21 años"
               checked={mayor21}
               onChange={(e) => setMayor21(e.target.checked)}
             />
