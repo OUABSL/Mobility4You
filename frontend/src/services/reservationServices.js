@@ -94,7 +94,7 @@ export const calculateReservationPrice = async (data) => {
     }
     // Producción: llamada real a la API
     const mappedData = mapReservationDataToBackend(data);
-    const response = await axios.post(`${API_URL}/reservations/calculate-price`, mappedData);
+    const response = await axios.post(`${API_URL}/reservations/calculate-price/`, mappedData);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Error al calcular el precio.' };
