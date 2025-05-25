@@ -1,0 +1,659 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}
+    {% blocktrans with model_name=model_name %}Acciones Masivas - {{ model_name }}{% endblocktrans %} | {{ site_title|default:_('Django site admin') }}
+{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+    <style>
+        .bulk-actions-container {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .action-section {
+            margin-bottom: 25px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 20px;
+        }
+        
+        .action-section h3 {
+            color: #417690;
+            border-bottom: 2px solid #417690;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .selected-items {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .selected-items h4 {
+            color: #1976d2;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .items-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: white;
+        }
+        
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+        
+        .item-row:hover {
+            background: #f5f5f5;
+        }
+        
+        .item-row:last-child {
+            border-bottom: none;
+        }
+        
+        .item-info {
+            flex: 1;
+        }
+        
+        .item-id {
+            font-weight: bold;
+            color: #417690;
+        }
+        
+        .item-details {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .action-options {
+            display: grid;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .action-option {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .action-option:hover {
+            border-color: #417690;
+            background: #f8f9fa;
+        }
+        
+        .action-option.selected {
+            border-color: #417690;
+            background: #e3f2fd;
+        }
+        
+        .action-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            cursor: pointer;
+        }
+        
+        .action-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .action-icon {
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .delete-action .action-icon {
+            background: #dc3545;
+        }
+        
+        .activate-action .action-icon {
+            background: #28a745;
+        }
+        
+        .deactivate-action .action-icon {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .export-action .action-icon {
+            background: #17a2b8;
+        }
+        
+        .action-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #212529;
+        }
+        
+        .action-description {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .confirmation-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .confirmation-section.show {
+            display: block;
+        }
+        
+        .confirmation-section h4 {
+            color: #856404;
+            margin-top: 0;
+        }
+        
+        .confirmation-text {
+            color: #856404;
+            margin: 15px 0;
+        }
+        
+        .confirmation-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .confirmation-checkbox input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+        
+        .submit-section {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .submit-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin: 0 5px;
+        }
+        
+        .submit-button:hover {
+            background: #218838;
+        }
+        
+        .submit-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .submit-button.danger {
+            background: #dc3545;
+        }
+        
+        .submit-button.danger:hover {
+            background: #c82333;
+        }
+        
+        .cancel-button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0 5px;
+        }
+        
+        .cancel-button:hover {
+            background: #545b62;
+            text-decoration: none;
+            color: white;
+        }
+        
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #417690;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script src="{% static 'admin/js/vendor/jquery/jquery.js' %}"></script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; {% blocktrans with model_name=model_name %}Acciones Masivas{% endblocktrans %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="bulk-actions-container">
+        <h1>
+            <i class="fas fa-tasks"></i>
+            {% blocktrans with model_name=model_name %}Acciones Masivas - {{ model_name }}{% endblocktrans %}
+        </h1>
+
+        <form method="post" id="bulk-action-form">
+            {% csrf_token %}
+            
+            <!-- Elementos seleccionados -->
+            <div class="action-section">
+                <div class="selected-items">
+                    <h4>📋 Elementos Seleccionados</h4>
+                    <div class="stats-section">
+                        <div class="stat-card">
+                            <div class="stat-number" id="selected-count">{{ selected_count|default:0 }}</div>
+                            <div class="stat-label">Elementos seleccionados</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="total-count">{{ total_count|default:0 }}</div>
+                            <div class="stat-label">Total en la lista</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="percentage">{{ percentage|default:0 }}%</div>
+                            <div class="stat-label">Porcentaje seleccionado</div>
+                        </div>
+                    </div>
+                    
+                    {% if selected_items %}
+                    <div class="items-list">
+                        {% for item in selected_items %}
+                        <div class="item-row">
+                            <div class="item-info">
+                                <div class="item-id">#{{ item.id }}</div>
+                                <div class="item-details">{{ item|truncatechars:80 }}</div>
+                            </div>
+                            <input type="hidden" name="selected_ids" value="{{ item.id }}">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Opciones de acción -->
+            <div class="action-section">
+                <h3>⚙️ Seleccionar Acción</h3>
+                <div class="action-options">
+                    
+                    <div class="action-option delete-action">
+                        <input type="radio" name="action" value="bulk_delete" id="action_delete">
+                        <div class="action-header">
+                            <div class="action-icon">
+                                <i class="fas fa-trash"></i>
+                            </div>
+                            <div>
+                                <div class="action-title">Eliminar Seleccionados</div>
+                                <div class="action-description">
+                                    Elimina permanentemente todos los elementos seleccionados.
+                                    <strong>Esta acción no se puede deshacer.</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-option activate-action">
+                        <input type="radio" name="action" value="bulk_activate" id="action_activate">
+                        <div class="action-header">
+                            <div class="action-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div>
+                                <div class="action-title">Activar Seleccionados</div>
+                                <div class="action-description">
+                                    Marca todos los elementos seleccionados como activos.
+                                    Los elementos estarán disponibles para su uso.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-option deactivate-action">
+                        <input type="radio" name="action" value="bulk_deactivate" id="action_deactivate">
+                        <div class="action-header">
+                            <div class="action-icon">
+                                <i class="fas fa-pause-circle"></i>
+                            </div>
+                            <div>
+                                <div class="action-title">Desactivar Seleccionados</div>
+                                <div class="action-description">
+                                    Marca todos los elementos seleccionados como inactivos.
+                                    Los elementos no estarán disponibles pero se conservan.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-option export-action">
+                        <input type="radio" name="action" value="bulk_export" id="action_export">
+                        <div class="action-header">
+                            <div class="action-icon">
+                                <i class="fas fa-download"></i>
+                            </div>
+                            <div>
+                                <div class="action-title">Exportar Seleccionados</div>
+                                <div class="action-description">
+                                    Genera un archivo CSV con todos los elementos seleccionados
+                                    para su descarga.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de confirmación -->
+            <div class="confirmation-section" id="confirmation-section">
+                <h4>⚠️ Confirmación Requerida</h4>
+                <div class="confirmation-text" id="confirmation-text">
+                    <!-- Se llenará dinámicamente con JavaScript -->
+                </div>
+                <div class="confirmation-checkbox">
+                    <input type="checkbox" id="confirm-action" name="confirm_action">
+                    <label for="confirm-action">
+                        <strong>Confirmo que entiendo las consecuencias de esta acción</strong>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Barra de progreso -->
+            <div class="progress-container" id="progress-container">
+                <h3>📊 Progreso de la Operación</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div id="progress-text" style="text-align: center; margin-top: 10px; font-weight: bold;"></div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="submit-section">
+                <button type="submit" class="submit-button" id="submit-button" disabled>
+                    <i class="fas fa-play"></i>
+                    Ejecutar Acción
+                </button>
+                <a href="../" class="cancel-button">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const actionOptions = document.querySelectorAll('input[name="action"]');
+    const confirmationSection = document.getElementById('confirmation-section');
+    const confirmationText = document.getElementById('confirmation-text');
+    const confirmCheckbox = document.getElementById('confirm-action');
+    const submitButton = document.getElementById('submit-button');
+    const form = document.getElementById('bulk-action-form');
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    const confirmationMessages = {
+        'bulk_delete': `
+            <strong>🗑️ ELIMINAR ELEMENTOS</strong><br>
+            Esta acción eliminará permanentemente <strong>${document.getElementById('selected-count').textContent}</strong> elementos.<br>
+            <span style="color: #dc3545; font-weight: bold;">Esta operación NO se puede deshacer.</span>
+        `,
+        'bulk_activate': `
+            <strong>✅ ACTIVAR ELEMENTOS</strong><br>
+            Esta acción activará <strong>${document.getElementById('selected-count').textContent}</strong> elementos.<br>
+            Los elementos estarán disponibles para su uso inmediato.
+        `,
+        'bulk_deactivate': `
+            <strong>⏸️ DESACTIVAR ELEMENTOS</strong><br>
+            Esta acción desactivará <strong>${document.getElementById('selected-count').textContent}</strong> elementos.<br>
+            Los elementos no estarán disponibles pero se conservarán en el sistema.
+        `,
+        'bulk_export': `
+            <strong>📥 EXPORTAR ELEMENTOS</strong><br>
+            Esta acción generará un archivo CSV con <strong>${document.getElementById('selected-count').textContent}</strong> elementos.<br>
+            El archivo se descargará automáticamente al completarse.
+        `
+    };
+
+    // Manejar selección de acción
+    actionOptions.forEach(option => {
+        option.addEventListener('change', function() {
+            // Actualizar estilos visuales
+            document.querySelectorAll('.action-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            this.closest('.action-option').classList.add('selected');
+
+            // Mostrar confirmación
+            confirmationSection.classList.add('show');
+            confirmationText.innerHTML = confirmationMessages[this.value];
+            
+            // Actualizar botón
+            updateSubmitButton();
+            
+            // Cambiar estilo del botón según la acción
+            if (this.value === 'bulk_delete') {
+                submitButton.classList.add('danger');
+                submitButton.innerHTML = '<i class="fas fa-trash"></i> Eliminar Elementos';
+            } else {
+                submitButton.classList.remove('danger');
+                if (this.value === 'bulk_activate') {
+                    submitButton.innerHTML = '<i class="fas fa-check-circle"></i> Activar Elementos';
+                } else if (this.value === 'bulk_deactivate') {
+                    submitButton.innerHTML = '<i class="fas fa-pause-circle"></i> Desactivar Elementos';
+                } else if (this.value === 'bulk_export') {
+                    submitButton.innerHTML = '<i class="fas fa-download"></i> Exportar Elementos';
+                }
+            }
+        });
+    });
+
+    // Manejar confirmación
+    confirmCheckbox.addEventListener('change', updateSubmitButton);
+
+    function updateSubmitButton() {
+        const actionSelected = document.querySelector('input[name="action"]:checked');
+        const confirmed = confirmCheckbox.checked;
+        
+        submitButton.disabled = !(actionSelected && confirmed);
+    }
+
+    // Manejar envío del formulario
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const selectedAction = document.querySelector('input[name="action"]:checked');
+        if (!selectedAction || !confirmCheckbox.checked) {
+            alert('⚠️ Por favor seleccione una acción y confirme que entiende las consecuencias.');
+            return;
+        }
+
+        // Confirmación adicional para eliminación
+        if (selectedAction.value === 'bulk_delete') {
+            const extraConfirm = confirm(
+                '🚨 CONFIRMACIÓN FINAL\n\n' +
+                'Está a punto de eliminar permanentemente los elementos seleccionados.\n' +
+                'Esta acción NO se puede deshacer.\n\n' +
+                '¿Está completamente seguro de que desea continuar?'
+            );
+            if (!extraConfirm) {
+                return;
+            }
+        }
+
+        // Mostrar progreso
+        progressContainer.style.display = 'block';
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+
+        // Simular progreso
+        let progress = 0;
+        const progressInterval = setInterval(function() {
+            progress += Math.random() * 10;
+            if (progress > 90) progress = 90;
+            
+            progressFill.style.width = progress + '%';
+            progressText.textContent = `Procesando... ${Math.round(progress)}%`;
+        }, 300);
+
+        // Enviar datos
+        const formData = new FormData(form);
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => {
+            if (response.headers.get('content-type')?.includes('application/csv')) {
+                // Manejar descarga de CSV
+                return response.blob().then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `export_${new Date().getTime()}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    return { success: true, message: 'Exportación completada' };
+                });
+            } else {
+                return response.json();
+            }
+        })
+        .then(data => {
+            clearInterval(progressInterval);
+            progressFill.style.width = '100%';
+            progressText.textContent = 'Completado!';
+            
+            setTimeout(function() {
+                if (data.success) {
+                    alert(`✅ Operación completada exitosamente!\n${data.message}`);
+                    if (selectedAction.value !== 'bulk_export') {
+                        window.location.href = '../';
+                    } else {
+                        // Reset para nueva exportación
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = '<i class="fas fa-download"></i> Exportar Elementos';
+                        progressContainer.style.display = 'none';
+                    }
+                } else {
+                    alert(`❌ Error: ${data.message}`);
+                    submitButton.disabled = false;
+                    progressContainer.style.display = 'none';
+                }
+            }, 1000);
+        })
+        .catch(error => {
+            clearInterval(progressInterval);
+            console.error('Error:', error);
+            alert('❌ Error durante la operación. Por favor, inténtelo de nuevo.');
+            
+            submitButton.disabled = false;
+            progressContainer.style.display = 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

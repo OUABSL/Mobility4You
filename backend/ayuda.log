@@ -1,0 +1,61 @@
+🔹 Comandos básicos de Django
+✅ 1. Crear y configurar el entorno virtual
+python -m venv venv       # Crear entorno virtual
+.\venv\Scripts\Activate   # Activar entorno virtual en 
+venv\Scripts\activate     # Activar en CMD
+
+
+
+✅ 2. Instalar Django y dependencias
+pip install django djangorestframework  # Instalar Django + DRF
+
+
+✅ 3. Crear el proyecto Django
+django-admin startproject config .
+🔹 Comandos para administrar el proyecto
+
+
+✅ 4. Migraciones y base de datos
+python manage.py migrate  # Aplicar migraciones iniciales
+
+
+✅ 5. Crear una app dentro del proyecto
+python manage.py startapp nombre_de_la_app  # Crear una nueva app
+Ejemplo para una app llamada "usuarios":
+python manage.py startapp usuarios
+
+
+✅ 6. Crear un superusuario para el panel de administración
+python manage.py createsuperuser
+Ingresar nombre de usuario, correo y contraseña.
+
+
+✅ 7. Ejecutar el servidor
+python manage.py runserver  # Iniciar el servidor en localhost:8000
+python manage.py runserver 0.0.0.0:8000  # Permitir acceso externo
+🔹 Comandos para desarrollo y mantenimiento
+
+
+✅ 8. Crear y aplicar migraciones
+Si haces cambios en los modelos:
+python manage.py makemigrations  # Detectar cambios en modelos
+python manage.py migrate         # Aplicar cambios a la base de datos
+
+
+✅ 9. Consultar modelos en la base de datos
+python manage.py showmigrations  # Ver migraciones aplicadas
+python manage.py dbshell         # Abrir shell de la base de datos
+
+
+✅ 10. Ejecutar el shell interactivo
+python manage.py shell  # Para probar código en Django directamente
+
+
+✅ 11. Limpiar la base de datos y reiniciar migraciones
+Si necesitas empezar de cero:
+python manage.py flush  # Borra todos los datos (requiere confirmación)
+python manage.py migrate --fake-initial  # Marca migraciones como aplicadas
+
+
+🔹 Comandos para trabajar con archivos estáticos
+python manage.py collectstatic  # Recopilar archivos estáticos en producción

@@ -1,0 +1,416 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}
+    {% blocktrans with model_name=model_name %}Importar {{ model_name }}{% endblocktrans %} | {{ site_title|default:_('Django site admin') }}
+{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+    <style>
+        .csv-import-container {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .import-section {
+            margin-bottom: 25px;
+        }
+        
+        .import-section h3 {
+            color: #417690;
+            border-bottom: 2px solid #417690;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .file-input-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #417690;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .file-input-button:hover {
+            background: #205067;
+        }
+        
+        .csv-format-info {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .csv-format-info h4 {
+            color: #1976d2;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .field-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .field-item {
+            background: white;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .required-field {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+        }
+        
+        .validation-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .validation-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .validation-option input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        .submit-section {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        
+        .submit-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .submit-button:hover {
+            background: #218838;
+        }
+        
+        .cancel-button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-left: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .cancel-button:hover {
+            background: #545b62;
+            text-decoration: none;
+            color: white;
+        }
+        
+        .warning-message {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #856404;
+        }
+        
+        .warning-message strong {
+            color: #8B4513;
+        }
+        
+        .example-csv {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+        
+        .csv-header {
+            font-weight: bold;
+            color: #417690;
+        }
+        
+        .csv-row {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script src="{% static 'admin/js/vendor/jquery/jquery.js' %}"></script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; {% blocktrans with model_name=model_name %}Importar {{ model_name }}{% endblocktrans %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="csv-import-container">
+        <h1>
+            <i class="fas fa-upload"></i>
+            {% blocktrans with model_name=model_name %}Importar {{ model_name }} desde CSV{% endblocktrans %}
+        </h1>
+        
+        <div class="warning-message">
+            <strong>⚠️ Importante:</strong>
+            Esta funcionalidad permite importar datos masivamente desde un archivo CSV.
+            Asegúrese de revisar el formato requerido y realizar una copia de seguridad antes de proceder.
+        </div>
+
+        <form method="post" enctype="multipart/form-data" id="csv-import-form">
+            {% csrf_token %}
+            
+            <!-- Sección de archivo -->
+            <div class="import-section">
+                <h3>📁 Seleccionar Archivo CSV</h3>
+                <div class="file-input-wrapper">
+                    <div class="file-input-button">
+                        <i class="fas fa-file-csv"></i>
+                        Seleccionar archivo CSV
+                    </div>
+                    <input type="file" name="csv_file" accept=".csv" required id="csv-file-input">
+                </div>
+                <div id="file-info" style="margin-top: 10px; color: #666; font-style: italic;"></div>
+            </div>
+
+            <!-- Información del formato -->
+            <div class="import-section">
+                <div class="csv-format-info">
+                    <h4>📋 Formato Requerido del CSV</h4>
+                    <p>El archivo debe contener una fila de encabezados con los nombres exactos de los campos:</p>
+                    
+                    <div class="field-list">
+                        <!-- Estos campos se rellenarán dinámicamente desde el modelo -->
+                        <div class="field-item required-field">id</div>
+                        <div class="field-item">nombre</div>
+                        <div class="field-item">email</div>
+                        <div class="field-item">telefono</div>
+                        <div class="field-item">fecha_creacion</div>
+                        <div class="field-item">activo</div>
+                    </div>
+                    
+                    <p><strong>Nota:</strong> Los campos con fondo amarillo son obligatorios.</p>
+                    
+                    <div class="example-csv">
+                        <div class="csv-header">id,nombre,email,telefono,fecha_creacion,activo</div>
+                        <div class="csv-row">1,"Juan Pérez","juan@example.com","123456789","2025-01-20",true</div>
+                        <div class="csv-row">2,"María García","maria@example.com","987654321","2025-01-21",true</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Opciones de validación -->
+            <div class="import-section">
+                <h3>⚙️ Opciones de Importación</h3>
+                <div class="validation-options">
+                    <div class="validation-option">
+                        <input type="checkbox" id="validate_only" name="validate_only" value="1">
+                        <label for="validate_only">Solo validar (no importar datos)</label>
+                    </div>
+                    <div class="validation-option">
+                        <input type="checkbox" id="skip_errors" name="skip_errors" value="1">
+                        <label for="skip_errors">Omitir filas con errores</label>
+                    </div>
+                    <div class="validation-option">
+                        <input type="checkbox" id="update_existing" name="update_existing" value="1">
+                        <label for="update_existing">Actualizar registros existentes</label>
+                    </div>
+                    <div class="validation-option">
+                        <input type="checkbox" id="send_notification" name="send_notification" value="1" checked>
+                        <label for="send_notification">Enviar notificación al completar</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barra de progreso -->
+            <div class="progress-container" id="progress-container">
+                <h3>📊 Progreso de Importación</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div id="progress-text" style="text-align: center; margin-top: 10px; font-weight: bold;"></div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="submit-section">
+                <button type="submit" class="submit-button" id="submit-button">
+                    <i class="fas fa-upload"></i>
+                    Iniciar Importación
+                </button>
+                <a href="../" class="cancel-button">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('csv-file-input');
+    const fileInfo = document.getElementById('file-info');
+    const form = document.getElementById('csv-import-form');
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    const submitButton = document.getElementById('submit-button');
+
+    // Manejar selección de archivo
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const size = (file.size / 1024 / 1024).toFixed(2);
+            fileInfo.innerHTML = `
+                <i class="fas fa-check-circle" style="color: green;"></i>
+                Archivo seleccionado: <strong>${file.name}</strong> (${size} MB)
+            `;
+        } else {
+            fileInfo.innerHTML = '';
+        }
+    });
+
+    // Manejar envío del formulario
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const validateOnly = document.getElementById('validate_only').checked;
+        
+        // Mostrar barra de progreso
+        progressContainer.style.display = 'block';
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+        
+        // Simular progreso (en implementación real sería via WebSocket o AJAX polling)
+        let progress = 0;
+        const progressInterval = setInterval(function() {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            
+            progressFill.style.width = progress + '%';
+            progressText.textContent = `Procesando... ${Math.round(progress)}%`;
+        }, 200);
+
+        // Enviar datos
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            clearInterval(progressInterval);
+            progressFill.style.width = '100%';
+            progressText.textContent = 'Completado!';
+            
+            setTimeout(function() {
+                if (data.success) {
+                    alert(`✅ ${validateOnly ? 'Validación' : 'Importación'} completada exitosamente!\n${data.message}`);
+                    if (!validateOnly) {
+                        window.location.href = '../';
+                    }
+                } else {
+                    alert(`❌ Error: ${data.message}`);
+                }
+                
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="fas fa-upload"></i> Iniciar Importación';
+                progressContainer.style.display = 'none';
+            }, 1000);
+        })
+        .catch(error => {
+            clearInterval(progressInterval);
+            console.error('Error:', error);
+            alert('❌ Error durante la importación. Por favor, inténtelo de nuevo.');
+            
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="fas fa-upload"></i> Iniciar Importación';
+            progressContainer.style.display = 'none';
+        });
+    });
+});
+</script>
+{% endblock %}
