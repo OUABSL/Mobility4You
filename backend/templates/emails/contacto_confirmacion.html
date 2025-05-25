@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmación de mensaje recibido</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #28a745;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            border-radius: 0 0 8px 8px;
+        }
+        .success-box {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            margin: 15px 0;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+        }
+        .info-box {
+            background-color: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #28a745;
+            border-radius: 4px;
+        }
+        .message-summary {
+            background-color: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .contact-info {
+            background-color: #e9ecef;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚗 Mobility for You</h1>
+        <h2>¡Mensaje Recibido!</h2>
+    </div>
+    
+    <div class="content">
+        <div class="success-box">
+            <h3>✅ ¡Hola {{ nombre }}!</h3>
+            <p>Hemos recibido tu mensaje correctamente y queremos agradecerte por contactarnos.</p>
+        </div>
+        
+        <div class="info-box">
+            <h4>Resumen de tu consulta:</h4>
+            <p><span class="label">Asunto:</span> {{ asunto }}</p>
+        </div>
+        
+        <div class="message-summary">
+            <h4>Tu mensaje:</h4>
+            <p>{{ mensaje|linebreaks }}</p>
+        </div>
+        
+        <div class="info-box">
+            <h4>¿Qué sucede ahora?</h4>
+            <ul>
+                <li>📧 Nuestro equipo ha recibido tu mensaje</li>
+                <li>⏰ Te responderemos en un plazo máximo de 24 horas</li>
+                <li>📱 Recibirás la respuesta en este mismo email</li>
+                <li>🔍 Nuestros especialistas revisarán tu consulta</li>
+            </ul>
+        </div>
+        
+        <div class="contact-info">
+            <h4>Información de contacto adicional:</h4>
+            <p><strong>📧 Email:</strong> info@mobilityfor-you.com</p>
+            <p><strong>📞 Teléfono:</strong> +34 900 123 456</p>
+            <p><strong>🕒 Horario de atención:</strong> Lunes a Viernes, 9:00 - 18:00</p>
+            <p><strong>📍 Oficina:</strong> Madrid, España</p>
+        </div>
+        
+        <div class="success-box">
+            <p><strong>💡 Mientras tanto...</strong></p>
+            <p>Puedes explorar nuestro catálogo de vehículos, consultar nuestras ofertas especiales o revisar las preguntas frecuentes en nuestra página web.</p>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Gracias por elegir Mobility for You - Tu partner en movilidad</p>
+        <p>Este email fue enviado automáticamente. Por favor, no respondas a este mensaje.</p>
+        <p>© 2025 Mobility for You. Todos los derechos reservados.</p>
+    </div>
+</body>
+</html>

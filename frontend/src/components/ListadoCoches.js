@@ -31,10 +31,8 @@ import FiltroSelect from './FiltroSelect';
 import backgroundHero from '../assets/img/general/audi_wallpaper.png';
 
 import { useAlertContext } from '../context/AlertContext'; // Importar el contexto de alertas
-import { validateSearchForm, saveSearchParams } from  '../services/searchServices';
-
-// Datos de prueba (testing)
-import testingCars from '../assets/testingData/testingData';
+import { validateSearchForm, saveSearchParams, searchAvailableVehicles } from '../services/searchServices';
+import { fetchCarsService } from '../services/carService';
 
 const ListadoCoches = ({ isMobile = false }) => {
   // Estados principales
@@ -104,85 +102,106 @@ const ListadoCoches = ({ isMobile = false }) => {
     }
   }, [hasBusquedaData]);
 
-
-  // Función para extraer opciones únicas de los coches
-  const extractFilterOptions = (carsData) => {
-    const marcas = [...new Set(carsData.map(car => car.marca))].sort();
-    const modelos = [...new Set(carsData.map(car => car.modelo))].sort();
-    const combustibles = [...new Set(carsData.map(car => car.combustible))].sort();
-    
-    setFilterOptions({
-      ...filterOptions,
-      marca: marcas,
-      modelo: modelos,
-      combustible: combustibles
-    });
-  };
-
-  // Función para obtener los coches (modo testing o llamando a la API)
+  // Función para obtener los coches usando servicios unificados
   const fetchCars = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const urlParams = new URLSearchParams(window.location.search);
+      // Verificar si hay datos de búsqueda guardados
+      const storedData = sessionStorage.getItem('reservaData');
+      let useSearchService = false;
+      let searchParams = null;
       
-      // En modo testing o desarrollo
-      if (urlParams.get('testing') === 'on' || process.env.NODE_ENV === 'development') {
-        let filteredCars = [...testingCars];
-        
-        // Aplicar filtros
-        if (filterValues.marca) {
-          filteredCars = filteredCars.filter(car => car.marca === filterValues.marca);
-        }
-        
-        if (filterValues.modelo) {
-          filteredCars = filteredCars.filter(car => car.modelo === filterValues.modelo);
-        }
-        
-        if (filterValues.combustible) {
-          filteredCars = filteredCars.filter(car => car.combustible === filterValues.combustible);
-        }
-        
-        // Aplicar ordenación
-        if (filterValues.orden) {
-          switch (filterValues.orden) {
-            case 'Precio ascendente':
-              filteredCars.sort((a, b) => a.precio_dia - b.precio_dia);
-              break;
-            case 'Precio descendente':
-              filteredCars.sort((a, b) => b.precio_dia - a.precio_dia);
-              break;
-            case 'Marca A-Z':
-              filteredCars.sort((a, b) => a.marca.localeCompare(b.marca));
-              break;
-            case 'Marca Z-A':
-              filteredCars.sort((a, b) => b.marca.localeCompare(a.marca));
-              break;
-            default:
-              break;
+      if (storedData) {
+        try {
+          const data = JSON.parse(storedData);
+          if (data.fechas && 
+              data.fechas.pickupLocation && 
+              data.fechas.pickupDate && 
+              data.fechas.dropoffDate) {
+            useSearchService = true;
+            searchParams = {
+              pickupLocation: data.fechas.pickupLocation,
+              pickupDate: data.fechas.pickupDate,
+              dropoffLocation: data.fechas.dropoffLocation,
+              dropoffDate: data.fechas.dropoffDate,
+              categoria_id: data.categoria_id,
+              grupo_id: data.grupo_id
+            };
           }
+        } catch (parseError) {
+          console.error('Error parsing reservaData:', parseError);
+        }
+      }
+
+      let result;
+      if (useSearchService && searchParams) {
+        // Usar servicio de búsqueda de disponibilidad
+        result = await searchAvailableVehicles(searchParams);
+        setCars(result.results || []);
+        setTotalCars(result.count || 0);
+        
+        // Aplicar filtros locales si están definidos
+        if (filterValues.marca || filterValues.modelo || filterValues.combustible || filterValues.orden) {
+          let filteredCars = [...(result.results || [])];
+          
+          if (filterValues.marca) {
+            filteredCars = filteredCars.filter(car => car.marca === filterValues.marca);
+          }
+          if (filterValues.modelo) {
+            filteredCars = filteredCars.filter(car => car.modelo === filterValues.modelo);
+          }
+          if (filterValues.combustible) {
+            filteredCars = filteredCars.filter(car => car.combustible === filterValues.combustible);
+          }
+          
+          // Aplicar ordenación
+          if (filterValues.orden) {
+            switch (filterValues.orden) {
+              case 'Precio ascendente':
+                filteredCars.sort((a, b) => a.precio_dia - b.precio_dia);
+                break;
+              case 'Precio descendente':
+                filteredCars.sort((a, b) => b.precio_dia - a.precio_dia);
+                break;
+              case 'Marca A-Z':
+                filteredCars.sort((a, b) => a.marca.localeCompare(b.marca));
+                break;
+              case 'Marca Z-A':
+                filteredCars.sort((a, b) => b.marca.localeCompare(a.marca));
+                break;
+              default:
+                break;
+            }
+          }
+          setCars(filteredCars);
         }
         
-        setCars(filteredCars);
-        setTotalCars(testingCars.length);
-        
-        // Extraer las opciones para los filtros si no están cargadas
-        if (filterOptions.marca.length === 0) {
-          extractFilterOptions(testingCars);
+        // Extraer opciones de filtro
+        if (result.filterOptions) {
+          setFilterOptions(prevOptions => ({
+            ...prevOptions,
+            ...result.filterOptions
+          }));
         }
       } else {
-        // Llamada a la API real
-        const response = await axios.get('/api/cars', { params: filterValues });
-        setCars(response.data.cars);
-        setTotalCars(response.data.total);
+        // Usar servicio general de coches con filtros
+        result = await fetchCarsService(filterValues);
+        setCars(result.cars || []);
+        setTotalCars(result.total || 0);
         
-        // Extraer opciones de filtro de los datos recibidos
-        extractFilterOptions(response.data.cars);
+        // Extraer opciones de filtro
+        if (result.filterOptions) {
+          setFilterOptions(prevOptions => ({
+            ...prevOptions,
+            ...result.filterOptions
+          }));
+        }
       }
     } catch (error) {
       console.error('Error al cargar los coches:', error);
-      setError('No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.');
+      setError(error.message || 'No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.');
       setCars([]);
       setTotalCars(0);
     } finally {
@@ -196,8 +215,7 @@ const ListadoCoches = ({ isMobile = false }) => {
       fetchCars();
     }
   }, [filterValues, hasBusquedaData]);
-
-  // Manejar búsqueda desde el formulario
+  // Manejar búsqueda desde el formulario usando servicio unificado
   const handleSearch = async (dataBusqueda) => {
     // Validar los datos de búsqueda
     const { isValid, errors } = validateSearchForm({
@@ -223,12 +241,24 @@ const ListadoCoches = ({ isMobile = false }) => {
     setLoading(true);
     
     try {
-      // Cargar coches
-      await fetchCars();
+      // Usar servicio unificado de búsqueda
+      const result = await searchAvailableVehicles(dataBusqueda);
+      setCars(result.results || []);
+      setTotalCars(result.count || 0);
+      
+      // Actualizar opciones de filtro
+      if (result.filterOptions) {
+        setFilterOptions(prevOptions => ({
+          ...prevOptions,
+          ...result.filterOptions
+        }));
+      }
+      
       showSuccess('Búsqueda realizada con éxito', { timeout: 3000 });
     } catch (error) {
       showError('Error al buscar vehículos disponibles', { timeout: 7000 });
-      setError('No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.');
+      setError(error.message || 'No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.');
+    } finally {
       setLoading(false);
     }
   };

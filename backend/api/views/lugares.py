@@ -5,14 +5,14 @@ from rest_framework.response import Response
 from django.db.models import Count, Q
 from ..models.lugares import Lugar
 from ..serializers.lugares import LugarSerializer
-from ..permissions import IsAdminOrReadOnly
+from ..permissions import IsAdminOrReadOnly, PublicAccessPermission
 class LugarViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet para gestionar lugares de recogida/devolución
     """
     queryset = Lugar.objects.all()
     serializer_class = LugarSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [PublicAccessPermission]  # Permitir acceso público para consultas
     
     def get_queryset(self):
         """

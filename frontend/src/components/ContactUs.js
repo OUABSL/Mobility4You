@@ -24,12 +24,11 @@ import {
   faPhone,
   faBuildingUser
 } from '@fortawesome/free-solid-svg-icons';
-import axios from 'axios';
+import contactService from '../services/contactService';
 import '../css/ContactUs.css';
 
 // Para código de producción/desarrollo
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-const DEBUG_MODE = false;
+const DEBUG_MODE = process.env.NODE_ENV === 'development' && false;
 
 const ContactUs = () => {
   // Estados para el formulario
@@ -117,8 +116,7 @@ const ContactUs = () => {
       }
     }
   };
-  
-  // Función para enviar el formulario al backend
+    // Función para enviar el formulario al backend usando el servicio
   const sendContactForm = async (data) => {
     if (DEBUG_MODE) {
       // En modo desarrollo, simular respuesta exitosa
@@ -126,28 +124,25 @@ const ContactUs = () => {
       return new Promise(resolve => {
         setTimeout(() => {
           resolve({
-            status: 200,
-            data: { 
-              success: true, 
-              message: 'Mensaje enviado correctamente (Simulado)'
-            }
+            success: true, 
+            message: 'Mensaje enviado correctamente (Simulado)',
+            id: 'debug-' + Date.now()
           });
         }, 1000);
       });
     }
     
     try {
-      // En producción, enviar a la API real
-      const response = await axios.post(`${BACKEND_URL}/api/contact/`, data, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      return response;
+      // Usar el servicio de contacto con reintento automático
+      return await contactService.sendContactFormWithRetry(data, 2);
     } catch (error) {
       console.error('Error enviando el formulario:', error);
-      throw error;
+      return {
+        success: false,
+        message: 'Error enviando el mensaje',
+        userMessage: 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.',
+        originalError: error
+      };
     }
   };
   

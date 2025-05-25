@@ -31,6 +31,33 @@ export const fetchLocations = async () => {
 
 
 /**
+ * Extrae opciones únicas para los filtros
+ * @param {Array} carsData - Array de coches
+ * @returns {Object} - Opciones de filtrado
+ */
+export const extractFilterOptions = (carsData) => {
+  if (!Array.isArray(carsData) || carsData.length === 0) {
+    return {
+      marca: [],
+      modelo: [],
+      combustible: [],
+      orden: ["Precio ascendente", "Precio descendente", "Marca A-Z", "Marca Z-A"]
+    };
+  }
+
+  const marcas = [...new Set(carsData.map(car => car.marca))].sort();
+  const modelos = [...new Set(carsData.map(car => car.modelo))].sort();
+  const combustibles = [...new Set(carsData.map(car => car.combustible))].sort();
+  
+  return {
+    marca: marcas,
+    modelo: modelos,
+    combustible: combustibles,
+    orden: ["Precio ascendente", "Precio descendente", "Marca A-Z", "Marca Z-A"]
+  };
+};
+
+/**
  * Valida los datos del formulario de búsqueda
  * @param {Object} formData - Datos del formulario
  * @returns {Object} - {isValid, errors}
@@ -83,11 +110,11 @@ export const validateSearchForm = (formData) => {
 };
 
 /**
- * Envía la solicitud de búsqueda al servidor
+ * Busca vehículos disponibles según criterios de búsqueda
  * @param {Object} searchParams - Parámetros de búsqueda
- * @returns {Promise<Object>} - Resultados de la búsqueda
+ * @returns {Promise<Object>} - Resultados de la búsqueda con estructura unificada
  */
-export const performSearch = async (searchParams) => {
+export const searchAvailableVehicles = async (searchParams) => {
   try {
     const { isValid, errors } = validateSearchForm(searchParams);
     if (!isValid) {
@@ -96,25 +123,51 @@ export const performSearch = async (searchParams) => {
     }
     
     if (DEBUG_MODE) {
+      // Importar datos de prueba solo cuando sea necesario
+      const { default: testingCars } = await import('../assets/testingData/testingData');
       await new Promise(resolve => setTimeout(resolve, 800));
+      
       return {
         success: true,
         message: 'Búsqueda realizada con éxito',
+        count: testingCars.length,
+        results: testingCars,
+        filterOptions: extractFilterOptions(testingCars)
       };
     }
     
-    // CAMBIADO: usar el endpoint correcto
+    // Transformar parámetros para el backend
+    const backendParams = {
+      fecha_recogida: searchParams.pickupDate,
+      fecha_devolucion: searchParams.dropoffDate,
+      lugar_recogida_id: searchParams.pickupLocation,
+      lugar_devolucion_id: searchParams.dropoffLocation || searchParams.pickupLocation,
+      categoria_id: searchParams.categoria_id,
+      grupo_id: searchParams.grupo_id
+    };
+    
     const response = await withTimeout(
-      axios.post(`${API_URL}/vehiculos/disponibilidad/`, searchParams),
+      axios.post(`${API_URL}/vehiculos/disponibilidad/`, backendParams),
       12000
     );
     
-    return response.data;
+    return {
+      success: true,
+      count: response.data.count,
+      results: response.data.results,
+      filterOptions: extractFilterOptions(response.data.results)
+    };
   } catch (error) {
-    console.error('Error performing search:', error);
-    throw error.response?.data?.message || error.message || 'Error al realizar la búsqueda';
+    console.error('Error searching vehicles:', error);
+    throw new Error(error.response?.data?.error || error.message || 'Error al buscar vehículos');
   }
 };
+
+/**
+ * Función legacy de compatibilidad - usar searchAvailableVehicles en su lugar
+ * @deprecated Usar searchAvailableVehicles para nueva funcionalidad
+ */
+export const performSearch = searchAvailableVehicles;
 /**
  * Guarda los parámetros de búsqueda en sessionStorage
  * @param {Object} searchParams - Parámetros de búsqueda

@@ -228,3 +228,47 @@ REDSYS_ENVIRONMENT = env('REDSYS_ENVIRONMENT', default='test')  # test o product
 
 # URL del frontend para redirecciones
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
+
+# Configuración de Email
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@mobilityfor-you.com')
+
+# Email específico para mensajes de contacto
+CONTACT_EMAIL = env('CONTACT_EMAIL', default='info@mobilityfor-you.com')
+
+# Configuración de plantillas
+TEMPLATES[0]['DIRS'].append(os.path.join(BASE_DIR, 'templates'))
+
+# Configuración de logging para emails
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'help.log'),
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'emails': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
