@@ -8,7 +8,7 @@ from .views.reservas import ReservaViewSet
 from .views.promociones import PromocionViewSet
 from .views.politicasPago import PoliticaPagoViewSet
 from .views.facturacion import ContratoViewSet, FacturaViewSet
-# from .views.contacto import ContactoView
+from .views.contacto import ContactoView, ContactoDetailView
 # from .views.usuarios import UsuarioViewSet  # Descomentar si implementas UsuarioViewSet
 
 router = DefaultRouter()
@@ -26,7 +26,8 @@ router.register(r'facturas', FacturaViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    # path('contact/', ContactoView.as_view(), name='contact'),
+    path('contact/', ContactoView.as_view(), name='contact'),
+    path('contact/<int:pk>/', ContactoDetailView.as_view(), name='contact-detail'),
     path('search/', VehiculoViewSet.as_view({'post': 'disponibilidad'}), name='search'),
     path('reservations/<str:reserva_id>/find/', ReservaViewSet.as_view({'post': 'buscar'}), name='find-reserva'),
     path('locations/', LugarViewSet.as_view({'get': 'list'}), name='locations'),

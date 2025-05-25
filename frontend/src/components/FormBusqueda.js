@@ -25,7 +25,7 @@ import {
 import { useAlertContext } from '../context/AlertContext'; // Importar el contexto de alertas
 import { 
   fetchLocations, 
-  performSearch, 
+  searchAvailableVehicles, 
   saveSearchParams, 
   getStoredSearchParams,
   validateSearchForm,
@@ -316,13 +316,12 @@ const FormBusqueda = ({
       showError(errorMessage, { timeout: 8000 });
       return;
     }
-    
-     try {
+      try {
       // Guardar parámetros en sessionStorage
       saveSearchParams(searchParams);
 
-      // Realizar búsqueda
-      await performSearch(searchParams);
+      // Realizar búsqueda usando servicio unificado
+      await searchAvailableVehicles(searchParams);
 
       // Mostrar mensaje de éxito
       showSuccess('Búsqueda realizada con éxito', { timeout: 3000 });

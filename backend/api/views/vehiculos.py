@@ -14,7 +14,7 @@ from ..serializers.vehiculos import (
     VehiculoDetailSerializer
 )
 from ..filters import VehiculoFilter
-from ..permissions import IsAdminOrReadOnly
+from ..permissions import IsAdminOrReadOnly, PublicAccessPermission
 from ..pagination import StandardResultsSetPagination
 
 class CategoriaViewSet(viewsets.ModelViewSet):
@@ -29,21 +29,69 @@ class GrupoCocheViewSet(viewsets.ModelViewSet):
     serializer_class = GrupoCocheSerializer
     permission_classes = [IsAdminOrReadOnly]
 
+
 class VehiculoViewSet(viewsets.ModelViewSet):
     """ViewSet para vehículos"""
     queryset = Vehiculo.objects.filter(activo=True).select_related(
         'categoria', 'grupo'
     ).prefetch_related('imagenes', 'tarifas')
     serializer_class = VehiculoDetailSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]  # Por defecto
     filter_backends = [DjangoFilterBackend]
     filterset_class = VehiculoFilter
     pagination_class = StandardResultsSetPagination
     
+    def get_permissions(self):
+        """Personalizar permisos según la acción"""
+        if self.action in ['disponibilidad', 'disponibilidad_fechas', 'list', 'retrieve']:
+            # Acceso público para consultas
+            return [PublicAccessPermission()]
+        else:
+            # Solo admin para modificaciones
+            return [IsAdminOrReadOnly()]
+        
+        
     def get_serializer_class(self):
         if self.action == 'list':
             return VehiculoListSerializer
         return VehiculoDetailSerializer
+    
+    def list(self, request, *args, **kwargs):
+        """Listado de vehículos con estructura de respuesta estandarizada"""
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Agregar precio por defecto a vehículos sin precio específico
+        vehiculos_con_precio = []
+        for vehiculo in queryset:
+            # Obtener precio actual (se podría mejorar con una consulta más eficiente)
+            tarifa = vehiculo.tarifas.filter(
+                Q(fecha_fin__gte=datetime.now().date()) | Q(fecha_fin__isnull=True),
+                fecha_inicio__lte=datetime.now().date()
+            ).order_by('-fecha_inicio').first()
+            
+            if tarifa:
+                vehiculo.precio_dia = tarifa.precio_dia
+            else:
+                vehiculo.precio_dia = 50.00  # Precio por defecto
+            
+            vehiculos_con_precio.append(vehiculo)
+        
+        page = self.paginate_queryset(vehiculos_con_precio)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response({
+                'success': True,
+                'results': serializer.data,
+                'filterOptions': self._extract_filter_options(queryset)
+            })
+
+        serializer = self.get_serializer(vehiculos_con_precio, many=True)
+        return Response({
+            'success': True,
+            'count': len(vehiculos_con_precio),
+            'results': serializer.data,
+            'filterOptions': self._extract_filter_options(queryset)
+        })
     
     @action(detail=False, methods=['post'])
     def disponibilidad(self, request):
@@ -60,7 +108,10 @@ class VehiculoViewSet(viewsets.ModelViewSet):
             # Validar fechas
             if not fecha_recogida or not fecha_devolucion:
                 return Response(
-                    {'error': 'Se requieren fechas de recogida y devolución'},
+                    {
+                        'success': False,
+                        'error': 'Se requieren fechas de recogida y devolución'
+                    },
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
@@ -107,16 +158,45 @@ class VehiculoViewSet(viewsets.ModelViewSet):
             # Serializar resultados
             serializer = VehiculoDetailSerializer(vehiculos_con_precio, many=True)
             
+            # Generar filterOptions
+            filter_options = self._extract_filter_options(vehiculos_con_precio)
+            
             return Response({
+                'success': True,
                 'count': len(vehiculos_con_precio),
-                'results': serializer.data
+                'results': serializer.data,
+                'filterOptions': filter_options
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
             return Response(
-                {'error': str(e)},
+                {
+                    'success': False,
+                    'error': str(e)
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
+    
+    def _extract_filter_options(self, vehiculos):
+        """Extrae opciones de filtrado de una lista de vehículos"""
+        if not vehiculos:
+            return {
+                'marca': [],
+                'modelo': [],
+                'combustible': [],
+                'orden': ["Precio ascendente", "Precio descendente", "Marca A-Z", "Marca Z-A"]
+            }
+        
+        marcas = sorted(list(set(v.marca for v in vehiculos)))
+        modelos = sorted(list(set(v.modelo for v in vehiculos)))
+        combustibles = sorted(list(set(v.combustible for v in vehiculos)))
+        
+        return {
+            'marca': marcas,
+            'modelo': modelos,
+            'combustible': combustibles,
+            'orden': ["Precio ascendente", "Precio descendente", "Marca A-Z", "Marca Z-A"]
+        }
     
     @action(detail=True, methods=['get'])
     def disponibilidad_fechas(self, request, pk=None):

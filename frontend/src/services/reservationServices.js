@@ -138,7 +138,7 @@ export const deleteReservation = async (reservaId) => {
       return;
     }
     // Producción: llamada real a la API
-    await axios.delete(`${API_URL}/reservations/${reservaId}`);
+    await axios.post(`${API_URL}/reservations/${reservaId}/cancelar/`);  
   } catch (error) {
     throw error.response?.data || { message: 'Error al cancelar la reserva.' };
   }
