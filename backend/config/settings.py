@@ -79,7 +79,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -244,19 +244,41 @@ CONTACT_EMAIL = env('CONTACT_EMAIL', default='info@mobilityfor-you.com')
 # Configuración de plantillas
 TEMPLATES[0]['DIRS'].append(os.path.join(BASE_DIR, 'templates'))
 
-# Configuración de logging para emails
+# Configuración de logging para emails y admin
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+        'admin_formatter': {
+            'format': '[{asctime}] {levelname} - {name} - {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'help.log'),
+            'formatter': 'verbose',
+        },
+        'admin_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'admin_operations.log'),
+            'formatter': 'admin_formatter',
         },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
     },
     'loggers': {
@@ -264,6 +286,11 @@ LOGGING = {
             'handlers': ['file', 'console'],
             'level': 'INFO',
             'propagate': True,
+        },
+        'admin_operations': {
+            'handlers': ['admin_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
         },
         'django': {
             'handlers': ['file'],
