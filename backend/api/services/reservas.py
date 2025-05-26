@@ -1,22 +1,412 @@
 # api/services/reservas.py
-from decimal import Decimal
+import logging
+from decimal import Decimal, InvalidOperation
 from django.utils import timezone
 from django.db import transaction
-from ..models.reservas import Reserva, ReservaExtra, ReservaConductor, Penalizacion
+from django.core.exceptions import ValidationError
+from ..models.reservas import Reserva, ReservaExtra, ReservaConductor, Penalizacion, Extras
 from ..models.vehiculos import Vehiculo
-from payments.models import PagoRedsys
+from ..models.usuarios import Usuario
+from ..models.lugares import Lugar
+from ..models.promociones import Promocion
+from ..models.politicasPago import PoliticaPago
 
+logger = logging.getLogger(__name__)
+
+class ReservaService:
+    """
+    Servicio centralizado para manejar todas las operaciones de reservas
+    Implementa logging completo, validación robusta y manejo de errores
+    """
+    
+    @staticmethod
+    def validar_datos_reserva(datos):
+        """
+        Valida los datos de entrada para una reserva
+        
+        Args:
+            datos: Dict con datos de la reserva
+            
+        Returns:
+            dict: Datos validados y normalizados
+            
+        Raises:
+            ValidationError: Si los datos no son válidos
+        """
+        logger.info("Iniciando validación de datos de reserva")
+        
+        errores = {}
+        
+        # Validar campos obligatorios
+        campos_obligatorios = [
+            'vehiculo_id', 'fecha_recogida', 'fecha_devolucion',
+            'lugar_recogida_id', 'lugar_devolucion_id', 'politica_pago_id'
+        ]
+        
+        for campo in campos_obligatorios:
+            if not datos.get(campo):
+                errores[campo] = f"El campo {campo} es obligatorio"
+        
+        # Validar fechas
+        try:
+            fecha_recogida = datos.get('fecha_recogida')
+            fecha_devolucion = datos.get('fecha_devolucion')
+            
+            if fecha_recogida and fecha_devolucion:
+                if isinstance(fecha_recogida, str):
+                    fecha_recogida = timezone.datetime.fromisoformat(fecha_recogida.replace('Z', '+00:00'))
+                if isinstance(fecha_devolucion, str):
+                    fecha_devolucion = timezone.datetime.fromisoformat(fecha_devolucion.replace('Z', '+00:00'))
+                
+                if fecha_recogida >= fecha_devolucion:
+                    errores['fechas'] = "La fecha de devolución debe ser posterior a la de recogida"
+                
+                if fecha_recogida <= timezone.now():
+                    errores['fecha_recogida'] = "La fecha de recogida debe ser futura"
+                    
+                datos['fecha_recogida'] = fecha_recogida
+                datos['fecha_devolucion'] = fecha_devolucion
+                
+        except (ValueError, TypeError) as e:
+            errores['fechas'] = f"Formato de fecha inválido: {str(e)}"
+        
+        # Validar IDs de entidades relacionadas
+        try:
+            if datos.get('vehiculo_id'):
+                if not Vehiculo.objects.filter(id=datos['vehiculo_id'], disponible=True).exists():
+                    errores['vehiculo_id'] = "Vehículo no encontrado o no disponible"
+                    
+            if datos.get('lugar_recogida_id'):
+                if not Lugar.objects.filter(id=datos['lugar_recogida_id']).exists():
+                    errores['lugar_recogida_id'] = "Lugar de recogida no encontrado"
+                    
+            if datos.get('lugar_devolucion_id'):
+                if not Lugar.objects.filter(id=datos['lugar_devolucion_id']).exists():
+                    errores['lugar_devolucion_id'] = "Lugar de devolución no encontrado"
+                    
+            if datos.get('politica_pago_id'):
+                if not PoliticaPago.objects.filter(id=datos['politica_pago_id']).exists():
+                    errores['politica_pago_id'] = "Política de pago no encontrada"
+                    
+            if datos.get('promocion_id'):
+                promocion = Promocion.objects.filter(
+                    id=datos['promocion_id'], 
+                    activo=True,
+                    fecha_inicio__lte=timezone.now().date(),
+                    fecha_fin__gte=timezone.now().date()
+                ).first()
+                if not promocion:
+                    errores['promocion_id'] = "Promoción no válida o expirada"
+                    
+        except Exception as e:
+            logger.error(f"Error validando entidades relacionadas: {str(e)}")
+            errores['database'] = "Error validando datos en base de datos"
+        
+        # Validar extras
+        if datos.get('extras'):
+            extras_ids = [extra.get('extra_id') for extra in datos['extras'] if extra.get('extra_id')]
+            if extras_ids:
+                extras_validos = Extras.objects.filter(id__in=extras_ids).count()
+                if extras_validos != len(extras_ids):
+                    errores['extras'] = "Algunos extras seleccionados no son válidos"
+        
+        if errores:
+            logger.warning(f"Errores de validación encontrados: {errores}")
+            raise ValidationError(errores)
+        
+        # Normalizar método de pago
+        metodo_pago = datos.get('metodo_pago', 'tarjeta').lower()
+        if metodo_pago not in ['tarjeta', 'efectivo', 'paypal']:
+            metodo_pago = 'tarjeta'
+        datos['metodo_pago'] = metodo_pago
+        
+        logger.info("Validación de datos completada exitosamente")
+        return datos
+
+    @staticmethod
+    def calcular_precio_reserva(datos_reserva):
+        """
+        Calcula el precio de una reserva SIN crearla
+        
+        Args:
+            datos_reserva: Dict con datos de la reserva
+            
+        Returns:
+            dict: Desglose completo de precios
+        """
+        logger.info(f"Calculando precio para reserva con vehículo {datos_reserva.get('vehiculo_id')}")
+        
+        try:
+            # Validar datos primero
+            datos_validados = ReservaService.validar_datos_reserva(datos_reserva)
+            
+            # Obtener vehículo
+            vehiculo = Vehiculo.objects.get(id=datos_validados['vehiculo_id'])
+            
+            # Calcular días de alquiler
+            dias = (datos_validados['fecha_devolucion'] - datos_validados['fecha_recogida']).days
+            if dias <= 0:
+                raise ValidationError("El período de alquiler debe ser de al menos 1 día")
+            
+            # Precio base del vehículo
+            precio_base = vehiculo.precio_dia * dias
+            
+            # Calcular extras
+            precio_extras = Decimal('0.00')
+            extras_detalle = []
+            
+            if datos_validados.get('extras'):
+                for extra_data in datos_validados['extras']:
+                    try:
+                        extra = Extras.objects.get(id=extra_data['extra_id'])
+                        cantidad = int(extra_data.get('cantidad', 1))
+                        precio_extra = extra.precio * cantidad * dias
+                        precio_extras += precio_extra
+                        
+                        extras_detalle.append({
+                            'id': extra.id,
+                            'nombre': extra.nombre,
+                            'cantidad': cantidad,
+                            'precio_unitario': float(extra.precio),
+                            'precio_total': float(precio_extra)
+                        })
+                    except (Extras.DoesNotExist, ValueError) as e:
+                        logger.warning(f"Extra inválido ignorado: {e}")
+                        continue
+            
+            # Aplicar promoción si existe
+            descuento = Decimal('0.00')
+            promocion_detalle = None
+            
+            if datos_validados.get('promocion_id'):
+                try:
+                    promocion = Promocion.objects.get(id=datos_validados['promocion_id'])
+                    if promocion.tipo_descuento == 'porcentaje':
+                        descuento = (precio_base + precio_extras) * (promocion.descuento_pct / 100)
+                    elif promocion.tipo_descuento == 'fijo':
+                        descuento = promocion.descuento_fijo
+                        
+                    promocion_detalle = {
+                        'id': promocion.id,
+                        'nombre': promocion.nombre,
+                        'tipo': promocion.tipo_descuento,
+                        'valor': float(promocion.descuento_pct if promocion.tipo_descuento == 'porcentaje' else promocion.descuento_fijo),
+                        'descuento_aplicado': float(descuento)
+                    }
+                except Promocion.DoesNotExist:
+                    logger.warning(f"Promoción {datos_validados['promocion_id']} no encontrada")
+            
+            # Calcular subtotal después de descuento
+            subtotal = precio_base + precio_extras - descuento
+            
+            # Calcular impuestos (IVA 21%)
+            iva = subtotal * Decimal('0.21')
+            
+            # Total final
+            total = subtotal + iva
+            
+            resultado = {
+                'vehiculo_id': datos_validados['vehiculo_id'],
+                'dias_alquiler': dias,
+                'precio_dia': float(vehiculo.precio_dia),
+                'precio_base': float(precio_base),
+                'precio_extras': float(precio_extras),
+                'extras_detalle': extras_detalle,
+                'descuento': float(descuento),
+                'promocion': promocion_detalle,
+                'subtotal': float(subtotal),
+                'iva': float(iva),
+                'iva_porcentaje': 21.0,
+                'total': float(total),
+                'currency': 'EUR'
+            }
+            
+            logger.info(f"Precio calculado exitosamente: {total}€ para {dias} días")
+            return resultado
+            
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.error(f"Error calculando precio de reserva: {str(e)}")
+            raise Exception(f"Error en el cálculo de precios: {str(e)}")
+
+    @staticmethod
+    @transaction.atomic
+    def crear_reserva_completa(datos_reserva, usuario):
+        """
+        Crea una reserva completa con todos sus componentes
+        SOLO se llama en el paso de PAGO
+        
+        Args:
+            datos_reserva: Dict con todos los datos validados
+            usuario: Usuario que hace la reserva
+            
+        Returns:
+            Reserva: Objeto de reserva creado
+        """
+        logger.info(f"Creando reserva para usuario {usuario.id}")
+        
+        try:
+            # Validar datos
+            datos_validados = ReservaService.validar_datos_reserva(datos_reserva)
+            
+            # Verificar disponibilidad del vehículo una vez más
+            vehiculo = Vehiculo.objects.select_for_update().get(id=datos_validados['vehiculo_id'])
+            
+            if not ReservaService.verificar_disponibilidad_vehiculo(
+                vehiculo.id,
+                datos_validados['fecha_recogida'],
+                datos_validados['fecha_devolucion']
+            ):
+                raise ValidationError("El vehículo ya no está disponible para esas fechas")
+            
+            # Calcular precios actualizados
+            calculo_precios = ReservaService.calcular_precio_reserva(datos_validados)
+            
+            # Crear la reserva
+            reserva = Reserva.objects.create(
+                usuario=usuario,
+                vehiculo=vehiculo,
+                lugar_recogida_id=datos_validados['lugar_recogida_id'],
+                lugar_devolucion_id=datos_validados['lugar_devolucion_id'],
+                fecha_recogida=datos_validados['fecha_recogida'],
+                fecha_devolucion=datos_validados['fecha_devolucion'],
+                politica_pago_id=datos_validados['politica_pago_id'],
+                promocion_id=datos_validados.get('promocion_id'),
+                precio_dia=Decimal(str(calculo_precios['precio_dia'])),
+                precio_impuestos=Decimal(str(calculo_precios['iva'])),
+                precio_total=Decimal(str(calculo_precios['total'])),
+                metodo_pago=datos_validados['metodo_pago'],
+                estado='pendiente'
+            )
+            
+            # Configurar importes según método de pago
+            ReservaService.configurar_importes_pago(reserva, datos_validados['metodo_pago'])
+            
+            # Crear extras
+            if datos_validados.get('extras'):
+                ReservaService.crear_extras_reserva(reserva, datos_validados['extras'])
+            
+            # Crear conductores
+            if datos_validados.get('conductores'):
+                ReservaService.crear_conductores_reserva(reserva, datos_validados['conductores'])
+            
+            logger.info(f"Reserva {reserva.id} creada exitosamente")
+            return reserva
+            
+        except Exception as e:
+            logger.error(f"Error creando reserva: {str(e)}")
+            raise
+
+    @staticmethod
+    def configurar_importes_pago(reserva, metodo_pago):
+        """Configura los importes pagados/pendientes según el método de pago"""
+        total = reserva.precio_total
+        
+        if metodo_pago in ['tarjeta', 'paypal']:
+            # Pago completo por adelantado
+            reserva.importe_pagado_inicial = total
+            reserva.importe_pendiente_inicial = Decimal('0.00')
+            reserva.estado = 'confirmada'
+        else:  # efectivo
+            # Pago en destino
+            reserva.importe_pagado_inicial = Decimal('0.00')
+            reserva.importe_pendiente_inicial = total
+            reserva.estado = 'pendiente'
+        
+        reserva.importe_pagado_extra = Decimal('0.00')
+        reserva.importe_pendiente_extra = Decimal('0.00')
+        reserva.save()
+
+    @staticmethod
+    def crear_extras_reserva(reserva, extras_data):
+        """Crea los extras asociados a una reserva"""
+        for extra_data in extras_data:
+            try:
+                ReservaExtra.objects.create(
+                    reserva=reserva,
+                    extra_id=extra_data['extra_id'],
+                    cantidad=extra_data.get('cantidad', 1)
+                )
+            except Exception as e:
+                logger.warning(f"Error creando extra {extra_data}: {e}")
+                
+    @staticmethod
+    def crear_conductores_reserva(reserva, conductores_data):
+        """Crea los conductores asociados a una reserva"""
+        for conductor_data in conductores_data:
+            try:
+                ReservaConductor.objects.create(
+                    reserva=reserva,
+                    conductor_id=conductor_data['conductor_id'],
+                    rol=conductor_data.get('rol', 'principal')
+                )
+            except Exception as e:
+                logger.warning(f"Error creando conductor {conductor_data}: {e}")
+
+    @staticmethod
+    def verificar_disponibilidad_vehiculo(vehiculo_id, fecha_inicio, fecha_fin):
+        """
+        Verifica si un vehículo está disponible en un rango de fechas
+        
+        Args:
+            vehiculo_id: ID del vehículo
+            fecha_inicio: Fecha de inicio
+            fecha_fin: Fecha de fin
+            
+        Returns:
+            bool: True si está disponible
+        """
+        reservas_conflicto = Reserva.objects.filter(
+            vehiculo_id=vehiculo_id,
+            estado__in=['confirmada', 'pendiente'],
+            fecha_recogida__lt=fecha_fin,
+            fecha_devolucion__gt=fecha_inicio
+        ).count()
+        
+        return reservas_conflicto == 0
+
+    @staticmethod
+    def buscar_reserva_por_datos(reserva_id, email):
+        """
+        Busca una reserva por ID y email del conductor
+        
+        Args:
+            reserva_id: ID de la reserva
+            email: Email del conductor principal
+            
+        Returns:
+            Reserva: Objeto de reserva encontrado
+            
+        Raises:
+            Reserva.DoesNotExist: Si no se encuentra la reserva
+        """
+        logger.info(f"Buscando reserva {reserva_id} con email {email}")
+        
+        try:
+            reserva = Reserva.objects.select_related(
+                'vehiculo', 'lugar_recogida', 'lugar_devolucion', 
+                'politica_pago', 'promocion'
+            ).prefetch_related(
+                'extras__extra', 'conductores__conductor'
+            ).get(
+                id=reserva_id,
+                conductores__conductor__email=email,
+                conductores__rol='principal'
+            )
+            
+            logger.info(f"Reserva {reserva_id} encontrada exitosamente")
+            return reserva
+            
+        except Reserva.DoesNotExist:
+            logger.warning(f"Reserva {reserva_id} no encontrada para email {email}")
+            raise
+
+# Mantener funciones legacy para compatibilidad pero marcadas como deprecated
 @transaction.atomic
 def crear_reserva(datos_reserva):
-    """
-    Crea una nueva reserva con todos sus componentes
-    
-    Args:
-        datos_reserva: Dict con todos los datos de la reserva
-        
-    Returns:
-        Reserva creada
-    """
+    """DEPRECATED: Usar ReservaService.crear_reserva_completa"""
+    logger.warning("Usando función crear_reserva deprecated")
     # Extraer datos principales
     vehiculo_id = datos_reserva.get('vehiculo_id')
     lugar_recogida_id = datos_reserva.get('lugar_recogida_id')
@@ -93,6 +483,7 @@ def crear_reserva(datos_reserva):
 
 @transaction.atomic
 def cancelar_reserva(reserva):
+    """DEPRECATED: Usar ReservaService directamente"""
     """
     Cancela una reserva y aplica penalizaciones si corresponde
     
@@ -146,6 +537,7 @@ def cancelar_reserva(reserva):
     return reserva
 
 def puede_cancelar_reserva(reserva):
+    """DEPRECATED: Usar ReservaService directamente"""
     """
     Verifica si una reserva puede ser cancelada
     
@@ -166,6 +558,7 @@ def puede_cancelar_reserva(reserva):
     return True, ""
 
 def calcular_horas_hasta_recogida(reserva):
+    """DEPRECATED: Usar ReservaService directamente"""
     """
     Calcula las horas que faltan hasta la recogida
     
@@ -184,6 +577,7 @@ def calcular_horas_hasta_recogida(reserva):
 
 @transaction.atomic
 def registrar_pago_diferencia(reserva, importe, metodo):
+    """DEPRECATED: Usar ReservaService directamente"""
     """
     Registra un pago de diferencia para una reserva
     
@@ -213,6 +607,7 @@ def registrar_pago_diferencia(reserva, importe, metodo):
 
 @transaction.atomic
 def actualizar_pago_reserva(reserva, pago):
+    """DEPRECATED: Usar ReservaService directamente"""
     """
     Actualiza una reserva con los datos de un pago procesado
     
@@ -245,6 +640,7 @@ def actualizar_pago_reserva(reserva, pago):
     return reserva
 
 def calcular_diferencia_edicion(reserva_id, datos_nuevos):
+    """DEPRECATED: Usar ReservaService directamente"""
     """
     Calcula la diferencia de precio al editar una reserva
     

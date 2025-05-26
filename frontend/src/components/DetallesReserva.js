@@ -423,9 +423,8 @@ const DetallesReserva = ({ isMobile = false }) => {
               <Card className="mb-4 vehicle-card">
                 <Card.Body>
                   <Row className="align-items-center">
-                    <Col md={4} className="text-center">
-                      <img 
-                        src={datos.vehiculo.imagenPrincipal} 
+                    <Col md={4} className="text-center">                      <img 
+                        src={datos.vehiculo.imagenPrincipal || 'https://via.placeholder.com/300x200?text=Sin+Imagen'} 
                         alt={`${datos.vehiculo.marca} ${datos.vehiculo.modelo}`} 
                         className="img-fluid car-img rounded" 
                       />

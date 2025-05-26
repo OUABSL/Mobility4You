@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Servicio para la base de datos
   # Se utiliza MariaDB como base de datos
@@ -33,7 +31,7 @@ services:
     restart: always
     volumes:
       - ../backend:/app
-      - static_volume:/app/static
+      - static_volume:/app/staticfiles # MODIFICADO: para coincidir con la ubicación de collectstatic
       - media_volume:/app/media
     depends_on:
       db:

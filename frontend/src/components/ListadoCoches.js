@@ -458,7 +458,10 @@ const ListadoCoches = ({ isMobile = false }) => {
                             <FontAwesomeIcon icon={faGasPump} className="me-1" />
                             {car.combustible}
                           </div>
-                          <Card.Img src={car.imagenPrincipal} alt={`${car.marca} ${car.modelo}`} />
+                          <Card.Img 
+                            src={car.imagenPrincipal || 'https://via.placeholder.com/300x200?text=Sin+Imagen'} 
+                            alt={`${car.marca} ${car.modelo}`} 
+                          />
                         </div>
                         <Card.Body className="d-flex flex-column">
                           <Card.Title className="car-card-title">{car.marca} {car.modelo}</Card.Title>

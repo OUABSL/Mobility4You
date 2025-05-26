@@ -21,9 +21,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import '../../css/ReservaClientePago.css';
-import { editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
+import { editReservation, findReservation, processPayment, DEBUG_MODE } from '../../services/reservationServices';
 
-// Componente placeholder para futura implementación completa
 const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferencia = false }) => {
   const navigate = useNavigate();
   
@@ -173,37 +172,59 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
   };
 
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
       if (!reservaData) throw new Error('No hay datos de reserva.');
-      let result;
-      // Calcular importe de extras/diferencia
-      let importeExtra = 0;
+      
+      // Calcular importe a pagar
+      let importeAPagar = 0;
       if (modoDiferencia && diferencia) {
-        importeExtra = diferencia;
+        importeAPagar = diferencia;
       } else if (reservaData.detallesReserva && reservaData.detallesReserva.total) {
-        importeExtra = reservaData.detallesReserva.total;
+        importeAPagar = reservaData.detallesReserva.total;
       }
-      // Actualizar campos de pago extra
-      const updatedReserva = {
-        ...reservaData,
-        importe_pagado_extra: (reservaData.importe_pagado_extra || 0) + importeExtra,
-        importe_pendiente_extra: 0,
+      
+      // Preparar datos de pago
+      const paymentData = {
+        metodo_pago: reservaData.metodoPago || 'tarjeta',
+        importe: importeAPagar,
+        datos_pago: {
+          titular: reservaData.conductorPrincipal?.nombre 
+            ? `${reservaData.conductorPrincipal.nombre} ${reservaData.conductorPrincipal.apellidos}` 
+            : '',
+          email: reservaData.conductorPrincipal?.email || '',
+          modoDiferencia: modoDiferencia
+        }
       };
-      if (DEBUG_MODE) {
-        result = await editReservation(reservaData.id, updatedReserva);
+      
+      // Procesar pago usando el nuevo servicio
+      const paymentResult = await processPayment(reservaData.id, paymentData);
+      
+      // Si el pago es exitoso, actualizar datos y redireccionar
+      if (paymentResult && paymentResult.success) {
+        // Actualizar campos de pago extra
+        const updatedReserva = {
+          ...reservaData,
+          importe_pagado_extra: (reservaData.importe_pagado_extra || 0) + importeAPagar,
+          importe_pendiente_extra: 0,
+          transaction_id: paymentResult.transaction_id,
+          fecha_pago: new Date().toISOString()
+        };
+        
+        const result = await editReservation(reservaData.id, updatedReserva);
+        
+        sessionStorage.setItem('reservaData', JSON.stringify(result));
+        
+        if (modoDiferencia) {
+          navigate(`/reservations/${reservaData.id}?email=${reservaData.conductor?.email || ''}`, { replace: true });
+        } else {
+          navigate('/reservation-confirmation/exito');
+        }
       } else {
-        result = await editReservation(reservaData.id, updatedReserva);
-      }
-      sessionStorage.setItem('reservaData', JSON.stringify(result));
-      if (modoDiferencia) {
-        navigate(`/reservations/${reservaData.id}?email=${reservaData.conductor?.email || ''}`, { replace: true });
-      } else {
-        navigate('/reservation-confirmation/exito');
+        throw new Error(paymentResult?.error || 'Error al procesar el pago');
       }
     } catch (err) {
       setError(err.message || 'Error al procesar el pago.');

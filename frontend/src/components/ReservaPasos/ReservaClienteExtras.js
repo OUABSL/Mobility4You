@@ -15,7 +15,6 @@ import {
   faHome
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
 import '../../css/ReservaClienteExtras.css';
 import { createReservation, editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
 
@@ -240,9 +239,8 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                   Resumen de tu reserva
                 </Card.Header>
                 <Card.Body>
-                  <div className="d-flex align-items-center mb-3">
-                    <img 
-                      src={car.imagen || car.imagenPrincipal || 'https://via.placeholder.com/150x100?text=Coche'} 
+                  <div className="d-flex align-items-center mb-3">                    <img 
+                      src={car.imagenPrincipal || car.imagen || 'https://via.placeholder.com/150x100?text=Sin+Imagen'} 
                       alt={`${car.marca} ${car.modelo}`}
                       className="reserva-car-img me-3"
                     />

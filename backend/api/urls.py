@@ -5,6 +5,7 @@ from .views.contenidos import ContenidoViewSet
 from .views.vehiculos import CategoriaViewSet, GrupoCocheViewSet, VehiculoViewSet
 from .views.lugares import LugarViewSet
 from .views.reservas import ReservaViewSet
+from .views.reservas_new import ReservaViewSet as ReservaViewSetNew
 from .views.promociones import PromocionViewSet
 from .views.politicasPago import PoliticaPagoViewSet
 from .views.facturacion import ContratoViewSet, FacturaViewSet
@@ -17,6 +18,7 @@ router.register(r'grupos', GrupoCocheViewSet)
 router.register(r'vehiculos', VehiculoViewSet)
 router.register(r'lugares', LugarViewSet)
 router.register(r'reservas', ReservaViewSet, basename='reserva')
+router.register(r'reservations', ReservaViewSetNew, basename='reservation')
 router.register(r'contenidos', ContenidoViewSet)
 router.register(r'promociones', PromocionViewSet)
 router.register(r'politicas-pago', PoliticaPagoViewSet)
@@ -29,6 +31,8 @@ urlpatterns = [
     path('contact/', ContactoView.as_view(), name='contact'),
     path('contact/<int:pk>/', ContactoDetailView.as_view(), name='contact-detail'),
     path('search/', VehiculoViewSet.as_view({'post': 'disponibilidad'}), name='search'),
+    path('reservations/<str:reserva_id>/cancel/', ReservaViewSet.as_view({'post': 'cancelar'}), name='cancel-reserva'),
+    path('reservations/create-new/', ReservaViewSet.as_view({'post': 'crear_reserva'}), name='create-reserva'),
     path('reservations/<str:reserva_id>/find/', ReservaViewSet.as_view({'post': 'buscar'}), name='find-reserva'),
     path('locations/', LugarViewSet.as_view({'get': 'list'}), name='locations'),
     path('reservations/calculate-price/', ReservaViewSet.as_view({'post': 'calcular_precio'}), name='calculate-reservation-price'),

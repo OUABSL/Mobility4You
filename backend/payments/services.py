@@ -1,14 +1,14 @@
-# payments/services/redsys_service.py
-import hmac
-import hashlib
-import base64
-import json
-import urllib.parse
-import logging
+# payments/services.py
+from decimal import Decimal
 from django.conf import settings
 from django.utils import timezone
+import json
+import base64
+import hmac
+import hashlib
+import logging
 
-logger = logging.getLogger('redsys')
+logger = logging.getLogger('payments')
 
 def get_redsys_url():
     """
@@ -77,66 +77,169 @@ def prepare_payment(redsys_params, reserva_data):
     Returns:
         (merchant_parameters, signature, signature_version, redsys_url)
     """
-    try:
-        # Verificar parámetros mínimos
-        required_params = [
-            'DS_MERCHANT_AMOUNT', 'DS_MERCHANT_ORDER',
-            'DS_MERCHANT_MERCHANTCODE', 'DS_MERCHANT_CURRENCY',
-            'DS_MERCHANT_TRANSACTIONTYPE', 'DS_MERCHANT_TERMINAL'
-        ]
-        
-        for param in required_params:
-            if param not in redsys_params:
-                raise ValueError(f"Falta el parámetro requerido: {param}")
-        
-        # Codificar parámetros
-        merchant_parameters = create_merchant_parameters(redsys_params)
-        
-        # Crear firma
-        signature = create_merchant_signature(
-            merchant_parameters, 
-            redsys_params['DS_MERCHANT_ORDER']
-        )
-        
-        return (
-            merchant_parameters,
-            signature,
-            'HMAC_SHA256_V1',
-            get_redsys_url()
-        )
-        
-    except Exception as e:
-        logger.error(f"Error preparando pago Redsys: {str(e)}")
-        raise
+    # Codificar parámetros
+    merchant_parameters = create_merchant_parameters(redsys_params)
+    
+    # Crear firma
+    signature = create_merchant_signature(merchant_parameters, redsys_params['DS_MERCHANT_ORDER'])
+    
+    # Versión de firma
+    signature_version = 'HMAC_SHA256_V1'
+    
+    # URL de Redsys
+    redsys_url = get_redsys_url()
+    
+    return {
+        'merchantParameters': merchant_parameters,
+        'signature': signature,
+        'signatureVersion': signature_version,
+        'redsysUrl': redsys_url
+    }
 
 def process_notification(merchant_parameters, signature):
     """
-    Procesa la notificación de Redsys
+    Procesa una notificación de pago de Redsys
     
     Args:
-        merchant_parameters: Parámetros codificados
-        signature: Firma recibida
+        merchant_parameters: Parámetros codificados en base64
+        signature: Firma del mensaje
         
     Returns:
-        (bool, dict): Validez de la firma y datos decodificados
+        (is_valid, params): Tupla con validez de firma y parámetros decodificados
     """
-    try:
-        # Decodificar parámetros
-        decoded_params = base64.b64decode(merchant_parameters).decode()
-        params_dict = json.loads(decoded_params)
-        
-        # Verificar firma
-        order_id = params_dict.get('Ds_Order', '')
-        calculated_signature = create_merchant_signature(merchant_parameters, order_id)
-        
-        is_valid = hmac.compare_digest(signature, calculated_signature)
-        return is_valid, params_dict
-    except Exception as e:
-        logger.error(f"Error procesando notificación Redsys: {str(e)}")
-        return False, {}
+    # Decodificar parámetros
+    decoded = base64.b64decode(merchant_parameters).decode()
+    params = json.loads(decoded)
+    
+    # Validar firma
+    order = params.get('Ds_Order', '')
+    expected_signature = create_merchant_signature(merchant_parameters, order)
+    
+    if expected_signature != signature:
+        logger.error(f"Firma inválida en notificación de Redsys. Orden: {order}")
+        return False, params
+    
+    return True, params
 
 def get_timestamp():
     """
-    Retorna timestamp actual formateado
+    Genera un timestamp en formato YYYYMMDDHHMMSS
     """
-    return timezone.now()
+    now = timezone.now()
+    return now.strftime('%Y%m%d%H%M%S')
+
+class PaymentService:
+    """
+    Servicio para gestionar pagos de reservas
+    """
+    
+    def __init__(self):
+        """Inicializa el servicio de pagos"""
+        logger.info("Inicializando PaymentService")
+    
+    def process_payment(self, reserva, payment_data):
+        """
+        Procesa un pago para una reserva
+        
+        Args:
+            reserva: Objeto Reserva
+            payment_data: Dict con datos del pago
+                {
+                    'metodo_pago': 'tarjeta|paypal|efectivo',
+                    'importe': float,
+                    'datos_pago': {
+                        'titular': str,
+                        'email': str,
+                        ...campos específicos según método...
+                    }
+                }
+        
+        Returns:
+            Dict con resultado del pago
+        """
+        method = payment_data.get('metodo_pago', 'tarjeta')
+        amount = Decimal(str(payment_data.get('importe', 0)))
+        payment_details = payment_data.get('datos_pago', {})
+        
+        try:
+            logger.info(f"Procesando pago de {amount}€ para reserva {reserva.id} con método {method}")
+            
+            if method == 'tarjeta':
+                return self._process_card_payment(reserva, amount, payment_details)
+            elif method == 'paypal':
+                return self._process_paypal_payment(reserva, amount, payment_details)
+            elif method == 'efectivo':
+                return self._process_cash_payment(reserva, amount, payment_details)
+            else:
+                logger.error(f"Método de pago no soportado: {method}")
+                return {
+                    'success': False,
+                    'error': 'Método de pago no soportado',
+                    'reserva_id': reserva.id
+                }
+                
+        except Exception as e:
+            logger.exception(f"Error procesando pago: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'reserva_id': reserva.id
+            }
+    
+    def _process_card_payment(self, reserva, amount, payment_details):
+        """
+        Procesa pago con tarjeta (Redsys)
+        """
+        # En producción, conectaría con Redsys
+        # En este ejemplo, simularemos un pago exitoso
+        transaction_id = f"TX-{get_timestamp()}-{reserva.id}"
+        
+        logger.info(f"Pago con tarjeta exitoso para reserva {reserva.id}. Transaction ID: {transaction_id}")
+        
+        return {
+            'success': True,
+            'message': 'Pago procesado correctamente',
+            'reserva_id': reserva.id,
+            'transaction_id': transaction_id,
+            'method': 'tarjeta',
+            'amount': float(amount),
+            'timestamp': timezone.now().isoformat()
+        }
+    
+    def _process_paypal_payment(self, reserva, amount, payment_details):
+        """
+        Procesa pago con PayPal
+        """
+        # En producción, conectaría con PayPal API
+        # En este ejemplo, simularemos un pago exitoso
+        transaction_id = f"PP-{get_timestamp()}-{reserva.id}"
+        
+        logger.info(f"Pago con PayPal exitoso para reserva {reserva.id}. Transaction ID: {transaction_id}")
+        
+        return {
+            'success': True,
+            'message': 'Pago procesado correctamente',
+            'reserva_id': reserva.id,
+            'transaction_id': transaction_id,
+            'method': 'paypal',
+            'amount': float(amount),
+            'timestamp': timezone.now().isoformat()
+        }
+    
+    def _process_cash_payment(self, reserva, amount, payment_details):
+        """
+        Registra pago en efectivo (se paga en oficina)
+        """
+        transaction_id = f"CASH-{get_timestamp()}-{reserva.id}"
+        
+        logger.info(f"Pago en efectivo registrado para reserva {reserva.id}. Transaction ID: {transaction_id}")
+        
+        return {
+            'success': True,
+            'message': 'Pago en efectivo registrado correctamente',
+            'reserva_id': reserva.id,
+            'transaction_id': transaction_id,
+            'method': 'efectivo',
+            'amount': float(amount),
+            'timestamp': timezone.now().isoformat()
+        }
