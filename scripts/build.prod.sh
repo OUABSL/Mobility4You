@@ -1,0 +1,1 @@
+docker compose --env-file ../docker/.env.prod -f ../docker/docker-compose.yml up --build --remove-orphans

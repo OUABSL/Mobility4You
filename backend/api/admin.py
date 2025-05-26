@@ -412,12 +412,12 @@ class DateRangeFilter(SimpleListFilter):
 class ImagenVehiculoInline(admin.TabularInline):
     model = ImagenVehiculo
     extra = 1
-    fields = ('url', 'portada')
+    fields = ('imagen', 'portada')  # Cambiado 'url' por 'imagen'
     readonly_fields = ()
     
     def get_extra(self, request, obj=None, **kwargs):
         """Dinámicamente ajustar el número de forms extra"""
-        if obj and obj.imagenvehiculo_set.exists():
+        if obj and obj.imagenes.exists():  # Cambiado imagenvehiculo_set por imagenes
             return 0
         return 1
 
@@ -451,18 +451,24 @@ class TarifaVehiculoInline(admin.TabularInline):
 class PoliticaIncluyeInline(admin.TabularInline):
     model = PoliticaIncluye
     extra = 2
-    fields = ('descripcion',)
+    fields = ('item',)
 
 class PoliticaPenalizacionInline(admin.TabularInline):
     model = PoliticaPenalizacion
     extra = 1
-    fields = ('tipo_penalizacion', 'importe')
+    fields = ('tipo_penalizacion', 'horas_previas')
 
 class ReservaConductorInline(admin.TabularInline):
     model = ReservaConductor
     extra = 1
-    fields = ('nombre', 'apellidos', 'email', 'telefono', 'rol')
+    fields = ('conductor', 'rol')
     readonly_fields = ()
+    
+    def get_extra(self, request, obj=None, **kwargs):
+        """Dinámicamente ajustar el número de forms extra"""
+        if obj and obj.conductores.exists():
+            return 0
+        return 1
 
 class PenalizacionInline(admin.TabularInline):
     model = Penalizacion
@@ -794,9 +800,10 @@ class VehiculoAdmin(BaseAdvancedAdmin):
 class ImagenVehiculoAdmin(BaseAdvancedAdmin):
     """Administrador para imágenes de vehículos"""
     
-    list_display = ('get_vehiculo_info', 'get_imagen_preview', 'portada', 'url')
+    list_display = ('get_vehiculo_info', 'get_imagen_preview', 'portada', 'get_imagen_path')
     list_filter = ('portada', 'vehiculo__categoria')
     search_fields = ('vehiculo__marca', 'vehiculo__modelo', 'vehiculo__matricula')
+    fields = ('vehiculo', 'imagen', 'portada', 'ancho', 'alto')
     
     def get_vehiculo_info(self, obj):
         """Información del vehículo"""
@@ -805,13 +812,20 @@ class ImagenVehiculoAdmin(BaseAdvancedAdmin):
     
     def get_imagen_preview(self, obj):
         """Preview de la imagen"""
-        if obj.url:
+        if obj.imagen:
             return format_html(
                 '<img src="{}" style="max-width: 50px; max-height: 50px; border-radius: 4px;">',
-                obj.url
+                obj.imagen.url
             )
         return "Sin imagen"
     get_imagen_preview.short_description = 'Preview'
+    
+    def get_imagen_path(self, obj):
+        """Ruta de la imagen"""
+        if obj.imagen:
+            return obj.imagen.name
+        return "No hay imagen"
+    get_imagen_path.short_description = 'Ruta de imagen'
 
 
 @admin.register(TarifaVehiculo)
@@ -851,10 +865,10 @@ class MantenimientoAdmin(BaseAdvancedAdmin):
         'get_vehiculo_info', 'tipo_servicio', 'fecha', 
         'get_coste_formatted', 'get_dias_desde_mantenimiento'
     )
-    list_filter = ('tipo_servicio', 'fecha', 'vehiculo__categoria')
+    list_filter = ('tipo_servicio', 'fecha', 'vehiculo__categoria')    
     search_fields = (
         'vehiculo__marca', 'vehiculo__modelo', 'vehiculo__matricula',
-        'tipo_servicio', 'descripcion'
+        'tipo_servicio', 'notas'
     )
     date_hierarchy = 'fecha'
     readonly_fields = ('created_at',)
@@ -862,9 +876,8 @@ class MantenimientoAdmin(BaseAdvancedAdmin):
     fieldsets = (
         ('Información del mantenimiento', {
             'fields': ('vehiculo', 'tipo_servicio', 'fecha', 'coste')
-        }),
-        ('Detalles', {
-            'fields': ('descripcion',)
+        }),        ('Detalles', {
+            'fields': ('notas',)
         }),
         ('Información del sistema', {
             'fields': ('created_at',),
@@ -925,14 +938,9 @@ class DireccionAdmin(BaseAdvancedAdmin):
     list_filter = ('ciudad', 'provincia', 'pais')
     search_fields = ('calle', 'ciudad', 'provincia', 'codigo_postal')
     ordering = ('pais', 'provincia', 'ciudad', 'calle')
-    
     fieldsets = (
         ('Dirección', {
             'fields': ('calle', 'ciudad', 'provincia', 'pais', 'codigo_postal')
-        }),
-        ('Información adicional', {
-            'fields': ('informacion_adicional',),
-            'classes': ('collapse',)
         }),
     )
     
@@ -1156,16 +1164,15 @@ class PromocionAdmin(BaseAdvancedAdmin):
         'nombre', 'get_descuento_badge', 'get_estado_vigencia',
         'fecha_inicio', 'fecha_fin', 'get_reservas_count'
     )
-    search_fields = ('nombre', 'descripcion', 'codigo')
+    search_fields = ('nombre', 'descripcion')
     list_filter = ('activo', 'fecha_inicio', 'fecha_fin', DateRangeFilter)
     readonly_fields = ('created_at', 'updated_at')
     
-    fieldsets = (
-        ('Información básica', {
-            'fields': ('nombre', 'descripcion', 'codigo')
+    fieldsets = (        ('Información básica', {
+            'fields': ('nombre', 'descripcion')
         }),
         ('Configuración del descuento', {
-            'fields': ('descuento_pct', 'descuento_fijo')
+            'fields': ('descuento_pct',)
         }),
         ('Vigencia', {
             'fields': (('fecha_inicio', 'fecha_fin'), 'activo')
@@ -1175,7 +1182,6 @@ class PromocionAdmin(BaseAdvancedAdmin):
             'classes': ('collapse',)
         }),
     )
-    
     def get_descuento_badge(self, obj):
         """Badge del descuento"""
         if obj.descuento_pct:
@@ -1183,12 +1189,6 @@ class PromocionAdmin(BaseAdvancedAdmin):
                 '<span style="background: #28a745; color: white; padding: 4px 8px; '
                 'border-radius: 12px; font-size: 12px; font-weight: bold;">{}%</span>',
                 obj.descuento_pct
-            )
-        elif obj.descuento_fijo:
-            return format_html(
-                '<span style="background: #17a2b8; color: white; padding: 4px 8px; '
-                'border-radius: 12px; font-size: 12px; font-weight: bold;">{} €</span>',
-                obj.descuento_fijo
             )
         return format_html('<span style="color: #6c757d;">Sin descuento</span>')
     get_descuento_badge.short_description = 'Descuento'
@@ -1247,7 +1247,6 @@ class PromocionAdmin(BaseAdvancedAdmin):
 @admin.register(Reserva)
 class ReservaAdmin(BaseAdvancedAdmin):
     """Administrador avanzado para reservas"""
-    
     list_display = (
         'id', 'get_vehiculo_info', 'get_cliente_info', 
         'get_fechas_reserva', 'get_estado_badge', 'get_precio_total_formatted',
@@ -1259,22 +1258,20 @@ class ReservaAdmin(BaseAdvancedAdmin):
     )
     search_fields = (
         'id', 'vehiculo__marca', 'vehiculo__modelo', 'vehiculo__matricula',
-        'conductor_principal__first_name', 'conductor_principal__last_name',
-        'conductor_principal__email'
+        'usuario__first_name', 'usuario__last_name',
+        'usuario__email'
     )
     readonly_fields = ('created_at', 'updated_at')
     inlines = [ReservaExtraInline, ReservaConductorInline, PenalizacionInline]
-    
     fieldsets = (
         ('Información básica', {
             'fields': (
-                'vehiculo', 'conductor_principal', 'promocion'
+                'vehiculo', 'usuario', 'promocion'
             )
         }),
         ('Fechas y lugares', {
             'fields': (
-                ('fecha_recogida', 'hora_recogida'),
-                ('fecha_devolucion', 'hora_devolucion'),
+                ('fecha_recogida', 'fecha_devolucion'),
                 ('lugar_recogida', 'lugar_devolucion')
             )
         }),
@@ -1303,16 +1300,15 @@ class ReservaAdmin(BaseAdvancedAdmin):
             )
         return format_html('<span style="color: red;">Sin vehículo</span>')
     get_vehiculo_info.short_description = 'Vehículo'
-    
     def get_cliente_info(self, obj):
         """Información del cliente"""
-        if obj.conductor_principal:
+        if obj.usuario:
             return format_html(
                 '<strong>{} {}</strong><br>'
                 '<small style="color: #666;">{}</small>',
-                obj.conductor_principal.first_name or '',
-                obj.conductor_principal.last_name or '',
-                obj.conductor_principal.email or ''
+                obj.usuario.first_name or '',
+                obj.usuario.last_name or '',
+                obj.usuario.email or ''
             )
         return format_html('<span style="color: red;">Sin conductor</span>')
     get_cliente_info.short_description = 'Cliente'
@@ -1380,12 +1376,11 @@ class ReservaAdmin(BaseAdvancedAdmin):
                 return format_html('<span style="color: #6c757d;">{} días</span>', dias)
         return '-'
     get_dias_hasta_recogida.short_description = 'Recogida en'
-    
     @admin_log_action('GET_QUERYSET')
     def get_queryset(self, request):
         """Optimizar consultas"""
         return super().get_queryset(request).select_related(
-            'vehiculo', 'conductor_principal', 'lugar_recogida', 
+            'vehiculo', 'usuario', 'lugar_recogida', 
             'lugar_devolucion', 'promocion', 'politica_pago'
         )
     
@@ -1577,16 +1572,15 @@ class ContenidoAdmin(BaseAdvancedAdmin):
         'titulo', 'tipo', 'get_estado_badge', 'get_contenido_preview',
         'created_at'
     )
-    search_fields = ('titulo', 'tipo', 'contenido')
+    search_fields = ('titulo', 'tipo', 'cuerpo')
     list_filter = ('tipo', 'activo', DateRangeFilter)
     readonly_fields = ('created_at', 'updated_at')
-    
     fieldsets = (
         ('Información básica', {
             'fields': ('titulo', 'tipo', 'activo')
         }),
         ('Contenido', {
-            'fields': ('contenido',)
+            'fields': ('cuerpo',)
         }),
         ('Información del sistema', {
             'fields': ('created_at', 'updated_at'),
@@ -1601,11 +1595,10 @@ class ContenidoAdmin(BaseAdvancedAdmin):
         else:
             return format_html('<span style="color: #dc3545;">● Inactivo</span>')
     get_estado_badge.short_description = 'Estado'
-    
     def get_contenido_preview(self, obj):
         """Preview del contenido"""
-        if obj.contenido:
-            preview = obj.contenido[:100] + '...' if len(obj.contenido) > 100 else obj.contenido
+        if obj.cuerpo:
+            preview = obj.cuerpo[:100] + '...' if len(obj.cuerpo) > 100 else obj.cuerpo
             return format_html('<small style="color: #666;">{}</small>', preview)
         return '-'
     get_contenido_preview.short_description = 'Preview'
@@ -1636,27 +1629,22 @@ class ContenidoAdmin(BaseAdvancedAdmin):
 @admin.register(Contrato)
 class ContratoAdmin(BaseAdvancedAdmin):
     """Administrador para contratos"""
-    
     list_display = (
         'get_reserva_info', 'get_cliente_info', 'fecha_firma',
         'get_estado_badge', 'get_archivo_link'
     )
     search_fields = (
-        'reserva__id', 'reserva__conductor_principal__first_name',
-        'reserva__conductor_principal__last_name'
+        'reserva__id', 'reserva__usuario__first_name',
+        'reserva__usuario__last_name'
     )
     list_filter = ('fecha_firma', 'estado', DateRangeFilter)
     readonly_fields = ('fecha_firma',)
-    
-    fieldsets = (        ('Información básica', {
+    fieldsets = (
+        ('Información básica', {
             'fields': ('reserva', 'estado', 'fecha_firma')
         }),
         ('Archivo', {
-            'fields': ('archivo_contrato',)
-        }),
-        ('Contenido del contrato', {
-            'fields': ('contenido_contrato',),
-            'classes': ('collapse',)
+            'fields': ('url_pdf',)
         }),
     )
     
@@ -1668,12 +1656,12 @@ class ContratoAdmin(BaseAdvancedAdmin):
             '<small style="color: #666;">{}</small>',
             url, obj.reserva.id,
             obj.reserva.vehiculo.matricula if obj.reserva.vehiculo else 'Sin vehículo'
-        )
-    get_reserva_info.short_description = 'Reserva'
+        )    
+        get_reserva_info.short_description = 'Reserva'
     
     def get_cliente_info(self, obj):
         """Información del cliente"""
-        cliente = obj.reserva.conductor_principal
+        cliente = obj.reserva.usuario
         if cliente:
             return format_html(
                 '{} {}<br><small style="color: #666;">{}</small>',
@@ -1689,22 +1677,21 @@ class ContratoAdmin(BaseAdvancedAdmin):
         else:
             return format_html('<span style="color: #ffc107;">● Pendiente</span>')
     get_estado_badge.short_description = 'Estado'
-    
     def get_archivo_link(self, obj):
         """Link al archivo si existe"""
-        if obj.archivo_contrato:
+        if obj.url_pdf:
             return format_html(
                 '<a href="{}" target="_blank" style="color: #007bff;">📄 Ver archivo</a>',
-                obj.archivo_contrato.url
+                obj.url_pdf
             )
         return format_html('<span style="color: #6c757d;">Sin archivo</span>')
     get_archivo_link.short_description = 'Archivo'
     
     @admin_log_action('GET_QUERYSET')
     def get_queryset(self, request):
-        """Optimizar consultas"""
+        """Optimizar consultas"""        
         return super().get_queryset(request).select_related(
-            'reserva', 'reserva__conductor_principal', 'reserva__vehiculo'
+            'reserva', 'reserva__usuario', 'reserva__vehiculo'
         )
 
 
@@ -1714,28 +1701,21 @@ class FacturaAdmin(BaseAdvancedAdmin):
     
     list_display = (
         'numero_factura', 'get_reserva_info', 'get_cliente_info',
-        'fecha_emision', 'get_importe_formatted', 'get_estado_pago'
-    )
+        'fecha_emision', 'get_importe_formatted', 'get_estado_badge'
+    )    
     search_fields = (
         'numero_factura', 'reserva__id',
-        'reserva__conductor_principal__first_name',
-        'reserva__conductor_principal__last_name'
+        'reserva__usuario__first_name',
+        'reserva__usuario__last_name'
     )
     list_filter = ('fecha_emision', 'estado', DateRangeFilter)
     readonly_fields = ('fecha_emision',)
-    
     fieldsets = (
         ('Información básica', {
             'fields': ('numero_factura', 'reserva', 'fecha_emision')
-        }),        ('Importes', {
-            'fields': ('importe_total', 'importe_impuestos', 'estado')
         }),
-        ('Archivos', {
-            'fields': ('archivo_factura',)
-        }),
-        ('Detalles', {
-            'fields': ('detalles_factura',),
-            'classes': ('collapse',)
+        ('Importes', {
+            'fields': ('total', 'base_imponible', 'iva', 'estado')
         }),
     )
     
@@ -1755,22 +1735,20 @@ class FacturaAdmin(BaseAdvancedAdmin):
             )
         return '-'
     get_cliente_info.short_description = 'Cliente'
-    
     def get_importe_formatted(self, obj):
         """Importe formateado"""
         return format_html(
             '<span style="color: #28a745; font-weight: bold; font-size: 14px;">{} €</span>',
-            obj.importe_total
+            obj.total
         )
     get_importe_formatted.short_description = 'Importe'
-    
-    def get_estado_pago(self, obj):
-        """Estado del pago"""
-        if obj.pagada:
+    def get_estado_badge(self, obj):
+        """Badge del estado"""
+        if obj.estado == 'pagada':
             return format_html('<span style="color: #28a745;">● Pagada</span>')
         else:
             return format_html('<span style="color: #dc3545;">● Pendiente</span>')
-    get_estado_pago.short_description = 'Estado'
+    get_estado_badge.short_description = 'Estado'
     
     @admin_log_action('GET_QUERYSET')
     def get_queryset(self, request):

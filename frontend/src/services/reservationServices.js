@@ -9,6 +9,22 @@ const API_URL = process.env.REACT_APP_API_URL || '/api';
 // Constante para modo debug
 export const DEBUG_MODE = false; // Cambiar a false en producción
 
+// Helper function para obtener headers de autenticación
+const getAuthHeaders = () => {
+  const config = {
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  };
+  
+  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  return config;
+};
+
 /*
   * Función para crear una nueva reserva
   * @param {Object} data - Datos de la reserva
@@ -42,10 +58,30 @@ export const createReservation = async (data) => {
       mappedData.importe_pendiente_inicial = mappedData.precio_total;
     }
     
-    const response = await axios.post(`${API_URL}/reservations/`, mappedData);
+    console.log('Sending reservation data:', mappedData);
+    
+    const response = await axios.post(`${API_URL}/reservations/create_new`, mappedData, getAuthHeaders());
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Error al crear la reserva.' };
+    console.error('Error creating reservation:', error);
+    console.error('Error response:', error.response);
+    
+    const errorMessage = error.response?.data?.detail || 
+                        error.response?.data?.message || 
+                        error.response?.data?.error ||
+                        error.response?.data || 
+                        error.message || 
+                        'Error al crear la reserva.';
+    
+    // Si es un objeto de errores de validación, convertirlo a string legible
+    if (typeof errorMessage === 'object' && errorMessage !== null) {
+      const errorMessages = Object.entries(errorMessage)
+        .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+        .join('; ');
+      throw new Error(errorMessages || 'Error de validación al crear la reserva.');
+    }
+    
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Error al crear la reserva.');
   }
 };
 
@@ -66,11 +102,61 @@ export const findReservation = async (reservaId, email) => {
       }
       throw new Error('Reserva no encontrada con los datos proporcionados');
     }
-    // En modo producción, llamada real a la API usando POST
-    const response = await axios.post(`${API_URL}/reservations/${reservaId}/find/`, { email });
+    
+    // En modo producción, usar la URL específica definida en backend/api/urls.py
+    const response = await axios.post(`${API_URL}/reservations/${reservaId}/find/`, { email }, getAuthHeaders());
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Error al buscar la reserva.' };
+    console.error('Error finding reservation:', error);
+    const errorMessage = error.response?.data?.detail || 
+                        error.response?.data?.message || 
+                        error.response?.data || 
+                        error.message || 
+                        'Error al buscar la reserva.';
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Error al buscar la reserva.');
+  }
+};
+
+/**
+ * Procesa el pago de una reserva existente
+ * @param {string} reservaId - ID de la reserva
+ * @param {Object} paymentData - Datos del pago (método, importe, etc.)
+ * @returns {Promise<Object>} - Resultado del proceso de pago
+ */
+export const processPayment = async (reservaId, paymentData) => {
+  try {
+    if (DEBUG_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay
+      
+      // Simular respuesta exitosa
+      return {
+        message: 'Pago procesado correctamente',
+        reserva_id: reservaId,
+        estado: 'confirmada',
+        transaction_id: `TX-${Date.now()}`,
+        importe_pendiente_total: 0
+      };
+    }
+    
+    // Producción: llamada real a la API
+    const response = await axios.post(
+      `${API_URL}/reservas/${reservaId}/procesar_pago/`, 
+      paymentData, 
+      getAuthHeaders()
+    );
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error processing payment:', error);
+    
+    const errorMessage = error.response?.data?.detail || 
+                        error.response?.data?.message || 
+                        error.response?.data?.error ||
+                        error.response?.data || 
+                        error.message || 
+                        'Error al procesar el pago.';
+    
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Error al procesar el pago.');
   }
 };
 
@@ -92,12 +178,35 @@ export const calculateReservationPrice = async (data) => {
         difference: newPrice - base
       };
     }
-    // Producción: llamada real a la API
-    const mappedData = mapReservationDataToBackend(data);
-    const response = await axios.post(`${API_URL}/reservations/calculate-price/`, mappedData);
+    
+    // Mapear campos para el backend
+    const mappedData = {
+      vehiculo_id: data.vehiculo?.id || data.vehiculo_id,
+      fecha_recogida: data.fechaRecogida || data.fecha_recogida,
+      fecha_devolucion: data.fechaDevolucion || data.fecha_devolucion,
+      lugar_recogida_id: data.lugarRecogida?.id || data.lugar_recogida_id,
+      lugar_devolucion_id: data.lugarDevolucion?.id || data.lugar_devolucion_id,
+      politica_pago_id: data.politicaPago?.id || data.politica_pago_id,
+      extras: data.extras?.map(extra => typeof extra === 'object' ? extra.id : extra) || []
+    };
+    
+    // Llamar al endpoint de cálculo
+    const response = await axios.post(
+      `${API_URL}/reservations/calculate-price/`, 
+      mappedData, 
+      getAuthHeaders()
+    );
+    
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Error al calcular el precio.' };
+    console.error('Error calculating reservation price:', error);
+    const errorMessage = error.response?.data?.detail || 
+                        error.response?.data?.message || 
+                        error.response?.data?.error ||
+                        error.message || 
+                        'Error al calcular el precio.';
+    
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Error al calcular el precio.');
   }
 };
 
@@ -115,12 +224,19 @@ export const editReservation = async (reservaId, data) => {
       if (!updated) throw new Error('Reserva no encontrada para editar');
       return updated;
     }
+    
     // Producción: llamada real a la API
     const mappedData = mapReservationDataToBackend(data);
-    const response = await axios.put(`${API_URL}/reservations/${reservaId}`, mappedData);
+    const response = await axios.put(`${API_URL}/reservas/${reservaId}/`, mappedData, getAuthHeaders());
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Error al editar la reserva.' };
+    console.error('Error editing reservation:', error);
+    const errorMessage = error.response?.data?.detail || 
+                        error.response?.data?.message || 
+                        error.response?.data || 
+                        error.message || 
+                        'Error al editar la reserva.';
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Error al editar la reserva.');
   }
 };
 
@@ -137,10 +253,17 @@ export const deleteReservation = async (reservaId) => {
       if (idx !== -1) reservasPrueba.splice(idx, 1);
       return;
     }
+    
     // Producción: llamada real a la API
-    await axios.post(`${API_URL}/reservations/${reservaId}/cancelar/`);  
+    await axios.post(`${API_URL}/reservas/${reservaId}/cancelar/`, {}, getAuthHeaders());  
   } catch (error) {
-    throw error.response?.data || { message: 'Error al cancelar la reserva.' };
+    console.error('Error canceling reservation:', error);
+    const errorMessage = error.response?.data?.detail || 
+                        error.response?.data?.message || 
+                        error.response?.data || 
+                        error.message || 
+                        'Error al cancelar la reserva.';
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Error al cancelar la reserva.');
   }
 };
 
@@ -429,7 +552,7 @@ function crearReservaPrueba(data) {
 // Mapeo de datos de reserva del frontend (camelCase/anidado) a backend (snake_case/relacional)
 function mapReservationDataToBackend(data) {
   // Mapea campos principales incluyendo nuevos campos de pago
-  return {
+  const mapped = {
     // Campos existentes
     vehiculo: data.car?.id || data.vehiculo?.id || data.vehiculo,
     lugar_recogida: data.fechas?.pickupLocation?.id || data.lugarRecogida?.id || data.lugar_recogida,
@@ -438,9 +561,12 @@ function mapReservationDataToBackend(data) {
     fecha_devolucion: data.fechas?.dropoffDate || data.fechaDevolucion || data.fecha_devolucion,
     
     // Precios
-    precio_dia: data.car?.precio_dia || data.precio_dia,
-    precio_impuestos: data.precioImpuestos || data.precio_impuestos,
-    precio_total: data.precioTotal || data.precio_total,
+    precio_dia: data.car?.precio_dia || data.precio_dia || 0,
+    precio_base: data.precioBase || data.precio_base || 0,
+    precio_extras: data.precioExtras || data.precio_extras || 0,
+    precio_impuestos: data.precioImpuestos || data.precio_impuestos || 0,
+    descuento_promocion: data.descuentoPromocion || data.descuento_promocion || 0,
+    precio_total: data.precioTotal || data.precio_total || 0,
     
     // NUEVOS CAMPOS DE PAGO
     metodo_pago: data.metodo_pago || data.metodoPago || 'tarjeta',
@@ -449,10 +575,10 @@ function mapReservationDataToBackend(data) {
     importe_pagado_extra: data.importe_pagado_extra || 0,
     importe_pendiente_extra: data.importe_pendiente_extra || 0,
     
-    // Relaciones
-    usuario: data.usuario || null,
-    politica_pago: data.politicaPago?.id || data.politica_pago,
-    promocion: data.promocion?.id || data.promocion,
+    // Relaciones (solo IDs)
+    usuario: data.usuario?.id || data.usuario || null,
+    politica_pago: data.politicaPago?.id || data.politica_pago || null,
+    promocion: data.promocion?.id || data.promocion || null,
     
     // Arrays relacionados
     extras: Array.isArray(data.extras) ? data.extras.map(e => ({
@@ -469,4 +595,124 @@ function mapReservationDataToBackend(data) {
     notas_internas: data.notas_internas || '',
     estado: data.estado || 'pendiente',
   };
+
+  // Validación básica de campos requeridos
+  const requiredFields = ['vehiculo', 'lugar_recogida', 'lugar_devolucion', 'fecha_recogida', 'fecha_devolucion'];
+  const missingFields = requiredFields.filter(field => !mapped[field]);
+  
+  if (missingFields.length > 0) {
+    console.warn('Campos requeridos faltantes:', missingFields);
+    console.warn('Datos originales:', data);
+    console.warn('Datos mapeados:', mapped);
+  }
+
+  return mapped;
 }
+
+/**
+ * Función para mapear los datos del formulario al formato del backend
+ * @param {Object} formData - Datos del formulario
+ * @returns {Object} - Datos mapeados para el backend
+ */
+export const mapReservationDataToBackend = (formData) => {
+  // Crear objeto base con los datos del vehículo y fechas
+  const mappedData = {
+    // Datos básicos
+    vehiculo_id: formData.vehiculo?.id || formData.vehiculo_id || formData.car?.id,
+    fecha_recogida: formData.fechaRecogida || formData.fecha_recogida,
+    fecha_devolucion: formData.fechaDevolucion || formData.fecha_devolucion,
+    lugar_recogida_id: formData.lugarRecogida?.id || formData.lugar_recogida_id,
+    lugar_devolucion_id: formData.lugarDevolucion?.id || formData.lugar_devolucion_id,
+    politica_pago_id: formData.politicaPago?.id || formData.politica_pago_id,
+    
+    // Método de pago y precio
+    metodo_pago: formData.metodoPago || formData.metodo_pago || 'tarjeta',
+    precio_base: formData.precioBase || formData.detallesReserva?.precioBase || 0,
+    precio_extras: formData.precioExtras || formData.detallesReserva?.precioExtras || 0,
+    precio_impuestos: formData.precioImpuestos || formData.detallesReserva?.precioImpuestos || 0,
+    precio_total: formData.precioTotal || formData.detallesReserva?.total || 0,
+    
+    // Datos del conductor y extras
+    conductores: mapConductores(formData),
+    extras: mapExtras(formData),
+    
+    // Datos de pago
+    datos_pago: {
+      metodo: formData.metodoPago || formData.metodo_pago || 'tarjeta',
+      importe: formData.precioTotal || formData.detallesReserva?.total || 0,
+      detalles: {
+        // Añadir detalles específicos según método
+        titular: formData.conductor?.nombre ? `${formData.conductor.nombre} ${formData.conductor.apellidos}` : '',
+        email: formData.conductor?.email || ''
+      }
+    }
+  };
+  
+  return mappedData;
+};
+
+/**
+ * Mapea los conductores del formato frontend al backend
+ * @param {Object} formData - Datos del formulario
+ * @returns {Array} - Array de conductores mapeados
+ */
+const mapConductores = (formData) => {
+  const conductores = [];
+  
+  // Conductor principal
+  if (formData.conductor || formData.conductorPrincipal) {
+    const conductor = formData.conductor || formData.conductorPrincipal;
+    conductores.push({
+      es_principal: true,
+      nombre: conductor.nombre,
+      apellidos: conductor.apellidos,
+      email: conductor.email,
+      telefono: conductor.telefono,
+      nacionalidad: conductor.nacionalidad || 'España',
+      fecha_nacimiento: conductor.fechaNacimiento || conductor.fecha_nacimiento,
+      numero_licencia: conductor.numeroLicencia || conductor.numero_licencia,
+      fecha_expedicion: conductor.fechaExpedicion || conductor.fecha_expedicion,
+      fecha_caducidad: conductor.fechaCaducidad || conductor.fecha_caducidad
+    });
+  }
+  
+  // Conductores adicionales
+  if (formData.conductoresAdicionales && formData.conductoresAdicionales.length > 0) {
+    formData.conductoresAdicionales.forEach(cond => {
+      conductores.push({
+        es_principal: false,
+        nombre: cond.nombre,
+        apellidos: cond.apellidos,
+        email: cond.email || formData.conductor?.email,
+        telefono: cond.telefono || formData.conductor?.telefono,
+        nacionalidad: cond.nacionalidad || 'España',
+        fecha_nacimiento: cond.fechaNacimiento || cond.fecha_nacimiento,
+        numero_licencia: cond.numeroLicencia || cond.numero_licencia,
+        fecha_expedicion: cond.fechaExpedicion || cond.fecha_expedicion,
+        fecha_caducidad: cond.fechaCaducidad || cond.fecha_caducidad
+      });
+    });
+  }
+  
+  return conductores;
+};
+
+/**
+ * Mapea los extras del formato frontend al backend
+ * @param {Object} formData - Datos del formulario
+ * @returns {Array} - Array de IDs de extras
+ */
+const mapExtras = (formData) => {
+  // Si ya es un array de IDs, devolverlo
+  if (formData.extras && Array.isArray(formData.extras) && typeof formData.extras[0] !== 'object') {
+    return formData.extras;
+  }
+  
+  // Si es un array de objetos, extraer IDs
+  if (formData.extras && Array.isArray(formData.extras) && formData.extras.length > 0) {
+    return formData.extras.map(extra => extra.id);
+  }
+  
+  // Si no hay extras, devolver array vacío
+  return [];
+};

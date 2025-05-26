@@ -144,7 +144,11 @@ const FichaCoche = ({ car, onClose }) => {
                           <FontAwesomeIcon icon={faGasPump} className="me-1" />
                           {car.combustible}
                         </span>
-                        <img className="d-block w-100 ficha-image" src={img.url} alt={`${car.marca} ${car.modelo}`} />
+                        <img 
+                          className="d-block w-100 ficha-image" 
+                          src={img.imagen_url || img.url || img.imagen || car.imagenPrincipal || 'https://via.placeholder.com/600x400?text=Sin+Imagen'} 
+                          alt={`${car.marca} ${car.modelo}`} 
+                        />
                       </div>
                     </Carousel.Item>
                   ))
@@ -154,7 +158,11 @@ const FichaCoche = ({ car, onClose }) => {
                         <FontAwesomeIcon icon={faGasPump} className="me-1" />
                         {car.combustible}
                       </span>
-                      <img className="d-block w-100 ficha-image" src={car.imagenPrincipal} alt={`${car.marca} ${car.modelo}`} />
+                      <img 
+                        className="d-block w-100 ficha-image" 
+                        src={car.imagenPrincipal || 'https://via.placeholder.com/600x400?text=Sin+Imagen'} 
+                        alt={`${car.marca} ${car.modelo}`} 
+                      />
                     </div>
                   </Carousel.Item>
               }

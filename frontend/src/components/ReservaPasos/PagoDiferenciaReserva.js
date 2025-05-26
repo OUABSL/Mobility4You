@@ -14,7 +14,7 @@ import {
   faCircleNotch
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
+import { editReservation, findReservation, processPayment, DEBUG_MODE } from '../../services/reservationServices';
 import ReservaClientePago from './ReservaClientePago';
 import '../../css/PagoDiferenciaReserva.css';
 
@@ -65,19 +65,34 @@ const PagoDiferenciaReserva = () => {
     setPaymentMethod(method);
     setShowCardPayment(false);
   };
-
-  // Simula el pago de la diferencia
+  // Procesa el pago de la diferencia
   const handlePagar = async () => {
     setLoading(true);
     setError(null);
     try {
       if (!reservaData) throw new Error('No hay datos de reserva.');
       
+      // Si es pago con tarjeta, usar el procesamiento de pago
       if (paymentMethod === 'tarjeta') {
-        // En un entorno real, redirigir a la pasarela de pago
-        // En modo debug, simular proceso de pago
-        if (DEBUG_MODE) {
-          await new Promise(resolve => setTimeout(resolve, 1500)); // Simular delay
+        // Preparar datos para el pago
+        const paymentData = {
+          metodo_pago: 'tarjeta',
+          importe: diferencia,
+          datos_pago: {
+            titular: reservaData.conductor?.nombre 
+              ? `${reservaData.conductor.nombre} ${reservaData.conductor.apellidos}` 
+              : '',
+            email: reservaData.conductor?.email || '',
+            modoDiferencia: true
+          }
+        };
+        
+        // Procesar pago usando el nuevo servicio
+        const paymentResult = await processPayment(reservaData.id, paymentData);
+        
+        // Si el pago no es exitoso, lanzar error
+        if (!paymentResult || !paymentResult.success) {
+          throw new Error(paymentResult?.error || 'Error al procesar el pago con tarjeta');
         }
       }
       
@@ -86,7 +101,9 @@ const PagoDiferenciaReserva = () => {
         ...reservaData,
         importe_pagado_extra: (reservaData.importe_pagado_extra || 0) + diferencia,
         importe_pendiente_extra: 0,
-        metodo_pago_extra: paymentMethod
+        metodo_pago_extra: paymentMethod,
+        diferenciaPagada: true,
+        metodoPagoDiferencia: paymentMethod
       };
       
       await editReservation(reservaData.id, updatedReserva);

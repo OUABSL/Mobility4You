@@ -4,6 +4,24 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 from django.utils import timezone
+import os
+
+def imagen_vehiculo_upload_path(instance, filename):
+    """
+    Genera la ruta de carga para las imágenes de vehículos
+    Formato: vehiculos/{vehiculo_id}_{imagenvehiculo_id}.jpg
+    """
+    # Extraer la extensión del archivo
+    ext = filename.split('.')[-1] if '.' in filename else 'jpg'
+    
+    # Si no tenemos el ID de la imagen aún (primera creación), usamos un placeholder
+    image_id = instance.id if instance.id else 'temp'
+    
+    # Crear el nombre del archivo
+    filename = f"{instance.vehiculo.id}_{image_id}.{ext}"
+    
+    # Retornar la ruta completa - solo vehiculos/ ya que MEDIA_ROOT se añade automáticamente
+    return os.path.join('vehiculos', filename)
 
 class Categoria(models.Model):
     nombre = models.CharField(
@@ -210,11 +228,12 @@ class ImagenVehiculo(models.Model):
         on_delete=models.CASCADE,
         null=False
     )
-    url = models.URLField(
-        _("URL de imagen"),
-        max_length=500,
-        null=False,
-        blank=False
+    imagen = models.ImageField(
+        _("Imagen del vehículo"),
+        upload_to=imagen_vehiculo_upload_path,
+        null=True,
+        blank=True,
+        help_text=_("Imagen del vehículo que se guardará en la carpeta especificada")
     )
     portada = models.BooleanField(
         _("¿Es Imagen de portada?"),
@@ -240,14 +259,37 @@ class ImagenVehiculo(models.Model):
         verbose_name_plural = _("Imágenes de vehículos")
         ordering = ["vehiculo", "-portada"]
         indexes = [
-            models.Index(fields=["vehiculo", "portada"]),
-        ]
+            models.Index(fields=["vehiculo", "portada"]),        ]
         
     def save(self, *args, **kwargs):
+        # Guardar primero para obtener el ID
         if not self.id:
             self.created_at = timezone.now()
         self.updated_at = timezone.now()
-        super().save(*args, **kwargs)
+        
+        # Si es una nueva instancia y tiene imagen
+        if not self.id and self.imagen:
+            # Guardar temporalmente para obtener el ID
+            super().save(*args, **kwargs)
+            
+            # Ahora renombrar el archivo con el ID correcto
+            if self.imagen:
+                old_path = self.imagen.path
+                old_name = self.imagen.name
+                
+                # Extraer la extensión
+                ext = old_name.split('.')[-1] if '.' in old_name else 'jpg'
+                  # Crear el nuevo nombre
+                new_filename = f"{self.vehiculo.id}_{self.id}.{ext}"
+                new_path = os.path.join('vehiculos', new_filename)
+                
+                # Actualizar el campo imagen con el nuevo nombre
+                self.imagen.name = new_path
+                
+                # Guardar nuevamente con el nombre correcto
+                super().save(update_fields=['imagen', 'updated_at'])
+        else:
+            super().save(*args, **kwargs)
     
     def __str__(self):
         return f"Imagen de {self.vehiculo}"

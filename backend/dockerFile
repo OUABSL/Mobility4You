@@ -30,8 +30,15 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
+# Limpiar directorios __pycache__ y archivos .pyc
+RUN find . -type d -name "__pycache__" -exec rm -r {} +
+RUN find . -type f -name "*.pyc" -delete
+
 # Copiar el resto del código fuente al contenedor
 COPY . /app/
+
+# Eliminar migraciones anteriores (excepto __init__.py)
+RUN find ./api/migrations -type f -name "*.py" ! -name "__init__.py" -delete
 
 # Crear directorio de logs y archivos estáticos
 RUN mkdir -p /app/logs && touch /app/logs/django.log && chmod 666 /app/logs/django.log

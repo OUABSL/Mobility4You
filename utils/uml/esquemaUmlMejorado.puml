@@ -32,7 +32,7 @@ package "Catálogos" <<Master>> {
   class ImagenVehiculo {
     + INT id PK
     + INT vehiculo_id FK
-    + VARCHAR url
+    + IMAGE url
     + TINYINT portada
     + INT ancho
     + INT alto
@@ -325,7 +325,7 @@ package "Extras" <<Lookup>> {
     + VARCHAR nombre
     + TEXT descripcion
     + DECIMAL(10,2) precio
-    + VARCHAR imagen
+    + IMAGEFILE imagen
     + DATETIME created_at
     + DATETIME updated_at
   }
