@@ -68,7 +68,8 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 Q(fecha_fin__gte=datetime.now().date()) | Q(fecha_fin__isnull=True),
                 fecha_inicio__lte=datetime.now().date()
             ).order_by('-fecha_inicio').first()
-            
+
+            # excluir vehiculos sin tarifa establecida 
             if tarifa:
                 vehiculo.precio_dia = tarifa.precio_dia
                 vehiculos_con_precio.append(vehiculo)
@@ -148,10 +149,7 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 # Exluir vehiculos sin tarifa establecida
                 if tarifa:
                     vehiculo.precio_dia = tarifa.precio_dia
-                    vehiculos_con_precio.append(vehiculo)         
-
-                
-                vehiculos_con_precio.append(vehiculo)
+                    vehiculos_con_precio.append(vehiculo)        
             
             # Serializar resultados
             serializer = VehiculoDetailSerializer(vehiculos_con_precio, many=True)
