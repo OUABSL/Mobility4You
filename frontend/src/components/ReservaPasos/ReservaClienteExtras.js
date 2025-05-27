@@ -1,5 +1,5 @@
 // src/components/ReservaPasos/ReservaClienteExtras.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Form, Button, ListGroup, Badge, Spinner, Alert } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -66,6 +66,15 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   const [reservaData, setReservaData] = useState(null);
   const [detallesReserva, setDetallesReserva] = useState(null);
   const [totalExtras, setTotalExtras] = useState(0);
+  const reservaExtrasRef = useRef(null);
+
+
+  // Realizar un scroll hacia el componente
+  useEffect(() => { 
+    if (reservaExtrasRef.current) { 
+      reservaExtrasRef.current.scrollIntoView({ behavior: 'smooth' }); 
+    } 
+  }, []);
   
   // Cargar datos de reserva del sessionStorage al iniciar
   useEffect(() => {
@@ -165,7 +174,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   // Si hay error, mostrar pantalla de error
   if (error) {
     return (
-      <Container className="reserva-extras my-5">
+      <Container ref={reservaExtrasRef} className="reserva-extras my-5">
         <Card className="shadow-sm">
           <Card.Header className="bg-danger text-white">
             <h5 className="mb-0">Error</h5>
@@ -191,7 +200,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   // Si no hay datos de reserva, mostrar cargando
   if (!reservaData) {
     return (
-      <Container className="reserva-extras my-5">
+      <Container ref={reservaExtrasRef} className="reserva-extras my-5">
         <div className="text-center py-5">
           <Spinner animation="border" variant="primary" />
           <p className="mt-3">Cargando datos de la reserva...</p>
@@ -203,7 +212,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   const { car, paymentOption, fechas } = reservaData;
 
   return (
-    <Container className="reserva-extras my-4">
+    <Container ref={reservaExtrasRef} className="reserva-extras my-4">
       <div className="reservation-progress mb-4">
         <div className="progress-steps">
           <div className="step active">1. Selección de Extras</div>
