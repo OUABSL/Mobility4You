@@ -267,6 +267,9 @@ export const deleteReservation = async (reservaId) => {
   }
 };
 
+
+// TODO: Fetch Extras
+
 // Datos de prueba actualizados según esquema (usar el mismo que ya se usa en DetallesReserva)
 export const datosReservaPrueba = {
   id: 'R12345678',
