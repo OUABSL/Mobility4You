@@ -105,13 +105,14 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   const reservaExtrasRef = useRef(null);
 
 
-
   // Realizar un scroll hacia el componente
   useEffect(() => { 
     if (reservaExtrasRef.current) { 
       reservaExtrasRef.current.scrollIntoView({ behavior: 'smooth' }); 
     } 
-  }, []);  // Cargar datos de reserva del storage al iniciar
+  }, []); 
+
+  // Cargar datos de reserva del sessionStorage al iniciar
   useEffect(() => {
     try {
       console.log('[ReservaClienteExtras] Cargando datos de reserva');

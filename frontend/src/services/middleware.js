@@ -7,6 +7,9 @@ import axios from 'axios';
 axios.defaults.baseURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost';
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 
+
+// TODO: Aquí se agregará la gestión de sesiones, autenticación, y protección CSRF.
+
 // Interceptor para manejar errores globalmente
 axios.interceptors.response.use(
   (response) => response,
