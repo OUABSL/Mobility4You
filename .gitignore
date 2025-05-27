@@ -71,3 +71,4 @@ frontend/.env.production
 # Frontend node_modules
 frontend/node_modules/
 *.pyc
+/backend/api/__pycache__

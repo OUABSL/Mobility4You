@@ -267,6 +267,121 @@ export const deleteReservation = async (reservaId) => {
   }
 };
 
+/**
+ * Función para obtener todos los extras disponibles
+ * @returns {Promise<Array>} - Lista de extras disponibles
+ */
+export const getExtrasDisponibles = async () => {
+  try {
+    if (DEBUG_MODE) {
+      // Simular delay y devolver datos de prueba
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return [
+        {
+          id: 1,
+          nombre: 'Asiento infantil',
+          descripcion: 'Para niños de 9-18kg (1-4 años)',
+          precio: 7.50,
+          disponible: true,
+          categoria: 'seguridad'
+        },
+        {
+          id: 2,
+          nombre: 'GPS',
+          descripcion: 'Navegador con mapas actualizados',
+          precio: 8.95,
+          disponible: true,
+          categoria: 'navegacion'
+        },
+        {
+          id: 3,
+          nombre: 'Conductor adicional',
+          descripcion: 'Añade un conductor adicional a tu reserva',
+          precio: 5.00,
+          disponible: true,
+          categoria: 'conductor'
+        },
+        {
+          id: 4,
+          nombre: 'Wi-Fi portátil',
+          descripcion: 'Conexión 4G en todo el vehículo',
+          precio: 6.95,
+          disponible: true,
+          categoria: 'conectividad'
+        }
+      ];
+    }    // Producción: llamada real a la API
+    const response = await axios.get(`${API_URL}/extras/`, getAuthHeaders());
+    
+    // Manejar la respuesta que puede tener estructura {success: true, results: [...]} o ser directamente un array
+    if (response.data && response.data.results) {
+      return response.data.results;
+    } else if (Array.isArray(response.data)) {
+      return response.data;
+    } else {
+      throw new Error('Formato de respuesta inesperado');
+    }
+  } catch (error) {
+    console.error('Error fetching extras:', error);
+    const errorMessage = error.response?.data?.detail || 
+                        error.response?.data?.message || 
+                        error.response?.data?.error ||
+                        error.message || 
+                        'Error al obtener los extras disponibles.';
+    
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Error al obtener los extras disponibles.');
+  }
+};
+
+/**
+ * Función para obtener extras disponibles (alias de getExtrasDisponibles)
+ * @returns {Promise<Array>} - Lista de extras disponibles ordenados por disponibilidad
+ */
+export const getExtrasAvailable = async () => {
+  try {
+    if (DEBUG_MODE) {
+      return await getExtrasDisponibles();
+    }    // Producción: usar el endpoint específico para extras disponibles
+    const response = await axios.get(`${API_URL}/extras/disponibles/`, getAuthHeaders());
+    
+    // Manejar la respuesta que puede tener estructura {success: true, results: [...]} o ser directamente un array
+    if (response.data && response.data.results) {
+      return response.data.results;
+    } else if (Array.isArray(response.data)) {
+      return response.data;
+    } else {
+      throw new Error('Formato de respuesta inesperado');
+    }
+  } catch (error) {
+    console.error('Error fetching available extras:', error);
+    // Fallback a la función principal si el endpoint específico falla
+    return await getExtrasDisponibles();
+  }
+};
+
+/**
+ * Función para obtener extras ordenados por precio
+ * @param {string} orden - 'asc' para ascendente, 'desc' para descendente
+ * @returns {Promise<Array>} - Lista de extras ordenados por precio
+ */
+export const getExtrasPorPrecio = async (orden = 'asc') => {
+  try {
+    if (DEBUG_MODE) {
+      const extras = await getExtrasDisponibles();
+      return extras.sort((a, b) => orden === 'asc' ? a.precio - b.precio : b.precio - a.precio);
+    }
+
+    // Producción: usar el endpoint específico
+    const response = await axios.get(`${API_URL}/extras/por_precio/?orden=${orden}`, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching extras by price:', error);
+    // Fallback a la función principal y ordenar localmente
+    const extras = await getExtrasDisponibles();
+    return extras.sort((a, b) => orden === 'asc' ? a.precio - b.precio : b.precio - a.precio);
+  }
+};
+
 // Datos de prueba actualizados según esquema (usar el mismo que ya se usa en DetallesReserva)
 export const datosReservaPrueba = {
   id: 'R12345678',
@@ -550,7 +665,7 @@ function crearReservaPrueba(data) {
   return nueva;
 }
 // Mapeo de datos de reserva del frontend (camelCase/anidado) a backend (snake_case/relacional)
-function mapReservationDataToBackend(data) {
+export const mapReservationDataToBackend = (data) => {
   // Mapea campos principales incluyendo nuevos campos de pago
   const mapped = {
     // Campos existentes
@@ -605,114 +720,5 @@ function mapReservationDataToBackend(data) {
     console.warn('Datos originales:', data);
     console.warn('Datos mapeados:', mapped);
   }
-
   return mapped;
-}
-
-/**
- * Función para mapear los datos del formulario al formato del backend
- * @param {Object} formData - Datos del formulario
- * @returns {Object} - Datos mapeados para el backend
- */
-export const mapReservationDataToBackend = (formData) => {
-  // Crear objeto base con los datos del vehículo y fechas
-  const mappedData = {
-    // Datos básicos
-    vehiculo_id: formData.vehiculo?.id || formData.vehiculo_id || formData.car?.id,
-    fecha_recogida: formData.fechaRecogida || formData.fecha_recogida,
-    fecha_devolucion: formData.fechaDevolucion || formData.fecha_devolucion,
-    lugar_recogida_id: formData.lugarRecogida?.id || formData.lugar_recogida_id,
-    lugar_devolucion_id: formData.lugarDevolucion?.id || formData.lugar_devolucion_id,
-    politica_pago_id: formData.politicaPago?.id || formData.politica_pago_id,
-    
-    // Método de pago y precio
-    metodo_pago: formData.metodoPago || formData.metodo_pago || 'tarjeta',
-    precio_base: formData.precioBase || formData.detallesReserva?.precioBase || 0,
-    precio_extras: formData.precioExtras || formData.detallesReserva?.precioExtras || 0,
-    precio_impuestos: formData.precioImpuestos || formData.detallesReserva?.precioImpuestos || 0,
-    precio_total: formData.precioTotal || formData.detallesReserva?.total || 0,
-    
-    // Datos del conductor y extras
-    conductores: mapConductores(formData),
-    extras: mapExtras(formData),
-    
-    // Datos de pago
-    datos_pago: {
-      metodo: formData.metodoPago || formData.metodo_pago || 'tarjeta',
-      importe: formData.precioTotal || formData.detallesReserva?.total || 0,
-      detalles: {
-        // Añadir detalles específicos según método
-        titular: formData.conductor?.nombre ? `${formData.conductor.nombre} ${formData.conductor.apellidos}` : '',
-        email: formData.conductor?.email || ''
-      }
-    }
-  };
-  
-  return mappedData;
-};
-
-/**
- * Mapea los conductores del formato frontend al backend
- * @param {Object} formData - Datos del formulario
- * @returns {Array} - Array de conductores mapeados
- */
-const mapConductores = (formData) => {
-  const conductores = [];
-  
-  // Conductor principal
-  if (formData.conductor || formData.conductorPrincipal) {
-    const conductor = formData.conductor || formData.conductorPrincipal;
-    conductores.push({
-      es_principal: true,
-      nombre: conductor.nombre,
-      apellidos: conductor.apellidos,
-      email: conductor.email,
-      telefono: conductor.telefono,
-      nacionalidad: conductor.nacionalidad || 'España',
-      fecha_nacimiento: conductor.fechaNacimiento || conductor.fecha_nacimiento,
-      numero_licencia: conductor.numeroLicencia || conductor.numero_licencia,
-      fecha_expedicion: conductor.fechaExpedicion || conductor.fecha_expedicion,
-      fecha_caducidad: conductor.fechaCaducidad || conductor.fecha_caducidad
-    });
-  }
-  
-  // Conductores adicionales
-  if (formData.conductoresAdicionales && formData.conductoresAdicionales.length > 0) {
-    formData.conductoresAdicionales.forEach(cond => {
-      conductores.push({
-        es_principal: false,
-        nombre: cond.nombre,
-        apellidos: cond.apellidos,
-        email: cond.email || formData.conductor?.email,
-        telefono: cond.telefono || formData.conductor?.telefono,
-        nacionalidad: cond.nacionalidad || 'España',
-        fecha_nacimiento: cond.fechaNacimiento || cond.fecha_nacimiento,
-        numero_licencia: cond.numeroLicencia || cond.numero_licencia,
-        fecha_expedicion: cond.fechaExpedicion || cond.fecha_expedicion,
-        fecha_caducidad: cond.fechaCaducidad || cond.fecha_caducidad
-      });
-    });
-  }
-  
-  return conductores;
-};
-
-/**
- * Mapea los extras del formato frontend al backend
- * @param {Object} formData - Datos del formulario
- * @returns {Array} - Array de IDs de extras
- */
-const mapExtras = (formData) => {
-  // Si ya es un array de IDs, devolverlo
-  if (formData.extras && Array.isArray(formData.extras) && typeof formData.extras[0] !== 'object') {
-    return formData.extras;
-  }
-  
-  // Si es un array de objetos, extraer IDs
-  if (formData.extras && Array.isArray(formData.extras) && formData.extras.length > 0) {
-    return formData.extras.map(extra => extra.id);
-  }
-  
-  // Si no hay extras, devolver array vacío
-  return [];
 };

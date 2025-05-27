@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views.contenidos import ContenidoViewSet
 from .views.vehiculos import CategoriaViewSet, GrupoCocheViewSet, VehiculoViewSet
 from .views.lugares import LugarViewSet
-from .views.reservas import ReservaViewSet
+from .views.reservas import ReservaViewSet, ExtrasViewSet
 from .views.reservas_new import ReservaViewSet as ReservaViewSetNew
 from .views.promociones import PromocionViewSet
 from .views.politicasPago import PoliticaPagoViewSet
@@ -24,6 +24,7 @@ router.register(r'promociones', PromocionViewSet)
 router.register(r'politicas-pago', PoliticaPagoViewSet)
 router.register(r'contratos', ContratoViewSet)
 router.register(r'facturas', FacturaViewSet)
+router.register(r'extras', ExtrasViewSet)
 # router.register(r'usuarios', UsuarioViewSet)  # Descomentar si implementas UsuarioViewSet
 
 urlpatterns = [

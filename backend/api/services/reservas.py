@@ -358,22 +358,22 @@ class ReservaService:
             bool: True si está disponible
         """
         reservas_conflicto = Reserva.objects.filter(
-            vehiculo_id=vehiculo_id,
+                    vehiculo_id=vehiculo_id,
             estado__in=['confirmada', 'pendiente'],
             fecha_recogida__lt=fecha_fin,
             fecha_devolucion__gt=fecha_inicio
         ).count()
         
         return reservas_conflicto == 0
-
+    
     @staticmethod
     def buscar_reserva_por_datos(reserva_id, email):
         """
-        Busca una reserva por ID y email del conductor
+        Busca una reserva por ID y email del usuario
         
         Args:
             reserva_id: ID de la reserva
-            email: Email del conductor principal
+            email: Email del usuario
             
         Returns:
             Reserva: Objeto de reserva encontrado
@@ -386,13 +386,12 @@ class ReservaService:
         try:
             reserva = Reserva.objects.select_related(
                 'vehiculo', 'lugar_recogida', 'lugar_devolucion', 
-                'politica_pago', 'promocion'
+                'politica_pago', 'promocion', 'usuario'
             ).prefetch_related(
                 'extras__extra', 'conductores__conductor'
             ).get(
                 id=reserva_id,
-                conductores__conductor__email=email,
-                conductores__rol='principal'
+                usuario__email=email
             )
             
             logger.info(f"Reserva {reserva_id} encontrada exitosamente")
@@ -402,7 +401,108 @@ class ReservaService:
             logger.warning(f"Reserva {reserva_id} no encontrada para email {email}")
             raise
 
-# Mantener funciones legacy para compatibilidad pero marcadas como deprecated
+    @staticmethod
+    @transaction.atomic
+    def cancelar_reserva(reserva):
+        """
+        Cancela una reserva y aplica penalizaciones si corresponde
+        
+        Args:
+            reserva: Objeto Reserva
+            
+        Returns:
+            Reserva actualizada
+            
+        Raises:
+            ValueError: Si no se puede cancelar la reserva
+        """
+        logger.info(f"Iniciando cancelación de reserva {reserva.id}")
+        
+        # Verificar si se puede cancelar
+        puede, motivo = ReservaService.puede_cancelar_reserva(reserva)
+        if not puede:
+            logger.warning(f"No se puede cancelar reserva {reserva.id}: {motivo}")
+            raise ValueError(motivo)
+        
+        # Calcular horas hasta recogida para penalizaciones
+        horas_hasta_recogida = ReservaService.calcular_horas_hasta_recogida(reserva)
+        
+        # Buscar política de penalización aplicable
+        penalizaciones = reserva.politica_pago.penalizaciones.filter(
+            tipo_penalizacion__nombre='cancelación',
+            horas_previas__gte=horas_hasta_recogida
+        ).order_by('horas_previas').first()
+        
+        # Aplicar penalización si corresponde
+        if penalizaciones:
+            tipo_penalizacion = penalizaciones.tipo_penalizacion
+            
+            # Calcular importe según tipo
+            if tipo_penalizacion.tipo_tarifa == 'porcentaje':
+                importe = (reserva.precio_total * tipo_penalizacion.valor_tarifa) / 100
+            elif tipo_penalizacion.tipo_tarifa == 'fijo':
+                importe = tipo_penalizacion.valor_tarifa
+            elif tipo_penalizacion.tipo_tarifa == 'importe_dia':
+                dias = (reserva.fecha_devolucion - reserva.fecha_recogida).days
+                importe = tipo_penalizacion.valor_tarifa * dias
+            else:
+                importe = Decimal('0.00')
+            
+            # Crear registro de penalización
+            Penalizacion.objects.create(
+                reserva=reserva,
+                tipo_penalizacion=tipo_penalizacion,
+                importe=importe,
+                fecha=timezone.now(),
+                descripcion=f"Cancelación con {horas_hasta_recogida:.1f} horas de antelación"
+            )
+            
+            logger.info(f"Penalización aplicada: {importe}€")
+        
+        # Cambiar estado a cancelada
+        reserva.estado = 'cancelada'
+        reserva.save()
+        
+        logger.info(f"Reserva {reserva.id} cancelada exitosamente")
+        return reserva
+    
+    @staticmethod
+    def puede_cancelar_reserva(reserva):
+        """
+        Verifica si una reserva puede ser cancelada
+        
+        Args:
+            reserva: Objeto Reserva
+            
+        Returns:
+            (bool, str): Puede cancelarse y motivo
+        """
+        # No se puede cancelar si ya está cancelada
+        if reserva.estado == 'cancelada':
+            return False, "La reserva ya está cancelada"
+        
+        # Verificar si la recogida ya pasó
+        if timezone.now() > reserva.fecha_recogida:
+            return False, "No se puede cancelar una reserva cuya fecha de recogida ya pasó"
+        
+        # Se puede cancelar
+        return True, ""
+    
+    @staticmethod
+    def calcular_horas_hasta_recogida(reserva):
+        """
+        Calcula las horas que faltan hasta la recogida
+        
+        Args:
+            reserva: Objeto Reserva
+            
+        Returns:
+            float: Horas hasta recogida
+        """
+        ahora = timezone.now()
+        delta = reserva.fecha_recogida - ahora
+        return delta.total_seconds() / 3600
+
 @transaction.atomic
 def crear_reserva(datos_reserva):
     """DEPRECATED: Usar ReservaService.crear_reserva_completa"""

@@ -71,10 +71,7 @@ class VehiculoViewSet(viewsets.ModelViewSet):
             
             if tarifa:
                 vehiculo.precio_dia = tarifa.precio_dia
-            else:
-                vehiculo.precio_dia = 50.00  # Precio por defecto
-            
-            vehiculos_con_precio.append(vehiculo)
+                vehiculos_con_precio.append(vehiculo)
         
         page = self.paginate_queryset(vehiculos_con_precio)
         if page is not None:
@@ -148,10 +145,11 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                     fecha_inicio__lte=fecha_recogida.date()
                 ).order_by('-fecha_inicio').first()
                 
+                # Exluir vehiculos sin tarifa establecida
                 if tarifa:
                     vehiculo.precio_dia = tarifa.precio_dia
-                else:
-                    vehiculo.precio_dia = 50.00  # Precio por defecto
+                    vehiculos_con_precio.append(vehiculo)         
+
                 
                 vehiculos_con_precio.append(vehiculo)
             
