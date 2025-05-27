@@ -1,0 +1,224 @@
+/* Estilos para el modal de timer de reserva */
+
+.reservation-timer-modal .modal-dialog {
+  max-width: 500px;
+}
+
+.reservation-timer-modal .modal-header {
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+  padding: 1.25rem 1.5rem;
+}
+
+.reservation-timer-modal .modal-title {
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.reservation-timer-modal .modal-body {
+  padding: 2rem 1.5rem;
+}
+
+.reservation-timer-modal .modal-footer {
+  border-top: 2px solid rgba(0, 0, 0, 0.1);
+  padding: 1.25rem 1.5rem;
+}
+
+/* Timer display */
+.timer-display {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border: 2px solid #dee2e6;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.timer-display h4 {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.timer-display .progress {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.timer-display .progress-bar {
+  transition: width 0.3s ease;
+}
+
+/* Información de expiración */
+.expired-info {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.expired-info p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Animaciones para alerts */
+.reservation-timer-modal .alert {
+  animation: slideInDown 0.3s ease-out;
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Botones personalizados */
+.reservation-timer-modal .btn {
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  min-width: 130px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.reservation-timer-modal .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.reservation-timer-modal .btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.reservation-timer-modal .btn-primary {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+}
+
+.reservation-timer-modal .btn-primary:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+}
+
+.reservation-timer-modal .btn-outline-secondary {
+  border: 2px solid #6c757d;
+  color: #6c757d;
+  background: transparent;
+}
+
+.reservation-timer-modal .btn-outline-secondary:hover {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+/* Spinner personalizado */
+.reservation-timer-modal .spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.15em;
+}
+
+/* Responsive design */
+@media (max-width: 576px) {
+  .reservation-timer-modal .modal-dialog {
+    margin: 1rem;
+  }
+  
+  .reservation-timer-modal .modal-body {
+    padding: 1.5rem 1rem;
+  }
+  
+  .reservation-timer-modal .modal-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .reservation-timer-modal .btn {
+    width: 100%;
+    margin: 0.25rem 0 !important;
+  }
+  
+  .timer-display h4 {
+    font-size: 1.75rem;
+  }
+  
+  .timer-display {
+    padding: 1rem;
+  }
+}
+
+/* Estados de progreso específicos */
+.progress-bar.bg-success {
+  background: linear-gradient(90deg, #28a745 0%, #20c997 100%) !important;
+}
+
+.progress-bar.bg-warning {
+  background: linear-gradient(90deg, #ffc107 0%, #fd7e14 100%) !important;
+}
+
+.progress-bar.bg-danger {
+  background: linear-gradient(90deg, #dc3545 0%, #e74c3c 100%) !important;
+}
+
+/* Efectos de entrada del modal */
+.reservation-timer-modal.fade .modal-dialog {
+  transition: transform 0.3s ease-out;
+  transform: translate(0, -50px);
+}
+
+.reservation-timer-modal.show .modal-dialog {
+  transform: none;
+}
+
+/* Backdorp personalizado */
+.reservation-timer-modal .modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* Focus states mejorados */
+.reservation-timer-modal .btn:focus,
+.reservation-timer-modal .btn:focus-visible {
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  outline: none;
+}
+
+/* Variantes de color para diferentes tipos de modal */
+.reservation-timer-modal .bg-warning.bg-opacity-10 {
+  background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+.reservation-timer-modal .bg-danger.bg-opacity-10 {
+  background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+.reservation-timer-modal .bg-info.bg-opacity-10 {
+  background-color: rgba(13, 202, 240, 0.1) !important;
+}
+
+/* Texto con mejor legibilidad */
+.reservation-timer-modal .text-warning {
+  color: #b8860b !important;
+}
+
+.reservation-timer-modal .text-danger {
+  color: #b02a37 !important;
+}
+
+.reservation-timer-modal .text-info {
+  color: #0c7cd5 !important;
+}

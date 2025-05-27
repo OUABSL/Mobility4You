@@ -3,8 +3,8 @@
 
 import axios from 'axios';
 
-// Configurar axios con la URL base del backend
-axios.defaults.baseURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+// Configurar axios con la URL base del backend (usando nginx proxy)
+axios.defaults.baseURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost';
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 

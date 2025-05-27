@@ -31,9 +31,8 @@ services:
     restart: always
     volumes:
       - ../backend:/app
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-    depends_on:
+      - static_volume:/app/staticfiles # MODIFICADO: para coincidir con la ubicación de collectstatic
+      - media_volume:/app/media    depends_on:
       db:
         condition: service_healthy
     environment:
@@ -77,11 +76,6 @@ services:
       - /usr/app/node_modules
     depends_on:
       - backend
-    environment:
-      # React Stripe environment variables
-      - REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
-      - REACT_APP_API_URL=${REACT_APP_API_URL}
-      - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
     ports:
       - "3000:3000"
     networks:
@@ -110,6 +104,7 @@ services:
     restart: always
     networks:
       - mobility4you_network
+
 
 volumes:
   db_data:

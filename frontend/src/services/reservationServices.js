@@ -9,6 +9,19 @@ const API_URL = process.env.REACT_APP_API_URL || '/api';
 // Constante para modo debug
 export const DEBUG_MODE = false; // Cambiar a false en producción
 
+// Funciones de logging condicional
+const logInfo = (message, data = null) => {
+  if (DEBUG_MODE) {
+    console.log(`[RESERVATIONS] ${message}`, data);
+  }
+};
+
+const logError = (message, error = null) => {
+  if (DEBUG_MODE) {
+    console.error(`[RESERVATIONS ERROR] ${message}`, error);
+  }
+};
+
 // Helper function para obtener headers de autenticación
 const getAuthHeaders = () => {
   const config = {
@@ -117,48 +130,6 @@ export const findReservation = async (reservaId, email) => {
   }
 };
 
-/**
- * Procesa el pago de una reserva existente
- * @param {string} reservaId - ID de la reserva
- * @param {Object} paymentData - Datos del pago (método, importe, etc.)
- * @returns {Promise<Object>} - Resultado del proceso de pago
- */
-export const processPayment = async (reservaId, paymentData) => {
-  try {
-    if (DEBUG_MODE) {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay
-      
-      // Simular respuesta exitosa
-      return {
-        message: 'Pago procesado correctamente',
-        reserva_id: reservaId,
-        estado: 'confirmada',
-        transaction_id: `TX-${Date.now()}`,
-        importe_pendiente_total: 0
-      };
-    }
-    
-    // Producción: llamada real a la API
-    const response = await axios.post(
-      `${API_URL}/reservas/${reservaId}/procesar_pago/`, 
-      paymentData, 
-      getAuthHeaders()
-    );
-    
-    return response.data;
-  } catch (error) {
-    console.error('Error processing payment:', error);
-    
-    const errorMessage = error.response?.data?.detail || 
-                        error.response?.data?.message || 
-                        error.response?.data?.error ||
-                        error.response?.data || 
-                        error.message || 
-                        'Error al procesar el pago.';
-    
-    throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Error al procesar el pago.');
-  }
-};
 
 /**
  * Calcula el precio estimado de una reserva editada.
@@ -582,28 +553,54 @@ export const datosReservaPrueba = {
   importe_pendiente_extra: 0.00 // Importe pendiente de extras/diferencias
 };
 
-// TODO: PLANTEAR LA LÓGICA DE PROCESAMIENTO DE PAGO: Existen otras funciones pendientes de migrar en components/reservaPasos/ReservaClientePago.js
-// 3. Nueva función para procesar pagos
-// export const processPayment = async (reservaId, paymentData) => {
-//   try {
-//     if (DEBUG_MODE) {
-//       await new Promise(resolve => setTimeout(resolve, 500));
-//       // Simular procesamiento de pago
-//       return {
-//         message: 'Pago procesado correctamente',
-//         importe_pendiente_total: 0
-//       };
-//     }
+/**
+ * Procesa el pago de una reserva usando Stripe
+ * @param {string} reservaId - ID de la reserva
+ * @param {Object} paymentData - Datos del pago
+ * @returns {Promise<Object>} - Resultado del procesamiento de pago
+ */
+export const processPayment = async (reservaId, paymentData) => {
+  try {
+    logInfo('Procesando pago de reserva con Stripe', { reservaId, paymentData });
     
-//     const response = await axios.post(
-//       `${API_URL}/reservations/${reservaId}/procesar_pago/`,
-//       paymentData
-//     );
-//     return response.data;
-//   } catch (error) {
-//     throw error.response?.data || { message: 'Error al procesar el pago.' };
-//   }
-// };
+    if (DEBUG_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simular procesamiento exitoso
+      return {
+        success: true,
+        message: 'Pago procesado correctamente (simulado)',
+        reserva_id: reservaId,
+        estado: 'confirmada',
+        transaction_id: `STRIPE_MOCK_${Date.now()}`,
+        payment_intent_id: `pi_mock_${Date.now()}`,
+        importe_pendiente_total: 0
+      };
+    }
+    
+    // En producción, usar el servicio de Stripe
+    const { processPaymentLegacy } = await import('./stripePaymentServices');
+    const resultado = await processPaymentLegacy(reservaId, paymentData);
+    
+    if (resultado.success) {
+      return {
+        success: true,
+        message: resultado.message,
+        reserva_id: reservaId,
+        estado: 'confirmada',
+        transaction_id: resultado.transaction_id,
+        payment_intent_id: resultado.payment_intent_id,
+        importe_pendiente_total: 0
+      };
+    } else {
+      throw new Error(resultado.error || 'Error procesando el pago');
+    }
+    
+  } catch (error) {
+    logError('Error procesando pago de reserva', error);
+    throw new Error(error.message || 'Error al procesar el pago');
+  }
+};
 
 
 // Array de reservas de prueba para simular flujo completo en DEBUG_MODE

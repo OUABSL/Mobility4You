@@ -1,0 +1,248 @@
+# Production Docker Compose Configuration
+# =====================================
+# This configuration is optimized for production deployment with SSL, security, and monitoring.
+
+version: '3.8'
+
+services:
+  # Database Service - MariaDB with production optimizations
+  db:
+    image: mariadb:10.6
+    container_name: mobility4you_db_prod
+    volumes:
+      - db_data_prod:/var/lib/mysql
+      - ./mariadb-init.sh:/docker-entrypoint-initdb.d/mariadb-init.sh:ro
+      - ./mysql/production.cnf:/etc/mysql/conf.d/production.cnf:ro
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    networks:
+      - mobility4you_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mobility", "-p$MYSQL_PASSWORD"]
+      timeout: 20s
+      retries: 10
+      interval: 30s
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+
+  # Backend Service - Django with Gunicorn
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.prod
+    container_name: mobility4you_backend_prod
+    restart: unless-stopped
+    volumes:
+      - static_volume_prod:/app/staticfiles:ro
+      - media_volume_prod:/app/media
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DJANGO_ENV=production
+      - DB_HOST=db
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USER=${MYSQL_USER}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOST}
+      - DEBUG=False
+      # Stripe Configuration
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - STRIPE_ENVIRONMENT=${STRIPE_ENVIRONMENT}
+      - STRIPE_API_VERSION=${STRIPE_API_VERSION}
+      # Security Configuration
+      - SECURE_SSL_REDIRECT=${SECURE_SSL_REDIRECT:-True}
+      - SECURE_HSTS_SECONDS=${SECURE_HSTS_SECONDS:-31536000}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-True}
+      - CSRF_COOKIE_SECURE=${CSRF_COOKIE_SECURE:-True}
+      # Redis Configuration
+      - REDIS_URL=redis://redis:6379/0
+      # Email Configuration
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      # Monitoring
+      - SENTRY_DSN=${SENTRY_DSN}
+    networks:
+      - mobility4you_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Service - React with Nginx
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.prod
+      args:
+        - REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
+        - REACT_APP_API_URL=${REACT_APP_API_URL}
+        - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+    container_name: mobility4you_frontend_prod
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - mobility4you_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+
+  # Reverse Proxy - Nginx with SSL termination
+  nginx:
+    image: nginx:1.21-alpine
+    container_name: mobility4you_nginx_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - static_volume_prod:/usr/share/nginx/static:ro
+      - media_volume_prod:/usr/share/nginx/media:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - mobility4you_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Service - For caching and session storage
+  redis:
+    image: redis:6.2-alpine
+    container_name: mobility4you_redis_prod
+    restart: unless-stopped
+    volumes:
+      - redis_data_prod:/data
+      - ./redis/redis.prod.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - mobility4you_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring Service - Optional
+  monitoring:
+    image: prom/prometheus:latest
+    container_name: mobility4you_monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - mobility4you_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    profiles:
+      - monitoring
+
+  # Backup Service - Automated database backups
+  backup:
+    image: alpine:latest
+    container_name: mobility4you_backup
+    volumes:
+      - db_data_prod:/var/lib/mysql:ro
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+    networks:
+      - mobility4you_network
+    restart: unless-stopped
+    entrypoint: ["sh", "-c", "apk add --no-cache mysql-client && crond -f"]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+    profiles:
+      - backup
+
+volumes:
+  db_data_prod:
+    driver: local
+  static_volume_prod:
+    driver: local
+  media_volume_prod:
+    driver: local
+  redis_data_prod:
+    driver: local
+  prometheus_data:
+    driver: local
+
+networks:
+  mobility4you_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -17,28 +17,54 @@ import {
   faPrint,
   faDownload
 } from '@fortawesome/free-solid-svg-icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getReservationStorageService } from '../../services/reservationStorageService';
 import '../../css/ReservaClienteExito.css';
 
 const ReservaClienteExito = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const storageService = getReservationStorageService();
+  
   const [reservaCompletada, setReservaCompletada] = useState(null);
   const [error, setError] = useState(null);
   const debugMode = true; 
   
   useEffect(() => {
     try {
-      // Recuperar datos de la reserva completada
-      const storedData = sessionStorage.getItem('reservaData');
-      if (!storedData) {
-        setError('No se encontraron datos de la reserva completada.');
-        return;
+      // Primero intentar obtener datos del state de navegación
+      const stateData = location.state?.reservationData;
+      
+      if (stateData) {
+        setReservaCompletada(stateData);
+      } else {
+        // Fallback a sessionStorage para datos de reserva completada
+        const storedData = sessionStorage.getItem('reservaCompletada');
+        if (storedData) {
+          setReservaCompletada(JSON.parse(storedData));
+          // Limpiar después de usar
+          sessionStorage.removeItem('reservaCompletada');
+        } else {
+          setError('No se encontraron datos de la reserva completada.');
+          return;
+        }
       }
-      setReservaCompletada(JSON.parse(storedData));
+      
+      // Asegurar que el storage se limpia después de mostrar el éxito
+      if (storageService) {
+        setTimeout(() => {
+          try {
+            storageService.clearReservationData();
+          } catch (err) {
+            console.warn('Error al limpiar storage:', err);
+          }
+        }, 1000);
+      }
     } catch (err) {
+      console.error('Error al cargar los datos de la reserva:', err);
       setError('Error al cargar los datos de la reserva.');
     }
-  }, []);
+  }, [location.state, storageService]);
 
   // Imprimir la reserva
   const handleImprimirReserva = () => {

@@ -1,0 +1,339 @@
+/* Estilos para el indicador de timer de reserva */
+
+/* Indicador principal */
+.reservation-timer-indicator {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #dee2e6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* Tamaños */
+.reservation-timer-indicator.size-small {
+  padding: 0.5rem;
+  min-width: 80px;
+}
+
+.reservation-timer-indicator.size-normal {
+  padding: 0.75rem;
+  min-width: 120px;
+}
+
+.reservation-timer-indicator.size-large {
+  padding: 1rem;
+  min-width: 160px;
+}
+
+/* Posicionamiento */
+.reservation-timer-indicator.position-fixed {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1050;
+}
+
+.reservation-timer-indicator.position-sticky {
+  position: sticky;
+  top: 20px;
+  z-index: 1040;
+}
+
+.reservation-timer-indicator.position-inline {
+  position: relative;
+}
+
+/* Variantes de color */
+.reservation-timer-indicator.variant-success {
+  border-color: #28a745;
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+
+.reservation-timer-indicator.variant-warning {
+  border-color: #ffc107;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+
+.reservation-timer-indicator.variant-danger {
+  border-color: #dc3545;
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(255, 255, 255, 0.95) 100%);
+  animation: pulse-danger 2s infinite;
+}
+
+/* Animación de peligro */
+@keyframes pulse-danger {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3), 0 0 0 4px rgba(220, 53, 69, 0.1);
+  }
+}
+
+/* Estado clickable */
+.reservation-timer-indicator.clickable {
+  cursor: pointer;
+}
+
+.reservation-timer-indicator.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.reservation-timer-indicator.clickable:active {
+  transform: translateY(0);
+}
+
+/* Estado inactivo */
+.reservation-timer-indicator.inactive {
+  opacity: 0.6;
+  border-color: #6c757d;
+  background: rgba(248, 249, 250, 0.95);
+}
+
+/* Contenido del timer */
+.timer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.timer-icon-time {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.timer-icon {
+  font-size: 1.1em;
+}
+
+.timer-text {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.size-small .timer-text {
+  font-size: 0.85rem;
+}
+
+.size-large .timer-text {
+  font-size: 1.25rem;
+}
+
+/* Barra de progreso */
+.timer-progress {
+  width: 100%;
+  margin: 0.25rem 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.timer-progress .progress-bar {
+  transition: width 0.5s ease;
+}
+
+/* Etiqueta del timer */
+.timer-label {
+  margin-top: 0.25rem;
+  text-align: center;
+}
+
+.timer-label small {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Hint de extensión */
+.extend-hint {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.reservation-timer-indicator.clickable:hover .extend-hint {
+  opacity: 1;
+}
+
+/* Badge compacto */
+.reservation-timer-badge {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+}
+
+.reservation-timer-badge:hover {
+  transform: scale(1.05);
+}
+
+/* Timer flotante */
+.reservation-timer-floating {
+  position: fixed;
+  z-index: 1055;
+  max-width: 200px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.reservation-timer-floating.top-right {
+  top: 20px;
+  right: 20px;
+}
+
+.reservation-timer-floating.top-left {
+  top: 20px;
+  left: 20px;
+}
+
+.reservation-timer-floating.bottom-right {
+  bottom: 20px;
+  right: 20px;
+}
+
+.reservation-timer-floating.bottom-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+.floating-content {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Animación urgente para floating */
+.reservation-timer-floating.urgent .floating-content {
+  animation: pulse-urgent 2s infinite;
+}
+
+@keyframes pulse-urgent {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+/* Animación de entrada */
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .reservation-timer-indicator.position-fixed,
+  .reservation-timer-floating {
+    top: 10px;
+    right: 10px;
+    left: auto;
+    bottom: auto;
+  }
+  
+  .reservation-timer-indicator.size-normal {
+    padding: 0.5rem;
+    min-width: 100px;
+  }
+  
+  .reservation-timer-indicator.size-large {
+    padding: 0.75rem;
+    min-width: 140px;
+  }
+  
+  .timer-text {
+    font-size: 0.9rem;
+  }
+  
+  .floating-content {
+    padding: 0.75rem;
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 576px) {
+  .reservation-timer-floating {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+  }
+  
+  .floating-content {
+    padding: 0.5rem;
+  }
+  
+  .reservation-timer-indicator.position-fixed {
+    position: sticky;
+    top: 10px;
+    margin: 0 auto;
+  }
+}
+
+/* Estados focus para accesibilidad */
+.reservation-timer-indicator.clickable:focus,
+.reservation-timer-badge:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Mejoras de contraste */
+@media (prefers-contrast: high) {
+  .reservation-timer-indicator {
+    border-width: 3px;
+  }
+  
+  .timer-text {
+    font-weight: 900;
+  }
+  
+  .timer-progress {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Reducir animaciones si se prefiere */
+@media (prefers-reduced-motion: reduce) {
+  .reservation-timer-indicator,
+  .reservation-timer-badge,
+  .floating-content,
+  .timer-progress .progress-bar,
+  .extend-hint {
+    transition: none;
+    animation: none;
+  }
+}

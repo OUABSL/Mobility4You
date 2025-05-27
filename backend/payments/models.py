@@ -1,237 +1,362 @@
-# archivo: payments/models.py
+# backend/payments/models.py
 
 from django.db import models
 from django.core.validators import MinValueValidator
+from django.utils import timezone
+from decimal import Decimal
 import json
 
-class PagoRedsys(models.Model):
-    """Modelo para almacenar información de pagos con Redsys"""
+class PagoStripe(models.Model):
+    """Modelo para almacenar información de pagos con Stripe"""
     
     ESTADO_CHOICES = [
         ('PENDIENTE', 'Pendiente'),
+        ('PROCESANDO', 'Procesando'),
         ('COMPLETADO', 'Completado'),
         ('FALLIDO', 'Fallido'),
-        ('ANULADO', 'Anulado'),
+        ('CANCELADO', 'Cancelado'),
+        ('REEMBOLSADO', 'Reembolsado'),
+        ('REEMBOLSO_PARCIAL', 'Reembolso Parcial'),
     ]
     
+    TIPO_PAGO_CHOICES = [
+        ('INICIAL', 'Pago Inicial'),
+        ('DIFERENCIA', 'Pago de Diferencia'),
+        ('EXTRA', 'Pago Extra'),
+        ('PENALIZACION', 'Penalización'),
+    ]
+    
+    # Identificadores únicos
     numero_pedido = models.CharField(
         max_length=50, 
         unique=True,
-        help_text="Número de pedido único para Redsys"
+        help_text="Número de pedido único interno"
     )
+    stripe_payment_intent_id = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="ID del Payment Intent de Stripe"
+    )
+    stripe_charge_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="ID del Charge de Stripe (después de confirmación)"
+    )
+    
+    # Información del pago
     importe = models.DecimalField(
         max_digits=10, 
         decimal_places=2,
-        validators=[MinValueValidator(0.01)],
+        validators=[MinValueValidator(Decimal('0.01'))],
         help_text="Importe del pago en euros"
+    )
+    moneda = models.CharField(
+        max_length=3,
+        default='EUR',
+        help_text="Código de moneda ISO"
     )
     estado = models.CharField(
         max_length=20, 
         choices=ESTADO_CHOICES, 
         default='PENDIENTE'
     )
+    tipo_pago = models.CharField(
+        max_length=20,
+        choices=TIPO_PAGO_CHOICES,
+        default='INICIAL',
+        help_text="Tipo de pago dentro del flujo de reserva"
+    )
     
-    # Datos de Redsys
-    merchant_parameters = models.TextField(
-        blank=True, 
-        null=True,
-        help_text="Parámetros codificados enviados a Redsys"
+    # Metadatos de Stripe
+    stripe_client_secret = models.CharField(
+        max_length=255,
+        help_text="Client secret para confirmación en frontend"
     )
-    signature = models.CharField(
-        max_length=255, 
-        blank=True, 
+    stripe_status = models.CharField(
+        max_length=50,
+        blank=True,
         null=True,
-        help_text="Firma generada para Redsys"
+        help_text="Estado reportado por Stripe"
     )
-    codigo_autorizacion = models.CharField(
-        max_length=20, 
-        blank=True, 
+    stripe_metadata = models.JSONField(
+        default=dict,
+        help_text="Metadatos adicionales de Stripe"
+    )
+    
+    # Información de la transacción
+    metodo_pago = models.CharField(
+        max_length=50,
+        blank=True,
         null=True,
-        help_text="Código de autorización de Redsys"
+        help_text="Método de pago usado (card, sepa_debit, etc.)"
     )
-    codigo_respuesta = models.CharField(
-        max_length=10, 
-        blank=True, 
+    ultimos_4_digitos = models.CharField(
+        max_length=4,
+        blank=True,
         null=True,
-        help_text="Código de respuesta de Redsys"
+        help_text="Últimos 4 dígitos de la tarjeta"
     )
+    marca_tarjeta = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="Marca de la tarjeta (visa, mastercard, etc.)"
+    )
+    
+    # Reembolsos
+    importe_reembolsado = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text="Importe total reembolsado"
+    )
+    
+    # Datos de la reserva y cliente
+    datos_reserva = models.JSONField(
+        default=dict,
+        help_text="Datos completos de la reserva en formato JSON"
+    )
+    email_cliente = models.EmailField(
+        help_text="Email del cliente para el pago"
+    )
+    nombre_cliente = models.CharField(
+        max_length=255,
+        help_text="Nombre completo del cliente"
+    )
+    
+    # Información de error
     mensaje_error = models.TextField(
         blank=True, 
         null=True,
         help_text="Mensaje de error en caso de fallo"
     )
-    
-    # Datos de la reserva (JSON)
-    datos_reserva = models.JSONField(
-        default=dict,
-        help_text="Datos completos de la reserva en formato JSON"
+    codigo_error_stripe = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Código de error específico de Stripe"
     )
     
     # Fechas
     fecha_creacion = models.DateTimeField(auto_now_add=True)
-    fecha_pago = models.DateTimeField(null=True, blank=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
+    fecha_confirmacion = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="Fecha de confirmación del pago"
+    )
+    fecha_vencimiento = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha de vencimiento del Payment Intent"
+    )
     
-    # Relación con reserva (se creará tras pago exitoso)
+    # Relación con reserva
     reserva = models.ForeignKey(
         'api.Reserva',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='pagos_redsys'
+        related_name='pagos_stripe'
     )
     
     class Meta:
-        db_table = 'pagos_redsys'
-        verbose_name = 'Pago Redsys'
-        verbose_name_plural = 'Pagos Redsys'
+        db_table = 'pagos_stripe'
+        verbose_name = 'Pago Stripe'
+        verbose_name_plural = 'Pagos Stripe'
         ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['stripe_payment_intent_id']),
+            models.Index(fields=['numero_pedido']),
+            models.Index(fields=['estado', 'fecha_creacion']),
+            models.Index(fields=['reserva', 'tipo_pago']),
+        ]
     
     def __str__(self):
         return f"Pago {self.numero_pedido} - {self.estado} - {self.importe}€"
-    
     @property
-    def datos_conductor(self):
-        # Extrae datos del conductor principal de la reserva si existen
-        if self.reserva and hasattr(self.reserva, 'usuario') and self.reserva.usuario:
-            return {
-                'nombre': self.reserva.usuario.first_name,
-                'apellidos': self.reserva.usuario.last_name,
-                'email': self.reserva.usuario.email
-            }
-        return {}
-
-    @property
-    def datos_vehiculo(self):
-        # Extrae datos del vehículo de la reserva si existen
-        if self.reserva and hasattr(self.reserva, 'vehiculo') and self.reserva.vehiculo:
-            return {
-                'marca': getattr(self.reserva.vehiculo, 'marca', ''),
-                'modelo': getattr(self.reserva.vehiculo, 'modelo', ''),
-                'matricula': getattr(self.reserva.vehiculo, 'matricula', '')
-            }
-        return {}
-
-    def es_pago_exitoso(self):
+    def es_exitoso(self):
         """Verifica si el pago fue exitoso"""
-        return self.estado == 'COMPLETADO' and self.codigo_autorizacion
+        return self.estado == 'COMPLETADO'
     
-    def obtener_email_cliente(self):
-        # Devuelve el email del usuario asociado a la reserva
-        if self.reserva and hasattr(self.reserva, 'usuario') and self.reserva.usuario:
-            return self.reserva.usuario.email
-        return ''
+    @property
+    def puede_reembolsar(self):
+        """Verifica si el pago puede ser reembolsado"""
+        if self.importe is None:
+            return False
+        return (
+            self.estado == 'COMPLETADO' and 
+            self.importe_reembolsado < self.importe
+        )
+    @property
+    def importe_disponible_reembolso(self):
+        """Calcula el importe disponible para reembolso"""
+        if self.importe is None:
+            return Decimal('0.00')
+        return self.importe - self.importe_reembolsado
+    
+    def actualizar_desde_stripe(self, payment_intent_data):
+        """Actualiza el objeto con datos de Stripe"""
+        self.stripe_status = payment_intent_data.get('status')
+        self.stripe_metadata = payment_intent_data.get('metadata', {})
+        
+        # Actualizar estado interno basado en estado de Stripe
+        stripe_status = payment_intent_data.get('status')
+        if stripe_status == 'succeeded':
+            self.estado = 'COMPLETADO'
+            self.fecha_confirmacion = timezone.now()
+            
+            # Extraer información de la tarjeta si está disponible
+            if 'charges' in payment_intent_data and payment_intent_data['charges']['data']:
+                charge = payment_intent_data['charges']['data'][0]
+                self.stripe_charge_id = charge['id']
+                
+                if 'payment_method_details' in charge:
+                    pm_details = charge['payment_method_details']
+                    if 'card' in pm_details:
+                        card = pm_details['card']
+                        self.ultimos_4_digitos = card.get('last4')
+                        self.marca_tarjeta = card.get('brand')
+                        self.metodo_pago = 'card'
+                        
+        elif stripe_status == 'canceled':
+            self.estado = 'CANCELADO'
+        elif stripe_status in ['processing', 'requires_capture']:
+            self.estado = 'PROCESANDO'
+        elif stripe_status in ['requires_payment_method', 'requires_confirmation']:
+            self.estado = 'PENDIENTE'
+        else:
+            self.estado = 'FALLIDO'
+            
+        self.save()
 
 
-# archivo: payments/serializers.py
-
-from rest_framework import serializers
-from .models import PagoRedsys
-
-class RedsysPaymentSerializer(serializers.Serializer):
-    """Serializer para preparar pagos con Redsys"""
+class ReembolsoStripe(models.Model):
+    """Modelo para gestionar reembolsos de Stripe"""
     
-    # Parámetros de Redsys
-    redsysParams = serializers.DictField()
-    reservaData = serializers.DictField()
+    ESTADO_CHOICES = [
+        ('PENDIENTE', 'Pendiente'),
+        ('PROCESANDO', 'Procesando'),
+        ('COMPLETADO', 'Completado'),
+        ('FALLIDO', 'Fallido'),
+        ('CANCELADO', 'Cancelado'),
+    ]
     
-    def validate_redsysParams(self, value):
-        """Valida que los parámetros de Redsys estén completos"""
-        required_fields = [
-            'DS_MERCHANT_AMOUNT',
-            'DS_MERCHANT_ORDER',
-            'DS_MERCHANT_MERCHANTCODE',
-            'DS_MERCHANT_CURRENCY',
-            'DS_MERCHANT_TRANSACTIONTYPE',
-            'DS_MERCHANT_TERMINAL'
-        ]
-        
-        for field in required_fields:
-            if field not in value:
-                raise serializers.ValidationError(f'Campo requerido: {field}')
-        
-        # Validar importe
-        try:
-            amount = int(value['DS_MERCHANT_AMOUNT'])
-            if amount <= 0:
-                raise serializers.ValidationError('El importe debe ser mayor a 0')
-        except (ValueError, TypeError):
-            raise serializers.ValidationError('Importe inválido')
-        
-        return value
+    MOTIVO_CHOICES = [
+        ('CANCELACION_CLIENTE', 'Cancelación por Cliente'),
+        ('CANCELACION_EMPRESA', 'Cancelación por Empresa'),
+        ('MODIFICACION_RESERVA', 'Modificación de Reserva'),
+        ('ERROR_PAGO', 'Error en el Pago'),
+        ('FRAUDE', 'Fraude'),
+        ('OTRO', 'Otro Motivo'),
+    ]
     
-    def validate_reservaData(self, value):
-        """Valida que los datos de reserva estén completos"""
-        # Validar conductor principal
-        conductor = value.get('conductorPrincipal', {})
-        if not conductor.get('email'):
-            raise serializers.ValidationError('Email del conductor requerido')
-        
-        # Validar vehículo
-        car = value.get('car', {})
-        if not car.get('id'):
-            raise serializers.ValidationError('ID del vehículo requerido')
-        
-        return value
-
-class PagoRedsysSerializer(serializers.ModelSerializer):
-    """Serializer para el modelo PagoRedsys"""
+    pago_stripe = models.ForeignKey(
+        PagoStripe,
+        on_delete=models.CASCADE,
+        related_name='reembolsos'
+    )
+    stripe_refund_id = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="ID del reembolso en Stripe"
+    )
     
-    datos_conductor = serializers.DictField(read_only=True)
-    datos_vehiculo = serializers.DictField(read_only=True)
-    email_cliente = serializers.CharField(source='obtener_email_cliente', read_only=True)
+    importe = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text="Importe del reembolso"
+    )
+    motivo = models.CharField(
+        max_length=30,
+        choices=MOTIVO_CHOICES,
+        default='CANCELACION_CLIENTE'
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='PENDIENTE'
+    )
+    
+    descripcion = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Descripción del motivo del reembolso"
+    )
+    
+    # Metadatos de Stripe
+    stripe_status = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    stripe_failure_reason = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
+    )
+    
+    # Fechas
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_procesamiento = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha en que se procesó el reembolso"
+    )
     
     class Meta:
-        model = PagoRedsys
-        fields = [
-            'id', 'numero_pedido', 'importe', 'estado',
-            'codigo_autorizacion', 'codigo_respuesta', 'mensaje_error',
-            'fecha_creacion', 'fecha_pago', 'fecha_actualizacion',
-            'datos_conductor', 'datos_vehiculo', 'email_cliente'
-        ]
-        read_only_fields = [
-            'fecha_creacion', 'fecha_pago', 'fecha_actualizacion'
-        ]
-
-
-# archivo: payments/admin.py
-
-from django.contrib import admin
-from .models import PagoRedsys
-
-@admin.register(PagoRedsys)
-class PagoRedsysAdmin(admin.ModelAdmin):
-    list_display = [
-        'numero_pedido', 'importe', 'estado', 
-        'codigo_autorizacion', 'fecha_creacion', 'fecha_pago'
-    ]
-    list_filter = ['estado', 'fecha_creacion', 'fecha_pago']
-    search_fields = ['numero_pedido', 'codigo_autorizacion']
-    readonly_fields = [
-        'fecha_creacion', 'fecha_pago', 'fecha_actualizacion'
-    ]
+        db_table = 'reembolsos_stripe'
+        verbose_name = 'Reembolso Stripe'
+        verbose_name_plural = 'Reembolsos Stripe'
+        ordering = ['-fecha_creacion']
     
-    fieldsets = [
-        ('Información del Pago', {
-            'fields': ['numero_pedido', 'importe', 'estado']
-        }),
-        ('Datos de Redsys', {
-            'fields': [
-                'merchant_parameters', 'signature', 
-                'codigo_autorizacion', 'codigo_respuesta', 'mensaje_error'
-            ]
-        }),
-        ('Datos de Reserva', {
-            'fields': ['datos_reserva', 'reserva'],
-            'classes': ['collapse']
-        }),
-        ('Fechas', {
-            'fields': ['fecha_creacion', 'fecha_pago', 'fecha_actualizacion']
-        })
-    ]
+    def __str__(self):
+        return f"Reembolso {self.stripe_refund_id} - {self.importe}€"
+
+
+class WebhookStripe(models.Model):
+    """Modelo para registrar webhooks recibidos de Stripe"""
     
-    def has_delete_permission(self, request, obj=None):
-        # No permitir eliminar pagos completados
-        if obj and obj.estado == 'COMPLETADO':
-            return False
-        return super().has_delete_permission(request, obj)
+    stripe_event_id = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="ID único del evento de Stripe"
+    )
+    tipo_evento = models.CharField(
+        max_length=100,
+        help_text="Tipo de evento (payment_intent.succeeded, etc.)"
+    )
+    procesado = models.BooleanField(
+        default=False,
+        help_text="Indica si el webhook fue procesado exitosamente"
+    )
+    
+    # Datos del webhook
+    datos_evento = models.JSONField(
+        help_text="Datos completos del evento de Stripe"
+    )
+    
+    # Información de procesamiento
+    fecha_recepcion = models.DateTimeField(auto_now_add=True)
+    fecha_procesamiento = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+    intentos_procesamiento = models.PositiveIntegerField(default=0)
+    mensaje_error = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Mensaje de error si el procesamiento falló"
+    )
+    
+    class Meta:
+        db_table = 'webhooks_stripe'
+        verbose_name = 'Webhook Stripe'
+        verbose_name_plural = 'Webhooks Stripe'
+        ordering = ['-fecha_recepcion']
+    
+    def __str__(self):
+        return f"Webhook {self.tipo_evento} - {self.stripe_event_id}"

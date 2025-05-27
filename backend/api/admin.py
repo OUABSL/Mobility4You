@@ -1496,7 +1496,6 @@ class PenalizacionAdmin(BaseAdvancedAdmin):
 @admin.register(Extras)
 class ExtrasAdmin(BaseAdvancedAdmin):
     """Administrador para extras"""
-    
     list_display = (
         'nombre', 'get_precio_formatted', 'get_descripcion_short',
         'get_reservas_count'
@@ -1521,7 +1520,7 @@ class ExtrasAdmin(BaseAdvancedAdmin):
     
     def get_reservas_count(self, obj):
         """Contador de reservas que usan este extra"""
-        count = obj.reservaextra_set.count()
+        count = obj.reservas_extra.count()
         if count > 0:
             return format_html(
                 '<span style="background: #17a2b8; color: white; padding: 2px 6px; '

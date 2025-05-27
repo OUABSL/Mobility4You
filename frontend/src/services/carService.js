@@ -3,7 +3,7 @@ import { withTimeout } from './func';
 import { searchAvailableVehicles, extractFilterOptions } from './searchServices';
 
 // Configuración de API y modo testing
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost/api';
 const IS_TESTING = process.env.REACT_APP_TESTING === 'on' || process.env.NODE_ENV === 'development';
 
 /**
