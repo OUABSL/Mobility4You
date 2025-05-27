@@ -64,7 +64,6 @@ const ReservaClienteConfirmar = () => {
     metodoPago: 'tarjeta',
     aceptaTerminos: false
   });
-
   // Cargar datos de reserva del sessionStorage al iniciar
   useEffect(() => {
     try {
@@ -76,6 +75,17 @@ const ReservaClienteConfirmar = () => {
       setReservaData(JSON.parse(storedData));
     } catch (err) {
       setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
+    }
+  }, []);
+
+  // Restore scroll position from extras page
+  useEffect(() => {
+    const scrollPosition = sessionStorage.getItem('confirmationScrollPosition');
+    if (scrollPosition) {
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(scrollPosition));
+        sessionStorage.removeItem('confirmationScrollPosition');
+      }, 100);
     }
   }, []);
 
@@ -133,11 +143,12 @@ const ReservaClienteConfirmar = () => {
       } else {
         importe_pagado_inicial = 0;
         importe_pendiente_inicial = total;
-      }
+      }      
       // Actualizar datos de reserva
       const updatedReserva = {
         ...reservaData,
         conductor: formData,
+        conductorPrincipal: formData, // Add this for compatibility with payment component
         metodo_pago,
         importe_pagado_inicial,
         importe_pendiente_inicial,

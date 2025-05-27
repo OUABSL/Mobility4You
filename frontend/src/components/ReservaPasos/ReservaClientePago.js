@@ -17,11 +17,32 @@ import {
   faLock,
   faExclamationTriangle,
   faInfoCircle,
-  faServer
+  faMoneyBillWave
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import '../../css/ReservaClientePago.css';
-import { editReservation, findReservation, processPayment, DEBUG_MODE } from '../../services/reservationServices';
+import { editReservation, findReservation, processPayment, createReservation, DEBUG_MODE } from '../../services/reservationServices';
+
+// Configuraciones de pago
+const STRIPE_ENABLED = false; // Variable para habilitar/deshabilitar Stripe
+const PAYMENT_METHODS = {
+  CARD: 'tarjeta',
+  CASH: 'efectivo'
+};
+
+// Funciones de logging condicional
+const logInfo = (message, data = null) => {
+  if (DEBUG_MODE) {
+    console.log(`[PAYMENT] ${message}`, data);
+  }
+};
+
+const logError = (message, error = null) => {
+  if (DEBUG_MODE) {
+    console.error(`[PAYMENT ERROR] ${message}`, error);
+  }
+};
+
 
 const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferencia = false }) => {
   const navigate = useNavigate();
@@ -29,19 +50,6 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reservaData, setReservaData] = useState(null);
-  const [cardForm, setCardForm] = useState({
-    cardNumber: '',
-    cardName: '',
-    expiry: '',
-    cvc: ''
-  });
-
-  // ESTADOS para Redsys
-  const [redsysLoading, setRedsysLoading] = useState(false);
-  const [paymentData, setPaymentData] = useState(null);
-  const formRef = useRef(null);
-
-  const debugMode = true;
 
   // Cargar datos de reserva del sessionStorage al iniciar
   useEffect(() => {
@@ -69,115 +77,70 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
         setReservaData(JSON.parse(storedData));
       }
     } catch (err) {
+      logError('Error al cargar datos de reserva', err);
       setError('Error al cargar datos de reserva.');
     }
   }, [diferencia, reservaId, modoDiferencia]);
-
 
   const handleVolver = () => {
     navigate('/reservation-confirmation/datos');
   };
 
-  // FUNCIÓN PARA GENERAR DATOS DE REDSYS
-  const generateRedsysData = (reservaData, total) => {
-    // Configuración desde variables de entorno
-    const merchantCode = process.env.REACT_APP_REDSYS_MERCHANT_CODE || '999008881';
-    const terminal = '001';
-    const currency = '978'; // EUR
-    const transactionType = '0'; // Autorización
+  // Función para simular pago con tarjeta (sin Stripe real)
+  const simulateCardPayment = async (amount, paymentData) => {
+    logInfo('Simulando pago con tarjeta', { amount, paymentData });
     
-    // Generar número de pedido único
-    const orderNumber = `RSV${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    // Simular delay de procesamiento
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // URLs para Django backend
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-    const frontendUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
-    
-    // Datos para Redsys
-    const redsysParams = {
-      DS_MERCHANT_AMOUNT: Math.round(total * 100).toString(), // Céntimos
-      DS_MERCHANT_ORDER: orderNumber,
-      DS_MERCHANT_MERCHANTCODE: merchantCode,
-      DS_MERCHANT_CURRENCY: currency,
-      DS_MERCHANT_TRANSACTIONTYPE: transactionType,
-      DS_MERCHANT_TERMINAL: terminal,
-      DS_MERCHANT_MERCHANTURL: `${backendUrl}/api/payments/redsys/notify/`,
-      DS_MERCHANT_URLOK: `${backendUrl}/api/payments/redsys/success/`,
-      DS_MERCHANT_URLKO: `${backendUrl}/api/payments/redsys/error/`,
-      DS_MERCHANT_PRODUCTDESCRIPTION: `Reserva vehículo ${reservaData.car.marca} ${reservaData.car.modelo}`,
-      DS_MERCHANT_TITULAR: `${reservaData.conductorPrincipal.nombre} ${reservaData.conductorPrincipal.apellidos}`,
-      DS_MERCHANT_MERCHANTDATA: JSON.stringify({
-        reservaId: orderNumber,
-        email: reservaData.conductorPrincipal.email
-      })
+    // Simular respuesta exitosa (en producción esto vendría de Stripe)
+    return {
+      success: true,
+      transaction_id: `sim_tx_${Date.now()}`,
+      message: 'Pago simulado exitosamente',
+      payment_method: 'card_simulation'
     };
-    
-    return { redsysParams, orderNumber };
   };
 
-  // 2. ACTUALIZAR LA FUNCIÓN processRedsysPayment para usar Django API
-  const processRedsysPayment = async () => {
-    setRedsysLoading(true);
-    setError(null);
+  // Función para crear reserva en base de datos
+  const createReservationInDB = async (reservaData) => {
     try {
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-      const total = diferencia || reservaData?.detallesReserva?.total || reservaData?.total || 0;
-      const { redsysParams, orderNumber } = generateRedsysData(reservaData, total);
-      const response = await fetch(`${backendUrl}/api/payments/redsys/prepare/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ redsysParams, reservaData })
-      });
-      if (!response.ok) throw new Error('Error preparando pago con Redsys');
-      const data = await response.json();
-      setPaymentData(data);
-      // Redirigir a Redsys
-      if (data.redsysUrl && data.merchantParameters && data.signature) {
-        // Crear y enviar formulario a Redsys
-        const form = document.createElement('form');
-        form.action = data.redsysUrl;
-        form.method = 'POST';
-        form.style.display = 'none';
-        form.innerHTML = `
-          <input type="hidden" name="Ds_SignatureVersion" value="${data.signatureVersion}" />
-          <input type="hidden" name="Ds_MerchantParameters" value="${data.merchantParameters}" />
-          <input type="hidden" name="Ds_Signature" value="${data.signature}" />
-        `;
-        document.body.appendChild(form);
-        form.submit();
+      logInfo('Creando reserva en base de datos', { id: reservaData.id });
+      
+      if (DEBUG_MODE) {
+        // En modo debug, simular creación
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return {
+          ...reservaData,
+          id: reservaData.id || `RSV_${Date.now()}`,
+          estado: 'confirmada',
+          fecha_creacion: new Date().toISOString()
+        };
       } else {
-        throw new Error('Respuesta de Redsys incompleta');
+        // En producción, llamar al servicio real
+        return await createReservation(reservaData);
       }
     } catch (error) {
-      setError(error.message || 'Error al procesar el pago con Redsys.');
-    } finally {
-      setRedsysLoading(false);
+      logError('Error al crear reserva en DB', error);
+      throw new Error('Error al crear la reserva en la base de datos');
     }
   };
-
-  // FUNCIÓN PARA VERIFICAR ESTADO DEL PAGO
-  const checkPaymentStatus = async (orderNumber) => {
-    try {
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-      const response = await fetch(`${backendUrl}/api/payments/redsys/status/${orderNumber}/`);
-      if (response.ok) {
-        const data = await response.json();
-        return data;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error checking payment status:', error);
-      return null;
-    }
-  };
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    
     try {
-      if (!reservaData) throw new Error('No hay datos de reserva.');
+      if (!reservaData) {
+        throw new Error('No hay datos de reserva.');
+      }
+      
+      logInfo('Iniciando proceso de pago', { 
+        metodoPago: reservaData.metodoPago,
+        modoDiferencia,
+        diferencia 
+      });
       
       // Calcular importe a pagar
       let importeAPagar = 0;
@@ -187,25 +150,88 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
         importeAPagar = reservaData.detallesReserva.total;
       }
       
-      // Preparar datos de pago
-      const paymentData = {
-        metodo_pago: reservaData.metodoPago || 'tarjeta',
-        importe: importeAPagar,
-        datos_pago: {
+      logInfo('Importe calculado', { importeAPagar });
+      
+      // Procesar según método de pago
+      if (reservaData.metodoPago === PAYMENT_METHODS.CARD) {
+        await processCardPayment(importeAPagar);
+      } else if (reservaData.metodoPago === PAYMENT_METHODS.CASH) {
+        await processCashPayment(importeAPagar);
+      } else {
+        throw new Error('Método de pago no válido');
+      }
+      
+    } catch (err) {
+      logError('Error en handleSubmit', err);
+      setError(err.message || 'Error al procesar el pago.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Procesar pago con tarjeta
+  const processCardPayment = async (importeAPagar) => {
+    try {
+      logInfo('Procesando pago con tarjeta', { importeAPagar, stripeEnabled: STRIPE_ENABLED });
+      
+      let paymentResult;
+      
+      if (STRIPE_ENABLED) {
+        // Integración real con Stripe (cuando esté habilitada)
+        logInfo('Usando Stripe real (no implementado aún)');
+        throw new Error('Stripe no está disponible actualmente. Use pago en efectivo.');
+      } else {
+        // Simular pago con tarjeta
+        logInfo('Simulando pago con tarjeta');
+        paymentResult = await simulateCardPayment(importeAPagar, {
           titular: reservaData.conductorPrincipal?.nombre 
             ? `${reservaData.conductorPrincipal.nombre} ${reservaData.conductorPrincipal.apellidos}` 
             : '',
           email: reservaData.conductorPrincipal?.email || '',
           modoDiferencia: modoDiferencia
-        }
+        });
+      }
+      
+      if (paymentResult && paymentResult.success) {
+        await updateReservationAfterPayment(importeAPagar, paymentResult);
+      } else {
+        throw new Error(paymentResult?.error || 'Error al procesar el pago con tarjeta');
+      }
+      
+    } catch (error) {
+      logError('Error en processCardPayment', error);
+      throw error;
+    }
+  };
+
+  // Procesar pago en efectivo
+  const processCashPayment = async (importeAPagar) => {
+    try {
+      logInfo('Procesando pago en efectivo', { importeAPagar });
+      
+      // Para pago en efectivo, simplemente actualizar la reserva sin procesar pago
+      const paymentResult = {
+        success: true,
+        transaction_id: `cash_${Date.now()}`,
+        message: 'Pago en efectivo programado',
+        payment_method: 'cash'
       };
       
-      // Procesar pago usando el nuevo servicio
-      const paymentResult = await processPayment(reservaData.id, paymentData);
+      await updateReservationAfterPayment(importeAPagar, paymentResult);
       
-      // Si el pago es exitoso, actualizar datos y redireccionar
-      if (paymentResult && paymentResult.success) {
-        // Actualizar campos de pago extra
+    } catch (error) {
+      logError('Error en processCashPayment', error);
+      throw error;
+    }
+  };
+
+  // Actualizar reserva después del pago
+  const updateReservationAfterPayment = async (importeAPagar, paymentResult) => {
+    try {
+      logInfo('Actualizando reserva después del pago', { importeAPagar, paymentResult });
+      
+      if (modoDiferencia) {
+        // Modo diferencia: actualizar reserva existente
         const updatedReserva = {
           ...reservaData,
           importe_pagado_extra: (reservaData.importe_pagado_extra || 0) + importeAPagar,
@@ -215,61 +241,29 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
         };
         
         const result = await editReservation(reservaData.id, updatedReserva);
-        
         sessionStorage.setItem('reservaData', JSON.stringify(result));
         
-        if (modoDiferencia) {
-          navigate(`/reservations/${reservaData.id}?email=${reservaData.conductor?.email || ''}`, { replace: true });
-        } else {
-          navigate('/reservation-confirmation/exito');
-        }
+        navigate(`/reservations/${reservaData.id}?email=${reservaData.conductorPrincipal?.email || ''}`, { replace: true });
       } else {
-        throw new Error(paymentResult?.error || 'Error al procesar el pago');
+        // Reserva nueva: crear en base de datos
+        const reservaToCreate = {
+          ...reservaData,
+          transaction_id: paymentResult.transaction_id,
+          fecha_pago: new Date().toISOString(),
+          estado: reservaData.metodoPago === PAYMENT_METHODS.CASH ? 'pendiente_pago' : 'confirmada'
+        };
+        
+        const createdReserva = await createReservationInDB(reservaToCreate);
+        sessionStorage.setItem('reservaCompletada', JSON.stringify(createdReserva));
+        
+        navigate('/reservation-confirmation/exito', { replace: true });
       }
-    } catch (err) {
-      setError(err.message || 'Error al procesar el pago.');
-    } finally {
-      setLoading(false);
+      
+    } catch (error) {
+      logError('Error al actualizar reserva', error);
+      throw new Error('Error al actualizar la reserva después del pago');
     }
   };
-
-
-  // 4. EFECTO PARA VERIFICAR ESTADO DEL PAGO AL REGRESAR DE REDSYS
-  useEffect(() => {
-    // Verificar si venimos de Redsys con parámetros de éxito/error
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentResult = urlParams.get('payment');
-    const orderNumber = urlParams.get('order');
-    
-    if (paymentResult && orderNumber) {
-      if (paymentResult === 'success') {
-        // Verificar estado del pago en el backend
-        checkPaymentStatus(orderNumber).then(paymentData => {
-          if (paymentData && paymentData.status === 'COMPLETADO') {
-            // Actualizar sessionStorage y redirigir a éxito
-            const completedData = {
-              ...reservaData,
-              reservaId: orderNumber,
-              fechaPago: paymentData.paid_at,
-              estadoPago: 'completado',
-              codigoAutorizacion: paymentData.authorization_code
-            };
-            sessionStorage.setItem('reservaCompletada', JSON.stringify(completedData));
-            navigate('/reservation-confirmation/exito', { replace: true });
-          }
-        });
-      } else if (paymentResult === 'failed') {
-        // Redirigir a error con información del pago fallido
-        navigate('/reservation-confirmation/error', { 
-          state: { 
-            errorType: 'payment',
-            errorMessage: 'El pago con tarjeta no pudo ser procesado. Por favor, inténtalo de nuevo.'
-          },
-          replace: true 
-        });
-      }
-    }
-  }, [navigate, reservaData]);
 
   // Si hay error, mostrar pantalla de error
   if (error) {
@@ -349,120 +343,105 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
               </div>
               
               {error && <Alert variant="danger">{error}</Alert>}
-              
-              <Form onSubmit={handleSubmit}>
-                {reservaData.metodoPago === 'tarjeta' ? (
-                  // PAGO CON TARJETA (REDSYS)
-                  <div className="redsys-payment-form">
-                    <h5 className="mb-3">
-                      <FontAwesomeIcon icon={faCreditCard} className="me-2" />
-                      Pago Seguro con Tarjeta
-                    </h5>
-                    
-                    <div className="redsys-info-box mb-4 p-3 rounded" style={{backgroundColor: '#f8f9fa', border: '1px solid #dee2e6'}}>
-                      <div className="d-flex align-items-center mb-2">
-                        <FontAwesomeIcon icon={faLock} className="me-2 text-success" />
-                        <strong>Pago 100% Seguro con Redsys</strong>
-                      </div>
-                      <p className="mb-2">Tu pago será procesado de forma segura a través de <strong>Redsys</strong>, la plataforma de pagos líder en España utilizada por los principales bancos españoles.</p>
-                      <ul className="mb-0 small">
-                        <li>Tecnología de encriptación SSL de máximo nivel</li>
-                        <li>Cumplimiento estricto PCI DSS</li>
-                        <li>Protección avanzada contra fraude</li>
-                        <li>Compatible con 3D Secure para mayor seguridad</li>
-                        <li>Procesado por tu banco de confianza</li>
-                      </ul>
-                    </div>
-                    
-                    <div className="backend-status mb-3">
-                      <small className="text-muted">
-                        <FontAwesomeIcon icon={faServer} className="me-1" />
-                        Conectado con servidor Django: {process.env.REACT_APP_BACKEND_URL || 'localhost:8000'}
-                      </small>
-                    </div>
-                    
-                    <div className="accepted-cards mb-4">
-                      <h6 className="mb-2">Tarjetas aceptadas:</h6>
-                      <div className="d-flex align-items-center gap-2 flex-wrap">
-                        <div className="card-brand">
-                          <img src="/assets/img/cards/visa.png" alt="Visa" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
-                          <span className="visually-hidden">Visa</span>
-                        </div>
-                        <div className="card-brand">
-                          <img src="/assets/img/cards/mastercard.png" alt="Mastercard" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
-                          <span className="visually-hidden">Mastercard</span>
-                        </div>
-                        <div className="card-brand">
-                          <img src="/assets/img/cards/maestro.png" alt="Maestro" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
-                          <span className="visually-hidden">Maestro</span>
-                        </div>
-                        <div className="card-brand">
-                          <img src="/assets/img/cards/amex.png" alt="American Express" style={{height: '30px'}} onError={(e) => e.target.style.display = 'none'} />
-                          <span className="visually-hidden">American Express</span>
-                        </div>
-                        <span className="text-muted small">+ todas las principales tarjetas bancarias</span>
-                      </div>
-                    </div>
-                    
-                    {redsysLoading && (
-                      <div className="processing-payment text-center p-4">
-                        <Spinner animation="border" variant="primary" className="mb-3" />
-                        <h6>Preparando pago seguro...</h6>
-                        <p className="text-muted">Estamos configurando tu pago con Redsys. Serás redirigido a la plataforma de pago de tu banco en unos segundos.</p>
-                        <div className="mt-3">
-                          <small className="text-info">
-                            <FontAwesomeIcon icon={faInfoCircle} className="me-1" />
-                            No cierres esta ventana durante el proceso
-                          </small>
-                        </div>
-                      </div>
+                <Form onSubmit={handleSubmit}>
+                {/* INFORMACIÓN DE PAGO SEGURO */}
+                <div className="payment-info-section mb-4">
+                  <h5 className="mb-3">
+                    {reservaData.metodoPago === PAYMENT_METHODS.CARD ? (
+                      <>
+                        <FontAwesomeIcon icon={faCreditCard} className="me-2" />
+                        Pago con Tarjeta
+                      </>
+                    ) : (
+                      <>
+                        <FontAwesomeIcon icon={faMoneyBillWave} className="me-2" />
+                        Pago en Efectivo
+                      </>
                     )}
-                    
-                    {error && (
-                      <div className="alert alert-danger mt-3">
-                        <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" />
-                        {error}
+                  </h5>
+                  
+                  {reservaData.metodoPago === PAYMENT_METHODS.CARD ? (
+                    <div className="card-payment-info">
+                      <div className="info-box mb-4 p-3 rounded" style={{backgroundColor: '#f8f9fa', border: '1px solid #dee2e6'}}>
+                        <div className="d-flex align-items-center mb-2">
+                          <FontAwesomeIcon icon={faLock} className="me-2 text-success" />
+                          <strong>
+                            {STRIPE_ENABLED ? 'Pago Seguro con Stripe' : 'Pago Simulado (Modo Desarrollo)'}
+                          </strong>
+                        </div>
+                        {STRIPE_ENABLED ? (
+                          <p className="mb-0">
+                            Tu pago será procesado de forma segura a través de Stripe, 
+                            una plataforma de pagos reconocida mundialmente.
+                          </p>
+                        ) : (
+                          <div>
+                            <p className="mb-2 text-warning">
+                              <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" />
+                              <strong>Modo Desarrollo:</strong> Los pagos con tarjeta están simulados.
+                            </p>
+                            <p className="mb-0 small">
+                              En producción, los pagos se procesarían con Stripe de forma segura.
+                              Por ahora, puedes usar el pago en efectivo para reservas reales.
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  // PAGO CON PAYPAL (mantener igual)
-                  <div className="paypal-payment-form">
-                    <h5 className="mb-3">
-                      <img src="/assets/img/paypal-logo.png" alt="PayPal" style={{height: '24px'}} onError={(e) => e.target.style.display = 'none'} />
-                      Pago con PayPal
-                    </h5>
-                    
-                    <div className="paypal-info-box mb-4 p-3 rounded" style={{backgroundColor: '#f8f9fa', border: '1px solid #dee2e6'}}>
-                      <div className="d-flex align-items-center mb-2">
-                        <FontAwesomeIcon icon={faLock} className="me-2 text-success" />
-                        <strong>Pago Seguro con PayPal</strong>
-                      </div>
-                      <p className="mb-0">Serás redirigido a PayPal para completar tu pago de forma segura. No necesitas crear una cuenta PayPal, también puedes pagar con tarjeta.</p>
+                      
+                      {!STRIPE_ENABLED && (
+                        <div className="simulation-notice alert alert-info">
+                          <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
+                          <strong>Simulación de Pago:</strong> Al proceder, se simulará un pago exitoso 
+                          sin cargo real a ninguna tarjeta.
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-                
+                  ) : (
+                    <div className="cash-payment-info">
+                      <div className="info-box mb-4 p-3 rounded" style={{backgroundColor: '#f8f9fa', border: '1px solid #dee2e6'}}>
+                        <div className="d-flex align-items-center mb-2">
+                          <FontAwesomeIcon icon={faMoneyBillWave} className="me-2 text-success" />
+                          <strong>Pago en Efectivo</strong>
+                        </div>
+                        <p className="mb-0">
+                          Reserva ahora y paga cuando recojas el vehículo en nuestras oficinas.
+                          Tu reserva quedará confirmada sin cargo inmediato.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                  {/* RESUMEN DEL PAGO */}
                 <div className="payment-summary-box my-4 p-3 border rounded">
                   <h6 className="mb-3">Resumen del Pago</h6>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Total a pagar:</span>
-                    <span className="fw-bold">{reservaData.detallesReserva?.total.toFixed(2) || '0.00'}€</span>
+                    <span className="fw-bold">
+                      {(diferencia || reservaData.detallesReserva?.total || 0).toFixed(2)}€
+                    </span>
                   </div>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Método de pago:</span>
-                    <span className="text-capitalize">{reservaData.metodoPago === 'tarjeta' ? 'Tarjeta de Crédito' : 'PayPal'}</span>
+                    <span className="text-capitalize">
+                      {reservaData.metodoPago === PAYMENT_METHODS.CARD ? 'Tarjeta de Crédito' : 'Efectivo'}
+                    </span>
                   </div>
                   <small className="text-muted">
-                    Al hacer clic en "Proceder al Pago", {reservaData.metodoPago === 'tarjeta' ? 'serás redirigido a la plataforma segura de Redsys' : 'serás redirigido a PayPal'} para completar tu pago.
+                    {reservaData.metodoPago === PAYMENT_METHODS.CARD 
+                      ? (STRIPE_ENABLED 
+                          ? 'Serás redirigido a Stripe para completar el pago de forma segura.'
+                          : 'El pago será simulado en modo desarrollo.')
+                      : 'Tu reserva se confirmará y podrás pagar al recoger el vehículo.'
+                    }
                   </small>
                 </div>
                 
+                {/* BOTONES DE ACCIÓN */}
                 <div className="d-flex justify-content-between">
                   <Button 
                     variant="outline-secondary" 
                     onClick={handleVolver}
-                    disabled={loading || redsysLoading}
+                    disabled={loading}
                   >
                     <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
                     Volver
@@ -471,9 +450,9 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
                     variant="primary" 
                     type="submit"
                     className="payment-btn"
-                    disabled={loading || redsysLoading}
+                    disabled={loading}
                   >
-                    {loading || redsysLoading ? (
+                    {loading ? (
                       <>
                         <Spinner
                           as="span"
@@ -483,41 +462,26 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
                           aria-hidden="true"
                           className="me-2"
                         />
-                        {redsysLoading ? 'Preparando pago...' : 'Procesando...'}
+                        Procesando...
                       </>
                     ) : (
-                      'Proceder al Pago'
+                      <>
+                        {reservaData.metodoPago === PAYMENT_METHODS.CARD ? (
+                          <>
+                            <FontAwesomeIcon icon={faCreditCard} className="me-2" />
+                            {STRIPE_ENABLED ? 'Pagar con Tarjeta' : 'Simular Pago'}
+                          </>
+                        ) : (
+                          <>
+                            <FontAwesomeIcon icon={faMoneyBillWave} className="me-2" />
+                            Confirmar Reserva
+                          </>
+                        )}
+                      </>
                     )}
                   </Button>
-                </div>
-              </Form>
+                </div>              </Form>
             </Col>
-
-            {/* FORMULARIO OCULTO PARA REDSYS */}
-            {paymentData && (
-              <form
-                ref={formRef}
-                method="POST"
-                action={paymentData.action}
-                style={{ display: 'none' }}
-              >
-                <input
-                  type="hidden"
-                  name="Ds_SignatureVersion"
-                  value={paymentData.signatureVersion}
-                />
-                <input
-                  type="hidden"
-                  name="Ds_MerchantParameters"
-                  value={paymentData.merchantParameters}
-                />
-                <input
-                  type="hidden"
-                  name="Ds_Signature"
-                  value={paymentData.signature}
-                />
-              </form>
-            )}
 
             {/* Segunda Columna: RESUMEN DE LA RESERVA */}
             <Col lg={5}>

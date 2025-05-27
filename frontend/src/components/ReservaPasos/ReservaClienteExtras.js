@@ -16,44 +16,59 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../../css/ReservaClienteExtras.css';
-import { createReservation, editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
+import { createReservation, editReservation, findReservation, DEBUG_MODE, getExtrasDisponibles } from '../../services/reservationServices';
 
 import wifiLogo from '../../assets/img/extras/wifi.png';
 import gpsLogo from '../../assets/img/extras/gps.png';
 import asientoLogo from '../../assets/img/extras/child-seat.png';
 import conductorLogo from '../../assets/img/extras/secondary-driver.png';
 
-// Datos de prueba para extras disponibles
-const extrasDisponibles = [
-  {
-    id: 1,
-    nombre: 'Asiento infantil',
-    descripcion: 'Para niños de 9-18kg (1-4 años)',
-    precio: 7.50,
-    imagen: asientoLogo
-  },
-  {
-    id: 2,
-    nombre: 'GPS',
-    descripcion: 'Navegador con mapas updated_ats',
-    precio: 8.95,
-    imagen: gpsLogo
-  },
-  {
-    id: 3,
-    nombre: 'Conductor adicional',
-    descripcion: 'Añade un conductor adicional a tu reserva',
-    precio: 5.00,
-    imagen: conductorLogo
-  },
-  {
-    id: 4,
-    nombre: 'Wi-Fi portátil',
-    descripcion: 'Conexión 4G en todo el vehículo',
-    precio: 6.95,
-    imagen: wifiLogo
+// URL base de la API para imágenes
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+// Mapeo de imágenes locales por categoría o nombre para fallback
+const imageMap = {
+  'asiento': asientoLogo,
+  'infantil': asientoLogo,
+  'child': asientoLogo,
+  'seat': asientoLogo,
+  'gps': gpsLogo,
+  'navegador': gpsLogo,
+  'navigation': gpsLogo,
+  'conductor': conductorLogo,
+  'adicional': conductorLogo,
+  'driver': conductorLogo,
+  'wifi': wifiLogo,
+  'conectividad': wifiLogo,
+  'internet': wifiLogo
+};
+
+// Función helper para obtener imagen: prioriza Django admin, luego fallback local
+const getImageForExtra = (extra) => {
+  // 1. Si el extra tiene imagen del Django admin, usarla
+  if (extra.imagen && extra.imagen.trim() !== '') {
+    // Si la imagen ya es una URL completa, usarla directamente
+    if (extra.imagen.startsWith('http')) {
+      return extra.imagen;
+    }
+    // Si es una ruta relativa, construir la URL completa
+    return `${API_BASE_URL}${extra.imagen.startsWith('/') ? '' : '/'}${extra.imagen}`;
   }
-];
+  
+  // 2. Si no hay imagen en Django admin, usar imagen local basada en palabras clave
+  const nombre = extra.nombre?.toLowerCase() || '';
+  const categoria = extra.categoria?.toLowerCase() || '';
+  
+  // Buscar por palabras clave en el nombre o categoría
+  for (const [key, image] of Object.entries(imageMap)) {
+    if (nombre.includes(key) || categoria.includes(key)) {
+      return image;
+    }
+  }
+  
+  // 3. Imagen por defecto si no se encuentra ninguna coincidencia
+  return wifiLogo;
+};
 
 const ReservaClienteExtras = ({ isMobile = false }) => {
   const navigate = useNavigate();
@@ -61,7 +76,9 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   
   // Estados
   const [extrasSeleccionados, setExtrasSeleccionados] = useState([]);
+  const [extrasDisponibles, setExtrasDisponibles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingExtras, setLoadingExtras] = useState(true);
   const [error, setError] = useState(null);
   const [reservaData, setReservaData] = useState(null);
   const [detallesReserva, setDetallesReserva] = useState(null);
@@ -75,7 +92,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       reservaExtrasRef.current.scrollIntoView({ behavior: 'smooth' }); 
     } 
   }, []);
-  
+
   // Cargar datos de reserva del sessionStorage al iniciar
   useEffect(() => {
     try {
@@ -89,6 +106,42 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       setError('Error al cargar datos de reserva.');
     }
   }, []);
+
+  // Cargar extras disponibles desde la API
+  useEffect(() => {
+    const cargarExtras = async () => {
+      try {
+        setLoadingExtras(true);
+        const extras = await getExtrasDisponibles();
+        
+        // Agregar imagen a cada extra usando la función helper
+        const extrasConImagen = extras.map(extra => ({
+          ...extra,
+          imagen: getImageForExtra(extra)
+        }));
+        
+        setExtrasDisponibles(extrasConImagen);
+      } catch (err) {
+        console.error('Error al cargar extras:', err);
+        setError(`Error al cargar extras: ${err.message}`);
+      } finally {
+        setLoadingExtras(false);
+      }
+    };
+
+    cargarExtras();
+  }, []);
+
+  // Preserve scroll position when navigating from car selection
+  useEffect(() => {
+    const scrollPosition = sessionStorage.getItem('extrasScrollPosition');
+    if (scrollPosition && location.state?.fromCarSelection) {
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(scrollPosition));
+        sessionStorage.removeItem('extrasScrollPosition');
+      }, 100);
+    }
+  }, [location]);
   
   // Calcular fechas y días de alquiler
   const diasAlquiler = reservaData?.fechas ? 
@@ -133,13 +186,16 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     // Redirigir a la página anterior
     navigate(-1);
   };
-
   // Manejador para continuar con la reserva
   const handleContinuar = async () => {
     setLoading(true);
     setError(null);
     try {
       if (!reservaData) throw new Error('No hay datos de reserva.');
+      
+      // Store current scroll position before navigation
+      sessionStorage.setItem('confirmationScrollPosition', window.pageYOffset.toString());
+      
       const updatedReserva = {
         ...reservaData,
         extras: extrasSeleccionados,
@@ -161,8 +217,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
         } else {
           result = await createReservation(updatedReserva);
         }
-      }
-      sessionStorage.setItem('reservaData', JSON.stringify(result));
+      }      sessionStorage.setItem('reservaData', JSON.stringify(result));
       navigate('/reservation-confirmation/datos');
     } catch (err) {
       setError(err.message || 'Error al continuar con la reserva.');
@@ -170,7 +225,6 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       setLoading(false);
     }
   };
-
   // Si hay error, mostrar pantalla de error
   if (error) {
     return (
@@ -197,13 +251,15 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     );
   }
 
-  // Si no hay datos de reserva, mostrar cargando
-  if (!reservaData) {
+  // Si no hay datos de reserva o están cargando extras, mostrar cargando
+  if (!reservaData || loadingExtras) {
     return (
       <Container ref={reservaExtrasRef} className="reserva-extras my-5">
         <div className="text-center py-5">
           <Spinner animation="border" variant="primary" />
-          <p className="mt-3">Cargando datos de la reserva...</p>
+          <p className="mt-3">
+            {!reservaData ? 'Cargando datos de la reserva...' : 'Cargando extras disponibles...'}
+          </p>
         </div>
       </Container>
     );

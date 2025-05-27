@@ -1,2 +1,37 @@
 WARNING 2025-05-26 16:07:35,899 log 21 140645955725120 Not Found: /api/reservations/
 WARNING 2025-05-26 16:36:26,926 log 20 140142708107072 Forbidden: /api/reservas/
+ERROR 2025-05-26 22:00:55,118 log 22 140330524874560 Internal Server Error: /api/reservations/create_new
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/deprecation.py", line 131, in __call__
+    response = self.process_response(request, response)
+  File "/usr/local/lib/python3.10/site-packages/django/middleware/common.py", line 108, in process_response
+    return self.response_redirect_class(self.get_full_path_with_slash(request))
+  File "/usr/local/lib/python3.10/site-packages/django/middleware/common.py", line 87, in get_full_path_with_slash
+    raise RuntimeError(
+RuntimeError: You called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to localhost/api/reservations/create_new/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+WARNING 2025-05-26 22:01:18,584 log 22 140330524874560 Forbidden: /api/reservations/R12345678/find/
+ERROR 2025-05-26 23:55:54,869 log 26 140448584525632 Internal Server Error: /api/reservations/create_new
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/deprecation.py", line 131, in __call__
+    response = self.process_response(request, response)
+  File "/usr/local/lib/python3.10/site-packages/django/middleware/common.py", line 108, in process_response
+    return self.response_redirect_class(self.get_full_path_with_slash(request))
+  File "/usr/local/lib/python3.10/site-packages/django/middleware/common.py", line 87, in get_full_path_with_slash
+    raise RuntimeError(
+RuntimeError: You called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to localhost/api/reservations/create_new/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+ERROR 2025-05-26 23:56:39,418 log 24 140448584525632 Internal Server Error: /api/reservations/create_new
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/deprecation.py", line 131, in __call__
+    response = self.process_response(request, response)
+  File "/usr/local/lib/python3.10/site-packages/django/middleware/common.py", line 108, in process_response
+    return self.response_redirect_class(self.get_full_path_with_slash(request))
+  File "/usr/local/lib/python3.10/site-packages/django/middleware/common.py", line 87, in get_full_path_with_slash
+    raise RuntimeError(
+RuntimeError: You called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to localhost/api/reservations/create_new/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+INFO 2025-05-27 18:12:23,351 autoreload 25368 15892 Watching for file changes with StatReloader
