@@ -10,6 +10,7 @@ import {
   faPhone
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getReservationStorageService } from '../../services/reservationStorageService';
 import '../../css/ReservaClienteError.css';
 
 /**
@@ -21,6 +22,7 @@ import '../../css/ReservaClienteError.css';
 const ReservaClienteError = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const storageService = getReservationStorageService();
   const [errorData, setErrorData] = useState(null);
 
   useEffect(() => {
@@ -42,13 +44,25 @@ const ReservaClienteError = () => {
           errorMessage: 'Ha ocurrido un error inesperado durante el proceso de reserva.'
         });
       }
+      
+      // Limpiar storage de reserva si es necesario
+      if (storageService && errorFromState?.clearStorage !== false) {
+        setTimeout(() => {
+          try {
+            storageService.clearReservationData();
+          } catch (err) {
+            console.warn('Error al limpiar storage en página de error:', err);
+          }
+        }, 500);
+      }
     } catch (err) {
+      console.error('Error al procesar datos de error:', err);
       setErrorData({
         errorType: 'general',
         errorMessage: 'Ha ocurrido un error inesperado durante el proceso de reserva.'
       });
     }
-  }, [location.state]);
+  }, [location.state, storageService]);
 
   // Obtener el mensaje y tipo de error apropiado
   const getErrorInfo = () => {

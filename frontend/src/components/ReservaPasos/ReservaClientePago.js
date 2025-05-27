@@ -22,9 +22,13 @@ import {
 import { useNavigate } from 'react-router-dom';
 import '../../css/ReservaClientePago.css';
 import { editReservation, findReservation, processPayment, createReservation, DEBUG_MODE } from '../../services/reservationServices';
+import { getReservationStorageService } from '../../services/reservationStorageService';
+import useReservationTimer from '../../hooks/useReservationTimer';
+import ReservationTimerModal from './ReservationTimerModal';
+import { ReservationTimerBadge } from './ReservationTimerIndicator';
 
 // Configuraciones de pago
-const STRIPE_ENABLED = false; // Variable para habilitar/deshabilitar Stripe
+const STRIPE_ENABLED = true; // Variable para habilitar/deshabilitar Stripe
 const PAYMENT_METHODS = {
   CARD: 'tarjeta',
   CASH: 'efectivo'
@@ -46,41 +50,61 @@ const logError = (message, error = null) => {
 
 const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferencia = false }) => {
   const navigate = useNavigate();
+  const storageService = getReservationStorageService();
+  
+  // Hook del timer de reserva
+  const {
+    isActive: timerActive,
+    remainingTime,
+    formattedTime,
+    showWarningModal,
+    showExpiredModal,
+    onExtendTimer,
+    onCancelReservation,
+    onStartNewReservation,
+    onCloseModals,
+    pauseTimer,
+    resumeTimer
+  } = useReservationTimer();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reservaData, setReservaData] = useState(null);
-
-  // Cargar datos de reserva del sessionStorage al iniciar
+  // Cargar datos de reserva del storage service al iniciar
   useEffect(() => {
     try {
       let storedData;
       if (modoDiferencia && reservaId) {
-        // Buscar la reserva por ID (DEBUG_MODE o API)
-        if (DEBUG_MODE) {
+        // Para modo diferencia, intentar cargar datos existentes
+        const completeData = storageService.getCompleteReservationData();
+        if (completeData && completeData.id === reservaId) {
+          setReservaData({ ...completeData, diferenciaPendiente: diferencia });
+        } else if (DEBUG_MODE) {
+          // Fallback a sessionStorage en modo debug
           storedData = sessionStorage.getItem('reservaData');
-        } else {
-          // Aquí podrías hacer un fetch real si es necesario
-        }
-        if (storedData) {
-          const parsed = JSON.parse(storedData);
-          setReservaData({ ...parsed, diferenciaPendiente: diferencia });
+          if (storedData) {
+            const parsed = JSON.parse(storedData);
+            setReservaData({ ...parsed, diferenciaPendiente: diferencia });
+          } else {
+            setError('No se encontraron datos de reserva para pago de diferencia.');
+          }
         } else {
           setError('No se encontraron datos de reserva para pago de diferencia.');
         }
       } else {
-        storedData = sessionStorage.getItem('reservaData');
-        if (!storedData) {
+        // Modo normal - cargar datos completos del storage service
+        const completeData = storageService.getCompleteReservationData();
+        if (!completeData) {
           setError('No se encontraron datos de reserva.');
           return;
         }
-        setReservaData(JSON.parse(storedData));
+        setReservaData(completeData);
       }
     } catch (err) {
       logError('Error al cargar datos de reserva', err);
       setError('Error al cargar datos de reserva.');
     }
-  }, [diferencia, reservaId, modoDiferencia]);
+  }, [diferencia, reservaId, modoDiferencia, storageService]);
 
   const handleVolver = () => {
     navigate('/reservation-confirmation/datos');
@@ -125,7 +149,6 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
       throw new Error('Error al crear la reserva en la base de datos');
     }
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -141,6 +164,11 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
         modoDiferencia,
         diferencia 
       });
+      
+      // Pausar el timer durante el proceso de pago
+      if (timerActive && typeof pauseTimer === 'function') {
+        pauseTimer();
+      }
       
       // Calcular importe a pagar
       let importeAPagar = 0;
@@ -164,6 +192,11 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
     } catch (err) {
       logError('Error en handleSubmit', err);
       setError(err.message || 'Error al procesar el pago.');
+      
+      // Reanudar el timer si hubo error
+      if (timerActive && typeof resumeTimer === 'function') {
+        resumeTimer();
+      }
     } finally {
       setLoading(false);
     }
@@ -224,7 +257,6 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
       throw error;
     }
   };
-
   // Actualizar reserva después del pago
   const updateReservationAfterPayment = async (importeAPagar, paymentResult) => {
     try {
@@ -254,9 +286,20 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
         };
         
         const createdReserva = await createReservationInDB(reservaToCreate);
+        
+        // Limpiar storage después del pago exitoso
+        storageService.clearReservationData();
+        
+        // Guardar datos de reserva completada para la página de éxito
         sessionStorage.setItem('reservaCompletada', JSON.stringify(createdReserva));
         
-        navigate('/reservation-confirmation/exito', { replace: true });
+        navigate('/reservation-confirmation/exito', { 
+          replace: true,
+          state: { 
+            reservationData: createdReserva,
+            paymentMethod: reservaData.metodoPago
+          }
+        });
       }
       
     } catch (error) {
@@ -305,7 +348,6 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
 
   // Extraer datos relevantes
   const { car, fechas, paymentOption, extras, detallesReserva, conductor } = reservaData;
-
   return (
     <Container className="reserva-pago my-4">
       <div className="reservation-progress mb-4">
@@ -317,8 +359,34 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
         </div>
       </div>
       
-      <Card className="shadow-sm">
-        <Card.Header className="bg-primario text-white">
+      {/* Timer Badge */}
+      {timerActive && !modoDiferencia && (
+        <div className="d-flex justify-content-center mb-3">
+          <ReservationTimerBadge 
+            remainingTime={remainingTime}
+            formattedTime={formattedTime}
+            size="small"
+          />
+        </div>
+      )}
+      
+      {/* Timer Modals */}
+      <ReservationTimerModal
+        type="warning"
+        show={showWarningModal}
+        onExtend={onExtendTimer}
+        onCancel={onCancelReservation}
+        onClose={onCloseModals}
+      />
+      
+      <ReservationTimerModal
+        type="expired"
+        show={showExpiredModal}
+        onStartNew={onStartNewReservation}
+        onClose={onCloseModals}
+      />
+      
+      <Card className="shadow-sm">        <Card.Header className="bg-primario text-white">
           <div className="d-flex justify-content-between align-items-center">
             <Button 
               variant="link" 
@@ -329,7 +397,17 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
               <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
               Volver
             </Button>
-            <h5 className="mb-0">Procesamiento de Pago</h5>
+            <div className="d-flex align-items-center">
+              <h5 className="mb-0 me-3">Procesamiento de Pago</h5>
+              {timerActive && !modoDiferencia && (
+                <ReservationTimerBadge 
+                  remainingTime={remainingTime}
+                  formattedTime={formattedTime}
+                  size="small"
+                  variant="light"
+                />
+              )}
+            </div>
             <div style={{ width: '80px' }}></div>
           </div>
         </Card.Header>

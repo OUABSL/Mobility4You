@@ -15,7 +15,7 @@ from ..models.usuarios import Usuario
 from ..serializers.reservas import ReservaSerializer, ExtrasSerializer
 from ..services.reservas import ReservaService
 from ..permissions import PublicAccessPermission
-from payments.services import PaymentService
+from payments.services import StripePaymentService
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +31,11 @@ class ReservaViewSet(viewsets.ModelViewSet):
     queryset = Reserva.objects.all()
     serializer_class = ReservaSerializer
     permission_classes = [IsAuthenticated]
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.reserva_service = ReservaService()
-        self.payment_service = PaymentService()
+        self.payment_service = StripePaymentService()
         logger.info("ReservaViewSet inicializado con servicios")
     
     def get_queryset(self):

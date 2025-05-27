@@ -17,6 +17,10 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../../css/ReservaClienteExtras.css';
 import { createReservation, editReservation, findReservation, DEBUG_MODE, getExtrasDisponibles } from '../../services/reservationServices';
+import { getReservationStorageService, updateExtras } from '../../services/reservationStorageService';
+import useReservationTimer from '../../hooks/useReservationTimer';
+import ReservationTimerModal from './ReservationTimerModal';
+import ReservationTimerIndicator from './ReservationTimerIndicator';
 
 import wifiLogo from '../../assets/img/extras/wifi.png';
 import gpsLogo from '../../assets/img/extras/gps.png';
@@ -41,7 +45,7 @@ const imageMap = {
   'wifi': wifiLogo,
   'conectividad': wifiLogo,
   'internet': wifiLogo
-};
+}
 
 // Función helper para obtener imagen: prioriza Django admin, luego fallback local
 const getImageForExtra = (extra) => {
@@ -68,11 +72,26 @@ const getImageForExtra = (extra) => {
   
   // 3. Imagen por defecto si no se encuentra ninguna coincidencia
   return wifiLogo;
-};
-
+}
+  
 const ReservaClienteExtras = ({ isMobile = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const storageService = getReservationStorageService();
+  
+  // Hook del timer de reserva
+  const {
+    isActive: timerActive,
+    remainingTime,
+    formattedTime,
+    showWarningModal,
+    showExpiredModal,
+    startTimer,
+    onExtendTimer,
+    onCancelReservation,
+    onStartNewReservation,
+    onCloseModals
+  } = useReservationTimer();
   
   // Estados
   const [extrasSeleccionados, setExtrasSeleccionados] = useState([]);
@@ -92,20 +111,48 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     if (reservaExtrasRef.current) { 
       reservaExtrasRef.current.scrollIntoView({ behavior: 'smooth' }); 
     } 
-  }, []);
-  // Cargar datos de reserva del sessionStorage al iniciar
+  }, []);  // Cargar datos de reserva del storage al iniciar
   useEffect(() => {
     try {
-      const storedData = sessionStorage.getItem('reservaData');
+      console.log('[ReservaClienteExtras] Cargando datos de reserva');
+      
+      // Intentar obtener datos del storage service primero
+      let storedData = storageService.getCompleteReservationData();
+      
+      // Si no hay datos en el storage service, verificar sessionStorage legacy
       if (!storedData) {
-        setError('No se encontraron datos de reserva.');
+        const legacyData = sessionStorage.getItem('reservaData');
+        if (legacyData) {
+          console.log('[ReservaClienteExtras] Migrando datos legacy a nuevo storage');
+          const parsedData = JSON.parse(legacyData);
+          // Inicializar timer con datos legacy
+          startTimer(parsedData);
+          storedData = parsedData;
+        }
+      }
+      
+      if (!storedData) {
+        setError('No se encontraron datos de reserva. Por favor, comience el proceso desde la búsqueda de vehículos.');
         return;
       }
-      setReservaData(JSON.parse(storedData));
+      
+      setReservaData(storedData);
+      
+      // Restaurar extras si existen
+      const existingExtras = storedData.extras || [];
+      setExtrasSeleccionados(existingExtras);
+      
+      console.log('[ReservaClienteExtras] Datos de reserva cargados correctamente', {
+        hasTimer: timerActive,
+        extrasCount: existingExtras.length,
+        step: storedData.currentStep
+      });
+      
     } catch (err) {
-      setError('Error al cargar datos de reserva.');
+      console.error('[ReservaClienteExtras] Error al cargar datos de reserva:', err);
+      setError('Error al cargar datos de reserva. Por favor, inicie una nueva búsqueda.');
     }
-  }, []);
+  }, [storageService, startTimer, timerActive]);
 
   // Cargar extras disponibles desde la API
   useEffect(() => {
@@ -186,40 +233,38 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     // Redirigir a la página anterior
     navigate(-1);
   };
-  // Manejador para continuar con la reserva
+  // Manejador para continuar con la reserva  
   const handleContinuar = async () => {
+    console.log('[ReservaClienteExtras] Continuando con la reserva');
     setLoading(true);
     setError(null);
+    
     try {
-      if (!reservaData) throw new Error('No hay datos de reserva.');
+      if (!reservaData) {
+        throw new Error('No hay datos de reserva.');
+      }
+      
+      // Validar que tenemos datos básicos
+      if (!reservaData.fechas || !reservaData.car) {
+        throw new Error('Datos de reserva incompletos.');
+      }
+      
+      // Actualizar extras en el storage service
+      await updateExtras(extrasSeleccionados);
       
       // Store current scroll position before navigation
       sessionStorage.setItem('confirmationScrollPosition', window.pageYOffset.toString());
       
-      const updatedReserva = {
-        ...reservaData,
-        extras: extrasSeleccionados,
-        detallesReserva,
+      console.log('[ReservaClienteExtras] Navegando a datos del conductor', {
+        extrasCount: extrasSeleccionados.length,
         totalExtras
-      };
-      let result;
-      if (DEBUG_MODE) {
-        // Simula crear o editar según si ya tiene id
-        if (updatedReserva.id) {
-          result = await editReservation(updatedReserva.id, updatedReserva);
-        } else {
-          result = await createReservation(updatedReserva);
-        }
-      } else {
-        // Producción: igual
-        if (updatedReserva.id) {
-          result = await editReservation(updatedReserva.id, updatedReserva);
-        } else {
-          result = await createReservation(updatedReserva);
-        }
-      }      sessionStorage.setItem('reservaData', JSON.stringify(result));
+      });
+      
+      // Navegar al siguiente paso
       navigate('/reservation-confirmation/datos');
+      
     } catch (err) {
+      console.error('[ReservaClienteExtras] Error al continuar:', err);
       setError(err.message || 'Error al continuar con la reserva.');
     } finally {
       setLoading(false);
@@ -452,11 +497,43 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                     'Continuar con la reserva'
                   )}
                 </Button>
-              </div>
-            </Col>
+              </div>            </Col>
           </Row>
         </Card.Body>
       </Card>
+
+      {/* Indicador del timer */}
+      {timerActive && (
+        <div className="mt-3">
+          <ReservationTimerIndicator
+            isActive={timerActive}
+            remainingTime={remainingTime}
+            formattedTime={formattedTime}
+            size="normal"
+            position="inline"
+            onExtendRequest={onExtendTimer}
+          />
+        </div>
+      )}
+
+      {/* Modales del timer */}
+      <ReservationTimerModal
+        show={showWarningModal}
+        type="warning"
+        remainingTime={remainingTime}
+        onExtend={onExtendTimer}
+        onCancel={onCancelReservation}
+        onClose={onCloseModals}
+      />
+
+      <ReservationTimerModal
+        show={showExpiredModal}
+        type="expired"
+        remainingTime={0}
+        onContinue={onStartNewReservation}
+        onCancel={onCancelReservation}
+        onClose={onCloseModals}
+      />
     </Container>
   );
 };

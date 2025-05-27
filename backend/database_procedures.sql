@@ -148,7 +148,7 @@ SELECT
     g.nombre AS grupo_nombre,
     g.edad_minima,
     t.precio_dia AS precio_actual,
-    (SELECT url FROM imagen_vehiculo WHERE vehiculo_id = v.id AND portada = 1 LIMIT 1) AS imagen_principal
+    (SELECT imagen FROM imagen_vehiculo WHERE vehiculo_id = v.id AND portada = 1 LIMIT 1) AS imagen_principal
 FROM vehiculo v
 JOIN categoria c ON v.categoria_id = c.id
 JOIN grupo_coche g ON v.grupo_id = g.id

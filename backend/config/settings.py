@@ -217,19 +217,46 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Configuración CSRF para las notificaciones de Redsys
-CSRF_TRUSTED_ORIGINS = [
-    'https://sis.redsys.es',
-    'https://sis-t.redsys.es',
+# Permitir todos los headers de CORS para desarrollo
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-forwarded-for',
+    'x-forwarded-host',
+    'x-forwarded-proto',
 ]
 
+# CSRF (Cross-Site Request Forgery) trusted origins
+# Permitir requests CSRF desde el nginx proxy y otros orígenes confiables
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost",
+    "http://127.0.0.1",
+    "http://localhost:80",
+    "http://127.0.0.1:80",
+]
 
+# Configuración para proxy reverso (nginx)
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Configuración Redsys
-REDSYS_MERCHANT_CODE = env('REDSYS_MERCHANT_CODE', default='999008881')
-REDSYS_TERMINAL = env('REDSYS_TERMINAL', default='001')
-REDSYS_SECRET_KEY = env('REDSYS_SECRET_KEY', default='sq7HjrUOBfKmC576ILgskD5srU870gJ7')
-REDSYS_ENVIRONMENT = env('REDSYS_ENVIRONMENT', default='test')  # test o production
+# CSRF settings para desarrollo con proxy
+CSRF_COOKIE_SECURE = False  # True en producción con HTTPS
+CSRF_COOKIE_HTTPONLY = False  # Permitir acceso desde JavaScript
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_NAME = 'csrftoken'
+
 
 # URL del frontend para redirecciones
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
@@ -304,3 +331,150 @@ LOGGING = {
         },
     },
 }
+
+
+
+# Configuración de Stripe
+STRIPE_PUBLISHABLE_KEY = env('STRIPE_PUBLISHABLE_KEY', default='pk_test_...')
+STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='sk_test_...')
+STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='whsec_...')
+
+# URLs para redirecciones de Stripe
+STRIPE_SUCCESS_URL = env('STRIPE_SUCCESS_URL', default=f'{FRONTEND_URL}/reservation-confirmation/exito')
+STRIPE_CANCEL_URL = env('STRIPE_CANCEL_URL', default=f'{FRONTEND_URL}/reservation-confirmation/error')
+
+# Configuración específica de Stripe
+STRIPE_CONFIG = {
+    'api_version': '2023-10-16',  # Versión de API de Stripe
+    'automatic_payment_methods': {
+        'enabled': True,
+        'allow_redirects': 'never'  # Para mantener el flujo en la app
+    },
+    'capture_method': 'automatic',  # Captura automática
+    'confirmation_method': 'manual',  # Confirmación manual desde frontend
+    'currency': 'eur',
+    'payment_method_types': ['card'],
+    'statement_descriptor': 'MOBILITY4YOU',  # Máximo 22 caracteres
+    'statement_descriptor_suffix': None,
+    'application_fee_amount': None,  # Para pagos conectados si aplica
+}
+
+# Configuración de logging para Stripe
+LOGGING['loggers']['stripe'] = {
+    'handlers': ['file', 'console'] if DEBUG else ['file'],
+    'level': 'INFO',
+    'propagate': False,
+}
+
+# Configuración de timeouts para requests HTTP
+STRIPE_TIMEOUT = 30  # segundos
+
+# Configuración de webhooks
+STRIPE_WEBHOOK_TOLERANCE = 300  # 5 minutos de tolerancia para webhooks
+
+# Metadatos por defecto para todos los pagos
+STRIPE_DEFAULT_METADATA = {
+    'platform': 'mobility4you',
+    'version': '1.0',
+    'environment': DJANGO_ENV,
+}
+
+# Configuración para diferentes tipos de pago
+STRIPE_PAYMENT_CONFIG = {
+    'INICIAL': {
+        'description': 'Pago inicial de reserva de vehículo',
+        'metadata_prefix': 'reserva_inicial',
+    },
+    'DIFERENCIA': {
+        'description': 'Pago de diferencia por modificación de reserva',
+        'metadata_prefix': 'reserva_diferencia',
+    },
+    'EXTRA': {
+        'description': 'Pago adicional de extras',
+        'metadata_prefix': 'reserva_extra',
+    },
+    'PENALIZACION': {
+        'description': 'Pago de penalización',
+        'metadata_prefix': 'reserva_penalizacion',
+    }
+}
+
+# Reembolsos - Configuración
+STRIPE_REFUND_CONFIG = {
+    'reason_mapping': {
+        'CANCELACION_CLIENTE': 'requested_by_customer',
+        'CANCELACION_EMPRESA': 'requested_by_customer',  # Stripe no tiene opción empresa
+        'MODIFICACION_RESERVA': 'requested_by_customer',
+        'ERROR_PAGO': 'duplicate',
+        'FRAUDE': 'fraudulent',
+        'OTRO': 'requested_by_customer',
+    }
+}
+
+# Configuración de retry para webhooks fallidos
+STRIPE_WEBHOOK_RETRY_CONFIG = {
+    'max_retries': 3,
+    'retry_delay': 60,  # segundos
+    'backoff_factor': 2,  # multiplicador para delay exponencial
+}
+
+# Configuración de monedas soportadas
+STRIPE_SUPPORTED_CURRENCIES = ['eur', 'usd', 'gbp']
+STRIPE_DEFAULT_CURRENCY = 'eur'
+
+# Configuración de límites
+STRIPE_MIN_AMOUNT = {
+    'eur': 50,  # 0.50 EUR en centavos
+    'usd': 50,  # 0.50 USD en centavos
+    'gbp': 30,  # 0.30 GBP en centavos
+}
+
+STRIPE_MAX_AMOUNT = {
+    'eur': 99999999,  # 999,999.99 EUR en centavos
+    'usd': 99999999,  # 999,999.99 USD en centavos
+    'gbp': 99999999,  # 999,999.99 GBP en centavos
+}
+
+# Headers adicionales para requests a Stripe
+STRIPE_EXTRA_HEADERS = {
+    'Stripe-Version': STRIPE_CONFIG['api_version'],
+    'User-Agent': f'Mobility4You/{DJANGO_ENV}',
+}
+
+# Configuración para manejo de duplicados
+STRIPE_IDEMPOTENCY_KEY_PREFIX = 'mobility4you'
+
+# Webhooks que queremos procesar
+STRIPE_WEBHOOK_EVENTS = [
+    'payment_intent.succeeded',
+    'payment_intent.payment_failed',
+    'payment_intent.canceled',
+    'charge.dispute.created',
+    'refund.created',
+    'refund.updated',
+    'invoice.payment_succeeded',  # Para futuras suscripciones
+    'customer.subscription.deleted',  # Para futuras suscripciones
+]
+
+# Rate limiting para API de Stripe (requests por segundo)
+STRIPE_RATE_LIMIT = {
+    'requests_per_second': 25,
+    'burst_limit': 100,
+}
+
+# Configuración específica para el entorno
+if DJANGO_ENV == 'production':
+    # Configuraciones adicionales para producción
+    STRIPE_CONFIG['capture_method'] = 'automatic'
+    STRIPE_WEBHOOK_TOLERANCE = 300
+    
+    # Configuración más estricta de logging en producción
+    LOGGING['loggers']['stripe']['level'] = 'WARNING'
+    
+elif DJANGO_ENV == 'development':
+    # Configuraciones para desarrollo
+    STRIPE_CONFIG['capture_method'] = 'automatic'
+    STRIPE_WEBHOOK_TOLERANCE = 600  # Más tolerancia en desarrollo
+    
+    # Logging más verboso en desarrollo
+    LOGGING['loggers']['stripe']['level'] = 'DEBUG'

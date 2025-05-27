@@ -5,7 +5,7 @@ from .views.contenidos import ContenidoViewSet
 from .views.vehiculos import CategoriaViewSet, GrupoCocheViewSet, VehiculoViewSet
 from .views.lugares import LugarViewSet
 from .views.reservas import ReservaViewSet, ExtrasViewSet
-from .views.reservas_new import ReservaViewSet as ReservaViewSetNew
+# from .views.reservas_new import ReservaViewSet as ReservaViewSetNew  # Archivo no existe
 from .views.promociones import PromocionViewSet
 from .views.politicasPago import PoliticaPagoViewSet
 from .views.facturacion import ContratoViewSet, FacturaViewSet
@@ -18,7 +18,7 @@ router.register(r'grupos', GrupoCocheViewSet)
 router.register(r'vehiculos', VehiculoViewSet)
 router.register(r'lugares', LugarViewSet)
 router.register(r'reservas', ReservaViewSet, basename='reserva')
-router.register(r'reservations', ReservaViewSetNew, basename='reservation')
+# router.register(r'reservations', ReservaViewSetNew, basename='reservation')  # Archivo no existe
 router.register(r'contenidos', ContenidoViewSet)
 router.register(r'promociones', PromocionViewSet)
 router.register(r'politicas-pago', PoliticaPagoViewSet)

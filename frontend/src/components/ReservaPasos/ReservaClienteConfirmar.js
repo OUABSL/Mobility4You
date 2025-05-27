@@ -23,9 +23,27 @@ import '../../css/ReservaClienteConfirmar.css';
 import CardLogo from '../../assets/img/general/logo_visa_mastercard.png';
 import paypalLogo from '../../assets/img/general/paypal_logo.png';
 import { createReservation, editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
+import { getReservationStorageService, updateConductorData } from '../../services/reservationStorageService';
+import useReservationTimer from '../../hooks/useReservationTimer';
+import ReservationTimerModal from './ReservationTimerModal';
+import { ReservationTimerBadge } from './ReservationTimerIndicator';
 
 const ReservaClienteConfirmar = () => {
   const navigate = useNavigate();
+  const storageService = getReservationStorageService();
+  
+  // Hook del timer de reserva
+  const {
+    isActive: timerActive,
+    remainingTime,
+    formattedTime,
+    showWarningModal,
+    showExpiredModal,
+    onExtendTimer,
+    onCancelReservation,
+    onStartNewReservation,
+    onCloseModals
+  } = useReservationTimer();
   
   // Estados
   const [loading, setLoading] = useState(false);
@@ -63,20 +81,29 @@ const ReservaClienteConfirmar = () => {
     // Método de pago
     metodoPago: 'tarjeta',
     aceptaTerminos: false
-  });
-  // Cargar datos de reserva del sessionStorage al iniciar
+  });  // Cargar datos de reserva del storage service al iniciar
   useEffect(() => {
     try {
-      const storedData = sessionStorage.getItem('reservaData');
-      if (!storedData) {
+      const completeData = storageService.getCompleteReservationData();
+      if (!completeData) {
         setError('No se encontraron datos de reserva. Por favor, inicia el proceso desde la selección de vehículo.');
         return;
       }
-      setReservaData(JSON.parse(storedData));
+      setReservaData(completeData);
+      
+      // Cargar datos del conductor si existen
+      const conductorData = storageService.getConductorData();
+      if (conductorData) {
+        setFormData(prev => ({
+          ...prev,
+          ...conductorData
+        }));
+      }
     } catch (err) {
+      console.error('Error al cargar datos de reserva:', err);
       setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
     }
-  }, []);
+  }, [storageService]);
 
   // Restore scroll position from extras page
   useEffect(() => {
@@ -88,39 +115,50 @@ const ReservaClienteConfirmar = () => {
       }, 100);
     }
   }, []);
-
   // Manejar cambios en los campos del formulario
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     
+    let updatedFormData;
+    
     // Manejar campos del segundo conductor
     if (name.startsWith('segundoConductor.')) {
       const fieldName = name.replace('segundoConductor.', '');
-      setFormData({
+      updatedFormData = {
         ...formData,
         segundoConductor: {
           ...formData.segundoConductor,
           [fieldName]: value
         }
-      });
+      };
     } else {
-      setFormData({
+      updatedFormData = {
         ...formData,
         [name]: type === 'checkbox' ? checked : value
-      });
+      };
+    }
+    
+    setFormData(updatedFormData);
+    
+    // Guardar en storage service
+    try {
+      storageService.updateConductorData(updatedFormData);
+    } catch (err) {
+      console.error('Error al guardar datos del conductor:', err);
     }
   };
-
   const handleVolver = () => {
+    // Guardar posición de scroll
+    sessionStorage.setItem('confirmationScrollPosition', window.scrollY.toString());
     navigate('/reservation-confirmation');
   };
-
   // Manejar el envío del formulario
   // Validar los datos del formulario antes de enviarlos
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    
     try {
       // Validación básica
       if (!formData.nombre || !formData.apellidos || !formData.email || !formData.telefono || 
@@ -131,12 +169,29 @@ const ReservaClienteConfirmar = () => {
         setLoading(false);
         return;
       }
+
+      // Validar segundo conductor si está marcado
+      if (formData.tieneSegundoConductor) {
+        const { segundoConductor } = formData;
+        if (!segundoConductor.nombre || !segundoConductor.apellidos || 
+            !segundoConductor.email || !segundoConductor.fechaNacimiento) {
+          setError('Por favor, completa todos los campos obligatorios del segundo conductor.');
+          setLoading(false);
+          return;
+        }
+      }
+
       if (!reservaData) throw new Error('No hay datos de reserva.');
+
+      // Actualizar datos del conductor en el storage service
+      storageService.updateConductorData(formData);
+      
       // Calcular importes pagados/pendientes según método de pago
       let metodo_pago = formData.metodoPago;
       let importe_pagado_inicial = 0;
       let importe_pendiente_inicial = 0;
       const total = reservaData.detallesReserva?.total || reservaData.precioTotal || 0;
+      
       if (metodo_pago === 'tarjeta' || metodo_pago === 'paypal') {
         importe_pagado_inicial = total;
         importe_pendiente_inicial = 0;
@@ -144,34 +199,51 @@ const ReservaClienteConfirmar = () => {
         importe_pagado_inicial = 0;
         importe_pendiente_inicial = total;
       }      
-      // Actualizar datos de reserva
-      const updatedReserva = {
-        ...reservaData,
-        conductor: formData,
-        conductorPrincipal: formData, // Add this for compatibility with payment component
-        metodo_pago,
-        importe_pagado_inicial,
-        importe_pendiente_inicial,
-        importe_pagado_extra: 0,
-        importe_pendiente_extra: 0
-      };
-      let result;
-      if (DEBUG_MODE) {
-        if (updatedReserva.id) {
-          result = await editReservation(updatedReserva.id, updatedReserva);
+
+      // Si es pago en efectivo, completar la reserva directamente
+      if (metodo_pago === 'efectivo') {
+        // Actualizar datos de reserva con información de pago
+        const updatedReserva = {
+          ...reservaData,
+          conductor: formData,
+          conductorPrincipal: formData,
+          metodo_pago,
+          importe_pagado_inicial,
+          importe_pendiente_inicial,
+          importe_pagado_extra: 0,
+          importe_pendiente_extra: 0,
+          estado_pago: 'pendiente'
+        };
+
+        let result;
+        if (DEBUG_MODE) {
+          if (updatedReserva.id) {
+            result = await editReservation(updatedReserva.id, updatedReserva);
+          } else {
+            result = await createReservation(updatedReserva);
+          }
         } else {
-          result = await createReservation(updatedReserva);
+          if (updatedReserva.id) {
+            result = await editReservation(updatedReserva.id, updatedReserva);
+          } else {
+            result = await createReservation(updatedReserva);
+          }
         }
+
+        // Limpiar storage y navegar al éxito
+        storageService.clearReservationData();
+        navigate('/reservation-confirmation/exito', { 
+          state: { 
+            reservationData: result,
+            paymentMethod: 'efectivo'
+          } 
+        });
       } else {
-        if (updatedReserva.id) {
-          result = await editReservation(updatedReserva.id, updatedReserva);
-        } else {
-          result = await createReservation(updatedReserva);
-        }
+        // Para pagos con tarjeta/PayPal, navegar al paso de pago
+        navigate('/reservation-confirmation/pago');
       }
-      sessionStorage.setItem('reservaData', JSON.stringify(result));
-      navigate('/reservation-confirmation/pago');
     } catch (err) {
+      console.error('Error al confirmar la reserva:', err);
       setError(err.message || 'Error al confirmar la reserva.');
     } finally {
       setLoading(false);
@@ -218,7 +290,6 @@ const ReservaClienteConfirmar = () => {
   }
 
   const { car, fechas, paymentOption, extras, detallesReserva } = reservaData;
-
   return (
     <Container className="reserva-confirmar my-4">
       <div className="reservation-progress mb-4">
@@ -230,8 +301,34 @@ const ReservaClienteConfirmar = () => {
         </div>
       </div>
       
-      <Card className="shadow-sm">
-        <Card.Header className="bg-primario text-white">
+      {/* Timer Badge */}
+      {timerActive && (
+        <div className="d-flex justify-content-center mb-3">
+          <ReservationTimerBadge 
+            remainingTime={remainingTime}
+            formattedTime={formattedTime}
+            size="small"
+          />
+        </div>
+      )}
+      
+      {/* Timer Modals */}
+      <ReservationTimerModal
+        type="warning"
+        show={showWarningModal}
+        onExtend={onExtendTimer}
+        onCancel={onCancelReservation}
+        onClose={onCloseModals}
+      />
+      
+      <ReservationTimerModal
+        type="expired"
+        show={showExpiredModal}
+        onStartNew={onStartNewReservation}
+        onClose={onCloseModals}
+      />
+      
+      <Card className="shadow-sm">        <Card.Header className="bg-primario text-white">
           <div className="d-flex justify-content-between align-items-center">
             <Button 
               variant="link" 
@@ -242,7 +339,17 @@ const ReservaClienteConfirmar = () => {
               <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
               Volver
             </Button>
-            <h5 className="mb-0">Datos del Conductor</h5>
+            <div className="d-flex align-items-center">
+              <h5 className="mb-0 me-3">Datos del Conductor</h5>
+              {timerActive && (
+                <ReservationTimerBadge 
+                  remainingTime={remainingTime}
+                  formattedTime={formattedTime}
+                  size="small"
+                  variant="light"
+                />
+              )}
+            </div>
             <div style={{ width: '80px' }}></div>
           </div>
         </Card.Header>
