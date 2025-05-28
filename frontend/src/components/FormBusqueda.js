@@ -404,111 +404,113 @@ const FormBusqueda = ({
                 className={`me-2 mb-2 tipo-btn`}
                 onClick={() => {
                   setTipoBusqueda(type.id);
-                  setGrupoSeleccionado(null);
-                }}
-              >
-                <FontAwesomeIcon icon={type.icon} className="me-1" />
-                {type.label}
-              </Button>
-                ))}
-            </div>
-          </Col>
-        </Row>
+                    setGrupoSeleccionado(null);
+                  }}
+                  >
+                  <FontAwesomeIcon icon={type.icon} className="me-1" />
+                  {type.label}
+                  </Button>
+                  ))}
+                </div>
+                </Col>
+              </Row>
 
+                    
+                {/* Selección de ubicaciones de recogida y devolución */}
+              <Row className={`${isMobile ? 'd-flex flex-column gap-3' : 'd-flex flex-row align-items-center'} mt-3`}>
+                <Col className="d-flex align-items-center">
+                  <Form.Group controlId="pickupLocation" className="flex-grow-1 position-relative">
+                  <Form.Label className="small">Recogida</Form.Label>
+                  <Form.Control
+                    type="text"
+                    className="w-100 input-search"
+                    placeholder="Aeropuerto, ciudad o dirección"
+                    value={pickupLocation}
+                    onChange={(e) => handleLocationChange(e, setPickupLocation, setPickupSuggestions)}
+                    onFocus={() => setPickupSuggestions(locations)}
+                    autoComplete="off"
+                  />
                   
-          {/* Selección de ubicaciones de recogida y devolución */}
-          <Row className={`${isMobile ? 'd-flex flex-column gap-3' : 'd-flex flex-row align-items-center'} mt-3`}>
-            <Col className="d-flex align-items-center">
-              <Form.Group controlId="pickupLocation" className="flex-grow-1 position-relative">
-                <Form.Label className="small">Recogida</Form.Label>
-                <Form.Control
-                  type="text"
-                  className="w-100 input-search"
-                  placeholder="Aeropuerto, ciudad o dirección"
-                  value={pickupLocation}
-                  onChange={(e) => handleLocationChange(e, setPickupLocation, setPickupSuggestions)}
-                  onFocus={() => setPickupSuggestions(locations)}
-                />
-                
-                {pickupLocation && (
-                  <div className="reset-search position-absolute" style={{ top: '50%', right: '10px', cursor: 'pointer' }}>
+                  {pickupLocation && (
+                    <div className="reset-search position-absolute" style={{ top: '50%', right: '10px', cursor: 'pointer' }}>
                     <FontAwesomeIcon
                       icon={faTimes}
                       onClick={() => {
-                        setPickupLocation(''); 
-                        setPickupSuggestions(locations);}
+                      setPickupLocation(''); 
+                      setPickupSuggestions(locations);}
                       }
                     />
-                  </div>
-                )}
-                {pickupSuggestions.length > 0 && (
-                  <div ref={pickupRef} className="suggestions-container">
+                    </div>
+                  )}
+                  {pickupSuggestions.length > 0 && (
+                    <div ref={pickupRef} className="suggestions-container">
                     <div className="close-suggestions" onClick={() => setPickupSuggestions([])}>
                       <FontAwesomeIcon className="close-suggestions-icon" icon={faTimes} />
                     </div>
                     {renderSuggestions(pickupSuggestions, setPickupLocation, setPickupSuggestions)}
-                  </div>
-                )}
-              </Form.Group>
-            </Col>
+                    </div>
+                  )}
+                  </Form.Group>
+                </Col>
 
-            <Col className={`d-flex ${isMobile && !sameLocation ? 'flex-column' : 'align-items-center align-self-end'}`}>
-              <FontAwesomeIcon
-                icon={faExchangeAlt}
-                className={`color-texto-primario me-2 ${isMobile ? !sameLocation ? 'mb-2 h5' : 'align-self-end' : 'align-self-end'}`}
-                style={{ cursor: 'pointer', color: '#007bff' }}
-                onClick={() => {
-                  setShowDropoffLocation(!showDropoffLocation);
-                  setSameLocation(!sameLocation);
-                }}
-              />
-              {sameLocation && (
-                <span
-                  className="span-dif-lugar text-secondary"
-                  style={{ cursor: 'pointer' }}
+                <Col className={`d-flex ${isMobile && !sameLocation ? 'flex-column' : 'align-items-center align-self-end'}`}>
+                  <FontAwesomeIcon
+                  icon={faExchangeAlt}
+                  className={`color-texto-primario me-2 ${isMobile ? !sameLocation ? 'mb-2 h5' : 'align-self-end' : 'align-self-end'}`}
+                  style={{ cursor: 'pointer', color: '#007bff' }}
                   onClick={() => {
                     setShowDropoffLocation(!showDropoffLocation);
-                    setSameLocation(false);
+                    setSameLocation(!sameLocation);
                   }}
-                >
-                  ¿Distinto Lugar de Devolución?
-                </span>
-              )}
-              {showDropoffLocation && (
+                  />
+                  {sameLocation && (
+                  <span
+                    className="span-dif-lugar text-secondary"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                    setShowDropoffLocation(!showDropoffLocation);
+                    setSameLocation(false);
+                    }}
+                  >
+                    ¿Distinto Lugar de Devolución?
+                  </span>
+                  )}
+                  {showDropoffLocation && (
 
-                <Form.Group controlId="dropoffLocation" className={`flex-grow-1 position-relative ${isMobile ? '' : 'ms-2 '}`}>
-                  <Form.Label className="small">Devolución</Form.Label>
-                  <Form.Control
+                  <Form.Group controlId="dropoffLocation" className={`flex-grow-1 position-relative ${isMobile ? '' : 'ms-2 '}`}>
+                    <Form.Label className="small">Devolución</Form.Label>
+                    <Form.Control
                     type="text"
                     placeholder="Aeropuerto, ciudad o dirección"
                     value={dropoffLocation}
                     onChange={(e) => handleLocationChange(e, setDropoffLocation, setDropoffSuggestions)}
                     onFocus={() => setDropoffSuggestions(locations)}
-                  />
-                  {dropoffLocation && (
+                    autoComplete="off"
+                    />
+                    {dropoffLocation && (
                     <div className="reset-search position-absolute" style={{ top: '50%', right: '10px', cursor: 'pointer' }}>
                       <FontAwesomeIcon
-                        icon={faTimes}
-                        className="reset-search"
-                        onClick={() => {
-                          setPickupLocation(''); 
-                          setPickupSuggestions(locations);
-                        }}
+                      icon={faTimes}
+                      className="reset-search"
+                      onClick={() => {
+                        setPickupLocation(''); 
+                        setPickupSuggestions(locations);
+                      }}
                       />
                     </div>
-                  )}
-                  {dropoffSuggestions.length > 0 && (
+                    )}
+                    {dropoffSuggestions.length > 0 && (
                     <div ref={dropoffRef} className="suggestions-container">
                       <div className="close-suggestions" onClick={() => setDropoffSuggestions([])}>
-                        <FontAwesomeIcon icon={faTimes} />
+                      <FontAwesomeIcon icon={faTimes} />
                       </div>
                       {renderSuggestions(dropoffSuggestions, setDropoffLocation, setDropoffSuggestions)}                  
                     </div>
+                    )}
+                  </Form.Group>
                   )}
-                </Form.Group>
-              )}
-            </Col>
-          </Row>
+                </Col>
+              </Row>
           {/* Selección de fechas y horas */}
           <Row className={`${isMobile ? 'd-flex flex-column gap-3' : 'd-flex flex-row justify-content-evenly align-items-center'} mt-3`}>
             <Col className="d-flex flex-column align-items-start">

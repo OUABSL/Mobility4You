@@ -187,7 +187,7 @@ def validate_setup():
         'docker/.env',
         'docker/.env.dev',
         'backend/payments/services.py',
-        'frontend/src/services/stripePayementServices.js'
+        'frontend/src/services/stripePaymentServices.js'
     ]
     
     all_good = True

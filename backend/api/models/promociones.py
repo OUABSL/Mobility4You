@@ -40,7 +40,7 @@ class Promocion(models.Model):
         default=True,
         null=False
     )
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(default=timezone.now)
     
     class Meta:
@@ -51,6 +51,13 @@ class Promocion(models.Model):
         indexes = [
             models.Index(fields=['activo', 'fecha_inicio', 'fecha_fin']),
         ]
+    
+    def save(self, *args, **kwargs):
+        """Sobrescribe el método save para actualizar los campos de fecha"""
+        if not self.id:
+            self.created_at = timezone.now()
+        self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
     
     def __str__(self):
         return f"{self.nombre} ({self.descuento_pct}%)"

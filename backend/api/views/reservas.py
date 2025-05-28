@@ -77,8 +77,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
                         {'error': f'Campo obligatorio: {campo}'}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
-            
-            # Usar el servicio para calcular precio
+              # Usar el servicio para calcular precio
             resultado = self.reserva_service.calcular_precio_reserva(datos_reserva)
             
             logger.info(f"Precio calculado exitosamente: {resultado}")
@@ -94,10 +93,11 @@ class ReservaViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             logger.error(f"Error interno en cálculo de precio: {str(e)}")
-            return Response(                {'error': 'Error interno del servidor'}, 
+            return Response(
+                {'error': 'Error interno del servidor'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
     @action(detail=False, methods=['post'])
     def crear_reserva(self, request):
         """
@@ -113,13 +113,25 @@ class ReservaViewSet(viewsets.ModelViewSet):
                 datos_reserva = request.data
                 logger.info(f"Datos recibidos para creación: {datos_reserva}")
                 
-                # Validar que vengan datos de pago
-                if not datos_reserva.get('datos_pago'):
-                    logger.error("Faltan datos de pago para crear reserva")
+                # Obtener método de pago
+                metodo_pago = datos_reserva.get('metodo_pago', 'tarjeta')
+                logger.info(f"Método de pago detectado: {metodo_pago}")
+                
+                # Solo requerir datos de pago para métodos que no sean efectivo
+                if metodo_pago != 'efectivo' and not datos_reserva.get('datos_pago'):
+                    logger.error("Faltan datos de pago para método de pago que no es efectivo")
                     return Response(
-                        {'error': 'Se requieren datos de pago para crear la reserva'}, 
+                        {'error': 'Se requieren datos de pago para crear la reserva con este método'}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
+                
+                # Para pago en efectivo, establecer datos de pago mínimos
+                if metodo_pago == 'efectivo' and not datos_reserva.get('datos_pago'):
+                    datos_reserva['datos_pago'] = {
+                        'metodo': 'efectivo',
+                        'estado': 'pendiente'
+                    }
+                    logger.info("Datos de pago en efectivo establecidos automáticamente")
                 
                 # Crear reserva usando el servicio
                 reserva = self.reserva_service.crear_reserva_completa(

@@ -7,43 +7,43 @@
 }
 
 /* Información de seguridad */
-.payment-security-info {
+.stripe-payment-form .payment-security-info {
   background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
   padding: 1rem;
   border-radius: 0.5rem;
   border: 1px solid #d4edda;
 }
 
-.payment-security-info strong {
+.stripe-payment-form .payment-security-info strong {
   color: #155724;
 }
 
 /* Tarjeta de resumen de pago */
-.payment-summary-card {
+.stripe-payment-form .payment-summary-card {
   background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
   border: 1px solid #dee2e6;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.payment-summary-card .card-body {
+.stripe-payment-form .payment-summary-card .card-body {
   padding: 1.5rem;
 }
 
 /* Tarjetas de detalles */
-.billing-details-card,
-.card-details-card {
+.stripe-payment-form .billing-details-card,
+.stripe-payment-form .card-details-card {
   border: 1px solid #dee2e6;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 }
 
-.billing-details-card:hover,
-.card-details-card:hover {
+.stripe-payment-form .billing-details-card:hover,
+.stripe-payment-form .card-details-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.billing-details-card .card-header,
-.card-details-card .card-header {
+.stripe-payment-form .billing-details-card .card-header,
+.stripe-payment-form .card-details-card .card-header {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-bottom: 1px solid #dee2e6;
   font-weight: 600;
@@ -51,7 +51,7 @@
 }
 
 /* Elemento de tarjeta de Stripe */
-.stripe-card-element {
+.stripe-payment-form .stripe-card-element {
   padding: 0.75rem 1rem;
   border: 1px solid #ced4da;
   border-radius: 0.375rem;
@@ -59,22 +59,22 @@
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
-.stripe-card-element:focus-within {
+.stripe-payment-form .stripe-card-element:focus-within {
   border-color: #86b7fe;
   box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 
-.stripe-card-element.StripeElement--invalid {
+.stripe-payment-form .stripe-card-element.StripeElement--invalid {
   border-color: #dc3545;
 }
 
-.stripe-card-element.StripeElement--invalid:focus-within {
+.stripe-payment-form .stripe-card-element.StripeElement--invalid:focus-within {
   border-color: #dc3545;
   box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
 }
 
 /* Loading del elemento de tarjeta */
-.card-element-loading {
+.stripe-payment-form .card-element-loading {
   padding: 1rem;
   text-align: center;
   color: #6c757d;
@@ -82,26 +82,26 @@
 }
 
 /* Marcas de tarjetas aceptadas */
-.accepted-cards {
+.stripe-payment-form .accepted-cards {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.card-brands {
+.stripe-payment-form .card-brands {
   display: flex;
   gap: 0.25rem;
   flex-wrap: wrap;
 }
 
-.card-brands .badge {
+.stripe-payment-form .card-brands .badge {
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
 }
 
 /* Botón de pago */
-.payment-submit-btn {
+.stripe-payment-form .payment-submit-btn {
   padding: 0.875rem 2rem;
   font-size: 1.1rem;
   font-weight: 600;
@@ -112,18 +112,18 @@
   transition: all 0.3s ease;
 }
 
-.payment-submit-btn:hover:not(:disabled) {
+.stripe-payment-form .payment-submit-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #0b5ed7 0%, #0a58ca 100%);
   box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
   transform: translateY(-1px);
 }
 
-.payment-submit-btn:active:not(:disabled) {
+.stripe-payment-form .payment-submit-btn:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(13, 110, 253, 0.3);
 }
 
-.payment-submit-btn:disabled {
+.stripe-payment-form .payment-submit-btn:disabled {
   background: #6c757d;
   box-shadow: none;
   cursor: not-allowed;
@@ -131,7 +131,7 @@
 }
 
 /* Información del footer */
-.payment-footer-info {
+.stripe-payment-form .payment-footer-info {
   padding: 1rem 0;
   border-top: 1px solid #e9ecef;
   margin-top: 1rem;
@@ -149,27 +149,27 @@
   }
 }
 
-.billing-details-card,
-.card-details-card,
-.payment-summary-card {
+.stripe-payment-form .billing-details-card,
+.stripe-payment-form .card-details-card,
+.stripe-payment-form .payment-summary-card {
   animation: fadeInUp 0.5s ease;
 }
 
-.billing-details-card {
+.stripe-payment-form .billing-details-card {
   animation-delay: 0.1s;
 }
 
-.card-details-card {
+.stripe-payment-form .card-details-card {
   animation-delay: 0.2s;
 }
 
-.payment-submit-btn {
+.stripe-payment-form .payment-submit-btn {
   animation: fadeInUp 0.5s ease;
   animation-delay: 0.3s;
 }
 
 /* Estados de validación para campos de formulario */
-.was-validated .form-control:valid {
+.stripe-payment-form .was-validated .form-control:valid {
   border-color: #198754;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='m2.3 6.73.02-.02 1.42-1.42L6.56 2.08c.135-.13.33-.186.53-.186.205 0 .398.05.538.184.13.134.192.297.192.487 0 .19-.062.355-.192.487L4.3 6.29c-.26.26-.688.26-.948 0L2.3 5.24c-.26-.26-.26-.686 0-.946.26-.26.688-.26.948 0Z'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
@@ -177,7 +177,7 @@
   background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
 
-.was-validated .form-control:invalid {
+.stripe-payment-form .was-validated .form-control:invalid {
   border-color: #dc3545;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 1.4 1.4-1.4 1.4-1.4-1.4z'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
@@ -191,48 +191,47 @@
     padding: 0 1rem;
   }
   
-  .payment-summary-card .card-body {
+  .stripe-payment-form .payment-summary-card .card-body {
     padding: 1rem;
   }
   
-  .billing-details-card .card-body,
-  .card-details-card .card-body {
-    padding: 1rem;
-  }
+  .stripe-payment-form .billing-details-card .card-body,
+  .stripe-payment-form .card-details-card .card-body {
+    padding: 1rem;  }
   
-  .payment-submit-btn {
+  .stripe-payment-form .payment-submit-btn {
     padding: 1rem 1.5rem;
     font-size: 1rem;
   }
   
-  .accepted-cards {
+  .stripe-payment-form .accepted-cards {
     flex-direction: column;
     align-items: flex-start;
   }
 }
 
 @media (max-width: 576px) {
-  .payment-security-info {
+  .stripe-payment-form .payment-security-info {
     padding: 0.75rem;
     text-align: center;
   }
   
-  .payment-summary-card h4 {
+  .stripe-payment-form .payment-summary-card h4 {
     font-size: 1.5rem;
   }
   
-  .card-brands {
+  .stripe-payment-form .card-brands {
     justify-content: center;
     width: 100%;
   }
 }
 
 /* Estados de carga */
-.loading-overlay {
+.stripe-payment-form .loading-overlay {
   position: relative;
 }
 
-.loading-overlay::before {
+.stripe-payment-form .loading-overlay::before {
   content: '';
   position: absolute;
   top: 0;
@@ -244,16 +243,15 @@
   border-radius: inherit;
 }
 
-.loading-spinner {
+.stripe-payment-form .loading-spinner {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 11;
+  transform: translate(-50%, -50%);  z-index: 11;
 }
 
 /* Mensaje de éxito */
-.payment-success {
+.stripe-payment-form .payment-success {
   background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
   border: 1px solid #c3e6cb;
   color: #155724;
@@ -263,14 +261,14 @@
   animation: fadeInUp 0.5s ease;
 }
 
-.payment-success .success-icon {
+.stripe-payment-form .payment-success .success-icon {
   font-size: 3rem;
   color: #28a745;
   margin-bottom: 1rem;
 }
 
 /* Mensaje de error */
-.payment-error {
+.stripe-payment-form .payment-error {
   background: linear-gradient(135deg, #f8d7da 0%, #f1b0b7 100%);
   border: 1px solid #f1b0b7;
   color: #721c24;
@@ -280,7 +278,7 @@
 }
 
 /* Badge de modo desarrollo */
-.badge.bg-warning {
+.stripe-payment-form .badge.bg-warning {
   background: linear-gradient(135deg, #ffc107 0%, #ffb301 100%) !important;
   color: #212529 !important;
   font-weight: 600;
@@ -289,18 +287,17 @@
 }
 
 /* Mejoras en accesibilidad */
-.stripe-card-element:focus-within {
+.stripe-payment-form .stripe-card-element:focus-within {
   outline: none;
 }
 
-.form-control:focus {
+.stripe-payment-form .form-control:focus {
   box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 
 /* Animación de pulso para elementos importantes */
 @keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
+  0% {    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
   }
   70% {
     box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
@@ -310,12 +307,12 @@
   }
 }
 
-.payment-submit-btn:not(:disabled):focus {
+.stripe-payment-form .payment-submit-btn:not(:disabled):focus {
   animation: pulse 1.5s infinite;
 }
 
 /* Estilos para elementos de Stripe personalizados */
-.StripeElement {
+.stripe-payment-form .StripeElement {
   height: 40px;
   padding: 10px 12px;
   color: #32325d;
@@ -324,50 +321,45 @@
   outline: none;
 }
 
-.StripeElement--focus {
+.stripe-payment-form .StripeElement--focus {
   box-shadow: none;
 }
 
-.StripeElement--webkit-autofill {
+.stripe-payment-form .StripeElement--webkit-autofill {
   background-color: #fefde5;
 }
 
 /* Tema oscuro (opcional) */
 @media (prefers-color-scheme: dark) {
-  .payment-security-info {
+  .stripe-payment-form .payment-security-info {
     background: linear-gradient(135deg, #1a3d1a 0%, #2d4a2d 100%);
     border-color: #4a6741;
     color: #b8e8b8;
   }
   
-  .payment-summary-card {
+  .stripe-payment-form .payment-summary-card {
     background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
     border-color: #4a5568;
     color: #e2e8f0;
   }
   
-  .billing-details-card,
-  .card-details-card {
+  .stripe-payment-form .billing-details-card,
+  .stripe-payment-form .card-details-card {
     background-color: #2d3748;
     border-color: #4a5568;
     color: #e2e8f0;
   }
   
-  .billing-details-card .card-header,
-  .card-details-card .card-header {
+  .stripe-payment-form .billing-details-card .card-header,
+  .stripe-payment-form .card-details-card .card-header {
     background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
     border-bottom-color: #4a5568;
     color: #e2e8f0;
   }
   
-  .stripe-card-element {
+  .stripe-payment-form .stripe-card-element {
     background-color: #2d3748;
     border-color: #4a5568;
   }
-  
-  .form-control {
-    background-color: #2d3748;
-    border-color: #4a5568;
-    color: #e2e8f0;
-  }
+
 }

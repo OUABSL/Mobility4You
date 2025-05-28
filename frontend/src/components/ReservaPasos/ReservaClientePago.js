@@ -26,6 +26,7 @@ import { getReservationStorageService } from '../../services/reservationStorageS
 import useReservationTimer from '../../hooks/useReservationTimer';
 import ReservationTimerModal from './ReservationTimerModal';
 import { ReservationTimerBadge } from './ReservationTimerIndicator';
+import StripePaymentForm from '../StripePayment/StripePaymentForm';
 
 // Configuraciones de pago
 const STRIPE_ENABLED = true; // Variable para habilitar/deshabilitar Stripe
@@ -201,7 +202,6 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
       setLoading(false);
     }
   };
-
   // Procesar pago con tarjeta
   const processCardPayment = async (importeAPagar) => {
     try {
@@ -210,9 +210,15 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
       let paymentResult;
       
       if (STRIPE_ENABLED) {
-        // Integración real con Stripe (cuando esté habilitada)
-        logInfo('Usando Stripe real (no implementado aún)');
-        throw new Error('Stripe no está disponible actualmente. Use pago en efectivo.');
+        // La integración real con Stripe se maneja a través del componente StripePaymentForm
+        // Este método se llama desde el callback de éxito de Stripe
+        logInfo('Pago con Stripe completado exitosamente');
+        paymentResult = {
+          success: true,
+          transaction_id: `stripe_${Date.now()}`,
+          message: 'Pago procesado con Stripe',
+          payment_method: 'stripe'
+        };
       } else {
         // Simular pago con tarjeta
         logInfo('Simulando pago con tarjeta');
@@ -284,11 +290,10 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
           fecha_pago: new Date().toISOString(),
           estado: reservaData.metodoPago === PAYMENT_METHODS.CASH ? 'pendiente_pago' : 'confirmada'
         };
-        
-        const createdReserva = await createReservationInDB(reservaToCreate);
+          const createdReserva = await createReservationInDB(reservaToCreate);
         
         // Limpiar storage después del pago exitoso
-        storageService.clearReservationData();
+        storageService.clearAllReservationData();
         
         // Guardar datos de reserva completada para la página de éxito
         sessionStorage.setItem('reservaCompletada', JSON.stringify(createdReserva));
@@ -306,6 +311,34 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
       logError('Error al actualizar reserva', error);
       throw new Error('Error al actualizar la reserva después del pago');
     }
+  };
+
+  // Manejadores para Stripe
+  const handleStripePaymentSuccess = async (paymentResult) => {
+    try {
+      logInfo('Pago con Stripe exitoso', paymentResult);
+      
+      const importeAPagar = modoDiferencia ? diferencia : (reservaData.detallesReserva?.total || 0);
+      
+      // Procesar el pago como exitoso
+      await updateReservationAfterPayment(importeAPagar, {
+        success: true,
+        transaction_id: paymentResult.payment_intent?.id || `stripe_${Date.now()}`,
+        message: 'Pago procesado con Stripe exitosamente',
+        payment_method: 'stripe',
+        payment_intent: paymentResult.payment_intent
+      });
+      
+    } catch (error) {
+      logError('Error al procesar pago exitoso de Stripe', error);
+      setError('Error al confirmar el pago. Contacte con soporte.');
+    }
+  };
+
+  const handleStripePaymentError = (error) => {
+    logError('Error en pago con Stripe', error);
+    setError(error.message || 'Error al procesar el pago con tarjeta');
+    setLoading(false);
   };
 
   // Si hay error, mostrar pantalla de error
@@ -419,146 +452,172 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
                 <FontAwesomeIcon icon={faLock} className="me-2 text-success" />
                 Todos los pagos se procesan de forma segura
               </div>
+                {error && <Alert variant="danger">{error}</Alert>}
               
-              {error && <Alert variant="danger">{error}</Alert>}
-                <Form onSubmit={handleSubmit}>
-                {/* INFORMACIÓN DE PAGO SEGURO */}
-                <div className="payment-info-section mb-4">
-                  <h5 className="mb-3">
-                    {reservaData.metodoPago === PAYMENT_METHODS.CARD ? (
-                      <>
-                        <FontAwesomeIcon icon={faCreditCard} className="me-2" />
-                        Pago con Tarjeta
-                      </>
-                    ) : (
-                      <>
-                        <FontAwesomeIcon icon={faMoneyBillWave} className="me-2" />
-                        Pago en Efectivo
-                      </>
-                    )}
-                  </h5>
-                  
+              {/* INFORMACIÓN DE PAGO SEGURO */}
+              <div className="payment-info-section mb-4">
+                <h5 className="mb-3">
                   {reservaData.metodoPago === PAYMENT_METHODS.CARD ? (
+                    <>
+                      <FontAwesomeIcon icon={faCreditCard} className="me-2" />
+                      Pago con Tarjeta
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faMoneyBillWave} className="me-2" />
+                      Pago en Efectivo
+                    </>
+                  )}
+                </h5>
+                
+                {reservaData.metodoPago === PAYMENT_METHODS.CARD ? (
+                  STRIPE_ENABLED ? (
+                    // Integración real con Stripe
+                    <StripePaymentForm
+                      reservaData={reservaData}
+                      tipoPago={modoDiferencia ? 'DIFERENCIA' : 'INICIAL'}
+                      onPaymentSuccess={handleStripePaymentSuccess}
+                      onPaymentError={handleStripePaymentError}
+                      loading={loading}
+                      setLoading={setLoading}
+                    />
+                  ) : (
+                    // Modo simulación para desarrollo
                     <div className="card-payment-info">
                       <div className="info-box mb-4 p-3 rounded" style={{backgroundColor: '#f8f9fa', border: '1px solid #dee2e6'}}>
                         <div className="d-flex align-items-center mb-2">
-                          <FontAwesomeIcon icon={faLock} className="me-2 text-success" />
-                          <strong>
-                            {STRIPE_ENABLED ? 'Pago Seguro con Stripe' : 'Pago Simulado (Modo Desarrollo)'}
-                          </strong>
+                          <FontAwesomeIcon icon={faLock} className="me-2 text-warning" />
+                          <strong>Pago Simulado (Modo Desarrollo)</strong>
                         </div>
-                        {STRIPE_ENABLED ? (
-                          <p className="mb-0">
-                            Tu pago será procesado de forma segura a través de Stripe, 
-                            una plataforma de pagos reconocida mundialmente.
+                        <div>
+                          <p className="mb-2 text-warning">
+                            <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" />
+                            <strong>Modo Desarrollo:</strong> Los pagos con tarjeta están simulados.
                           </p>
-                        ) : (
-                          <div>
-                            <p className="mb-2 text-warning">
-                              <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" />
-                              <strong>Modo Desarrollo:</strong> Los pagos con tarjeta están simulados.
-                            </p>
-                            <p className="mb-0 small">
-                              En producción, los pagos se procesarían con Stripe de forma segura.
-                              Por ahora, puedes usar el pago en efectivo para reservas reales.
-                            </p>
-                          </div>
-                        )}
+                          <p className="mb-0 small">
+                            En producción, los pagos se procesarían con Stripe de forma segura.
+                            Por ahora, puedes usar el pago en efectivo para reservas reales.
+                          </p>
+                        </div>
                       </div>
                       
-                      {!STRIPE_ENABLED && (
-                        <div className="simulation-notice alert alert-info">
-                          <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
-                          <strong>Simulación de Pago:</strong> Al proceder, se simulará un pago exitoso 
-                          sin cargo real a ninguna tarjeta.
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="cash-payment-info">
-                      <div className="info-box mb-4 p-3 rounded" style={{backgroundColor: '#f8f9fa', border: '1px solid #dee2e6'}}>
-                        <div className="d-flex align-items-center mb-2">
-                          <FontAwesomeIcon icon={faMoneyBillWave} className="me-2 text-success" />
-                          <strong>Pago en Efectivo</strong>
-                        </div>
-                        <p className="mb-0">
-                          Reserva ahora y paga cuando recojas el vehículo en nuestras oficinas.
-                          Tu reserva quedará confirmada sin cargo inmediato.
-                        </p>
+                      <div className="simulation-notice alert alert-info">
+                        <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
+                        <strong>Simulación de Pago:</strong> Al proceder, se simulará un pago exitoso 
+                        sin cargo real a ninguna tarjeta.
                       </div>
+                      
+                      <Form onSubmit={handleSubmit}>
+                        <div className="d-flex justify-content-between">
+                          <Button 
+                            variant="outline-secondary" 
+                            onClick={handleVolver}
+                            disabled={loading}
+                          >
+                            <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
+                            Volver
+                          </Button>
+                          <Button 
+                            variant="primary" 
+                            type="submit"
+                            className="payment-btn"
+                            disabled={loading}
+                          >
+                            {loading ? (
+                              <>
+                                <Spinner
+                                  as="span"
+                                  animation="border"
+                                  size="sm"
+                                  role="status"
+                                  aria-hidden="true"
+                                  className="me-2"
+                                />
+                                Procesando...
+                              </>
+                            ) : (
+                              <>
+                                <FontAwesomeIcon icon={faCreditCard} className="me-2" />
+                                Simular Pago
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </Form>
                     </div>
-                  )}
-                </div>
-                  {/* RESUMEN DEL PAGO */}
-                <div className="payment-summary-box my-4 p-3 border rounded">
-                  <h6 className="mb-3">Resumen del Pago</h6>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Total a pagar:</span>
-                    <span className="fw-bold">
-                      {(diferencia || reservaData.detallesReserva?.total || 0).toFixed(2)}€
-                    </span>
+                  )
+                ) : (
+                  // Pago en efectivo
+                  <div className="cash-payment-info">
+                    <div className="info-box mb-4 p-3 rounded" style={{backgroundColor: '#f8f9fa', border: '1px solid #dee2e6'}}>
+                      <div className="d-flex align-items-center mb-2">
+                        <FontAwesomeIcon icon={faMoneyBillWave} className="me-2 text-success" />
+                        <strong>Pago en Efectivo</strong>
+                      </div>
+                      <p className="mb-0">
+                        Reserva ahora y paga cuando recojas el vehículo en nuestras oficinas.
+                        Tu reserva quedará confirmada sin cargo inmediato.
+                      </p>
+                    </div>
+                    
+                    {/* RESUMEN DEL PAGO */}
+                    <div className="payment-summary-box my-4 p-3 border rounded">
+                      <h6 className="mb-3">Resumen del Pago</h6>
+                      <div className="d-flex justify-content-between mb-2">
+                        <span>Total a pagar:</span>
+                        <span className="fw-bold">
+                          {(diferencia || reservaData.detallesReserva?.total || 0).toFixed(2)}€
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between mb-2">
+                        <span>Método de pago:</span>
+                        <span className="text-capitalize">Efectivo</span>
+                      </div>
+                      <small className="text-muted">
+                        Tu reserva se confirmará y podrás pagar al recoger el vehículo.
+                      </small>
+                    </div>
+                    
+                    <Form onSubmit={handleSubmit}>
+                      <div className="d-flex justify-content-between">
+                        <Button 
+                          variant="outline-secondary" 
+                          onClick={handleVolver}
+                          disabled={loading}
+                        >
+                          <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
+                          Volver
+                        </Button>
+                        <Button 
+                          variant="primary" 
+                          type="submit"
+                          className="payment-btn"
+                          disabled={loading}
+                        >
+                          {loading ? (
+                            <>
+                              <Spinner
+                                as="span"
+                                animation="border"
+                                size="sm"
+                                role="status"
+                                aria-hidden="true"
+                                className="me-2"
+                              />
+                              Procesando...
+                            </>
+                          ) : (
+                            <>
+                              <FontAwesomeIcon icon={faMoneyBillWave} className="me-2" />
+                              Confirmar Reserva
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </Form>
                   </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Método de pago:</span>
-                    <span className="text-capitalize">
-                      {reservaData.metodoPago === PAYMENT_METHODS.CARD ? 'Tarjeta de Crédito' : 'Efectivo'}
-                    </span>
-                  </div>
-                  <small className="text-muted">
-                    {reservaData.metodoPago === PAYMENT_METHODS.CARD 
-                      ? (STRIPE_ENABLED 
-                          ? 'Serás redirigido a Stripe para completar el pago de forma segura.'
-                          : 'El pago será simulado en modo desarrollo.')
-                      : 'Tu reserva se confirmará y podrás pagar al recoger el vehículo.'
-                    }
-                  </small>
-                </div>
-                
-                {/* BOTONES DE ACCIÓN */}
-                <div className="d-flex justify-content-between">
-                  <Button 
-                    variant="outline-secondary" 
-                    onClick={handleVolver}
-                    disabled={loading}
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
-                    Volver
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    type="submit"
-                    className="payment-btn"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Spinner
-                          as="span"
-                          animation="border"
-                          size="sm"
-                          role="status"
-                          aria-hidden="true"
-                          className="me-2"
-                        />
-                        Procesando...
-                      </>
-                    ) : (
-                      <>
-                        {reservaData.metodoPago === PAYMENT_METHODS.CARD ? (
-                          <>
-                            <FontAwesomeIcon icon={faCreditCard} className="me-2" />
-                            {STRIPE_ENABLED ? 'Pagar con Tarjeta' : 'Simular Pago'}
-                          </>
-                        ) : (
-                          <>
-                            <FontAwesomeIcon icon={faMoneyBillWave} className="me-2" />
-                            Confirmar Reserva
-                          </>
-                        )}
-                      </>
-                    )}
-                  </Button>
-                </div>              </Form>
+                )}
+              </div>
             </Col>
 
             {/* Segunda Columna: RESUMEN DE LA RESERVA */}

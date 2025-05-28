@@ -4,6 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Prefetch
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from datetime import datetime
 from ..models.vehiculos import Categoria, GrupoCoche, Vehiculo, TarifaVehiculo
 from ..models.reservas import Reserva
@@ -90,7 +92,7 @@ class VehiculoViewSet(viewsets.ModelViewSet):
             'results': serializer.data,
             'filterOptions': self._extract_filter_options(queryset)
         })
-    
+    @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'])
     def disponibilidad(self, request):
         """Busca vehículos disponibles según criterios"""

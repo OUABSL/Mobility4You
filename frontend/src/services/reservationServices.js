@@ -1,5 +1,5 @@
 // src/services/reservationServices.js (agregar a las funciones existentes)
-import axios from 'axios';
+import axios from '../config/axiosConfig';
 
 import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
 
@@ -7,7 +7,7 @@ import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 // Constante para modo debug
-export const DEBUG_MODE = false; // Cambiar a false en producción
+export const DEBUG_MODE = true; // Cambiar a false en producción
 
 // Funciones de logging condicional
 const logInfo = (message, data = null) => {
@@ -70,15 +70,43 @@ export const createReservation = async (data) => {
       mappedData.importe_pagado_inicial = 0;
       mappedData.importe_pendiente_inicial = mappedData.precio_total;
     }
+      console.log('Sending reservation data:', mappedData);
     
-    console.log('Sending reservation data:', mappedData);
-    
-    const response = await axios.post(`${API_URL}/reservations/create_new`, mappedData, getAuthHeaders());
-    return response.data;
-  } catch (error) {
+    const response = await axios.post(`${API_URL}/reservations/create-new/`, mappedData, getAuthHeaders());
+    return response.data;  } catch (error) {
     console.error('Error creating reservation:', error);
     console.error('Error response:', error.response);
     
+    // Handle network errors (no response)
+    if (!error.response) {
+      throw new Error('Error de conexión. Por favor, verifique su conexión a internet e intente nuevamente.');
+    }
+    
+    // Handle HTML error responses (like 404 pages)
+    const contentType = error.response.headers?.['content-type'] || '';
+    if (contentType.includes('text/html')) {
+      const statusCode = error.response.status;
+      let friendlyMessage = 'Error del servidor. Por favor, intente nuevamente.';
+      
+      switch (statusCode) {
+        case 404:
+          friendlyMessage = 'Servicio no encontrado. Por favor, contacte al soporte técnico.';
+          break;
+        case 500:
+          friendlyMessage = 'Error interno del servidor. Por favor, intente nuevamente más tarde.';
+          break;
+        case 403:
+          friendlyMessage = 'No tiene permisos para realizar esta acción.';
+          break;
+        case 401:
+          friendlyMessage = 'Su sesión ha expirado. Por favor, inicie sesión nuevamente.';
+          break;
+      }
+      
+      throw new Error(friendlyMessage);
+    }
+    
+    // Handle JSON error responses
     const errorMessage = error.response?.data?.detail || 
                         error.response?.data?.message || 
                         error.response?.data?.error ||

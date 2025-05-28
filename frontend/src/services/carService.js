@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from '../config/axiosConfig';
 import { withTimeout } from './func';
 import { searchAvailableVehicles, extractFilterOptions } from './searchServices';
 

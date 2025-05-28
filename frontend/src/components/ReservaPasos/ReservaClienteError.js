@@ -44,12 +44,11 @@ const ReservaClienteError = () => {
           errorMessage: 'Ha ocurrido un error inesperado durante el proceso de reserva.'
         });
       }
-      
-      // Limpiar storage de reserva si es necesario
+        // Limpiar storage de reserva si es necesario
       if (storageService && errorFromState?.clearStorage !== false) {
         setTimeout(() => {
           try {
-            storageService.clearReservationData();
+            storageService.clearAllReservationData();
           } catch (err) {
             console.warn('Error al limpiar storage en página de error:', err);
           }
