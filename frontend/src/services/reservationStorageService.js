@@ -85,13 +85,16 @@ class ReservationStorageService {
       this.clearAllReservationData();
     }
   }
-
   /**
    * Guarda los datos de reserva inicial y comienza el timer
    */
   saveReservationData(data) {
     try {
-      logInfo('Guardando datos de reserva', { step: 'initial', hasData: !!data });
+      logInfo('Guardando datos de reserva', { 
+        step: 'initial', 
+        hasData: !!data,
+        isLegacyMigration: !sessionStorage.getItem(STORAGE_KEYS.TIMER_START) && !!sessionStorage.getItem(STORAGE_KEYS.RESERVATION_DATA)
+      });
       
       if (!data) {
         throw new Error('No se proporcionaron datos de reserva');
@@ -100,14 +103,33 @@ class ReservationStorageService {
       // Validar datos mínimos requeridos
       this.validateReservationData(data);
       
+      // Verificar si ya existe un timer activo para evitar sobrescribir
+      const existingTimerStart = sessionStorage.getItem(STORAGE_KEYS.TIMER_START);
+      const existingData = sessionStorage.getItem(STORAGE_KEYS.RESERVATION_DATA);
+      
       // Guardar datos principales
       sessionStorage.setItem(STORAGE_KEYS.RESERVATION_DATA, JSON.stringify(data));
-      sessionStorage.setItem(STORAGE_KEYS.RESERVATION_STEP, 'extras');
-      sessionStorage.setItem(STORAGE_KEYS.TIMER_START, Date.now().toString());
-      sessionStorage.removeItem(STORAGE_KEYS.USER_WARNED);
       
-      // Iniciar timer de 30 minutos
-      this.startTimer();
+      // Solo actualizar el step si no existe o está en un estado inicial
+      const currentStep = sessionStorage.getItem(STORAGE_KEYS.RESERVATION_STEP);
+      if (!currentStep || currentStep === 'extras') {
+        sessionStorage.setItem(STORAGE_KEYS.RESERVATION_STEP, 'extras');
+      }
+      
+      // Solo inicializar timer si no existe ya uno activo
+      if (!existingTimerStart) {
+        sessionStorage.setItem(STORAGE_KEYS.TIMER_START, Date.now().toString());
+        sessionStorage.removeItem(STORAGE_KEYS.USER_WARNED);
+        
+        // Iniciar timer de 30 minutos
+        this.startTimer();
+        logInfo('Nuevo timer iniciado para reserva');
+      } else {
+        logInfo('Timer existente preservado', {
+          existing: existingTimerStart,
+          current: Date.now()
+        });
+      }
       
       logInfo('Datos de reserva guardados correctamente');
       return true;
@@ -115,30 +137,57 @@ class ReservationStorageService {
       logError('Error al guardar datos de reserva', error);
       throw error;
     }
-  }
-
-  /**
+  }/**
    * Actualiza los datos de extras seleccionados
    */
   updateExtras(extras) {
     try {
       logInfo('Actualizando extras', { count: extras?.length || 0 });
       
-      if (!this.hasActiveReservation()) {
-        throw new Error('No hay reserva activa para actualizar extras');
+      // Debug: verificar estado del storage
+      const reservationData = sessionStorage.getItem(STORAGE_KEYS.RESERVATION_DATA);
+      const timerStart = sessionStorage.getItem(STORAGE_KEYS.TIMER_START);
+      const step = sessionStorage.getItem(STORAGE_KEYS.RESERVATION_STEP);
+      const elapsed = timerStart ? Date.now() - parseInt(timerStart) : 0;
+      const remaining = TIMER_DURATION - elapsed;
+      
+      logInfo('Debug - Estado de la reserva antes de updateExtras:', {
+        hasReservationData: !!reservationData,
+        hasTimerStart: !!timerStart,
+        currentStep: step,
+        elapsed: Math.round(elapsed / 1000) + 's',
+        remaining: Math.round(remaining / 1000) + 's',
+        timerDuration: Math.round(TIMER_DURATION / 1000) + 's'
+      });
+      
+      // Verificar reserva activa antes de proceder
+      const isActive = this.hasActiveReservation();
+      logInfo('Debug - hasActiveReservation resultado:', isActive);
+      
+      if (!isActive) {
+        // Intentar recuperación para datos legacy
+        if (reservationData && !timerStart) {
+          logInfo('Intentando recuperación de datos legacy');
+          sessionStorage.setItem(STORAGE_KEYS.TIMER_START, Date.now().toString());
+          this.startTimer();
+        } else {
+          throw new Error('No hay reserva activa para actualizar extras');
+        }
       }
       
       sessionStorage.setItem(STORAGE_KEYS.RESERVATION_EXTRAS, JSON.stringify(extras || []));
       sessionStorage.setItem(STORAGE_KEYS.RESERVATION_STEP, 'conductor');
       
-      logInfo('Extras actualizados correctamente');
+      logInfo('Extras actualizados correctamente', {
+        extrasCount: extras?.length || 0,
+        nextStep: 'conductor'
+      });
       return true;
     } catch (error) {
       logError('Error al actualizar extras', error);
       throw error;
     }
   }
-
   /**
    * Actualiza los datos del conductor
    */
@@ -146,8 +195,28 @@ class ReservationStorageService {
     try {
       logInfo('Actualizando datos del conductor');
       
-      if (!this.hasActiveReservation()) {
-        throw new Error('No hay reserva activa para actualizar conductor');
+      // Debug: verificar estado antes de proceder
+      const reservationData = sessionStorage.getItem(STORAGE_KEYS.RESERVATION_DATA);
+      const timerStart = sessionStorage.getItem(STORAGE_KEYS.TIMER_START);
+      const step = sessionStorage.getItem(STORAGE_KEYS.RESERVATION_STEP);
+      
+      logInfo('Debug - Estado antes de updateConductorData:', {
+        hasReservationData: !!reservationData,
+        hasTimerStart: !!timerStart,
+        currentStep: step
+      });
+      
+      // Verificar reserva activa antes de proceder
+      const isActive = this.hasActiveReservation();
+      if (!isActive) {
+        // Intentar recuperación si hay datos de reserva pero no timer
+        if (reservationData && !timerStart) {
+          logInfo('Recuperando reserva legacy para updateConductorData');
+          sessionStorage.setItem(STORAGE_KEYS.TIMER_START, Date.now().toString());
+          this.startTimer();
+        } else {
+          throw new Error('No hay reserva activa para actualizar conductor');
+        }
       }
       
       // Validar datos del conductor
@@ -163,7 +232,6 @@ class ReservationStorageService {
       throw error;
     }
   }
-
   /**
    * Obtiene todos los datos de la reserva consolidados
    */
@@ -182,16 +250,24 @@ class ReservationStorageService {
         return null;
       }
       
+      // Asegurar que los extras estén disponibles tanto en 'extras' como en 'extrasSeleccionados' para compatibilidad
       const completeData = {
         ...baseData,
         extras: extras,
+        extrasSeleccionados: extras, // Para compatibilidad con componentes que usan 'extrasSeleccionados'
         conductor: conductor,
+        conductorPrincipal: conductor, // Para compatibilidad con componentes que usan 'conductorPrincipal'
         currentStep: step,
         timerStart: parseInt(sessionStorage.getItem(STORAGE_KEYS.TIMER_START) || '0'),
         remainingTime: this.getRemainingTime()
       };
       
-      logInfo('Datos completos de reserva obtenidos', { step, hasExtras: extras.length > 0, hasConductor: !!conductor });
+      logInfo('Datos completos de reserva obtenidos', { 
+        step, 
+        hasExtras: extras.length > 0, 
+        hasConductor: !!conductor,
+        extrasCount: extras.length 
+      });
       return completeData;
     } catch (error) {
       logError('Error al obtener datos completos de reserva', error);
@@ -243,22 +319,54 @@ class ReservationStorageService {
    */
   getCurrentStep() {
     return sessionStorage.getItem(STORAGE_KEYS.RESERVATION_STEP) || 'extras';
-  }
-
-  /**
+  }  /**
    * Verifica si hay una reserva activa
    */
   hasActiveReservation() {
     const data = sessionStorage.getItem(STORAGE_KEYS.RESERVATION_DATA);
     const timerStart = sessionStorage.getItem(STORAGE_KEYS.TIMER_START);
+    const step = sessionStorage.getItem(STORAGE_KEYS.RESERVATION_STEP);
     
-    if (!data || !timerStart) {
+    // Si no hay datos de reserva, no hay reserva activa
+    if (!data) {
+      if (DEBUG_MODE) {
+        console.log('[ReservationStorage] hasActiveReservation = false: No reservation data');
+      }
       return false;
+    }
+    
+    // Si la reserva está marcada como completada, está activa pero no necesita timer
+    if (step === 'completed') {
+      if (DEBUG_MODE) {
+        console.log('[ReservationStorage] hasActiveReservation = true: Reservation completed');
+      }
+      return true;
+    }
+    
+    // Si no hay timer start, intentar inicializarlo (para migración legacy)
+    if (!timerStart) {
+      if (DEBUG_MODE) {
+        console.log('[ReservationStorage] No timer start found, initializing for legacy data');
+      }
+      // Inicializar timer para datos legacy
+      sessionStorage.setItem(STORAGE_KEYS.TIMER_START, Date.now().toString());
+      this.startTimer();
+      return true; // Asumimos que es activa si acabamos de inicializarla
     }
     
     // Verificar si no ha expirado
     const elapsed = Date.now() - parseInt(timerStart);
-    return elapsed < TIMER_DURATION;
+    const isActive = elapsed < TIMER_DURATION;
+    
+    if (DEBUG_MODE) {
+      console.log('[ReservationStorage] hasActiveReservation =', isActive, {
+        elapsed: Math.round(elapsed / 1000) + 's',
+        duration: Math.round(TIMER_DURATION / 1000) + 's',
+        step: step
+      });
+    }
+    
+    return isActive;
   }
 
   /**
@@ -481,37 +589,57 @@ class ReservationStorageService {
       logError('Error al configurar limpieza automática', error);
     }
   }
-
   /**
    * Valida los datos mínimos de una reserva
    */
   validateReservationData(data) {
-    const requiredFields = ['fechas', 'car', 'pickupLocation', 'dropoffLocation'];
+    // Validación básica de que hay datos
+    if (!data || typeof data !== 'object') {
+      throw new Error('Datos de reserva inválidos');
+    }
     
-    for (const field of requiredFields) {
-      if (!data[field]) {
-        throw new Error(`Campo requerido faltante: ${field}`);
+    // Campos alternativos para diferentes formatos de datos
+    const hasCarData = data.car || data.vehiculo;
+    const hasFechas = data.fechas || (data.fechaRecogida && data.fechaDevolucion);
+    const hasLocation = data.pickupLocation || data.lugarRecogida || data.lugar_recogida;
+    
+    if (!hasCarData) {
+      throw new Error('Datos del vehículo son requeridos');
+    }
+    
+    if (!hasFechas) {
+      throw new Error('Datos de fechas son requeridos');
+    }
+    
+    if (!hasLocation) {
+      throw new Error('Datos de ubicación son requeridos');
+    }
+    
+    // Validar fechas si están disponibles
+    if (data.fechas) {
+      const fechaInicio = data.fechas.pickupDate || data.fechas.inicio;
+      const fechaFin = data.fechas.dropoffDate || data.fechas.fin;
+      
+      if (!fechaInicio || !fechaFin) {
+        logInfo('Fechas incompletas en datos.fechas, pero continúando con validación flexible');
+      } else {
+        // Validar que las fechas sean válidas
+        const inicio = new Date(fechaInicio);
+        const fin = new Date(fechaFin);
+        
+        if (inicio >= fin) {
+          throw new Error('La fecha de fin debe ser posterior a la fecha de inicio');
+        }
+        
+        // Comentamos esta validación para datos legacy que pueden tener fechas pasadas
+        // if (inicio < new Date()) {
+        //   throw new Error('La fecha de inicio no puede ser en el pasado');
+        // }
       }
     }
     
-    // Validar fechas
-    if (!data.fechas.inicio || !data.fechas.fin) {
-      throw new Error('Fechas de inicio y fin son requeridas');
-    }
-    
-    // Validar que las fechas sean válidas
-    const inicio = new Date(data.fechas.inicio);
-    const fin = new Date(data.fechas.fin);
-    
-    if (inicio >= fin) {
-      throw new Error('La fecha de fin debe ser posterior a la fecha de inicio');
-    }
-    
-    if (inicio < new Date()) {
-      throw new Error('La fecha de inicio no puede ser en el pasado');
-    }
+    logInfo('Validación de datos de reserva completada exitosamente');
   }
-
   /**
    * Valida los datos del conductor
    */
@@ -524,14 +652,17 @@ class ReservationStorageService {
       }
     }
     
-    // Validar email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(conductorData.email)) {
-      throw new Error('Email del conductor inválido');
+    // Validar email solo si no está vacío
+    if (conductorData.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(conductorData.email)) {
+        throw new Error('Email del conductor inválido');
+      }
     }
     
-    // Validar términos aceptados
-    if (!conductorData.aceptaTerminos) {
+    // Validar términos aceptados solo en envío final del formulario
+    // No validar durante cambios intermedios de input
+    if (conductorData.aceptaTerminos === false) {
       throw new Error('Debe aceptar los términos y condiciones');
     }
   }
@@ -615,10 +746,16 @@ export const markReservationCompleted = () => {
   return getReservationStorageService().markReservationCompleted();
 };
 
-// Inicializar automáticamente el servicio
+// Inicializar automáticamente el servicio solo en páginas de reserva
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
-    getReservationStorageService().initialize();
+    // Solo inicializar en páginas de reserva
+    const currentPath = window.location.pathname;
+    const isReservationPage = currentPath.includes('/reservation') || currentPath.includes('/extras') || currentPath.includes('/confirmar') || currentPath.includes('/pago');
+    
+    if (isReservationPage) {
+      getReservationStorageService().initialize();
+    }
   });
 }
 

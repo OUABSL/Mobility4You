@@ -93,7 +93,7 @@ Available endpoints in `backend/payments/views.py`:
 ## Frontend Configuration
 
 ### 1. Stripe Services
-Located in `frontend/src/services/stripePayementServices.js`:
+Located in `frontend/src/services/stripePaymentServices.js`:
 
 - Stripe initialization with fallback to environment variables
 - Payment intent creation and processing
@@ -251,7 +251,7 @@ The application includes comprehensive debug logging:
 
 ### Internal Documentation
 - `backend/payments/services.py` - Detailed service documentation
-- `frontend/src/services/stripePayementServices.js` - Frontend service documentation
+- `frontend/src/services/stripePaymentServices.js` - Frontend service documentation
 - Django admin interface for payment monitoring
 
 ## Security Best Practices

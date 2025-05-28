@@ -23,7 +23,7 @@ import {
   validateCardData,
   DEBUG_MODE 
 } from '../../services/stripePaymentServices';
-import './StripePaymentForm.css';
+import '../../css/StripePaymentForm.css';
 
 // Configuración de Stripe Elements
 const CARD_ELEMENT_OPTIONS = {

@@ -101,7 +101,7 @@ def check_frontend_files():
     print("\n🔍 Checking Frontend Files...")
     
     required_files = {
-        'frontend/src/services/stripePayementServices.js': [
+        'frontend/src/services/stripePaymentServices.js': [
             'initializeStripe',
             'createPaymentIntent', 
             '@stripe/stripe-js'

@@ -10,6 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
+from pathlib import Path
+import environ
+
 from pathlib import Path
 import os
 import sys
@@ -217,23 +221,6 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Permitir todos los headers de CORS para desarrollo
-CORS_ALLOW_ALL_ORIGINS = DEBUG
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-    'x-forwarded-for',
-    'x-forwarded-host',
-    'x-forwarded-proto',
-]
-
 # CSRF (Cross-Site Request Forgery) trusted origins
 # Permitir requests CSRF desde el nginx proxy y otros orígenes confiables
 CSRF_TRUSTED_ORIGINS = [
@@ -245,21 +232,22 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:80",
 ]
 
-# Configuración para proxy reverso (nginx)
+# Configuración adicional de CSRF para proxy
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False  # True en producción con HTTPS
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_NAME = 'csrftoken'
+
+# Permitir requests desde el proxy nginx
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# CSRF settings para desarrollo con proxy
-CSRF_COOKIE_SECURE = False  # True en producción con HTTPS
-CSRF_COOKIE_HTTPONLY = False  # Permitir acceso desde JavaScript
-CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_USE_SESSIONS = False
-CSRF_COOKIE_NAME = 'csrftoken'
-
 
 # URL del frontend para redirecciones
-FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost')
 
 # Configuración de Email
 EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')

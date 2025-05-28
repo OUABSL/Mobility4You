@@ -1,5 +1,5 @@
 // src/services/BusquedaServicios.js
-import axios from 'axios';
+import axios from '../config/axiosConfig';
 import { withTimeout } from './func';
 
 // Constante para modo debug

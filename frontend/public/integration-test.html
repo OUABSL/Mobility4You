@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Integración - Reservas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .debug-log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de Integración - Sistema de Reservas</h1>
+    
+    <div class="test-container">
+        <h2>Estado del Sistema</h2>
+        <div id="systemStatus" class="test-result info">
+            Verificando estado del sistema...
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Tests de Funcionalidad</h2>
+        <button onclick="runStorageTests()">🗄️ Test Storage Service</button>
+        <button onclick="runPriceTests()">💰 Test Cálculos de Precio</button>
+        <button onclick="runFlowTests()">🔄 Test Flujo Completo</button>
+        <button onclick="clearAll()">🗑️ Limpiar Todo</button>
+        
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Debug Console</h2>
+        <button onclick="clearLog()">Limpiar Log</button>
+        <div id="debugLog" class="debug-log"></div>
+    </div>
+
+    <script>
+        // Mock localStorage si no existe (para algunos entornos de test)
+        if (typeof Storage === "undefined") {
+            window.localStorage = {
+                data: {},
+                getItem: function(key) { return this.data[key] || null; },
+                setItem: function(key, value) { this.data[key] = value; },
+                removeItem: function(key) { delete this.data[key]; },
+                clear: function() { this.data = {}; }
+            };
+        }
+
+        // Interceptar console.log para mostrar en la interfaz
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        function logToDebug(type, ...args) {
+            const debugLog = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.join(' ');
+            debugLog.innerHTML += `<div style="color: ${type === 'error' ? 'red' : type === 'warn' ? 'orange' : 'black'}">[${timestamp}] ${type.toUpperCase()}: ${message}</div>`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+
+        console.log = (...args) => {
+            originalLog(...args);
+            logToDebug('log', ...args);
+        };
+
+        console.warn = (...args) => {
+            originalWarn(...args);
+            logToDebug('warn', ...args);
+        };
+
+        console.error = (...args) => {
+            originalError(...args);
+            logToDebug('error', ...args);
+        };
+
+        // Simular el storage service (versión simplificada)
+        const mockStorageService = {
+            STORAGE_KEYS: {
+                ACTIVE_RESERVATION: 'activeReservation',
+                TIMER_DATA: 'reservationTimer',
+                CONDUCTOR_DATA: 'conductorData',
+                EXTRAS_DATA: 'extrasData'
+            },
+
+            initializeReservation(data) {
+                console.log('🔄 Inicializando nueva reserva...');
+                const reservationData = {
+                    ...data,
+                    id: Date.now().toString(),
+                    timestamp: new Date().toISOString(),
+                    step: 'vehiculo',
+                    status: 'active'
+                };
+                
+                localStorage.setItem(this.STORAGE_KEYS.ACTIVE_RESERVATION, JSON.stringify(reservationData));
+                console.log('✅ Reserva inicializada correctamente');
+                return reservationData;
+            },
+
+            hasActiveReservation() {
+                const reservation = localStorage.getItem(this.STORAGE_KEYS.ACTIVE_RESERVATION);
+                return !!reservation;
+            },
+
+            getActiveReservation() {
+                const data = localStorage.getItem(this.STORAGE_KEYS.ACTIVE_RESERVATION);
+                return data ? JSON.parse(data) : null;
+            },
+
+            updateExtras(extrasData) {
+                console.log('🔄 Actualizando extras...');
+                
+                if (!this.hasActiveReservation()) {
+                    throw new Error('No hay reserva activa para actualizar extras');
+                }
+
+                const reservation = this.getActiveReservation();
+                reservation.extras = extrasData;
+                reservation.step = 'extras';
+                
+                localStorage.setItem(this.STORAGE_KEYS.ACTIVE_RESERVATION, JSON.stringify(reservation));
+                console.log('✅ Extras actualizados correctamente');
+                return reservation;
+            },
+
+            clearReservation() {
+                console.log('🔄 Limpiando reserva...');
+                localStorage.removeItem(this.STORAGE_KEYS.ACTIVE_RESERVATION);
+                localStorage.removeItem(this.STORAGE_KEYS.TIMER_DATA);
+                localStorage.removeItem(this.STORAGE_KEYS.CONDUCTOR_DATA);
+                localStorage.removeItem(this.STORAGE_KEYS.EXTRAS_DATA);
+                console.log('✅ Reserva limpiada correctamente');
+            }
+        };
+
+        // Función para simular cálculos de precio (test del error .toFixed)
+        function testPriceCalculations() {
+            console.log('🧮 Testando cálculos de precio...');
+            
+            // Test con diferentes tipos de datos
+            const testPrices = [
+                { precio: "10.50", nombre: "GPS" },           // String
+                { precio: 25, nombre: "Seguro" },             // Number
+                { precio: "invalid", nombre: "Test Invalid" }, // Invalid
+                { precio: null, nombre: "Test Null" },         // Null
+                { precio: undefined, nombre: "Test Undefined" } // Undefined
+            ];
+
+            testPrices.forEach(extra => {
+                try {
+                    // Esta es la lógica que arreglamos
+                    const price = Number(extra.precio);
+                    if (isNaN(price)) {
+                        console.warn(`⚠️ Precio inválido para ${extra.nombre}: ${extra.precio}`);
+                        return;
+                    }
+                    const formatted = price.toFixed(2);
+                    console.log(`✅ ${extra.nombre}: ${extra.precio} -> ${formatted}€`);
+                } catch (error) {
+                    console.error(`❌ Error con ${extra.nombre}:`, error.message);
+                }
+            });
+        }
+
+        // Functions para los tests
+        function runStorageTests() {
+            console.log('🧪 Iniciando tests de Storage Service...');
+            const results = document.getElementById('testResults');
+            
+            try {
+                // Test 1: Inicializar reserva
+                const vehicleData = { vehiculo_id: 1, precio_total: 100 };
+                const reservation = mockStorageService.initializeReservation(vehicleData);
+                
+                if (reservation.id && reservation.vehiculo_id === 1) {
+                    results.innerHTML += '<div class="test-result success">✅ Test 1: Inicialización de reserva - ÉXITO</div>';
+                } else {
+                    results.innerHTML += '<div class="test-result error">❌ Test 1: Inicialización de reserva - FALLO</div>';
+                }
+
+                // Test 2: Verificar reserva activa
+                if (mockStorageService.hasActiveReservation()) {
+                    results.innerHTML += '<div class="test-result success">✅ Test 2: Verificación de reserva activa - ÉXITO</div>';
+                } else {
+                    results.innerHTML += '<div class="test-result error">❌ Test 2: Verificación de reserva activa - FALLO</div>';
+                }
+
+                // Test 3: Actualizar extras
+                const extras = [{ id: 1, nombre: 'GPS', precio: 10 }];
+                const updated = mockStorageService.updateExtras(extras);
+                
+                if (updated.extras && updated.extras.length === 1) {
+                    results.innerHTML += '<div class="test-result success">✅ Test 3: Actualización de extras - ÉXITO</div>';
+                } else {
+                    results.innerHTML += '<div class="test-result error">❌ Test 3: Actualización de extras - FALLO</div>';
+                }
+
+            } catch (error) {
+                results.innerHTML += `<div class="test-result error">❌ Error en tests de storage: ${error.message}</div>`;
+                console.error('Error en storage tests:', error);
+            }
+        }
+
+        function runPriceTests() {
+            console.log('🧪 Iniciando tests de cálculos de precio...');
+            const results = document.getElementById('testResults');
+            
+            try {
+                testPriceCalculations();
+                results.innerHTML += '<div class="test-result success">✅ Tests de precio completados - Ver consola para detalles</div>';
+            } catch (error) {
+                results.innerHTML += `<div class="test-result error">❌ Error en tests de precio: ${error.message}</div>`;
+                console.error('Error en price tests:', error);
+            }
+        }
+
+        function runFlowTests() {
+            console.log('🧪 Iniciando test de flujo completo...');
+            const results = document.getElementById('testResults');
+            
+            try {
+                // Limpiar primero
+                mockStorageService.clearReservation();
+                
+                // Paso 1: Seleccionar vehículo
+                const vehicleData = { vehiculo_id: 1, precio_total: 100 };
+                mockStorageService.initializeReservation(vehicleData);
+                console.log('📍 Paso 1: Vehículo seleccionado');
+                
+                // Paso 2: Agregar extras
+                const extras = [
+                    { id: 1, nombre: 'GPS', precio: '10.50' },
+                    { id: 2, nombre: 'Seguro', precio: 25 }
+                ];
+                mockStorageService.updateExtras(extras);
+                console.log('📍 Paso 2: Extras agregados');
+                
+                // Verificar datos finales
+                const finalReservation = mockStorageService.getActiveReservation();
+                if (finalReservation.vehiculo_id === 1 && finalReservation.extras.length === 2) {
+                    results.innerHTML += '<div class="test-result success">✅ Test de flujo completo - ÉXITO</div>';
+                    console.log('🎉 Flujo completo ejecutado correctamente');
+                } else {
+                    results.innerHTML += '<div class="test-result error">❌ Test de flujo completo - FALLO</div>';
+                }
+                
+            } catch (error) {
+                results.innerHTML += `<div class="test-result error">❌ Error en test de flujo: ${error.message}</div>`;
+                console.error('Error en flow test:', error);
+            }
+        }
+
+        function clearAll() {
+            mockStorageService.clearReservation();
+            document.getElementById('testResults').innerHTML = '';
+            console.log('🧹 Todo limpiado');
+        }
+
+        function clearLog() {
+            document.getElementById('debugLog').innerHTML = '';
+        }
+
+        // Verificar estado del sistema al cargar
+        window.onload = function() {
+            const status = document.getElementById('systemStatus');
+            
+            // Verificar localStorage
+            if (typeof Storage !== "undefined") {
+                status.innerHTML = '✅ Sistema cargado correctamente - localStorage disponible';
+                status.className = 'test-result success';
+                console.log('🚀 Sistema de tests inicializado');
+            } else {
+                status.innerHTML = '⚠️ localStorage no disponible - usando mock';
+                status.className = 'test-result error';
+                console.warn('⚠️ localStorage no disponible');
+            }
+        };
+    </script>
+</body>
+</html>

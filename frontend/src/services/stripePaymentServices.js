@@ -1,5 +1,5 @@
 // frontend/src/services/stripePaymentServices.js
-import axios from 'axios';
+import axios from '../config/axiosConfig';
 import { loadStripe } from '@stripe/stripe-js';
 import { withTimeout } from './func';
 

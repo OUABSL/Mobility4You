@@ -441,13 +441,12 @@ const ListadoCoches = ({ isMobile = false }) => {
             for (let i = 0; i < cars.length; i += 3) {
               filas.push(cars.slice(i, i + 3));
             }
-            
-            return filas.map((grupo, rowIdx) => (
-              <React.Fragment key={rowIdx}>
+              return filas.map((grupo, rowIdx) => (
+              <React.Fragment key={`row-${rowIdx}`}>
                 {/* Fila de hasta 3 tarjetas */}
                 <Row className="results-container mb-4">
                   {grupo.map(car => (
-                    <Col key={car.id} md={4} sm={6} className="mb-4">
+                    <Col key={`car-${car.id}`} md={4} sm={6} className="mb-4">
                       <Card
                         className={`car-card h-100 ${
                           openCarId === car.id ? 'selected-card' : ''
@@ -513,11 +512,9 @@ const ListadoCoches = ({ isMobile = false }) => {
                       </Card>
                     </Col>
                   ))}
-                </Row>
-
-                {/* Si el coche seleccionado está en este grupo, muestro la ficha justo después de la fila */}
+                </Row>                {/* Si el coche seleccionado está en este grupo, muestro la ficha justo después de la fila */}
                 {grupo.some(car => car.id === openCarId) && (
-                  <Row className="mb-5">
+                  <Row key={`ficha-${rowIdx}-${openCarId}`} className="mb-5">
                     <Col md={12}>
                       <FichaCoche
                         car={cars.find(c => c.id === openCarId)}

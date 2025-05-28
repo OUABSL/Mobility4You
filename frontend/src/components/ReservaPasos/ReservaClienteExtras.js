@@ -17,7 +17,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../../css/ReservaClienteExtras.css';
 import { createReservation, editReservation, findReservation, DEBUG_MODE, getExtrasDisponibles } from '../../services/reservationServices';
-import { getReservationStorageService, updateExtras } from '../../services/reservationStorageService';
+import { getReservationStorageService } from '../../services/reservationStorageService';
 import useReservationTimer from '../../hooks/useReservationTimer';
 import ReservationTimerModal from './ReservationTimerModal';
 import ReservationTimerIndicator from './ReservationTimerIndicator';
@@ -117,17 +117,30 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       console.log('[ReservaClienteExtras] Cargando datos de reserva');
       
       // Intentar obtener datos del storage service primero
-      let storedData = storageService.getCompleteReservationData();
-      
-      // Si no hay datos en el storage service, verificar sessionStorage legacy
+      let storedData = storageService.getCompleteReservationData();      // Si no hay datos en el storage service, verificar sessionStorage legacy
       if (!storedData) {
         const legacyData = sessionStorage.getItem('reservaData');
         if (legacyData) {
           console.log('[ReservaClienteExtras] Migrando datos legacy a nuevo storage');
-          const parsedData = JSON.parse(legacyData);
-          // Inicializar timer con datos legacy
-          startTimer(parsedData);
-          storedData = parsedData;
+          try {
+            const parsedData = JSON.parse(legacyData);
+            
+            // Guardar datos usando el servicio de storage para inicializar correctamente
+            storageService.saveReservationData(parsedData);
+            storedData = storageService.getCompleteReservationData();
+            
+            // Inicializar timer si no está activo
+            if (!timerActive) {
+              const timerStarted = startTimer(parsedData);
+              console.log('[ReservaClienteExtras] Timer iniciado para datos legacy:', timerStarted);
+            }
+            
+            console.log('[ReservaClienteExtras] Migración legacy completada exitosamente');
+          } catch (migrationError) {
+            console.error('[ReservaClienteExtras] Error en migración legacy:', migrationError);
+            // Limpiar datos legacy corruptos
+            sessionStorage.removeItem('reservaData');
+          }
         }
       }
       
@@ -194,21 +207,19 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   const diasAlquiler = reservaData?.fechas ? 
     Math.ceil((new Date(reservaData.fechas.dropoffDate) - new Date(reservaData.fechas.pickupDate)) / (1000 * 60 * 60 * 24)) : 
     3; // Valor por defecto
-
   // Efecto para calcular y actualizar el total de extras
   useEffect(() => {
     const total = extrasSeleccionados.reduce((sum, extraId) => {
       const extra = extrasDisponibles.find(e => e.id === extraId);
-      return sum + (extra ? extra.precio * diasAlquiler : 0);
+      return sum + (extra ? Number(extra.precio) * diasAlquiler : 0);
     }, 0);
     setTotalExtras(total);
   }, [extrasSeleccionados, diasAlquiler]);
-
   // Efecto para calcular los detalles de la reserva
   useEffect(() => {
     if (!reservaData) return;
     
-    const precioCocheBase = reservaData.car.precio_dia * diasAlquiler;
+    const precioCocheBase = Number(reservaData.car.precio_dia) * diasAlquiler;
     const iva = precioCocheBase * 0.21;
     const detalles = {
       precioCocheBase,
@@ -233,11 +244,24 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     // Redirigir a la página anterior
     navigate(-1);
   };
+  // Manejador para cancelar reserva y volver a la búsqueda
+  const handleCancelarReserva = () => {
+    try {
+      // Limpiar datos de reserva del storage
+      storageService.clearAllReservationData();
+      
+      // Navegar de vuelta a la búsqueda de coches
+      navigate('/coches', { replace: true });
+    } catch (error) {
+      console.error('Error al cancelar reserva:', error);
+      // Incluso si hay error al limpiar, navegar de vuelta
+      navigate('/coches', { replace: true });
+    }
+  };
   // Manejador para continuar con la reserva  
   const handleContinuar = async () => {
     console.log('[ReservaClienteExtras] Continuando con la reserva');
-    setLoading(true);
-    setError(null);
+    setLoading(true);    setError(null);
     
     try {
       if (!reservaData) {
@@ -249,8 +273,30 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
         throw new Error('Datos de reserva incompletos.');
       }
       
-      // Actualizar extras en el storage service
-      await updateExtras(extrasSeleccionados);
+      // Intentar actualizar extras con manejo mejorado de errores
+      try {
+        await storageService.updateExtras(extrasSeleccionados);
+      } catch (updateError) {
+        console.error('[ReservaClienteExtras] Error al actualizar extras:', updateError);
+        
+        // Si falla por no tener reserva activa, intentar re-inicializar
+        if (updateError.message.includes('No hay reserva activa')) {
+          console.log('[ReservaClienteExtras] Intentando reinicializar reserva para extras');
+          
+          try {
+            // Re-guardar datos de reserva para reinicializar timer
+            storageService.saveReservationData(reservaData);
+            // Reintentar actualización de extras
+            await storageService.updateExtras(extrasSeleccionados);
+            console.log('[ReservaClienteExtras] Reserva reinicializada y extras actualizados exitosamente');
+          } catch (retryError) {
+            console.error('[ReservaClienteExtras] Error en reintento:', retryError);
+            throw new Error('Error al guardar extras. Por favor, inténtelo de nuevo.');
+          }
+        } else {
+          throw updateError;
+        }
+      }
       
       // Store current scroll position before navigation
       sessionStorage.setItem('confirmationScrollPosition', window.pageYOffset.toString());
@@ -402,25 +448,24 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                   <hr />
 
                   {detallesReserva && (
-                    <div className="detalles-precio">
-                      <div className="d-flex justify-content-between mb-2">
+                    <div className="detalles-precio">                      <div className="d-flex justify-content-between mb-2">
                         <span>Precio base ({diasAlquiler} días):</span>
-                        <span>{detallesReserva.precioCocheBase.toFixed(2)}€</span>
+                        <span>{Number(detallesReserva.precioCocheBase).toFixed(2)}€</span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
                         <span>IVA (21%):</span>
-                        <span>{detallesReserva.iva.toFixed(2)}€</span>
+                        <span>{Number(detallesReserva.iva).toFixed(2)}€</span>
                       </div>
                       {totalExtras > 0 && (
                         <div className="d-flex justify-content-between mb-2">
                           <span>Extras:</span>
-                          <span>{totalExtras.toFixed(2)}€</span>
+                          <span>{Number(totalExtras).toFixed(2)}€</span>
                         </div>
                       )}
                       <hr />
                       <div className="d-flex justify-content-between fw-bold">
                         <span>Total:</span>
-                        <span>{detallesReserva.total.toFixed(2)}€</span>
+                        <span>{Number(detallesReserva.total).toFixed(2)}€</span>
                       </div>
                     </div>
                   )}
@@ -454,27 +499,30 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                         </div>
                         <div className="extra-details">
                           <h6>{extra.nombre}</h6>
-                          <p className="extra-description">{extra.descripcion}</p>
+                          <p className="extra-description">{extra.descripcion}</p>                          
                           <p className="extra-price">
-                            {extra.precio.toFixed(2)}€/día · 
-                            <strong> {(extra.precio * diasAlquiler).toFixed(2)}€</strong> total
+                            {Number(extra.precio).toFixed(2)}€/día · 
+                            <strong> {(Number(extra.precio) * diasAlquiler).toFixed(2)}€</strong> total
                           </p>
                         </div>
                       </div>
                     </Card>
                   </Col>
                 ))}
-              </Row>
-
+              </Row>              
               <div className="mt-4 d-flex justify-content-between">
-                <Button 
-                  variant="outline-secondary" 
-                  onClick={handleVolver}
-                  disabled={loading}
-                >
-                  <FontAwesomeIcon icon={faChevronLeft} className="me-2" />
-                  Volver
-                </Button>
+                <div className="d-flex gap-2">
+                  {/* Botón para cancelar reserva y volver a la búsqueda */}
+                  <Button 
+                    variant="outline-danger" 
+                    onClick={handleCancelarReserva}
+                    disabled={loading}
+                    title="Cancelar reserva y volver a la búsqueda"
+                  >
+                    <FontAwesomeIcon icon={faTimes} className="me-2" />
+                    Cancelar Reserva
+                  </Button>
+                </div>
                 <Button 
                   variant="primary" 
                   className="continue-btn"
@@ -497,7 +545,8 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                     'Continuar con la reserva'
                   )}
                 </Button>
-              </div>            </Col>
+              </div>
+            </Col>
           </Row>
         </Card.Body>
       </Card>

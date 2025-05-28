@@ -49,12 +49,11 @@ const ReservaClienteExito = () => {
           return;
         }
       }
-      
-      // Asegurar que el storage se limpia después de mostrar el éxito
+        // Asegurar que el storage se limpia después de mostrar el éxito
       if (storageService) {
         setTimeout(() => {
           try {
-            storageService.clearReservationData();
+            storageService.clearAllReservationData();
           } catch (err) {
             console.warn('Error al limpiar storage:', err);
           }

@@ -1009,12 +1009,11 @@ class LugarAdmin(BaseAdvancedAdmin):
             )
         return format_html('<span style="color: red;">Sin dirección</span>')
     get_direccion_info.short_description = 'Dirección'
-    
     def get_reservas_count(self, obj):
         """Contador de reservas"""
         # Contar reservas tanto como lugar de recogida como de devolución
-        count_recogida = obj.reservas_recogida.count()
-        count_devolucion = obj.reservas_devolucion.count()
+        count_recogida = obj.recogidas.count()
+        count_devolucion = obj.devoluciones.count()
         total = count_recogida + count_devolucion
         
         if total > 0:
@@ -1036,7 +1035,7 @@ class LugarAdmin(BaseAdvancedAdmin):
     def get_queryset(self, request):
         """Optimizar consultas"""
         return super().get_queryset(request).select_related('direccion').annotate(
-            reservas_count=Count('reservas_recogida') + Count('reservas_devolucion')
+            reservas_count=Count('recogidas') + Count('devoluciones')
         )
 
 
