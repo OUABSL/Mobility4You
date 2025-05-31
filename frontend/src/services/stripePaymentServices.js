@@ -83,10 +83,13 @@ export const initializeStripe = async () => {
  * Obtiene la configuración de Stripe del backend
  * @returns {Promise<Object>} Configuración de Stripe
  */
+// frontend/src/services/stripePaymentServices.js - CORREGIR función getStripeConfig
+
 export const getStripeConfig = async () => {
   try {
     logInfo('Obteniendo configuración de Stripe');
     
+    // CORREGIR: Intentar backend primero, luego fallback
     try {
       const response = await withTimeout(
         axios.get(`${API_URL}/payments/stripe/config/`, getAuthHeaders()),
@@ -98,25 +101,27 @@ export const getStripeConfig = async () => {
     } catch (error) {
       logInfo('Backend no disponible, usando configuración de entorno');
       
-      // Fallback a configuración de entorno
+      // CORREGIR: Validar que la clave existe antes de usarla
+      const publishableKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
+      
+      if (!publishableKey || publishableKey === 'pk_test_placeholder') {
+        throw new Error('Clave pública de Stripe no configurada. Configura REACT_APP_STRIPE_PUBLISHABLE_KEY en tu archivo .env');
+      }
+      
       const fallbackConfig = {
-        publishable_key: process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,
+        publishable_key: publishableKey,
         currency: 'eur',
         country: 'ES',
         supported_payment_methods: ['card'],
         statement_descriptor: 'MOBILITY4YOU'
       };
       
-      if (!fallbackConfig.publishable_key) {
-        throw new Error('Clave pública de Stripe no disponible en variables de entorno');
-      }
-      
       logInfo('Configuración de Stripe desde entorno', fallbackConfig);
       return fallbackConfig;
     }
   } catch (error) {
     logError('Error obteniendo configuración de Stripe', error);
-    throw new Error('No se pudo obtener la configuración de pagos');
+    throw new Error(error.message || 'No se pudo obtener la configuración de pagos');
   }
 };
 

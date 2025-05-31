@@ -1,7 +1,7 @@
 // Test para verificar el flujo de datos del storage service
 // Este archivo se puede ejecutar en la consola del navegador para probar el flujo
 
-const testReservationStorageFlow = () => {
+const testReservationStorageFlow = async () => {
   console.log('=== INICIANDO PRUEBA DE RESERVA STORAGE ===');
   
   // 1. Simular datos de reserva inicial
@@ -83,10 +83,8 @@ const testReservationStorageFlow = () => {
 
     console.log('📝 Paso 4: Actualizando datos del conductor...');
     const conductorResult = storageService.updateConductorData(mockConductorData);
-    console.log('✅ Conductor actualizado:', conductorResult);
-
-    console.log('📝 Paso 5: Obteniendo datos completos...');
-    const completeData = storageService.getCompleteReservationData();
+    console.log('✅ Conductor actualizado:', conductorResult);    console.log('📝 Paso 5: Obteniendo datos completos...');
+    const completeData = await storageService.getCompleteReservationData();
     console.log('✅ Datos completos:', completeData);
 
     console.log('🎉 ¡PRUEBA COMPLETADA EXITOSAMENTE!');

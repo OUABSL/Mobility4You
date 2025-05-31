@@ -528,3 +528,1165 @@ INFO 2025-05-28 20:08:34,860 services 20 140719293028160 StripePaymentService in
 WARNING 2025-05-28 20:08:34,885 log 20 140719293028160 Bad Request: /api/reservations/create-new/
 INFO 2025-05-28 20:43:36,209 services 23 140095555467072 StripePaymentService inicializado
 WARNING 2025-05-28 20:43:36,252 log 23 140095555467072 Bad Request: /api/reservations/create-new/
+ERROR 2025-05-29 16:34:22,381 log 22 140506534942528 Internal Server Error: /admin/api/factura/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 2140, in changelist_view
+    "selection_note": _("0 of %(cnt)s selected") % {"cnt": len(cl.result_list)},
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 382, in __len__
+    self._fetch_all()
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 1561, in execute_sql
+    sql, params = self.as_sql()
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 747, in as_sql
+    extra_select, order_by, group_by = self.pre_sql_setup(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 84, in pre_sql_setup
+    self.setup_query(with_col_aliases=with_col_aliases)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 73, in setup_query
+    self.select, self.klass_info, self.annotation_col_map = self.get_select(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 279, in get_select
+    related_klass_infos = self.get_related_selections(select, select_mask)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 1248, in get_related_selections
+    next_klass_infos = self.get_related_selections(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 1379, in get_related_selections
+    raise FieldError(
+django.core.exceptions.FieldError: Invalid field name(s) given in select_related: 'conductor_principal'. Choices are: usuario, promocion, politica_pago, vehiculo, lugar_recogida, lugar_devolucion
+INFO 2025-05-29 18:57:55,065 services 21 140656750933824 StripePaymentService inicializado
+ERROR 2025-05-29 18:57:55,093 log 21 140656750933824 Internal Server Error: /api/reservations/create-new/
+INFO 2025-05-29 19:04:59,371 services 23 139749830768448 StripePaymentService inicializado
+ERROR 2025-05-29 19:04:59,384 log 23 139749830768448 Internal Server Error: /api/reservations/create-new/
+INFO 2025-05-29 19:12:50,731 services 22 140502446081856 StripePaymentService inicializado
+ERROR 2025-05-29 19:12:50,745 log 22 140502446081856 Internal Server Error: /api/reservations/create-new/
+INFO 2025-05-29 19:31:38,392 services 22 140413503432512 StripePaymentService inicializado
+ERROR 2025-05-29 19:31:38,406 log 22 140413503432512 Internal Server Error: /api/reservations/create-new/
+WARNING 2025-05-30 18:26:10,516 log 23 139925887055680 Bad Request: /api/contenidos/
+WARNING 2025-05-30 18:26:10,519 log 21 139925887055680 Not Found: /api/users/
+WARNING 2025-05-30 18:26:10,528 log 20 139925887055680 Bad Request: /api/contenidos/
+WARNING 2025-05-30 18:26:10,538 log 23 139925887055680 Not Found: /api/users/
+WARNING 2025-05-30 18:35:30,411 log 23 139925887055680 Bad Request: /api/contenidos/
+WARNING 2025-05-30 18:35:30,417 log 22 139925887055680 Not Found: /api/users/
+WARNING 2025-05-30 18:35:30,422 log 21 139925887055680 Bad Request: /api/contenidos/
+WARNING 2025-05-30 18:35:30,431 log 21 139925887055680 Not Found: /api/users/
+WARNING 2025-05-30 18:37:20,260 log 23 139925887055680 Bad Request: /api/contenidos/
+WARNING 2025-05-30 18:37:20,266 log 20 139925887055680 Not Found: /api/users/
+WARNING 2025-05-30 18:37:20,276 log 20 139925887055680 Bad Request: /api/contenidos/
+WARNING 2025-05-30 18:37:20,284 log 23 139925887055680 Not Found: /api/users/
+WARNING 2025-05-30 18:37:50,417 log 23 139925887055680 Bad Request: /api/contenidos/
+WARNING 2025-05-30 18:37:50,420 log 20 139925887055680 Not Found: /api/users/
+WARNING 2025-05-30 18:37:50,428 log 23 139925887055680 Bad Request: /api/contenidos/
+WARNING 2025-05-30 18:37:50,440 log 21 139925887055680 Not Found: /api/users/
+INFO 2025-05-30 18:49:01,422 services 23 139925887055680 StripePaymentService inicializado
+ERROR 2025-05-30 18:49:01,435 log 23 139925887055680 Internal Server Error: /api/reservations/create-new/
+WARNING 2025-05-30 19:52:01,530 log 22 139767922472768 Bad Request: /api/contenidos/
+WARNING 2025-05-30 19:52:01,561 log 22 139767922472768 Bad Request: /api/contenidos/
+WARNING 2025-05-30 19:52:01,952 log 23 139767922472768 Not Found: /api/users/
+WARNING 2025-05-30 19:52:01,975 log 23 139767922472768 Not Found: /api/users/
+WARNING 2025-05-30 19:52:04,380 log 22 139767922472768 Bad Request: /api/contenidos/
+WARNING 2025-05-30 19:52:04,402 log 20 139767922472768 Bad Request: /api/contenidos/
+WARNING 2025-05-30 19:52:04,407 log 21 139767922472768 Not Found: /api/users/
+WARNING 2025-05-30 19:52:04,448 log 20 139767922472768 Not Found: /api/users/
+WARNING 2025-05-30 20:09:14,330 log 22 140183149496128 Bad Request: /api/contenidos/
+WARNING 2025-05-30 20:09:14,367 log 21 140183149496128 Bad Request: /api/contenidos/
+WARNING 2025-05-30 20:09:14,394 log 23 140183149496128 Not Found: /api/users/
+WARNING 2025-05-30 20:09:14,427 log 21 140183149496128 Not Found: /api/users/
+WARNING 2025-05-30 20:09:51,759 log 20 140183149496128 Bad Request: /api/contenidos/
+WARNING 2025-05-30 20:09:51,799 log 22 140183149496128 Not Found: /api/users/
+WARNING 2025-05-30 20:09:51,815 log 21 140183149496128 Bad Request: /api/contenidos/
+WARNING 2025-05-30 20:09:51,851 log 21 140183149496128 Not Found: /api/users/
+WARNING 2025-05-30 20:10:01,705 log 23 140183149496128 Bad Request: /api/contenidos/
+WARNING 2025-05-30 20:10:01,712 log 21 140183149496128 Not Found: /api/users/
+WARNING 2025-05-30 20:10:01,727 log 21 140183149496128 Bad Request: /api/contenidos/
+WARNING 2025-05-30 20:10:01,743 log 20 140183149496128 Not Found: /api/users/
+WARNING 2025-05-30 20:26:14,352 log 20 140097906087744 Bad Request: /api/contenidos/
+WARNING 2025-05-30 20:26:14,992 log 21 140097906087744 Not Found: /api/users/
+WARNING 2025-05-30 20:30:41,744 log 23 140291651688256 Bad Request: /api/contenidos/
+WARNING 2025-05-30 20:30:41,793 log 21 140291651688256 Not Found: /api/users/
+ERROR 2025-05-31 11:49:41,001 log 20 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 11:49:41,186 log 21 140658142545728 Bad Request: /api/contenidos/
+WARNING 2025-05-31 11:49:41,266 log 22 140658142545728 Not Found: /api/users/
+WARNING 2025-05-31 11:49:41,911 log 23 140658142545728 Bad Request: /api/contenidos/
+WARNING 2025-05-31 11:49:41,917 log 22 140658142545728 Not Found: /api/users/
+ERROR 2025-05-31 11:49:41,962 log 20 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 11:49:43,146 log 20 140658142545728 Bad Request: /api/contenidos/
+WARNING 2025-05-31 11:49:43,153 log 22 140658142545728 Not Found: /api/users/
+ERROR 2025-05-31 11:49:43,208 log 21 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 11:49:54,277 log 20 140658142545728 Bad Request: /api/contenidos/
+WARNING 2025-05-31 11:49:54,281 log 22 140658142545728 Not Found: /api/users/
+ERROR 2025-05-31 11:49:54,347 log 20 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+ERROR 2025-05-31 11:50:01,365 log 23 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+ERROR 2025-05-31 11:50:18,811 log 21 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 11:50:20,807 log 22 140658142545728 Bad Request: /api/contenidos/
+WARNING 2025-05-31 11:50:20,821 log 21 140658142545728 Not Found: /api/users/
+ERROR 2025-05-31 11:50:24,541 log 20 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+ERROR 2025-05-31 11:51:51,717 log 23 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+ERROR 2025-05-31 11:51:58,917 log 20 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+ERROR 2025-05-31 11:51:59,611 log 21 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 11:52:07,882 log 20 140658142545728 Bad Request: /api/contenidos/
+WARNING 2025-05-31 11:52:07,896 log 23 140658142545728 Not Found: /api/users/
+ERROR 2025-05-31 11:52:11,086 log 21 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 11:55:44,433 log 20 140658142545728 Bad Request: /api/contenidos/
+WARNING 2025-05-31 11:55:44,451 log 20 140658142545728 Not Found: /api/users/
+ERROR 2025-05-31 11:55:44,503 log 22 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 11:56:16,629 log 22 140658142545728 Bad Request: /api/contenidos/
+WARNING 2025-05-31 11:56:16,635 log 20 140658142545728 Not Found: /api/users/
+ERROR 2025-05-31 11:56:16,694 log 20 140658142545728 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 11:58:41,984 log 23 139834215008064 Bad Request: /api/contenidos/
+WARNING 2025-05-31 11:58:42,270 log 20 139834215008064 Not Found: /api/users/
+ERROR 2025-05-31 11:59:41,284 log 22 139834215008064 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 12:00:10,039 log 20 139834215008064 Bad Request: /api/contenidos/
+WARNING 2025-05-31 12:00:10,054 log 23 139834215008064 Not Found: /api/users/
+ERROR 2025-05-31 12:00:56,374 log 21 139834215008064 Internal Server Error: /api/vehiculos/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/app/api/views/vehiculos.py", line 83, in list
+    'results': serializer.data,
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 797, in data
+    ret = super().data
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 251, in data
+    self._data = self.to_representation(self.instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 715, in to_representation
+    return [
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 716, in <listcomp>
+    self.child.to_representation(item) for item in iterable
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 525, in to_representation
+    for field in fields:
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 386, in _readable_fields
+    for field in self.fields.values():
+  File "/usr/local/lib/python3.10/site-packages/django/utils/functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 374, in fields
+    for key, value in self.get_fields().items():
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1105, in get_fields
+    field_class, field_kwargs = self.build_field(
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1251, in build_field
+    return self.build_unknown_field(field_name, model_class)
+  File "/usr/local/lib/python3.10/site-packages/rest_framework/serializers.py", line 1369, in build_unknown_field
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: Field name `descripcion` is not valid for model `Vehiculo` in `api.serializers.vehiculos.VehiculoListSerializer`.
+WARNING 2025-05-31 12:04:36,880 log 22 140183532074816 Bad Request: /api/contenidos/
+WARNING 2025-05-31 12:09:31,814 log 22 140183532074816 Not Found: /api/users/
+INFO 2025-05-31 12:11:26,252 autoreload 31720 29520 Watching for file changes with StatReloader
+WARNING 2025-05-31 12:12:49,385 log 23 139784532109120 Not Found: /api/users/
+WARNING 2025-05-31 12:14:34,495 log 23 139784532109120 Not Found: /api/users/
+WARNING 2025-05-31 12:14:34,745 log 20 139784532109120 Bad Request: /api/contenidos/
+WARNING 2025-05-31 12:15:02,416 log 23 139784532109120 Not Found: /api/users/
+INFO 2025-05-31 12:15:37,193 autoreload 31720 29520 C:\Users\Work\Documents\GitHub\Movility-for-you\backend\api\models\contenidos.py changed, reloading.
+INFO 2025-05-31 12:15:37,888 autoreload 16532 24916 Watching for file changes with StatReloader
+INFO 2025-05-31 12:15:49,194 autoreload 16532 24916 C:\Users\Work\Documents\GitHub\Movility-for-you\backend\api\models\contenidos.py changed, reloading.
+INFO 2025-05-31 12:15:50,591 autoreload 24072 14724 Watching for file changes with StatReloader
+ERROR 2025-05-31 12:16:43,444 log 20 139784532109120 Internal Server Error: /admin/api/reserva/add/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/mysql/base.py", line 76, in execute
+    return self.cursor.execute(query, args)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 179, in execute
+    res = self._query(mogrified_query)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 331, in _query
+    self._do_get_result(db)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 136, in _do_get_result
+    self._result = result = self._get_result()
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 363, in _get_result
+    return self._get_db().store_result()
+MySQLdb.OperationalError: (1644, 'La fecha de devolución debe ser posterior a la fecha de recogida')
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1961, in add_view
+    return self.changeform_view(request, None, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1820, in changeform_view
+    return self._changeform_view(request, object_id, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1871, in _changeform_view
+    self.save_model(request, new_object, form, not add)
+  File "/app/api/admin.py", line 63, in wrapper
+    result = func(self, request, *args, **kwargs)
+  File "/app/api/admin.py", line 336, in save_model
+    super().save_model(request, obj, form, change)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1294, in save_model
+    obj.save()
+  File "/app/api/models/reservas.py", line 176, in save
+    super().save(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 892, in save
+    self.save_base(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 998, in save_base
+    updated = self._save_table(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 1161, in _save_table
+    results = self._do_insert(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 1202, in _do_insert
+    return manager._insert(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1847, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 1836, in execute_sql
+    cursor.execute(sql, params)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 122, in execute
+    return super().execute(sql, params)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "/usr/local/lib/python3.10/site-packages/django/db/utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/mysql/base.py", line 76, in execute
+    return self.cursor.execute(query, args)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 179, in execute
+    res = self._query(mogrified_query)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 331, in _query
+    self._do_get_result(db)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 136, in _do_get_result
+    self._result = result = self._get_result()
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 363, in _get_result
+    return self._get_db().store_result()
+django.db.utils.OperationalError: (1644, 'La fecha de devolución debe ser posterior a la fecha de recogida')
+ERROR 2025-05-31 12:17:08,894 log 21 139784532109120 Internal Server Error: /admin/api/reserva/add/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/mysql/base.py", line 76, in execute
+    return self.cursor.execute(query, args)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 179, in execute
+    res = self._query(mogrified_query)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 331, in _query
+    self._do_get_result(db)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 136, in _do_get_result
+    self._result = result = self._get_result()
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 363, in _get_result
+    return self._get_db().store_result()
+MySQLdb.IntegrityError: (1048, "Column 'precio_dia' cannot be null")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1961, in add_view
+    return self.changeform_view(request, None, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1820, in changeform_view
+    return self._changeform_view(request, object_id, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1871, in _changeform_view
+    self.save_model(request, new_object, form, not add)
+  File "/app/api/admin.py", line 63, in wrapper
+    result = func(self, request, *args, **kwargs)
+  File "/app/api/admin.py", line 336, in save_model
+    super().save_model(request, obj, form, change)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1294, in save_model
+    obj.save()
+  File "/app/api/models/reservas.py", line 176, in save
+    super().save(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 892, in save
+    self.save_base(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 998, in save_base
+    updated = self._save_table(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 1161, in _save_table
+    results = self._do_insert(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/base.py", line 1202, in _do_insert
+    return manager._insert(
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/query.py", line 1847, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 1836, in execute_sql
+    cursor.execute(sql, params)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 122, in execute
+    return super().execute(sql, params)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "/usr/local/lib/python3.10/site-packages/django/db/utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+  File "/usr/local/lib/python3.10/site-packages/django/db/backends/mysql/base.py", line 76, in execute
+    return self.cursor.execute(query, args)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 179, in execute
+    res = self._query(mogrified_query)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 331, in _query
+    self._do_get_result(db)
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 136, in _do_get_result
+    self._result = result = self._get_result()
+  File "/usr/local/lib/python3.10/site-packages/MySQLdb/cursors.py", line 363, in _get_result
+    return self._get_db().store_result()
+django.db.utils.IntegrityError: (1048, "Column 'precio_dia' cannot be null")
+WARNING 2025-05-31 12:18:16,817 log 21 139784532109120 Bad Request: /api/contenidos/
+WARNING 2025-05-31 12:19:01,543 log 23 140177341716288 Not Found: /api/users/
+WARNING 2025-05-31 12:19:01,785 log 24 140177341716288 Bad Request: /api/contenidos/
+ERROR 2025-05-31 12:33:04,415 log 20 140220731238208 Internal Server Error: /admin/api/tarifavehiculo/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/options.py", line 676, in get_field
+    return self.fields_map[field_name]
+KeyError: 'get_estado_vigencia'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/utils.py", line 290, in lookup_field
+    f = _get_non_gfk_field(opts, name)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/utils.py", line 330, in _get_non_gfk_field
+    field = opts.get_field(name)
+  File "/usr/local/lib/python3.10/site-packages/django/db/models/options.py", line 678, in get_field
+    raise FieldDoesNotExist(
+django.core.exceptions.FieldDoesNotExist: TarifaVehiculo has no field named 'get_estado_vigencia'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 220, in _get_response
+    response = response.render()
+  File "/usr/local/lib/python3.10/site-packages/django/template/response.py", line 114, in render
+    self.content = self.rendered_content
+  File "/usr/local/lib/python3.10/site-packages/django/template/response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+  File "/usr/local/lib/python3.10/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 171, in render
+    return self._render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 163, in _render
+    return self.nodelist.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 163, in _render
+    return self.nodelist.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 163, in _render
+    return self.nodelist.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+  File "/usr/local/lib/python3.10/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/templatetags/base.py", line 45, in render
+    return super().render(context)
+  File "/usr/local/lib/python3.10/site-packages/django/template/library.py", line 258, in render
+    _dict = self.func(*resolved_args, **resolved_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/templatetags/admin_list.py", line 346, in result_list
+    "results": list(results(cl)),
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/templatetags/admin_list.py", line 322, in results
+    yield ResultList(None, items_for_result(cl, res, None))
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/templatetags/admin_list.py", line 313, in __init__
+    super().__init__(*items)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/templatetags/admin_list.py", line 218, in items_for_result
+    f, attr, value = lookup_field(field_name, result, cl.model_admin)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/utils.py", line 299, in lookup_field
+    value = attr(obj)
+  File "/app/api/admin.py", line 851, in get_estado_vigencia
+    if obj.fecha_inicio <= hoy <= obj.fecha_fin:
+TypeError: '<=' not supported between instances of 'datetime.date' and 'NoneType'
+ERROR 2025-05-31 16:10:42,436 log 22 140664004486976 Internal Server Error: /admin/api/reserva/add/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1961, in add_view
+    return self.changeform_view(request, None, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1820, in changeform_view
+    return self._changeform_view(request, object_id, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1855, in _changeform_view
+    ModelForm = self.get_form(
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 802, in get_form
+    exclude.extend(readonly_fields)
+TypeError: 'NoneType' object is not iterable
+ERROR 2025-05-31 16:11:06,869 log 21 140664004486976 Internal Server Error: /admin/api/contacto/add/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 839, in get_form
+    return modelform_factory(self.model, **defaults)
+  File "/usr/local/lib/python3.10/site-packages/django/forms/models.py", line 654, in modelform_factory
+    return type(form)(class_name, (form,), form_class_attrs)
+  File "/usr/local/lib/python3.10/site-packages/django/forms/models.py", line 334, in __new__
+    raise FieldError(message)
+django.core.exceptions.FieldError: Unknown field(s) (numero_contrato, reserva, condiciones, fecha_firma, url_pdf) specified for Contacto
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1961, in add_view
+    return self.changeform_view(request, None, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1820, in changeform_view
+    return self._changeform_view(request, object_id, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1855, in _changeform_view
+    ModelForm = self.get_form(
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 841, in get_form
+    raise FieldError(
+django.core.exceptions.FieldError: Unknown field(s) (numero_contrato, reserva, condiciones, fecha_firma, url_pdf) specified for Contacto. Check fields/fieldsets/exclude attributes of class ContactoAdmin.
+ERROR 2025-05-31 16:11:33,050 log 23 140664004486976 Internal Server Error: /admin/api/contacto/add/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 839, in get_form
+    return modelform_factory(self.model, **defaults)
+  File "/usr/local/lib/python3.10/site-packages/django/forms/models.py", line 654, in modelform_factory
+    return type(form)(class_name, (form,), form_class_attrs)
+  File "/usr/local/lib/python3.10/site-packages/django/forms/models.py", line 334, in __new__
+    raise FieldError(message)
+django.core.exceptions.FieldError: Unknown field(s) (numero_contrato, reserva, condiciones, fecha_firma, url_pdf) specified for Contacto
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/usr/local/lib/python3.10/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 718, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/views/decorators/cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/sites.py", line 241, in inner
+    return view(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1961, in add_view
+    return self.changeform_view(request, None, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 188, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/usr/local/lib/python3.10/site-packages/django/utils/decorators.py", line 186, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1820, in changeform_view
+    return self._changeform_view(request, object_id, form_url, extra_context)
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 1855, in _changeform_view
+    ModelForm = self.get_form(
+  File "/usr/local/lib/python3.10/site-packages/django/contrib/admin/options.py", line 841, in get_form
+    raise FieldError(
+django.core.exceptions.FieldError: Unknown field(s) (numero_contrato, reserva, condiciones, fecha_firma, url_pdf) specified for Contacto. Check fields/fieldsets/exclude attributes of class ContactoAdmin.

@@ -150,9 +150,8 @@ const PagoDiferenciaReserva = () => {
           <Card.Body>
             <div className="success-container">
               <FontAwesomeIcon icon={faCheckCircle} className="success-icon" />
-              <h3 className="success-title">¡Pago realizado con éxito!</h3>
-              <p className="success-message">
-                La diferencia de {diferencia.toFixed(2)}€ ha sido abonada correctamente.
+              <h3 className="success-title">¡Pago realizado con éxito!</h3>              <p className="success-message">
+                La diferencia de {(Number(diferencia) || 0).toFixed(2)}€ ha sido abonada correctamente.
                 {paymentMethod === 'efectivo' && ' Recuerda realizar el pago en efectivo cuando llegues a nuestras oficinas.'}
               </p>
               <Button 
@@ -185,10 +184,9 @@ const PagoDiferenciaReserva = () => {
             </Card.Header>
             <Card.Body>
               <h5 className="mb-4">Debes abonar la diferencia para completar la modificación de tu reserva</h5>
-              
-              <div className="importe-container">
+                <div className="importe-container">
                 <span className="importe-label">Importe a pagar:</span>
-                <span className="importe-value">{diferencia.toFixed(2)}€</span>
+                <span className="importe-value">{(Number(diferencia) || 0).toFixed(2)}€</span>
               </div>
               
               <div className="secure-payment-info">

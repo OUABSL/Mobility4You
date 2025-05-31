@@ -10,10 +10,6 @@ import {
   faMapMarkerAlt, 
   faShieldAlt, 
   faUser,
-  faEnvelope,
-  faPhone,
-  faIdCard,
-  faHome,
   faPrint,
   faDownload
 } from '@fortawesome/free-solid-svg-icons';
@@ -25,31 +21,43 @@ const ReservaClienteExito = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const storageService = getReservationStorageService();
-  
-  const [reservaCompletada, setReservaCompletada] = useState(null);
+    const [reservaCompletada, setReservaCompletada] = useState(null);
   const [error, setError] = useState(null);
-  const debugMode = true; 
   
-  useEffect(() => {
+    useEffect(() => {
     try {
+      console.log('[ReservaClienteExito] Cargando datos de reserva completada');
+      
       // Primero intentar obtener datos del state de navegación
       const stateData = location.state?.reservationData;
       
       if (stateData) {
+        console.log('[ReservaClienteExito] Datos recibidos desde navigation state:', stateData);
         setReservaCompletada(stateData);
       } else {
         // Fallback a sessionStorage para datos de reserva completada
         const storedData = sessionStorage.getItem('reservaCompletada');
         if (storedData) {
-          setReservaCompletada(JSON.parse(storedData));
+          const parsedData = JSON.parse(storedData);
+          console.log('[ReservaClienteExito] Datos recibidos desde sessionStorage:', parsedData);
+          setReservaCompletada(parsedData);
           // Limpiar después de usar
           sessionStorage.removeItem('reservaCompletada');
         } else {
-          setError('No se encontraron datos de la reserva completada.');
-          return;
+          // Último intento: obtener desde el storage service
+          const completeData = storageService?.getCompleteReservationData?.();
+          if (completeData) {
+            console.log('[ReservaClienteExito] Datos recibidos desde storage service:', completeData);
+            setReservaCompletada(completeData);
+          } else {
+            console.warn('[ReservaClienteExito] No se encontraron datos de reserva en ninguna fuente');
+            setError('No se encontraron datos de la reserva completada.');
+            return;
+          }
         }
       }
-        // Asegurar que el storage se limpia después de mostrar el éxito
+      
+      // Asegurar que el storage se limpia después de mostrar el éxito
       if (storageService) {
         setTimeout(() => {
           try {
@@ -60,7 +68,7 @@ const ReservaClienteExito = () => {
         }, 1000);
       }
     } catch (err) {
-      console.error('Error al cargar los datos de la reserva:', err);
+      console.error('[ReservaClienteExito] Error al cargar los datos de la reserva:', err);
       setError('Error al cargar los datos de la reserva.');
     }
   }, [location.state, storageService]);
@@ -117,9 +125,9 @@ const ReservaClienteExito = () => {
   if (!reservaCompletada) {
     return <div className="loading">Cargando datos de la reserva...</div>;
   }
-
   // Extraer datos relevantes
   const { id, car, fechas, paymentOption, extras, detallesReserva, conductor, fechaPago, metodo_pago, importe_pagado_inicial, importe_pendiente_inicial, importe_pagado_extra, importe_pendiente_extra } = reservaCompletada;
+  
   // Formatear fecha de pago
   const fechaPagoFormateada = fechaPago ? new Date(fechaPago).toLocaleString() : 'No disponible';
 
@@ -127,6 +135,83 @@ const ReservaClienteExito = () => {
   const formatCurrency = (value) => {
     if (typeof value !== 'number') return '-';
     return value.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+  };
+
+  // Helper functions para extraer datos de manera segura
+  const getFechaRecogida = () => {
+    if (fechas?.recogida) return fechas.recogida;
+    if (fechas?.pickupDate) {
+      const date = new Date(fechas.pickupDate);
+      return date.toLocaleDateString('es-ES') + (fechas.pickupTime ? ` a las ${fechas.pickupTime}` : '');
+    }
+    return 'No especificada';
+  };
+
+  const getFechaDevolucion = () => {
+    if (fechas?.devolucion) return fechas.devolucion;
+    if (fechas?.dropoffDate) {
+      const date = new Date(fechas.dropoffDate);
+      return date.toLocaleDateString('es-ES') + (fechas.dropoffTime ? ` a las ${fechas.dropoffTime}` : '');
+    }
+    return 'No especificada';
+  };
+
+  const getLugarRecogida = () => {
+    // Intentar múltiples fuentes para el lugar de recogida
+    if (detallesReserva?.lugarRecogida?.nombre) return detallesReserva.lugarRecogida.nombre;
+    if (fechas?.pickupLocation?.nombre) return fechas.pickupLocation.nombre;
+    if (typeof fechas?.pickupLocation === 'string') return fechas.pickupLocation;
+    if (reservaCompletada.lugarRecogida?.nombre) return reservaCompletada.lugarRecogida.nombre;
+    return 'No especificado';
+  };
+  const getLugarDevolucion = () => {
+    // Intentar múltiples fuentes para el lugar de devolución
+    if (detallesReserva?.lugarDevolucion?.nombre) return detallesReserva.lugarDevolucion.nombre;
+    if (fechas?.dropoffLocation?.nombre) return fechas.dropoffLocation.nombre;
+    if (typeof fechas?.dropoffLocation === 'string') return fechas.dropoffLocation;
+    if (reservaCompletada.lugarDevolucion?.nombre) return reservaCompletada.lugarDevolucion.nombre;
+    return 'No especificado';
+  };
+
+  const getTotalPagado = () => {
+    // Intentar múltiples fuentes para el total pagado
+    if (detallesReserva?.precioTotal) return detallesReserva.precioTotal;
+    if (detallesReserva?.total) return detallesReserva.total;
+    if (reservaCompletada.precioTotal) return reservaCompletada.precioTotal;
+    if (reservaCompletada.precio_total) return reservaCompletada.precio_total;
+    return null;
+  };
+  const getConductorInfo = () => {
+    // Intentar múltiples fuentes para datos del conductor
+    const conductorData = conductor || reservaCompletada.conductorPrincipal || reservaCompletada.driver;
+    if (!conductorData) return 'No especificado';
+    
+    const nombre = conductorData.nombre || conductorData.name || '';
+    const apellido = conductorData.apellido || conductorData.apellidos || conductorData.surname || '';
+    const email = conductorData.email || '';
+    
+    return `${nombre} ${apellido} ${email ? `(${email})` : ''}`.trim();
+  };
+
+  const getExtrasInfo = () => {
+    // Intentar múltiples fuentes para extras
+    const extrasData = extras || reservaCompletada.extrasSeleccionados || reservaCompletada.extras || [];
+    
+    if (!Array.isArray(extrasData) || extrasData.length === 0) {
+      return <span>No se añadieron extras</span>;
+    }
+    
+    return (
+      <ul className="mb-0">
+        {extrasData.map((extra, idx) => {
+          const nombre = extra.nombre || extra.name || `Extra ${idx + 1}`;
+          const precio = extra.precio || extra.price || 0;
+          return (
+            <li key={idx}>{nombre} ({formatCurrency(precio)})</li>
+          );
+        })}
+      </ul>
+    );
   };
 
   // Renderizado principal
@@ -150,22 +235,20 @@ const ReservaClienteExito = () => {
                   <tr>
                     <th><FontAwesomeIcon icon={faCarSide} /> Vehículo</th>
                     <td>{car?.marca} {car?.modelo} ({car?.matricula})</td>
-                  </tr>
-                  <tr>
+                  </tr>                  <tr>
                     <th><FontAwesomeIcon icon={faCalendarAlt} /> Fechas</th>
-                    <td>{fechas?.recogida} - {fechas?.devolucion}</td>
+                    <td>{getFechaRecogida()} - {getFechaDevolucion()}</td>
                   </tr>
                   <tr>
                     <th><FontAwesomeIcon icon={faMapMarkerAlt} /> Recogida</th>
-                    <td>{detallesReserva?.lugarRecogida?.nombre}</td>
+                    <td>{getLugarRecogida()}</td>
                   </tr>
                   <tr>
                     <th><FontAwesomeIcon icon={faMapMarkerAlt} /> Devolución</th>
-                    <td>{detallesReserva?.lugarDevolucion?.nombre}</td>
-                  </tr>
-                  <tr>
+                    <td>{getLugarDevolucion()}</td>
+                  </tr>                  <tr>
                     <th><FontAwesomeIcon icon={faUser} /> Conductor</th>
-                    <td>{conductor?.nombre} {conductor?.apellido} ({conductor?.email})</td>
+                    <td>{getConductorInfo()}</td>
                   </tr>
                   <tr>
                     <th><FontAwesomeIcon icon={faShieldAlt} /> Opción de pago</th>
@@ -174,24 +257,12 @@ const ReservaClienteExito = () => {
                   <tr>
                     <th><FontAwesomeIcon icon={faClock} /> Fecha de pago</th>
                     <td>{fechaPagoFormateada}</td>
-                  </tr>
-                  <tr>
+                  </tr>                  <tr>
                     <th>Extras</th>
-                    <td>
-                      {extras && extras.length > 0 ? (
-                        <ul className="mb-0">
-                          {extras.map((extra, idx) => (
-                            <li key={idx}>{extra.nombre} ({formatCurrency(extra.precio)})</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span>No se añadieron extras</span>
-                      )}
-                    </td>
-                  </tr>
-                  <tr>
+                    <td>{getExtrasInfo()}</td>
+                  </tr><tr>
                     <th>Total pagado</th>
-                    <td>{formatCurrency(detallesReserva?.precioTotal)}</td>
+                    <td>{formatCurrency(getTotalPagado())}</td>
                   </tr>
                   <tr>
                     <th>Método de pago inicial</th>

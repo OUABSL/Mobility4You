@@ -323,13 +323,14 @@ LOGGING = {
 
 
 # Configuración de Stripe
-STRIPE_PUBLISHABLE_KEY = env('STRIPE_PUBLISHABLE_KEY', default='pk_test_...')
-STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='sk_test_...')
-STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='whsec_...')
+STRIPE_PUBLISHABLE_KEY = env('STRIPE_PUBLISHABLE_KEY', default='pk_test_placeholder')
+STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='sk_test_placeholder')
+STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='whsec_placeholder')
 
 # URLs para redirecciones de Stripe
 STRIPE_SUCCESS_URL = env('STRIPE_SUCCESS_URL', default=f'{FRONTEND_URL}/reservation-confirmation/exito')
 STRIPE_CANCEL_URL = env('STRIPE_CANCEL_URL', default=f'{FRONTEND_URL}/reservation-confirmation/error')
+
 
 # Configuración específica de Stripe
 STRIPE_CONFIG = {
@@ -339,13 +340,18 @@ STRIPE_CONFIG = {
         'allow_redirects': 'never'  # Para mantener el flujo en la app
     },
     'capture_method': 'automatic',  # Captura automática
-    'confirmation_method': 'manual',  # Confirmación manual desde frontend
+    'confirmation_method': 'automatic',  # Confirmación automatic desde frontend
     'currency': 'eur',
     'payment_method_types': ['card'],
     'statement_descriptor': 'MOBILITY4YOU',  # Máximo 22 caracteres
     'statement_descriptor_suffix': None,
     'application_fee_amount': None,  # Para pagos conectados si aplica
 }
+
+# Configuración faltante para AUTH_USER_MODEL
+AUTH_USER_MODEL = 'api.Usuario'  # Usar el modelo Usuario personalizado
+
+
 
 # Configuración de logging para Stripe
 LOGGING['loggers']['stripe'] = {
@@ -466,3 +472,9 @@ elif DJANGO_ENV == 'development':
     
     # Logging más verboso en desarrollo
     LOGGING['loggers']['stripe']['level'] = 'DEBUG'
+    
+
+
+# AGREGAR configuración de zona horaria para España
+TIME_ZONE = 'Europe/Madrid'
+USE_TZ = True

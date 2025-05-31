@@ -41,7 +41,7 @@ class VehiculoListSerializer(serializers.ModelSerializer):
             'id', 'categoria', 'grupo', 'combustible', 'marca', 'modelo', 
             'matricula', 'anio', 'color', 'num_puertas', 'num_pasajeros',
             'capacidad_maletero', 'disponible', 'activo', 'fianza', 
-            'kilometraje', 'imagenes', 'precio_dia', 'imagenPrincipal', 'descripcion'
+            'kilometraje', 'imagenes', 'precio_dia', 'imagenPrincipal'
         ]
     
     def get_imagenPrincipal(self, obj):
@@ -60,7 +60,6 @@ class VehiculoDetailSerializer(serializers.ModelSerializer):
     imagenes = ImagenVehiculoSerializer(many=True, read_only=True)
     precio_dia = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     imagenPrincipal = serializers.SerializerMethodField()
-    descripcion = serializers.CharField(read_only=True)
     
     class Meta:
         model = Vehiculo

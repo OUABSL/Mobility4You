@@ -85,13 +85,17 @@
     display: flex;
     align-items: center;
   }
-  
-  .suggestion-detail {
+    .suggestion-detail {
     flex: 1;
     display: none;
     padding-left: 10px;
     font-size: 0.85rem;
     color: #555;
+  }
+  
+  .suggestion-detail p {
+    margin: 0;
+    line-height: 1.3;
   }
   
   .suggestion-option:hover .suggestion-detail {

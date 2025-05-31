@@ -104,16 +104,15 @@ const step1_SimulateCarSelection = () => {
 /**
  * Paso 2: Verificar carga de datos en página de extras
  */
-const step2_VerifyExtrasPage = () => {
+const step2_VerifyExtrasPage = async () => {
   log(2, 'Verificando carga de datos en página de extras...');
   
   try {
     // Verificar que ReservationStorageService esté disponible
     if (typeof window.getReservationStorageService === 'function') {
       const storageService = window.getReservationStorageService();
-      
-      // Verificar datos cargados
-      const completeData = storageService.getCompleteReservationData();
+        // Verificar datos cargados
+      const completeData = await storageService.getCompleteReservationData();
       log(2, 'Datos completos cargados:', completeData);
       
       // Verificar reserva activa
@@ -174,15 +173,14 @@ const step3_SimulateExtrasSelection = () => {
 /**
  * Paso 4: Verificar carga de datos en página de conductor
  */
-const step4_VerifyConductorPage = () => {
+const step4_VerifyConductorPage = async () => {
   log(4, 'Verificando carga de datos en página de conductor...');
   
   try {
     if (typeof window.getReservationStorageService === 'function') {
       const storageService = window.getReservationStorageService();
-      
-      // Verificar datos completos
-      const completeData = storageService.getCompleteReservationData();
+        // Verificar datos completos
+      const completeData = await storageService.getCompleteReservationData();
       log(4, 'Datos completos en página conductor:', completeData);
       
       // Verificar reserva activa
@@ -213,7 +211,7 @@ const step4_VerifyConductorPage = () => {
 /**
  * Paso 5: Simular entrada de datos del conductor
  */
-const step5_SimulateConductorData = () => {
+const step5_SimulateConductorData = async () => {
   log(5, 'Simulando entrada de datos del conductor...');
   
   try {
@@ -227,9 +225,8 @@ const step5_SimulateConductorData = () => {
       // Verificar que se guardaron
       const conductor = storageService.getConductorData();
       log(5, 'Datos conductor guardados:', conductor);
-      
-      // Verificar datos completos finales
-      const completeData = storageService.getCompleteReservationData();
+        // Verificar datos completos finales
+      const completeData = await storageService.getCompleteReservationData();
       log(5, 'Datos completos finales:', completeData);
       
       logSuccess(5, 'Datos del conductor guardados correctamente');

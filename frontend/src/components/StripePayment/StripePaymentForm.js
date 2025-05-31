@@ -393,8 +393,9 @@ const StripePaymentForm = ({
         setConfigError(null);
         
         if (DEBUG_MODE) {
-          // En modo debug, usar clave de prueba
-          setStripePromise(loadStripe('pk_test_51234567890abcdef'));
+          // CORREGIR: usar clave de entorno en lugar de hardcoded
+          const testKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder';
+          setStripePromise(loadStripe(testKey));
         } else {
           // Obtener configuración del backend
           const config = await getStripeConfig();
@@ -410,8 +411,8 @@ const StripePaymentForm = ({
       }
     };
 
-    initializeStripe();
-  }, [onPaymentError]);
+  initializeStripe();
+}, [onPaymentError]);
 
   if (configLoading) {
     return (

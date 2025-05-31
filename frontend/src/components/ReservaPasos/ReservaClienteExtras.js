@@ -17,7 +17,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../../css/ReservaClienteExtras.css';
 import { createReservation, editReservation, findReservation, DEBUG_MODE, getExtrasDisponibles } from '../../services/reservationServices';
-import { getReservationStorageService } from '../../services/reservationStorageService';
+import { getReservationStorageService, autoRecoverReservation, initializeStorageService } from '../../services/reservationStorageService';
 import useReservationTimer from '../../hooks/useReservationTimer';
 import ReservationTimerModal from './ReservationTimerModal';
 import ReservationTimerIndicator from './ReservationTimerIndicator';
@@ -113,11 +113,12 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     } 
   }, []);  // Cargar datos de reserva del storage al iniciar
   useEffect(() => {
-    try {
-      console.log('[ReservaClienteExtras] Cargando datos de reserva');
-      
-      // Intentar obtener datos del storage service primero
-      let storedData = storageService.getCompleteReservationData();      // Si no hay datos en el storage service, verificar sessionStorage legacy
+    const loadReservationData = async () => {
+      try {
+        console.log('[ReservaClienteExtras] Cargando datos de reserva');
+        
+        // Intentar obtener datos del storage service primero
+        let storedData = await storageService.getCompleteReservationData();// Si no hay datos en el storage service, verificar sessionStorage legacy
       if (!storedData) {
         const legacyData = sessionStorage.getItem('reservaData');
         if (legacyData) {
@@ -125,9 +126,17 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
           try {
             const parsedData = JSON.parse(legacyData);
             
-            // Guardar datos usando el servicio de storage para inicializar correctamente
+            // Debug: mostrar estructura de datos legacy
+            console.log('[ReservaClienteExtras] Datos legacy a migrar:', {
+              hasCar: !!(parsedData.car || parsedData.vehiculo),
+              hasFechas: !!parsedData.fechas,
+              hasPickupLocation: !!(parsedData.fechas && parsedData.fechas.pickupLocation),
+              hasTopLevelLocation: !!(parsedData.pickupLocation || parsedData.lugarRecogida),
+              estructura: Object.keys(parsedData)
+            });
+              // Guardar datos usando el servicio de storage para inicializar correctamente
             storageService.saveReservationData(parsedData);
-            storedData = storageService.getCompleteReservationData();
+            storedData = await storageService.getCompleteReservationData();
             
             // Inicializar timer si no está activo
             if (!timerActive) {
@@ -138,8 +147,35 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
             console.log('[ReservaClienteExtras] Migración legacy completada exitosamente');
           } catch (migrationError) {
             console.error('[ReservaClienteExtras] Error en migración legacy:', migrationError);
-            // Limpiar datos legacy corruptos
-            sessionStorage.removeItem('reservaData');
+            
+            // Intentar recuperación automática si es un error de validación
+            if (migrationError.message.includes('ubicación')) {
+              console.log('[ReservaClienteExtras] Intentando recuperación con datos de ubicación mínimos');
+              try {
+                const parsedData = JSON.parse(legacyData);
+                
+                // Agregar ubicación básica si no existe
+                if (!parsedData.pickupLocation && !parsedData.lugarRecogida && parsedData.fechas) {
+                  if (parsedData.fechas.pickupLocation) {
+                    parsedData.pickupLocation = parsedData.fechas.pickupLocation;
+                  } else {
+                    parsedData.pickupLocation = 'Ubicación no especificada';
+                  }
+                }
+                  // Intentar migrar nuevamente
+                storageService.saveReservationData(parsedData);
+                storedData = await storageService.getCompleteReservationData();
+                
+                console.log('[ReservaClienteExtras] Recuperación automática exitosa');
+              } catch (recoveryError) {
+                console.error('[ReservaClienteExtras] Error en recuperación automática:', recoveryError);
+                // Limpiar datos legacy corruptos
+                sessionStorage.removeItem('reservaData');
+              }
+            } else {
+              // Limpiar datos legacy corruptos para otros tipos de error
+              sessionStorage.removeItem('reservaData');
+            }
           }
         }
       }
@@ -159,14 +195,15 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
         hasTimer: timerActive,
         extrasCount: existingExtras.length,
         step: storedData.currentStep
-      });
-      
-    } catch (err) {
-      console.error('[ReservaClienteExtras] Error al cargar datos de reserva:', err);
-      setError('Error al cargar datos de reserva. Por favor, inicie una nueva búsqueda.');
-    }
+      });        
+      } catch (err) {
+        console.error('[ReservaClienteExtras] Error al cargar datos de reserva:', err);
+        setError('Error al cargar datos de reserva. Por favor, inicie una nueva búsqueda.');
+      }
+    };
+    
+    loadReservationData();
   }, [storageService, startTimer, timerActive]);
-
   // Cargar extras disponibles desde la API
   useEffect(() => {
     const cargarExtras = async () => {
@@ -179,18 +216,48 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
           ...extra,
           imagen: getImageForExtra(extra)
         }));
+          setExtrasDisponibles(extrasConImagen);
         
-        setExtrasDisponibles(extrasConImagen);
       } catch (err) {
         console.error('Error al cargar extras:', err);
         setError(`Error al cargar extras: ${err.message}`);
       } finally {
         setLoadingExtras(false);
       }
-    };
-
-    cargarExtras();
-  }, []);
+    };cargarExtras();
+  }, []); // Solo cargar una vez al montar el componente
+  
+  // Convertir extras seleccionados de IDs a objetos completos cuando se cargan los extras disponibles
+  useEffect(() => {
+    if (extrasDisponibles.length > 0 && extrasSeleccionados.length > 0) {
+      const needsConversion = extrasSeleccionados.some(extra => 
+        typeof extra !== 'object' || !extra.nombre || !extra.precio
+      );
+      
+      if (needsConversion) {
+        const extrasConvertidos = extrasSeleccionados.map(extra => {
+          // Si ya es un objeto completo, mantenerlo
+          if (typeof extra === 'object' && extra.id && extra.nombre && extra.precio) {
+            return extra;
+          }
+          // Si es un ID o un objeto incompleto, convertirlo
+          const extraId = typeof extra === 'object' ? extra.id : extra;
+          const extraCompleto = extrasDisponibles.find(e => e.id === extraId);
+          return extraCompleto || extra; // Mantener el original si no se encuentra
+        }).filter(extra => extra); // Filtrar valores nulos/undefined
+        
+        console.log('[ReservaClienteExtras] Convirtiendo extras de IDs a objetos:', {
+          before: extrasSeleccionados.map(e => typeof e === 'object' ? `${e.id}(obj)` : e),
+          after: extrasConvertidos.map(e => typeof e === 'object' ? `${e.id}(obj)` : e),
+          converted: needsConversion
+        });
+        
+        if (JSON.stringify(extrasSeleccionados) !== JSON.stringify(extrasConvertidos)) {
+          setExtrasSeleccionados(extrasConvertidos);
+        }
+      }
+    }
+  }, [extrasDisponibles]); // Solo ejecutar cuando cambien los extras disponibles
 
   // Preserve scroll position when navigating from car selection
   useEffect(() => {
@@ -206,15 +273,21 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   // Calcular fechas y días de alquiler
   const diasAlquiler = reservaData?.fechas ? 
     Math.ceil((new Date(reservaData.fechas.dropoffDate) - new Date(reservaData.fechas.pickupDate)) / (1000 * 60 * 60 * 24)) : 
-    3; // Valor por defecto
-  // Efecto para calcular y actualizar el total de extras
+    3; // Valor por defecto  // Efecto para calcular y actualizar el total de extras
   useEffect(() => {
-    const total = extrasSeleccionados.reduce((sum, extraId) => {
-      const extra = extrasDisponibles.find(e => e.id === extraId);
-      return sum + (extra ? Number(extra.precio) * diasAlquiler : 0);
+    const total = extrasSeleccionados.reduce((sum, extra) => {
+      // Manejar tanto objetos completos como IDs legacy
+      if (typeof extra === 'object' && extra.precio) {
+        return sum + (Number(extra.precio) * diasAlquiler);
+      } else if (typeof extra === 'number' || typeof extra === 'string') {
+        // Buscar el extra en la lista disponible (compatibilidad con datos legacy)
+        const extraCompleto = extrasDisponibles.find(e => e.id === extra);
+        return sum + (extraCompleto ? Number(extraCompleto.precio) * diasAlquiler : 0);
+      }
+      return sum;
     }, 0);
     setTotalExtras(total);
-  }, [extrasSeleccionados, diasAlquiler]);
+  }, [extrasSeleccionados, extrasDisponibles, diasAlquiler]);
   // Efecto para calcular los detalles de la reserva
   useEffect(() => {
     if (!reservaData) return;
@@ -229,14 +302,27 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     };
     setDetallesReserva(detalles);
   }, [reservaData, diasAlquiler, totalExtras]);
-
   // Manejador para seleccionar/deseleccionar extras
   const toggleExtra = (extraId) => {
-    setExtrasSeleccionados(prev => 
-      prev.includes(extraId)
-        ? prev.filter(id => id !== extraId)
-        : [...prev, extraId]
-    );
+    setExtrasSeleccionados(prev => {
+      const isSelected = prev.some(extra => 
+        typeof extra === 'object' ? extra.id === extraId : extra === extraId
+      );
+      
+      if (isSelected) {
+        // Remover el extra (maneja tanto IDs como objetos)
+        return prev.filter(extra => 
+          typeof extra === 'object' ? extra.id !== extraId : extra !== extraId
+        );
+      } else {
+        // Agregar el extra completo
+        const extraCompleto = extrasDisponibles.find(e => e.id === extraId);
+        if (extraCompleto) {
+          return [...prev, extraCompleto];
+        }
+        return prev;
+      }
+    });
   };
 
   // Manejador para volver a la selección de coches
@@ -271,16 +357,21 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       // Validar que tenemos datos básicos
       if (!reservaData.fechas || !reservaData.car) {
         throw new Error('Datos de reserva incompletos.');
-      }
+      }        // Intentar actualizar extras con manejo mejorado de errores
+      console.log('[ReservaClienteExtras] Guardando extras en storage:', {
+        extrasCount: extrasSeleccionados.length,
+        extrasTypes: extrasSeleccionados.map(e => typeof e === 'object' ? `${e.id}(obj:${e.nombre})` : `${e}(id)`),
+        hasCompleteObjects: extrasSeleccionados.every(e => typeof e === 'object' && e.nombre && e.precio)
+      });
       
-      // Intentar actualizar extras con manejo mejorado de errores
       try {
         await storageService.updateExtras(extrasSeleccionados);
       } catch (updateError) {
         console.error('[ReservaClienteExtras] Error al actualizar extras:', updateError);
         
         // Si falla por no tener reserva activa, intentar re-inicializar
-        if (updateError.message.includes('No hay reserva activa')) {
+        if (updateError.message.includes('No hay reserva activa') || 
+            updateError.message.includes('No hay datos de reserva')) {
           console.log('[ReservaClienteExtras] Intentando reinicializar reserva para extras');
           
           try {
@@ -291,7 +382,20 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
             console.log('[ReservaClienteExtras] Reserva reinicializada y extras actualizados exitosamente');
           } catch (retryError) {
             console.error('[ReservaClienteExtras] Error en reintento:', retryError);
-            throw new Error('Error al guardar extras. Por favor, inténtelo de nuevo.');
+            
+            // Último intento con recuperación automática
+            try {
+              const recovered = autoRecoverReservation();
+              if (recovered) {
+                await storageService.updateExtras(extrasSeleccionados);
+                console.log('[ReservaClienteExtras] Extras actualizados tras recuperación automática');
+              } else {
+                throw new Error('Error al guardar extras. Por favor, inténtelo de nuevo.');
+              }
+            } catch (finalError) {
+              console.error('[ReservaClienteExtras] Error final:', finalError);
+              throw new Error('Error al guardar extras. Por favor, inténtelo de nuevo.');
+            }
           }
         } else {
           throw updateError;
@@ -409,10 +513,13 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                       </Badge>
                     </div>
                   </div>
-                  
-                  <div className="fecha-reserva mb-2">
+                    <div className="fecha-reserva mb-2">
                     <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-                    <strong>Recogida:</strong> {fechas?.pickupLocation || "Aeropuerto de Málaga"}
+                    <strong>Recogida:</strong> {
+                      fechas?.pickupLocation 
+                        ? (typeof fechas.pickupLocation === 'object' ? fechas.pickupLocation.nombre : fechas.pickupLocation)
+                        : "Aeropuerto de Málaga"
+                    }
                   </div>
                   <div className="d-flex mb-3">
                     <div className="me-3">
@@ -423,11 +530,13 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                       <FontAwesomeIcon icon={faClock} className="me-1" />
                       {fechas?.pickupTime || "12:00"}
                     </div>
-                  </div>
-
-                  <div className="fecha-reserva mb-2">
+                  </div>                  <div className="fecha-reserva mb-2">
                     <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-                    <strong>Devolución:</strong> {fechas?.dropoffLocation || "Aeropuerto de Málaga"}
+                    <strong>Devolución:</strong> {
+                      fechas?.dropoffLocation 
+                        ? (typeof fechas.dropoffLocation === 'object' ? fechas.dropoffLocation.nombre : fechas.dropoffLocation)
+                        : "Aeropuerto de Málaga"
+                    }
                   </div>
                   <div className="d-flex mb-3">
                     <div className="me-3">
@@ -450,22 +559,22 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                   {detallesReserva && (
                     <div className="detalles-precio">                      <div className="d-flex justify-content-between mb-2">
                         <span>Precio base ({diasAlquiler} días):</span>
-                        <span>{Number(detallesReserva.precioCocheBase).toFixed(2)}€</span>
+                        <span>{(Number(detallesReserva.precioCocheBase) || 0).toFixed(2)}€</span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
                         <span>IVA (21%):</span>
-                        <span>{Number(detallesReserva.iva).toFixed(2)}€</span>
+                        <span>{(Number(detallesReserva.iva) || 0).toFixed(2)}€</span>
                       </div>
                       {totalExtras > 0 && (
                         <div className="d-flex justify-content-between mb-2">
                           <span>Extras:</span>
-                          <span>{Number(totalExtras).toFixed(2)}€</span>
+                          <span>{(Number(totalExtras) || 0).toFixed(2)}€</span>
                         </div>
                       )}
                       <hr />
                       <div className="d-flex justify-content-between fw-bold">
                         <span>Total:</span>
-                        <span>{Number(detallesReserva.total).toFixed(2)}€</span>
+                        <span>{(Number(detallesReserva.total) || 0).toFixed(2)}€</span>
                       </div>
                     </div>
                   )}
@@ -474,41 +583,46 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
             </Col>
 
             {/* Columna derecha: Selección de extras */}
-            <Col md={7} xs={12} className='columna-derecha'>
+            <Col md={7} xs={12} className='columna-derecha d-flex flex-column justify-content-between'> 
               <h5 className="mb-3">
                 <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
                 Añade extras a tu reserva (opcional)
               </h5>
               
-              <Row>
-                {extrasDisponibles.map(extra => (
-                  <Col md={6} xs={6} className="mb-3" key={extra.id}>
-                    <Card 
-                      className={`extra-card ${extrasSeleccionados.includes(extra.id) ? 'selected' : ''}`}
-                      onClick={() => toggleExtra(extra.id)}
-                    >
-                      <div className="extra-card-inner">
-                        <div className="extra-img-container">
-                          <img src={extra.imagen} alt={extra.nombre} className="extra-img" />
-                          <div className="extra-check">
-                            <FontAwesomeIcon 
-                              icon={extrasSeleccionados.includes(extra.id) ? faCheck : faTimes} 
-                              className={extrasSeleccionados.includes(extra.id) ? 'text-success' : ''} 
-                            />
+              <Row>                {extrasDisponibles.map(extra => {
+                  // Verificar si el extra está seleccionado (maneja tanto objetos como IDs)
+                  const isSelected = extrasSeleccionados.some(selectedExtra => 
+                    typeof selectedExtra === 'object' ? selectedExtra.id === extra.id : selectedExtra === extra.id
+                  );
+                  
+                  return (
+                    <Col md={6} xs={6} className="mb-3" key={extra.id}>
+                      <Card 
+                        className={`extra-card ${isSelected ? 'selected' : ''}`}
+                        onClick={() => toggleExtra(extra.id)}
+                      >
+                        <div className="extra-card-inner">
+                          <div className="extra-img-container">
+                            <img src={extra.imagen} alt={extra.nombre} className="extra-img" />
+                            <div className="extra-check">
+                              <FontAwesomeIcon 
+                                icon={isSelected ? faCheck : faTimes} 
+                                className={isSelected ? 'text-success' : ''} 
+                              />
+                            </div>
+                          </div>
+                          <div className="extra-details">
+                            <h6>{extra.nombre}</h6>
+                            <p className="extra-description">{extra.descripcion}</p>                            <p className="extra-price">
+                              {(Number(extra.precio) || 0).toFixed(2)}€/día · 
+                              <strong> {((Number(extra.precio) || 0) * diasAlquiler).toFixed(2)}€</strong> total
+                            </p>
                           </div>
                         </div>
-                        <div className="extra-details">
-                          <h6>{extra.nombre}</h6>
-                          <p className="extra-description">{extra.descripcion}</p>                          
-                          <p className="extra-price">
-                            {Number(extra.precio).toFixed(2)}€/día · 
-                            <strong> {(Number(extra.precio) * diasAlquiler).toFixed(2)}€</strong> total
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  </Col>
-                ))}
+                      </Card>
+                    </Col>
+                  );
+                })}
               </Row>              
               <div className="mt-4 d-flex justify-content-between">
                 <div className="d-flex gap-2">
