@@ -29,8 +29,7 @@ import {
   saveSearchParams, 
   getStoredSearchParams,
   validateSearchForm,
-  locationsData,
-  availableTimes as apiAvailableTimes
+  availableTimes
 } from '../services/searchServices';
 
 
@@ -38,8 +37,8 @@ import '../css/FormBusqueda.css';
 import { is } from 'date-fns/locale';
 
 
-// Opciones de horarios disponibles (podrías importarlos desde un módulo común)
-const availableTimes = apiAvailableTimes;
+// Opciones de horarios disponibles (importados desde searchServices)
+// const availableTimes = availableTimes; // Ya disponible desde el import
 
 
 // Tipos de búsqueda (vehículos)
@@ -110,11 +109,12 @@ const FormBusqueda = ({
   const [showDropoffLocation, setShowDropoffLocation] = useState(initialValues.showDropoffLocation || false);
   // Estado para determinar si la ubicación de recogida y devolución son iguales
   const [sameLocation, setSameLocation] = useState(true);
-
   // Estado para las sugerencias de ubicaciones de recogida
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
   // Estado para las sugerencias de ubicaciones de devolución
   const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
+  // Estado para las ubicaciones cargadas desde la API
+  const [availableLocations, setAvailableLocations] = useState([]);
 
   // Estado para controlar si el formulario está expandido o colapsado
   const [expanded, setExpanded] = useState(!collapsible);
@@ -153,14 +153,25 @@ const FormBusqueda = ({
 
   // Navegación
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Simular llamada a API para tipos y grupos
+  const location = useLocation();  // Simular llamada a API para tipos y grupos
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        // Cargar ubicaciones
+        console.log('🔍 [FormBusqueda] Cargando ubicaciones...');
+        
+        // Cargar ubicaciones desde la API
         const locationsData = await fetchLocations();
+        
+        console.log('✅ [FormBusqueda] Ubicaciones cargadas:', locationsData);
+        console.log('📊 [FormBusqueda] Tipo de datos:', typeof locationsData, Array.isArray(locationsData));
+        
+        // Verificar la estructura de cada ubicación
+        if (Array.isArray(locationsData) && locationsData.length > 0) {
+          console.log('🔍 [FormBusqueda] Primera ubicación:', locationsData[0]);
+          console.log('🔍 [FormBusqueda] Estructura de la primera ubicación:', Object.keys(locationsData[0]));
+        }
+        
+        setAvailableLocations(locationsData);
         
         // Verificar si hay datos guardados en sessionStorage
         const storedParams = getStoredSearchParams();
@@ -176,6 +187,7 @@ const FormBusqueda = ({
           setMayor21(storedParams.mayor21 || false);
         }
       } catch (error) {
+        console.error('❌ [FormBusqueda] Error cargando ubicaciones:', error);
         showWarning('No se pudieron cargar todas las ubicaciones. Por favor, intenta más tarde.', {
           timeout: 7000
         });
@@ -228,25 +240,42 @@ const FormBusqueda = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
   // Función para manejar el cambio en los campos de ubicación y generar sugerencias
   const handleLocationChange = (e, setLocation, setSuggestions) => {
     const value = e.target.value;
     setLocation(value);
-    if (value) {
-      // Filtrar las ubicaciones recibidas por props
-      const filteredLocations = locations.filter(location =>
-        location.nombre.toLowerCase().includes(value.toLowerCase())
+    if (value && value.length >= 2) {
+      // Filtrar las ubicaciones cargadas desde la API
+      const filteredLocations = availableLocations.filter(location =>
+        location.nombre?.toLowerCase().includes(value.toLowerCase()) ||
+        location.direccion?.ciudad?.toLowerCase().includes(value.toLowerCase()) ||
+        location.direccion?.calle?.toLowerCase().includes(value.toLowerCase())
       );
       setSuggestions(filteredLocations);
     } else {
       setSuggestions([]);
     }
-  };
-
-  // Función para renderizar las sugerencias de ubicaciones
+  };  // Función para renderizar las sugerencias de ubicaciones
   const renderSuggestions = (suggestions, setLocation, setSuggestions) => {
+    // Debug: Verificar la estructura de datos
+    console.log('🔍 [FormBusqueda] renderSuggestions - datos recibidos:', suggestions);
+    
+    // Verificar que suggestions sea un array válido
+    if (!Array.isArray(suggestions)) {
+      console.error('❌ [FormBusqueda] suggestions no es un array:', suggestions);
+      return [];
+    }
+    
     return suggestions.map((location, index) => {
+      // Debug: Verificar cada objeto de ubicación
+      console.log(`🔍 [FormBusqueda] Procesando ubicación ${index}:`, location);
+      
+      // Validar que location sea un objeto válido
+      if (!location || typeof location !== 'object') {
+        console.error('❌ [FormBusqueda] Ubicación inválida en índice', index, ':', location);
+        return null;
+      }
+      
       // Mapear iconos de string a componentes
       const getIcon = (iconName) => {
         switch(iconName) {
@@ -256,27 +285,57 @@ const FormBusqueda = ({
         }
       };
 
+      // Construir la dirección completa manejando valores vacíos
+      const buildAddress = (direccion) => {
+        if (!direccion) return '';
+        
+        const parts = [];
+        if (direccion.calle) parts.push(direccion.calle);
+        if (direccion.ciudad) parts.push(direccion.ciudad);
+        if (direccion.codigoPostal) parts.push(direccion.codigoPostal);
+        
+        return parts.join(', ');
+      };
+
+      const fullAddress = buildAddress(location.direccion);
+
       return (
         <div
           key={index}
           className="suggestion-option"
           onClick={() => {
-            setLocation(location.nombre);
+            setLocation(location.nombre || '');
             setSuggestions([]);
           }}
         >
           <div className="suggestion-main">
-            <FontAwesomeIcon className="me-2" icon={getIcon(location.icono_url)} /> 
-            {location.nombre}
+            <FontAwesomeIcon 
+              className="me-2" 
+              icon={getIcon(location.icono_url)} 
+            /> 
+            <strong>{location.nombre || 'Ubicación sin nombre'}</strong>
           </div>
-          <div className="suggestion-detail">
-            <p><strong>Dirección:</strong> {location.direccion?.calle}, {location.direccion?.ciudad}</p>
-            <p><strong>Teléfono:</strong> {location.telefono}</p>
-            <p><strong>Email:</strong> {location.email}</p>
-          </div>
-        </div>
+          {(fullAddress || location.telefono || location.email) && (
+            <div className="suggestion-detail">
+              {fullAddress && (
+                <p className="mb-1">
+                  <small><strong>Dirección:</strong> {fullAddress}</small>
+                </p>
+              )}
+              {location.telefono && (
+                <p className="mb-1">
+                  <small><strong>Teléfono:</strong> {location.telefono}</small>
+                </p>
+              )}
+              {location.email && (
+                <p className="mb-0">
+                  <small><strong>Email:</strong> {location.email}</small>
+                </p>
+              )}
+            </div>
+          )}        </div>
       );
-    });
+    }).filter(Boolean); // Filtrar elementos nulos o undefined
   };
 
   // Función para guardar las fechas seleccionadas en el calendario modal
@@ -427,17 +486,16 @@ const FormBusqueda = ({
                     placeholder="Aeropuerto, ciudad o dirección"
                     value={pickupLocation}
                     onChange={(e) => handleLocationChange(e, setPickupLocation, setPickupSuggestions)}
-                    onFocus={() => setPickupSuggestions(locations)}
+                    onFocus={() => setPickupSuggestions(availableLocations)}
                     autoComplete="off"
                   />
                   
                   {pickupLocation && (
                     <div className="reset-search position-absolute" style={{ top: '50%', right: '10px', cursor: 'pointer' }}>
                     <FontAwesomeIcon
-                      icon={faTimes}
-                      onClick={() => {
+                      icon={faTimes}                    onClick={() => {
                       setPickupLocation(''); 
-                      setPickupSuggestions(locations);}
+                      setPickupSuggestions(availableLocations);}
                       }
                     />
                     </div>
@@ -484,17 +542,16 @@ const FormBusqueda = ({
                     placeholder="Aeropuerto, ciudad o dirección"
                     value={dropoffLocation}
                     onChange={(e) => handleLocationChange(e, setDropoffLocation, setDropoffSuggestions)}
-                    onFocus={() => setDropoffSuggestions(locations)}
+                    onFocus={() => setDropoffSuggestions(availableLocations)}
                     autoComplete="off"
                     />
                     {dropoffLocation && (
                     <div className="reset-search position-absolute" style={{ top: '50%', right: '10px', cursor: 'pointer' }}>
                       <FontAwesomeIcon
                       icon={faTimes}
-                      className="reset-search"
-                      onClick={() => {
-                        setPickupLocation(''); 
-                        setPickupSuggestions(locations);
+                      className="reset-search"                      onClick={() => {
+                        setDropoffLocation(''); 
+                        setDropoffSuggestions(availableLocations);
                       }}
                       />
                     </div>

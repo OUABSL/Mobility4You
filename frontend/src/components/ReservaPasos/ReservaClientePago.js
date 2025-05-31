@@ -70,14 +70,14 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [reservaData, setReservaData] = useState(null);
-  // Cargar datos de reserva del storage service al iniciar
+  const [reservaData, setReservaData] = useState(null);  // Cargar datos de reserva del storage service al iniciar
   useEffect(() => {
-    try {
-      let storedData;
-      if (modoDiferencia && reservaId) {
-        // Para modo diferencia, intentar cargar datos existentes
-        const completeData = storageService.getCompleteReservationData();
+    const loadReservationData = async () => {
+      try {
+        let storedData;
+        if (modoDiferencia && reservaId) {
+          // Para modo diferencia, intentar cargar datos existentes
+          const completeData = await storageService.getCompleteReservationData();
         if (completeData && completeData.id === reservaId) {
           setReservaData({ ...completeData, diferenciaPendiente: diferencia });
         } else if (DEBUG_MODE) {
@@ -91,20 +91,21 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
           }
         } else {
           setError('No se encontraron datos de reserva para pago de diferencia.');
-        }
-      } else {
-        // Modo normal - cargar datos completos del storage service
-        const completeData = storageService.getCompleteReservationData();
+        }        } else {
+          // Modo normal - cargar datos completos del storage service
+          const completeData = await storageService.getCompleteReservationData();
         if (!completeData) {
           setError('No se encontraron datos de reserva.');
           return;
+        }        setReservaData(completeData);
         }
-        setReservaData(completeData);
+      } catch (err) {
+        logError('Error al cargar datos de reserva', err);
+        setError('Error al cargar datos de reserva.');
       }
-    } catch (err) {
-      logError('Error al cargar datos de reserva', err);
-      setError('Error al cargar datos de reserva.');
-    }
+    };
+    
+    loadReservationData();
   }, [diferencia, reservaId, modoDiferencia, storageService]);
 
   const handleVolver = () => {
@@ -170,13 +171,25 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
       if (timerActive && typeof pauseTimer === 'function') {
         pauseTimer();
       }
-      
-      // Calcular importe a pagar
+        // Calcular importe a pagar con múltiples fallbacks para evitar pérdida de datos
       let importeAPagar = 0;
       if (modoDiferencia && diferencia) {
         importeAPagar = diferencia;
-      } else if (reservaData.detallesReserva && reservaData.detallesReserva.total) {
-        importeAPagar = reservaData.detallesReserva.total;
+      } else {
+        // Múltiples fuentes para el importe total
+        importeAPagar = reservaData.detallesReserva?.total || 
+                       reservaData.precioTotal || 
+                       reservaData.precio_total || 
+                       reservaData.importe_pendiente_inicial ||
+                       0;
+        
+        logInfo('Importe calculado desde múltiples fuentes', {
+          detallesReservaTotal: reservaData.detallesReserva?.total,
+          precioTotal: reservaData.precioTotal,
+          precio_total: reservaData.precio_total,
+          importe_pendiente_inicial: reservaData.importe_pendiente_inicial,
+          importeFinal: importeAPagar
+        });
       }
       
       logInfo('Importe calculado', { importeAPagar });
@@ -562,11 +575,10 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
                     
                     {/* RESUMEN DEL PAGO */}
                     <div className="payment-summary-box my-4 p-3 border rounded">
-                      <h6 className="mb-3">Resumen del Pago</h6>
-                      <div className="d-flex justify-content-between mb-2">
+                      <h6 className="mb-3">Resumen del Pago</h6>                      <div className="d-flex justify-content-between mb-2">
                         <span>Total a pagar:</span>
                         <span className="fw-bold">
-                          {(diferencia || reservaData.detallesReserva?.total || 0).toFixed(2)}€
+                          {(Number(diferencia) || Number(reservaData.detallesReserva?.total) || 0).toFixed(2)}€
                         </span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
@@ -639,10 +651,13 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
                       <p className="mb-0">{paymentOption === 'all-inclusive' ? 'All Inclusive' : 'Economy'}</p>
                     </div>
                   </div>
-                  
-                  <div className="fecha-reserva mb-2">
+                    <div className="fecha-reserva mb-2">
                     <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-                    <strong>Recogida:</strong> {fechas?.pickupLocation || "Aeropuerto de Málaga"}
+                    <strong>Recogida:</strong> {
+                      fechas?.pickupLocation 
+                        ? (typeof fechas.pickupLocation === 'object' ? fechas.pickupLocation.nombre : fechas.pickupLocation)
+                        : "Aeropuerto de Málaga"
+                    }
                   </div>
                   <div className="d-flex mb-3">
                     <div className="me-3">
@@ -653,11 +668,13 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
                       <FontAwesomeIcon icon={faClock} className="me-1" />
                       {fechas?.pickupTime || "12:00"}
                     </div>
-                  </div>
-
-                  <div className="fecha-reserva mb-2">
+                  </div>                  <div className="fecha-reserva mb-2">
                     <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-                    <strong>Devolución:</strong> {fechas?.dropoffLocation || "Aeropuerto de Málaga"}
+                    <strong>Devolución:</strong> {
+                      fechas?.dropoffLocation 
+                        ? (typeof fechas.dropoffLocation === 'object' ? fechas.dropoffLocation.nombre : fechas.dropoffLocation)
+                        : "Aeropuerto de Málaga"
+                    }
                   </div>
                   <div className="d-flex mb-3">
                     <div className="me-3">
@@ -681,29 +698,27 @@ const ReservaClientePago = ({ diferencia = null, reservaId = null, modoDiferenci
                     </div>
                     
                   </div>
-                  <hr />
-
-                  {/* Detalles del precio */}
+                  <hr />                  {/* Detalles del precio */}
                   {detallesReserva && (
                     <div className="detalles-precio">
                       <div className="d-flex justify-content-between mb-2">
                         <span>Precio base:</span>
-                        <span>{detallesReserva.precioCocheBase.toFixed(2)}€</span>
+                        <span>{(detallesReserva.precioCocheBase || 0).toFixed(2)}€</span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
                         <span>IVA (21%):</span>
-                        <span>{detallesReserva.iva.toFixed(2)}€</span>
+                        <span>{(detallesReserva.iva || 0).toFixed(2)}€</span>
                       </div>
-                      {detallesReserva.precioExtras > 0 && (
+                      {(detallesReserva.precioExtras || 0) > 0 && (
                         <div className="d-flex justify-content-between mb-2">
                           <span>Extras:</span>
-                          <span>{detallesReserva.precioExtras.toFixed(2)}€</span>
+                          <span>{(detallesReserva.precioExtras || 0).toFixed(2)}€</span>
                         </div>
                       )}
                       <hr />
                       <div className="d-flex justify-content-between fw-bold">
                         <span>Total:</span>
-                        <span>{detallesReserva.total.toFixed(2)}€</span>
+                        <span>{(detallesReserva.total || 0).toFixed(2)}€</span>
                       </div>
                     </div>
                   )}

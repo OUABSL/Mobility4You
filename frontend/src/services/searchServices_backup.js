@@ -1,4 +1,4 @@
-// src/services/searchServices.js
+// src/services/BusquedaServicios.js
 import axios from '../config/axiosConfig';
 import { withTimeout } from './func';
 import { testingLocationsData } from '../assets/testingData/testingData';
@@ -11,93 +11,98 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost/api';
 /**
  * Obtiene las ubicaciones disponibles para recogida/devolución
  * MIGRADO: Prioriza base de datos, fallback a testingData solo si DEBUG_MODE = true y API falla
- * OPTIMIZADO: Implementa caché para evitar llamadas duplicadas
  * @returns {Promise<Array>} - Lista de ubicaciones
  */
 export const fetchLocations = async () => {
-  return await withCache('locations', async () => {
+  try {
+    // PRIMERA PRIORIDAD: Consultar base de datos
+    const response = await withTimeout(
+      axios.get(`${API_URL}/lugares/`),
+      8000
+    );
+    
+    // Manejar formato de respuesta con paginación del backend
+    let locations;
+    if (response.data && response.data.results) {
+      // Formato con paginación: {count, next, previous, results}
+      locations = response.data.results;
+      console.log('✅ [fetchLocations] Datos cargados desde BD (paginados):', locations.length, 'ubicaciones');
+    } else if (Array.isArray(response.data)) {
+      // Formato directo: []
+      locations = response.data;
+      console.log('✅ [fetchLocations] Datos cargados desde BD (array directo):', locations.length, 'ubicaciones');
+    } else {
+      console.warn('⚠️ [fetchLocations] Formato de respuesta inesperado:', response.data);
+      locations = [];
+    }
+    
+    // Cachear las ubicaciones exitosas para futuros fallos
+    if (locations && locations.length > 0) {
+      localStorage.setItem('cachedLocations', JSON.stringify(locations));
+      localStorage.setItem('cacheTimestamp', Date.now().toString());
+    }
+    
+    return locations;
+  } catch (error) {
+    console.warn('⚠️ [fetchLocations] Error consultando BD:', error.message);
+    
+    // FALLBACK: Solo si DEBUG_MODE está activo
+    if (DEBUG_MODE) {
+      console.log('🔄 [fetchLocations] Usando datos de testing como fallback');
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simular delay de red
+      return testingLocationsData;
+    }
+    
+    // EN PRODUCCIÓN: Manejar error gracefully
+    console.error('❌ [fetchLocations] Error en producción');
+    
+    // Intento adicional con timeout más largo
     try {
-      // PRIMERA PRIORIDAD: Consultar base de datos
-      const response = await withTimeout(
+      console.log('🔄 [fetchLocations] Reintentando con timeout extendido...');
+      const retryResponse = await withTimeout(
         axios.get(`${API_URL}/lugares/`),
-        8000
+        15000
       );
       
-      // Manejar formato de respuesta con paginación del backend
-      let locations;
-      if (response.data && response.data.results) {
-        // Formato con paginación: {count, next, previous, results}
-        locations = response.data.results;
-        console.log('✅ [fetchLocations] Datos cargados desde BD (paginados):', locations.length, 'ubicaciones');
-      } else if (Array.isArray(response.data)) {
-        // Formato directo: []
-        locations = response.data;
-        console.log('✅ [fetchLocations] Datos cargados desde BD (array directo):', locations.length, 'ubicaciones');
+      // Manejar formato de respuesta en el reintento también
+      let retryLocations;
+      if (retryResponse.data && retryResponse.data.results) {
+        retryLocations = retryResponse.data.results;
+        console.log('✅ [fetchLocations] Datos cargados en reintento (paginados):', retryLocations.length, 'ubicaciones');
+      } else if (Array.isArray(retryResponse.data)) {
+        retryLocations = retryResponse.data;
+        console.log('✅ [fetchLocations] Datos cargados en reintento (array directo):', retryLocations.length, 'ubicaciones');
       } else {
-        console.warn('⚠️ [fetchLocations] Formato de respuesta inesperado:', response.data);
-        locations = [];
+        retryLocations = [];
       }
       
-      return locations;
-    } catch (error) {
-      console.warn('⚠️ [fetchLocations] Error consultando BD:', error.message);
-      
-      // FALLBACK: Solo si DEBUG_MODE está activo
-      if (DEBUG_MODE) {
-        console.log('🔄 [fetchLocations] Usando datos de testing como fallback');
-        await new Promise(resolve => setTimeout(resolve, 300)); // Simular delay de red
-        return testingLocationsData;
+      // Cachear las ubicaciones exitosas
+      if (retryLocations && retryLocations.length > 0) {
+        localStorage.setItem('cachedLocations', JSON.stringify(retryLocations));
+        localStorage.setItem('cacheTimestamp', Date.now().toString());
       }
       
-      // EN PRODUCCIÓN: Manejar error gracefully
-      console.error('❌ [fetchLocations] Error en producción');
+      return retryLocations;
+    } catch (retryError) {
+      console.error('❌ [fetchLocations] Fallo definitivo del servidor');
       
-      // Intento adicional con timeout más largo
-      try {
-        console.log('🔄 [fetchLocations] Reintentando con timeout extendido...');
-        const retryResponse = await withTimeout(
-          axios.get(`${API_URL}/lugares/`),
-          15000
-        );
+      // Si hay ubicaciones en localStorage de sesiones anteriores, usar esas
+      const cachedLocations = localStorage.getItem('cachedLocations');
+      const cacheTimestamp = localStorage.getItem('cacheTimestamp');
+      
+      if (cachedLocations && cacheTimestamp) {
+        const cacheAge = Date.now() - parseInt(cacheTimestamp);
+        const maxCacheAge = 24 * 60 * 60 * 1000; // 24 horas
         
-        // Manejar formato de respuesta en el reintento también
-        let retryLocations;
-        if (retryResponse.data && retryResponse.data.results) {
-          retryLocations = retryResponse.data.results;
-          console.log('✅ [fetchLocations] Datos cargados en reintento (paginados):', retryLocations.length, 'ubicaciones');
-        } else if (Array.isArray(retryResponse.data)) {
-          retryLocations = retryResponse.data;
-          console.log('✅ [fetchLocations] Datos cargados en reintento (array directo):', retryLocations.length, 'ubicaciones');
-        } else {
-          retryLocations = [];
+        if (cacheAge < maxCacheAge) {
+          console.log('🔄 [fetchLocations] Usando ubicaciones cacheadas');
+          return JSON.parse(cachedLocations);
         }
-        
-        return retryLocations;
-        
-      } catch (retryError) {
-        console.error('❌ [fetchLocations] Fallo definitivo del servidor');
-        
-        // Último recurso: intentar usar datos cacheados en localStorage
-        try {
-          const cachedLocations = localStorage.getItem('cachedLocations');
-          const cacheTimestamp = localStorage.getItem('cacheTimestamp');
-          
-          if (cachedLocations && cacheTimestamp) {
-            const cacheAge = Date.now() - parseInt(cacheTimestamp);
-            // Usar cache si tiene menos de 24 horas
-            if (cacheAge < 24 * 60 * 60 * 1000) {
-              console.log('🔄 [fetchLocations] Usando ubicaciones cacheadas');
-              return JSON.parse(cachedLocations);
-            }
-          }
-        } catch (cacheError) {
-          console.warn('⚠️ [fetchLocations] Error accediendo al cache local:', cacheError);
-        }
-        
-        throw new Error('No se pudieron cargar las ubicaciones. Por favor, verifica tu conexión e intenta nuevamente.');
       }
+      
+      throw new Error('No se pudieron cargar las ubicaciones. Por favor, inténtalo de nuevo más tarde.');
     }
-  });
+  }
 };
 
 
@@ -182,75 +187,56 @@ export const validateSearchForm = (formData) => {
 
 /**
  * Busca vehículos disponibles según criterios de búsqueda
- * MIGRADO: Prioriza base de datos, fallback a testingData solo si DEBUG_MODE = true y API falla
- * OPTIMIZADO: Implementa caché para evitar búsquedas duplicadas
  * @param {Object} searchParams - Parámetros de búsqueda
  * @returns {Promise<Object>} - Resultados de la búsqueda con estructura unificada
  */
 export const searchAvailableVehicles = async (searchParams) => {
-  // Crear una clave única para esta búsqueda específica
-  const searchKey = `search_${JSON.stringify(searchParams)}`;
-  
-  return await withCache('cars', async () => {
-    try {
-      const { isValid, errors } = validateSearchForm(searchParams);
-      if (!isValid) {
-        const errorMessage = Object.values(errors).join('. ');
-        throw new Error(errorMessage);
-      }
-      
-      // PRIMERA PRIORIDAD: Consultar base de datos
-      console.log('🔍 [searchAvailableVehicles] Consultando disponibilidad en BD con parámetros:', searchParams);
-      
-      // Transformar parámetros para el backend
-      const backendParams = {
-        fecha_recogida: searchParams.pickupDate,
-        fecha_devolucion: searchParams.dropoffDate,
-        lugar_recogida_id: searchParams.pickupLocation,
-        lugar_devolucion_id: searchParams.dropoffLocation || searchParams.pickupLocation,
-        categoria_id: searchParams.categoria_id,
-        grupo_id: searchParams.grupo_id
-      };
-      
-      const response = await withTimeout(
-        axios.post(`${API_URL}/vehiculos/disponibilidad/`, backendParams),
-        12000
-      );
-      
-      console.log('✅ [searchAvailableVehicles] Datos cargados desde BD:', response.data.count, 'vehículos disponibles');
+  try {
+    const { isValid, errors } = validateSearchForm(searchParams);
+    if (!isValid) {
+      const errorMessage = Object.values(errors).join('. ');
+      throw new Error(errorMessage);
+    }
+    
+    if (DEBUG_MODE) {
+      // Importar datos de prueba solo cuando sea necesario
+      const { default: testingCars } = await import('../assets/testingData/testingData');
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       return {
         success: true,
-        count: response.data.count,
-        results: response.data.results,
-        filterOptions: extractFilterOptions(response.data.results)
+        message: 'Búsqueda realizada con éxito',
+        count: testingCars.length,
+        results: testingCars,
+        filterOptions: extractFilterOptions(testingCars)
       };
-      
-    } catch (error) {
-      console.warn('⚠️ [searchAvailableVehicles] Error consultando BD:', error.message);
-      
-      // FALLBACK: Solo si DEBUG_MODE está activo
-      if (DEBUG_MODE) {
-        console.log('🔄 [searchAvailableVehicles] Usando datos de testing como fallback');
-        
-        // Importar datos de prueba solo cuando sea necesario
-        const { default: testingCars } = await import('../assets/testingData/testingData');
-        await new Promise(resolve => setTimeout(resolve, 800)); // Simular delay de red
-        
-        return {
-          success: true,
-          message: 'Búsqueda realizada con éxito (datos de testing)',
-          count: testingCars.length,
-          results: testingCars,
-          filterOptions: extractFilterOptions(testingCars)
-        };
-      }
-      
-      // EN PRODUCCIÓN: Manejar error gracefully
-      console.error('❌ [searchAvailableVehicles] Error en producción');
-      throw new Error(error.response?.data?.error || error.message || 'Error al buscar vehículos disponibles');
     }
-  });
+    
+    // Transformar parámetros para el backend
+    const backendParams = {
+      fecha_recogida: searchParams.pickupDate,
+      fecha_devolucion: searchParams.dropoffDate,
+      lugar_recogida_id: searchParams.pickupLocation,
+      lugar_devolucion_id: searchParams.dropoffLocation || searchParams.pickupLocation,
+      categoria_id: searchParams.categoria_id,
+      grupo_id: searchParams.grupo_id
+    };
+    
+    const response = await withTimeout(
+      axios.post(`${API_URL}/vehiculos/disponibilidad/`, backendParams),
+      12000
+    );
+    
+    return {
+      success: true,
+      count: response.data.count,
+      results: response.data.results,
+      filterOptions: extractFilterOptions(response.data.results)
+    };
+  } catch (error) {
+    console.error('Error searching vehicles:', error);
+    throw new Error(error.response?.data?.error || error.message || 'Error al buscar vehículos');
+  }
 };
 
 /**
@@ -258,7 +244,6 @@ export const searchAvailableVehicles = async (searchParams) => {
  * @deprecated Usar searchAvailableVehicles para nueva funcionalidad
  */
 export const performSearch = searchAvailableVehicles;
-
 /**
  * Guarda los parámetros de búsqueda en sessionStorage
  * @param {Object} searchParams - Parámetros de búsqueda
@@ -294,7 +279,6 @@ export const saveSearchParams = (searchParams) => {
     return false;
   }
 };
-
 /**
  * Recupera los parámetros de búsqueda guardados
  * @returns {Object|null} - Parámetros de búsqueda o null si no hay
@@ -317,7 +301,7 @@ export const getStoredSearchParams = () => {
       mayor21: data.mayor21
     };
   } catch (error) {
-    console.error('Error retrieving search params:', error);
+  console.error('Error retrieving search params:', error);
     return null;
   }
 };

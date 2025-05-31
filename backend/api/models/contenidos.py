@@ -13,6 +13,7 @@ class Contenido(models.Model):
         ('legal', _('Legal')),
         ('info', _('Información')),
         ('mini_section', _('Sección mínima')),
+        ('testimonial', _('Testimonio')),
     ]
     
     tipo = models.CharField(

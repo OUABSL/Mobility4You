@@ -11,9 +11,11 @@ from django.utils import timezone
 from django.db import transaction
 from .models import PagoStripe, ReembolsoStripe, WebhookStripe
 
+
+
 # Configurar Stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
-stripe.api_version = settings.STRIPE_CONFIG['api_version']
+stripe.api_version = settings.STRIPE_CONFIG.get('api_version', '2023-10-16')  # Usar get() con fallback
 
 logger = logging.getLogger('stripe')
 
@@ -437,6 +439,17 @@ class StripePaymentService:
     
     def _crear_registro_pago(self, payment_intent, reserva_data, tipo_pago, numero_pedido, email_cliente, nombre_cliente, importe):
         """Crea el registro del pago en la base de datos"""
+        
+        # CORREGIR: Verificar si la reserva existe antes de asignarla
+        reserva_instance = None
+        reserva_id = reserva_data.get('id')
+        if reserva_id:
+            try:
+                from api.models.reservas import Reserva
+                reserva_instance = Reserva.objects.get(id=reserva_id)
+            except Reserva.DoesNotExist:
+                logger.warning(f"Reserva {reserva_id} no encontrada, creando pago sin reserva asociada")
+        
         return PagoStripe.objects.create(
             numero_pedido=numero_pedido,
             stripe_payment_intent_id=payment_intent.id,
@@ -450,8 +463,8 @@ class StripePaymentService:
             datos_reserva=reserva_data,
             email_cliente=email_cliente,
             nombre_cliente=nombre_cliente,
-            fecha_vencimiento=timezone.now() + timedelta(hours=1),  # Payment Intent expira en 1 hora
-            reserva_id=reserva_data.get('id') if reserva_data.get('id') else None
+            fecha_vencimiento=timezone.now() + timedelta(hours=1),
+            reserva=reserva_instance  # CORREGIR: usar la instancia, no el ID
         )
     
     def _procesar_pago_exitoso(self, pago_stripe, payment_intent):

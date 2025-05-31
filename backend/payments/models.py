@@ -173,6 +173,22 @@ class PagoStripe(models.Model):
             models.Index(fields=['estado', 'fecha_creacion']),
             models.Index(fields=['reserva', 'tipo_pago']),
         ]
+        
+    def save(self, *args, **kwargs):
+        """Override save para validaciones adicionales"""
+        # Validar que el importe sea positivo
+        if self.importe <= 0:
+            raise ValueError("El importe debe ser mayor a 0")
+        
+        # Validar email del cliente
+        if not self.email_cliente:
+            raise ValueError("El email del cliente es obligatorio")
+        
+        # Auto-generar nombre del cliente si falta
+        if not self.nombre_cliente and self.email_cliente:
+            self.nombre_cliente = self.email_cliente.split('@')[0]
+    
+        super().save(*args, **kwargs)
     
     def __str__(self):
         return f"Pago {self.numero_pedido} - {self.estado} - {self.importe}€"

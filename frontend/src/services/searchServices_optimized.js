@@ -182,7 +182,6 @@ export const validateSearchForm = (formData) => {
 
 /**
  * Busca vehículos disponibles según criterios de búsqueda
- * MIGRADO: Prioriza base de datos, fallback a testingData solo si DEBUG_MODE = true y API falla
  * OPTIMIZADO: Implementa caché para evitar búsquedas duplicadas
  * @param {Object} searchParams - Parámetros de búsqueda
  * @returns {Promise<Object>} - Resultados de la búsqueda con estructura unificada
@@ -199,8 +198,19 @@ export const searchAvailableVehicles = async (searchParams) => {
         throw new Error(errorMessage);
       }
       
-      // PRIMERA PRIORIDAD: Consultar base de datos
-      console.log('🔍 [searchAvailableVehicles] Consultando disponibilidad en BD con parámetros:', searchParams);
+      if (DEBUG_MODE) {
+        // Importar datos de prueba solo cuando sea necesario
+        const { default: testingCars } = await import('../assets/testingData/testingData');
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        return {
+          success: true,
+          message: 'Búsqueda realizada con éxito',
+          count: testingCars.length,
+          results: testingCars,
+          filterOptions: extractFilterOptions(testingCars)
+        };
+      }
       
       // Transformar parámetros para el backend
       const backendParams = {
@@ -217,38 +227,15 @@ export const searchAvailableVehicles = async (searchParams) => {
         12000
       );
       
-      console.log('✅ [searchAvailableVehicles] Datos cargados desde BD:', response.data.count, 'vehículos disponibles');
-      
       return {
         success: true,
         count: response.data.count,
         results: response.data.results,
         filterOptions: extractFilterOptions(response.data.results)
       };
-      
     } catch (error) {
-      console.warn('⚠️ [searchAvailableVehicles] Error consultando BD:', error.message);
-      
-      // FALLBACK: Solo si DEBUG_MODE está activo
-      if (DEBUG_MODE) {
-        console.log('🔄 [searchAvailableVehicles] Usando datos de testing como fallback');
-        
-        // Importar datos de prueba solo cuando sea necesario
-        const { default: testingCars } = await import('../assets/testingData/testingData');
-        await new Promise(resolve => setTimeout(resolve, 800)); // Simular delay de red
-        
-        return {
-          success: true,
-          message: 'Búsqueda realizada con éxito (datos de testing)',
-          count: testingCars.length,
-          results: testingCars,
-          filterOptions: extractFilterOptions(testingCars)
-        };
-      }
-      
-      // EN PRODUCCIÓN: Manejar error gracefully
-      console.error('❌ [searchAvailableVehicles] Error en producción');
-      throw new Error(error.response?.data?.error || error.message || 'Error al buscar vehículos disponibles');
+      console.error('Error searching vehicles:', error);
+      throw new Error(error.response?.data?.error || error.message || 'Error al buscar vehículos');
     }
   });
 };

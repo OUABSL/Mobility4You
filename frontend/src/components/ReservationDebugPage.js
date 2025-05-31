@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Card, Button, Alert, Badge } from 'react-bootstrap';
-import { getReservationStorageService } from '../../services/reservationStorageService';
+import { getReservationStorageService } from '../services/reservationStorageService';
 
 const ReservationDebugPage = () => {
   const [storageState, setStorageState] = useState(null);
@@ -30,15 +30,16 @@ const ReservationDebugPage = () => {
   }, []);
 
   // Actualizar estado del storage
-  const updateStorageState = () => {
+  const updateStorageState = async () => {
     try {
+      const completeData = await storageService.getCompleteReservationData();
       const state = {
         hasActiveReservation: storageService.hasActiveReservation(),
         reservationData: storageService.getReservationData(),
         extras: storageService.getExtras(),
         conductorData: storageService.getConductorData(),
         currentStep: storageService.getCurrentStep(),
-        completeData: storageService.getCompleteReservationData(),
+        completeData: completeData,
         remainingTime: storageService.getRemainingTime(),
         sessionStorageKeys: Object.keys(sessionStorage).filter(key => key.startsWith('reserva'))
       };
@@ -51,10 +52,10 @@ const ReservationDebugPage = () => {
 
   // Cargar estado inicial
   useEffect(() => {
-    updateStorageState();
+    updateStorageState().catch(console.error);
     
     // Actualizar cada 5 segundos
-    const interval = setInterval(updateStorageState, 5000);
+    const interval = setInterval(() => updateStorageState().catch(console.error), 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -64,7 +65,7 @@ const ReservationDebugPage = () => {
       if (window.testReservationFlow) {
         const result = window.testReservationFlow.step1_SimulateCarSelection();
         setTestResults(prev => ({ ...prev, step1: result }));
-        setTimeout(updateStorageState, 1000);
+        setTimeout(() => updateStorageState().catch(console.error), 1000);
       } else {
         alert('Scripts de prueba no cargados aún');
       }
@@ -74,12 +75,12 @@ const ReservationDebugPage = () => {
   };
 
   // Ejecutar prueba paso 2
-  const runStep2 = () => {
+  const runStep2 = async () => {
     try {
       if (window.testReservationFlow) {
-        const result = window.testReservationFlow.step2_VerifyExtrasPage();
+        const result = await window.testReservationFlow.step2_VerifyExtrasPage();
         setTestResults(prev => ({ ...prev, step2: result }));
-        setTimeout(updateStorageState, 1000);
+        setTimeout(() => updateStorageState().catch(console.error), 1000);
       }
     } catch (error) {
       console.error('Error en step2:', error);
@@ -92,7 +93,7 @@ const ReservationDebugPage = () => {
       if (window.testReservationFlow) {
         const result = window.testReservationFlow.step3_SimulateExtrasSelection();
         setTestResults(prev => ({ ...prev, step3: result }));
-        setTimeout(updateStorageState, 1000);
+        setTimeout(() => updateStorageState().catch(console.error), 1000);
       }
     } catch (error) {
       console.error('Error en step3:', error);
@@ -100,12 +101,12 @@ const ReservationDebugPage = () => {
   };
 
   // Ejecutar prueba paso 4
-  const runStep4 = () => {
+  const runStep4 = async () => {
     try {
       if (window.testReservationFlow) {
-        const result = window.testReservationFlow.step4_VerifyConductorPage();
+        const result = await window.testReservationFlow.step4_VerifyConductorPage();
         setTestResults(prev => ({ ...prev, step4: result }));
-        setTimeout(updateStorageState, 1000);
+        setTimeout(() => updateStorageState().catch(console.error), 1000);
       }
     } catch (error) {
       console.error('Error en step4:', error);
@@ -113,12 +114,12 @@ const ReservationDebugPage = () => {
   };
 
   // Ejecutar prueba paso 5
-  const runStep5 = () => {
+  const runStep5 = async () => {
     try {
       if (window.testReservationFlow) {
-        const result = window.testReservationFlow.step5_SimulateConductorData();
+        const result = await window.testReservationFlow.step5_SimulateConductorData();
         setTestResults(prev => ({ ...prev, step5: result }));
-        setTimeout(updateStorageState, 1000);
+        setTimeout(() => updateStorageState().catch(console.error), 1000);
       }
     } catch (error) {
       console.error('Error en step5:', error);
@@ -133,7 +134,7 @@ const ReservationDebugPage = () => {
       }
       storageService.clearAllReservationData();
       setTestResults({});
-      setTimeout(updateStorageState, 1000);
+      setTimeout(() => updateStorageState().catch(console.error), 1000);
     } catch (error) {
       console.error('Error en cleanup:', error);
     }
@@ -168,7 +169,7 @@ const ReservationDebugPage = () => {
             <Button variant="warning" onClick={cleanup}>
               🧹 Limpiar
             </Button>
-            <Button variant="info" onClick={updateStorageState}>
+            <Button variant="info" onClick={() => updateStorageState().catch(console.error)}>
               🔄 Actualizar
             </Button>
           </div>

@@ -84,12 +84,26 @@ const FichaCoche = ({ car, onClose }) => {
       setSelectedPayment(option);
     }
   };
-
   // Función para continuar a reserva
   const handleContinuar = () => {
     if (!selectedPayment) return;
     
-    // Preparar datos de reserva iniciales
+    // Preparar datos de reserva iniciales con ubicaciones como objetos completos
+    const aeropuertoMalaga = {
+      id: 1,
+      nombre: 'Aeropuerto de Málaga',
+      direccion: {
+        calle: 'Avenida del Comandante García Morato',
+        ciudad: 'Málaga',
+        codigoPostal: '29004',
+        pais: 'España'
+      },
+      coordenadas: {
+        latitud: 36.6749,
+        longitud: -4.4991
+      }
+    };
+    
     const reservaData = {
       car: {
         ...car,
@@ -97,10 +111,10 @@ const FichaCoche = ({ car, onClose }) => {
       },
       paymentOption: selectedPayment,
       fechas: {
-        pickupLocation: 'Aeropuerto de Málaga',
+        pickupLocation: aeropuertoMalaga,
         pickupDate: new Date(),
         pickupTime: '12:00',
-        dropoffLocation: 'Aeropuerto de Málaga',
+        dropoffLocation: aeropuertoMalaga,
         dropoffDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // +3 días
         dropoffTime: '12:00'
       }
@@ -361,15 +375,14 @@ const FichaCoche = ({ car, onClose }) => {
               <div className="d-flex justify-content-between mb-2 price-item">
                 <span>Precio base por día:</span>
                 <span>{car.precio_dia}€</span>
-              </div>
-              <div className="d-flex justify-content-between mb-2 price-item">
+              </div>              <div className="d-flex justify-content-between mb-2 price-item">
                 <span>IVA (21%):</span>
-                <span>{(car.precio_dia * 0.21).toFixed(2)}€</span>
+                <span>{((Number(car.precio_dia) || 0) * 0.21).toFixed(2)}€</span>
               </div>
               <hr/>
               <div className="d-flex justify-content-between price-total">
                 <span>Total por día:</span>
-                <span>{(car.precio_dia * 1.21).toFixed(2)}€</span>
+                <span>{((Number(car.precio_dia) || 0) * 1.21).toFixed(2)}€</span>
               </div>
             </div>
             

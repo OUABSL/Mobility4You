@@ -22,7 +22,7 @@ import axios from 'axios';
 import '../../css/ReservaClienteConfirmar.css';
 import CardLogo from '../../assets/img/general/logo_visa_mastercard.png';
 import { createReservation, editReservation, findReservation, DEBUG_MODE } from '../../services/reservationServices';
-import { getReservationStorageService, updateConductorData } from '../../services/reservationStorageService';
+import { getReservationStorageService, updateConductorData, updateConductorDataIntermediate, autoRecoverReservation } from '../../services/reservationStorageService';
 import useReservationTimer from '../../hooks/useReservationTimer';
 import ReservationTimerModal from './ReservationTimerModal';
 import { ReservationTimerBadge } from './ReservationTimerIndicator';
@@ -82,26 +82,29 @@ const ReservaClienteConfirmar = () => {
     aceptaTerminos: false
   });  // Cargar datos de reserva del storage service al iniciar
   useEffect(() => {
-    try {
-      const completeData = storageService.getCompleteReservationData();
-      if (!completeData) {
-        setError('No se encontraron datos de reserva. Por favor, inicia el proceso desde la selección de vehículo.');
-        return;
+    const loadReservationData = async () => {
+      try {
+        const completeData = await storageService.getCompleteReservationData();
+        if (!completeData) {
+          setError('No se encontraron datos de reserva. Por favor, inicia el proceso desde la selección de vehículo.');
+          return;
+        }
+        setReservaData(completeData);        
+        // Cargar datos del conductor si existen
+        const conductorData = storageService.getConductorData();
+        if (conductorData) {
+          setFormData(prev => ({
+            ...prev,
+            ...conductorData
+          }));
+        }
+      } catch (err) {
+        console.error('Error al cargar datos de reserva:', err);
+        setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
       }
-      setReservaData(completeData);
-      
-      // Cargar datos del conductor si existen
-      const conductorData = storageService.getConductorData();
-      if (conductorData) {
-        setFormData(prev => ({
-          ...prev,
-          ...conductorData
-        }));
-      }
-    } catch (err) {
-      console.error('Error al cargar datos de reserva:', err);
-      setError('Error al cargar datos de reserva. Por favor, inténtalo de nuevo.');
-    }
+    };
+    
+    loadReservationData();
   }, [storageService]);
 
   // Restore scroll position from extras page
@@ -118,7 +121,7 @@ const ReservaClienteConfirmar = () => {
     const { name, value, type, checked } = e.target;
     
     let updatedFormData;
-    
+
     // Manejar campos del segundo conductor
     if (name.startsWith('segundoConductor.')) {
       const fieldName = name.replace('segundoConductor.', '');
@@ -137,19 +140,25 @@ const ReservaClienteConfirmar = () => {
     }
     
     setFormData(updatedFormData);
-    
-    // Guardar en storage service con manejo de errores mejorado
+      // Guardar en storage service con manejo de errores mejorado
     try {
       // Solo intentar guardar si hay una reserva activa o si podemos reinicializarla
       if (storageService.hasActiveReservation()) {
-        storageService.updateConductorData(updatedFormData);
+        updateConductorDataIntermediate(updatedFormData);
       } else if (reservaData) {
         // Intentar reinicializar la reserva con los datos actuales
         console.log('[ReservaClienteConfirmar] Reinicializando reserva para guardar datos del conductor');
         storageService.saveReservationData(reservaData);
-        storageService.updateConductorData(updatedFormData);
+        updateConductorDataIntermediate(updatedFormData);
       } else {
-        console.warn('[ReservaClienteConfirmar] No se puede guardar datos del conductor: sin reserva activa');
+        // Intentar recuperación automática como última opción
+        const recovered = autoRecoverReservation();
+        if (recovered) {
+          updateConductorDataIntermediate(updatedFormData);
+        } else {
+          console.warn('[ReservaClienteConfirmar] No se puede guardar datos del conductor: sin reserva activa');
+        }
+
       }
     } catch (err) {
       console.error('Error al guardar datos del conductor:', err);
@@ -203,9 +212,7 @@ const ReservaClienteConfirmar = () => {
           return;        }
       }
       
-      if (!reservaData) throw new Error('No hay datos de reserva.');
-
-      // Asegurar que tenemos una reserva activa antes de proceder
+      if (!reservaData) throw new Error('No hay datos de reserva.');      // Asegurar que tenemos una reserva activa antes de proceder
       try {
         // Intentar actualizar datos del conductor en el storage service
         if (!storageService.hasActiveReservation() && reservaData) {
@@ -213,7 +220,8 @@ const ReservaClienteConfirmar = () => {
           storageService.saveReservationData(reservaData);
         }
         
-        storageService.updateConductorData(formData);
+        // Usar validación completa para el envío final
+        updateConductorData(formData);
         console.log('[ReservaClienteConfirmar] Datos del conductor guardados exitosamente');      } catch (storageError) {
         console.error('[ReservaClienteConfirmar] Error al guardar conductor:', storageError);
         throw new Error('Error al guardar los datos del conductor. Por favor, inténtelo de nuevo.');
@@ -243,7 +251,8 @@ const ReservaClienteConfirmar = () => {
           conductorPrincipal: formData,
           metodo_pago,
           importe_pagado_inicial,
-          importe_pendiente_inicial,          importe_pagado_extra: 0,
+          importe_pendiente_inicial,          
+          importe_pagado_extra: 0,
           importe_pendiente_extra: 0,
           estado_pago: 'pendiente'
         };
@@ -270,8 +279,7 @@ const ReservaClienteConfirmar = () => {
             paymentMethod: 'efectivo'
           }
         });
-      } else {
-        // Para pagos con tarjeta, actualizar método de pago en la reserva antes de navegar
+      } else {        // Para pagos con tarjeta, actualizar método de pago en la reserva antes de navegar
         const updatedReservaForPayment = {
           ...reservaData,
           conductor: formData,
@@ -282,7 +290,20 @@ const ReservaClienteConfirmar = () => {
           importe_pendiente_inicial,
           importe_pagado_extra: 0,
           importe_pendiente_extra: 0,
-          estado_pago: 'pendiente'
+          estado_pago: 'pendiente',
+          
+          // Ensure detallesReserva is preserved for payment calculation
+          detallesReserva: reservaData.detallesReserva || {
+            base: reservaData.precioBase || reservaData.precio_base || 0,
+            extras: reservaData.precioExtras || reservaData.precio_extras || 0,
+            impuestos: reservaData.precioImpuestos || reservaData.precio_impuestos || 0,
+            descuento: reservaData.descuentoPromocion || reservaData.descuento_promocion || 0,
+            total: reservaData.precioTotal || reservaData.precio_total || 0
+          },
+          
+          // Preserve all pricing fields for compatibility
+          precioTotal: reservaData.precioTotal || reservaData.precio_total || 0,
+          precio_total: reservaData.precioTotal || reservaData.precio_total || 0
         };
         
         // Actualizar datos en el storage service con el método de pago
@@ -344,6 +365,11 @@ const ReservaClienteConfirmar = () => {
   }
 
   const { car, fechas, paymentOption, extras, detallesReserva } = reservaData;
+
+  console.log(`[ReservaClienteConfirmar] EXTRAS: ${JSON.stringify(extras)}`);
+
+  console.log(`[ReservaClienteConfirmar] Datos de reserva cargados: ${JSON.stringify(reservaData)}`);
+
   return (
     <Container className="reserva-confirmar my-4">
       <div className="reservation-progress mb-4">
@@ -829,7 +855,7 @@ const ReservaClienteConfirmar = () => {
 
             {/* Columna derecha: Resumen de la reserva */}
             <Col lg={5}>
-              <Card className="mb-4 resumen-reserva">
+              <Card className="mb-4 mt-1 resumen-reserva">
                 <Card.Header>
                   <FontAwesomeIcon icon={faCarSide} className="me-2" />
                   Resumen de tu reserva
@@ -846,10 +872,13 @@ const ReservaClienteConfirmar = () => {
                       <p className="mb-0">{paymentOption === 'all-inclusive' ? 'All Inclusive' : 'Economy'}</p>
                     </div>
                   </div>
-                  
-                  <div className="fecha-reserva mb-2">
+                    <div className="fecha-reserva mb-2">
                     <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-                    <strong>Recogida:</strong> {fechas?.pickupLocation || "Aeropuerto de Málaga"}
+                    <strong>Recogida:</strong> {
+                      fechas?.pickupLocation 
+                        ? (typeof fechas.pickupLocation === 'object' ? fechas.pickupLocation.nombre : fechas.pickupLocation)
+                        : "Aeropuerto de Málaga"
+                    }
                   </div>
                   <div className="d-flex mb-3">
                     <div className="me-3">
@@ -860,11 +889,13 @@ const ReservaClienteConfirmar = () => {
                       <FontAwesomeIcon icon={faClock} className="me-1" />
                       {fechas?.pickupTime || "12:00"}
                     </div>
-                  </div>
-
-                  <div className="fecha-reserva mb-2">
+                  </div>                  <div className="fecha-reserva mb-2">
                     <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2" />
-                    <strong>Devolución:</strong> {fechas?.dropoffLocation || "Aeropuerto de Málaga"}
+                    <strong>Devolución:</strong> {
+                      fechas?.dropoffLocation 
+                        ? (typeof fechas.dropoffLocation === 'object' ? fechas.dropoffLocation.nombre : fechas.dropoffLocation)
+                        : "Aeropuerto de Málaga"
+                    }
                   </div>
                   <div className="d-flex mb-3">
                     <div className="me-3">
@@ -887,11 +918,11 @@ const ReservaClienteConfirmar = () => {
                     <div className="extras mb-3">
                       <strong>Extras seleccionados:</strong>
                       <ul className="extras-list">
-                        {extras.filter(extra => extra && typeof extra === 'object' && extra.nombre).map((extra, index) => (
+                        {extras.filter(extra => extra && typeof extra === 'object' && extra.nombre).map((extra, index) => (  
                           <li key={index}>
                             <FontAwesomeIcon icon={faPlus} className="me-2" />
                             {extra.nombre} (
-                              {typeof extra.precio === 'number' ? extra.precio.toFixed(2) : '0.00'}€/día
+                              {typeof Number(extra.precio) == 'number' ? Number(extra.precio).toFixed(2) : '0.00'}€/día
                             )
                           </li>
                         ))}

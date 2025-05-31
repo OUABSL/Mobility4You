@@ -142,11 +142,6 @@ def create_env_files_if_missing():
             
             # Create basic environment file
             basic_content = [
-                "# Configuración Redsys\n",
-                "REDSYS_MERCHANT_CODE=999008881\n",
-                "REDSYS_TERMINAL=001\n", 
-                "REDSYS_SECRET_KEY=sq7HjrUOBfKmC576ILgskD5srU870gJ7\n",
-                "REDSYS_ENVIRONMENT=test\n",
                 "\n",
                 "# URLs\n"
             ]

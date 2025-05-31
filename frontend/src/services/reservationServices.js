@@ -2,12 +2,14 @@
 import axios from '../config/axiosConfig';
 
 import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
+import { withTimeout } from './func';
+import { fetchLocations } from './searchServices'; // Import para obtener ubicaciones
 
 // URL base de la API
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 // Constante para modo debug
-export const DEBUG_MODE = true; // Cambiar a false en producción
+export const DEBUG_MODE = true; // TEMPORAL: Activado para resolver 502 errors
 
 // Funciones de logging condicional
 const logInfo = (message, data = null) => {
@@ -58,9 +60,8 @@ export const createReservation = async (data) => {
       await new Promise(resolve => setTimeout(resolve, 500));
       return crearReservaPrueba(data);
     }
-    
-    // Preparar datos con lógica de pagos
-    const mappedData = mapReservationDataToBackend(data);
+      // Preparar datos con lógica de pagos
+    const mappedData = await mapReservationDataToBackend(data);
     
     // Calcular importes según método de pago
     if (mappedData.metodo_pago === 'tarjeta') {
@@ -223,9 +224,8 @@ export const editReservation = async (reservaId, data) => {
       if (!updated) throw new Error('Reserva no encontrada para editar');
       return updated;
     }
-    
-    // Producción: llamada real a la API
-    const mappedData = mapReservationDataToBackend(data);
+      // Producción: llamada real a la API
+    const mappedData = await mapReservationDataToBackend(data);
     const response = await axios.put(`${API_URL}/reservas/${reservaId}/`, mappedData, getAuthHeaders());
     return response.data;
   } catch (error) {
@@ -689,61 +689,324 @@ function crearReservaPrueba(data) {
   reservasPrueba.push(nueva);
   return nueva;
 }
-// Mapeo de datos de reserva del frontend (camelCase/anidado) a backend (snake_case/relacional)
-export const mapReservationDataToBackend = (data) => {
-  // Mapea campos principales incluyendo nuevos campos de pago
+
+// Cache for locations to avoid repeated API calls
+let locationsCache = null;
+
+/**
+ * Obtiene todas las ubicaciones disponibles con cache
+ * @returns {Promise<Array>} Array de ubicaciones
+ */
+const getCachedLocations = async () => {
+  if (!locationsCache) {
+    try {
+      locationsCache = await fetchLocations();
+    } catch (error) {
+      console.error('Error loading locations for lookup:', error);
+      // Return empty array if locations can't be loaded
+      locationsCache = [];
+    }
+  }
+  return locationsCache;
+};
+
+/**
+ * Busca el ID de una ubicación por su nombre
+ * @param {string} locationName - Nombre de la ubicación 
+ * @returns {Promise<number|null>} ID de la ubicación o null si no se encuentra
+ */
+const findLocationIdByName = async (locationName) => {
+  if (!locationName || typeof locationName !== 'string') {
+    return null;
+  }
+
+  try {
+    const locations = await getCachedLocations();
+    
+    // First try exact match
+    const exactMatch = locations.find(location => 
+      location.nombre.toLowerCase() === locationName.toLowerCase()
+    );
+    
+    if (exactMatch) {
+      return exactMatch.id;
+    }
+
+    // If no exact match, try partial match
+    const partialMatch = locations.find(location =>
+      location.nombre.toLowerCase().includes(locationName.toLowerCase()) ||
+      locationName.toLowerCase().includes(location.nombre.toLowerCase())
+    );
+
+    if (partialMatch) {
+      console.warn(`Location exact match not found for "${locationName}", using partial match: "${partialMatch.nombre}"`);
+      return partialMatch.id;
+    }
+
+    console.error(`Location not found: "${locationName}"`);
+    return null;
+  } catch (error) {
+    console.error('Error finding location ID:', error);
+    return null;
+  }
+};
+
+/**
+ * Mapeo de datos de reserva del frontend (camelCase/anidado) a backend (snake_case/relacional)
+ * @param {Object} data - Datos de la reserva desde el frontend
+ * @returns {Object} - Datos mapeados para el backend
+ */
+export const mapReservationDataToBackend = async (data) => {  // Debug: Log the input data structure
+  if (DEBUG_MODE) {
+    console.log('🔍 [mapReservationDataToBackend] Input data structure:', {
+      hasData: !!data,
+      keys: data ? Object.keys(data) : [],
+      vehicle: {
+        hasCar: !!data.car,
+        hasVehiculo: !!data.vehiculo,
+        carId: data.car?.id,
+        vehiculoId: data.vehiculo?.id
+      },
+      extras: {
+        hasExtras: !!(data.extras || data.extrasSeleccionados),
+        extrasCount: (data.extras || data.extrasSeleccionados || []).length,
+        extrasTypes: (data.extras || data.extrasSeleccionados || []).map(e => 
+          typeof e === 'object' ? `${e.id}(obj:${e.nombre})` : `${e}(id)`
+        ),
+        hasCompleteObjects: (data.extras || data.extrasSeleccionados || []).every(e => 
+          typeof e === 'object' && e.nombre && e.precio
+        )
+      },
+      locations: {
+        hasFechas: !!data.fechas,
+        hasLugarRecogida: !!data.lugarRecogida,
+        hasLugarDevolucion: !!data.lugarDevolucion,
+        fechasPickupLocationId: data.fechas?.pickupLocation?.id,
+        fechasDropoffLocationId: data.fechas?.dropoffLocation?.id,
+        lugarRecogidaId: data.lugarRecogida?.id,
+        lugarDevolucionId: data.lugarDevolucion?.id
+      },
+      policy: {
+        hasPoliticaPago: !!data.politicaPago,
+        politicaPagoId: data.politicaPago?.id,
+        hasPoliticaPagoId: !!data.politica_pago_id,
+        politicaPagoIdValue: data.politica_pago_id
+      },
+      dates: {
+        fechaRecogida: data.fechaRecogida,
+        fechaDevolucion: data.fechaDevolucion,
+        fechasPickupDate: data.fechas?.pickupDate,
+        fechasDropoffDate: data.fechas?.dropoffDate
+      }
+    });
+  }
+
+  // Helper function to safely extract pricing from detallesReserva
+  const extractPricing = (data) => {
+    const detalles = data.detallesReserva;
+    return {
+      precio_base: detalles?.base || detalles?.precioBase || data.precioBase || data.precio_base || 0,
+      precio_extras: detalles?.extras || detalles?.precioExtras || data.precioExtras || data.precio_extras || 0,
+      precio_impuestos: detalles?.impuestos || detalles?.precioImpuestos || data.precioImpuestos || data.precio_impuestos || 0,
+      descuento_promocion: detalles?.descuento || detalles?.descuentoPromocion || data.descuentoPromocion || data.descuento_promocion || 0,
+      precio_total: detalles?.total || detalles?.precioTotal || data.precioTotal || data.precio_total || 0
+    };
+  };
+
+  // Helper function to extract conductor data
+  const extractConductorData = (data) => {
+    const conductor = data.conductor || data.conductorPrincipal;
+    if (!conductor) return [];
+
+    return [{
+      conductor_id: conductor.id || null,
+      rol: 'principal',
+      // Include conductor details for creation
+      conductor: conductor.id ? null : {
+        nombre: conductor.nombre || conductor.first_name || '',
+        apellido: conductor.apellido || conductor.apellidos || conductor.last_name || '',
+        email: conductor.email || '',
+        fecha_nacimiento: conductor.fecha_nacimiento || conductor.fechaNacimiento || '',
+        sexo: conductor.sexo || conductor.genero || '',
+        nacionalidad: conductor.nacionalidad || '',
+        tipo_documento: conductor.tipo_documento || conductor.tipoDocumento || 'dni',
+        numero_documento: conductor.numero_documento || conductor.numeroDocumento || '',
+        telefono: conductor.telefono || conductor.phone || '',
+        direccion: conductor.direccion ? {
+          calle: conductor.direccion.calle || conductor.direccion.direccion || '',
+          ciudad: conductor.direccion.ciudad || '',
+          provincia: conductor.direccion.provincia || '',
+          pais: conductor.direccion.pais || '',
+          codigo_postal: conductor.direccion.codigo_postal || conductor.direccion.codigoPostal || ''
+        } : null
+      }
+    }];
+  };
+  // Extract pricing information
+  const pricing = extractPricing(data);
+
+  // Resolve location IDs if they come as strings
+  let lugarRecogidaId = data.fechas?.pickupLocation?.id || data.lugarRecogida?.id || data.lugar_recogida_id || data.lugar_recogida;
+  let lugarDevolucionId = data.fechas?.dropoffLocation?.id || data.lugarDevolucion?.id || data.lugar_devolucion_id || data.lugar_devolucion;
+
+  // Check if locations are strings and need to be resolved to IDs
+  if (typeof lugarRecogidaId === 'string') {
+    if (DEBUG_MODE) {
+      console.log('🔍 [mapReservationDataToBackend] Resolving pickup location string:', lugarRecogidaId);
+    }
+    lugarRecogidaId = await findLocationIdByName(lugarRecogidaId);
+    if (DEBUG_MODE) {
+      console.log('🔍 [mapReservationDataToBackend] Resolved pickup location ID:', lugarRecogidaId);
+    }
+  }
+
+  if (typeof lugarDevolucionId === 'string') {
+    if (DEBUG_MODE) {
+      console.log('🔍 [mapReservationDataToBackend] Resolving dropoff location string:', lugarDevolucionId);
+    }
+    lugarDevolucionId = await findLocationIdByName(lugarDevolucionId);
+    if (DEBUG_MODE) {
+      console.log('🔍 [mapReservationDataToBackend] Resolved dropoff location ID:', lugarDevolucionId);
+    }
+  }
+
+    // Mapea campos principales incluyendo nuevos campos de pago
   const mapped = {
-    // Campos existentes
-    vehiculo: data.car?.id || data.vehiculo?.id || data.vehiculo,
-    lugar_recogida: data.fechas?.pickupLocation?.id || data.lugarRecogida?.id || data.lugar_recogida,
-    lugar_devolucion: data.fechas?.dropoffLocation?.id || data.lugarDevolucion?.id || data.lugar_devolucion,
+    // Campos básicos de reserva (using _id suffix for foreign keys as expected by backend)
+    vehiculo_id: data.car?.id || data.vehiculo?.id || data.vehiculo,
+    lugar_recogida_id: lugarRecogidaId,
+    lugar_devolucion_id: lugarDevolucionId,
     fecha_recogida: data.fechas?.pickupDate || data.fechaRecogida || data.fecha_recogida,
     fecha_devolucion: data.fechas?.dropoffDate || data.fechaDevolucion || data.fecha_devolucion,
     
-    // Precios
+    // Pricing information (extracted from detallesReserva or fallback)
     precio_dia: data.car?.precio_dia || data.precio_dia || 0,
-    precio_base: data.precioBase || data.precio_base || 0,
-    precio_extras: data.precioExtras || data.precio_extras || 0,
-    precio_impuestos: data.precioImpuestos || data.precio_impuestos || 0,
-    descuento_promocion: data.descuentoPromocion || data.descuento_promocion || 0,
-    precio_total: data.precioTotal || data.precio_total || 0,
+    ...pricing,
     
-    // NUEVOS CAMPOS DE PAGO
+    // Payment information
     metodo_pago: data.metodo_pago || data.metodoPago || 'tarjeta',
     importe_pagado_inicial: data.importe_pagado_inicial || 0,
     importe_pendiente_inicial: data.importe_pendiente_inicial || 0,
     importe_pagado_extra: data.importe_pagado_extra || 0,
     importe_pendiente_extra: data.importe_pendiente_extra || 0,
     
-    // Relaciones (solo IDs)
-    usuario: data.usuario?.id || data.usuario || null,
-    politica_pago: data.politicaPago?.id || data.politica_pago || null,
-    promocion: data.promocion?.id || data.promocion || null,
+    // Payment processing data
+    transaction_id: data.transaction_id || null,
+    fecha_pago: data.fecha_pago || null,
+    estado_pago: data.estado_pago || 'pendiente',
+      // Relaciones (usando _id suffix como espera el backend)
+    usuario_id: data.usuario?.id || data.usuario || null,
+    politica_pago_id: data.politicaPago?.id || data.politica_pago_id || data.politica_pago || null,
+    promocion_id: data.promocion?.id || data.promocion_id || data.promocion || null,
+      // Arrays relacionados - Extras with proper pricing preservation
+    extras: Array.isArray(data.extras) || Array.isArray(data.extrasSeleccionados) ? 
+      (data.extras || data.extrasSeleccionados).map(e => {
+        // Manejar tanto objetos completos como IDs simples
+        if (typeof e === 'object' && e.id) {
+          return {
+            extra_id: e.id,
+            cantidad: e.cantidad || 1,
+            precio: e.precio || 0,
+            nombre: e.nombre, // Preservar información adicional para debugging
+            descripcion: e.descripcion
+          };
+        } else if (typeof e === 'number' || typeof e === 'string') {
+          // Compatibilidad con IDs legacy
+          return {
+            extra_id: parseInt(e),
+            cantidad: 1,
+            precio: 0 // El backend deberá resolver el precio
+          };
+        }
+        return null;
+      }).filter(Boolean) : [],
     
-    // Arrays relacionados
-    extras: Array.isArray(data.extras) ? data.extras.map(e => ({
-      extra_id: e.id || e.extra_id,
-      cantidad: e.cantidad || 1
-    })) : [],
+    // Conductores with enhanced mapping
+    conductores: Array.isArray(data.conductores) ? 
+      data.conductores.map(c => ({
+        conductor_id: c.conductor?.id || c.conductor_id || c.id,
+        rol: c.rol || 'principal',
+      })) : extractConductorData(data),
     
-    conductores: Array.isArray(data.conductores) ? data.conductores.map(c => ({
-      conductor_id: c.conductor?.id || c.conductor_id || c.id,
-      rol: c.rol || 'principal',
-    })) : [],
-    
-    // Otros campos
-    notas_internas: data.notas_internas || '',
+    // Additional data preservation
+    notas_internas: data.notas_internas || data.notas || '',
     estado: data.estado || 'pendiente',
+    
+    // Datos de pago adicionales para preservar información del flujo
+    datos_pago: data.datos_pago || null,
   };
 
-  // Validación básica de campos requeridos
-  const requiredFields = ['vehiculo', 'lugar_recogida', 'lugar_devolucion', 'fecha_recogida', 'fecha_devolucion'];
+  // Ensure date formats are consistent (ISO format for backend)
+  if (mapped.fecha_recogida && typeof mapped.fecha_recogida === 'string') {
+    try {
+      const pickupDate = new Date(mapped.fecha_recogida);
+      if (!isNaN(pickupDate.getTime())) {
+        mapped.fecha_recogida = pickupDate.toISOString();
+      }
+    } catch (e) {
+      logError('Error formatting pickup date', e);
+    }
+  }
+  
+  if (mapped.fecha_devolucion && typeof mapped.fecha_devolucion === 'string') {
+    try {
+      const dropoffDate = new Date(mapped.fecha_devolucion);
+      if (!isNaN(dropoffDate.getTime())) {
+        mapped.fecha_devolucion = dropoffDate.toISOString();
+      }
+    } catch (e) {
+      logError('Error formatting dropoff date', e);
+    }
+  }
+  // Enhanced validation with better error reporting
+  const requiredFields = ['vehiculo_id', 'lugar_recogida_id', 'lugar_devolucion_id', 'fecha_recogida', 'fecha_devolucion'];
   const missingFields = requiredFields.filter(field => !mapped[field]);
   
   if (missingFields.length > 0) {
-    console.warn('Campos requeridos faltantes:', missingFields);
-    console.warn('Datos originales:', data);
-    console.warn('Datos mapeados:', mapped);
+    logError('Campos requeridos faltantes en mapReservationDataToBackend', {
+      missingFields,
+      originalData: data,
+      mappedData: mapped
+    });
   }
+  // Log successful mapping in debug mode
+  if (DEBUG_MODE) {
+    logInfo('Mapeo de datos completado', {
+      vehiculoId: mapped.vehiculo_id,
+      lugarRecogidaId: mapped.lugar_recogida_id,
+      lugarDevolucionId: mapped.lugar_devolucion_id,
+      metodoPago: mapped.metodo_pago,
+      precioTotal: mapped.precio_total,
+      extrasCount: mapped.extras?.length || 0,
+      conductoresCount: mapped.conductores?.length || 0,
+      hasDetallesReserva: !!data.detallesReserva
+    });
+
+    // Debug: Log the complete mapped output
+    console.log('🎯 [mapReservationDataToBackend] Complete mapped output:', mapped);
+    
+    // Debug: Specifically check required fields
+    const requiredFieldsCheck = {
+      vehiculo_id: mapped.vehiculo_id,
+      lugar_recogida_id: mapped.lugar_recogida_id,
+      lugar_devolucion_id: mapped.lugar_devolucion_id,
+      politica_pago_id: mapped.politica_pago_id,
+      fecha_recogida: mapped.fecha_recogida,
+      fecha_devolucion: mapped.fecha_devolucion
+    };
+    
+    console.log('✅ [mapReservationDataToBackend] Required fields check:', requiredFieldsCheck);
+    
+    const missingRequired = Object.entries(requiredFieldsCheck)
+      .filter(([key, value]) => !value)
+      .map(([key]) => key);
+      
+    if (missingRequired.length > 0) {
+      console.error('❌ [mapReservationDataToBackend] Missing required fields:', missingRequired);
+    } else {
+      console.log('✅ [mapReservationDataToBackend] All required fields present');
+    }
+  }
+  
   return mapped;
 };

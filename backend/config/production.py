@@ -123,11 +123,6 @@ REST_FRAMEWORK = {
     ]
 }
 
-# Redsys
-REDSYS_MERCHANT_CODE = os.environ.get('REDSYS_MERCHANT_CODE')
-REDSYS_TERMINAL = os.environ.get('REDSYS_TERMINAL', '001')
-REDSYS_SECRET_KEY = os.environ.get('REDSYS_SECRET_KEY')
-REDSYS_ENVIRONMENT = os.environ.get('REDSYS_ENVIRONMENT', 'production')
 
 # URL frontend
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://mobility4you.com')
