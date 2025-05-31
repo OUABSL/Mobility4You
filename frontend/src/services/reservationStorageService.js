@@ -18,7 +18,7 @@ const STORAGE_KEYS = {
 
 const TIMER_DURATION = 30 * 60 * 1000; // 30 minutos en millisegundos
 const WARNING_TIME = 5 * 60 * 1000; // Avisar 5 minutos antes
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = false; //process.env.NODE_ENV === 'development';
 
 /**
  * Helper para logging condicional
@@ -166,11 +166,16 @@ class ReservationStorageService {
       throw error;
     }
   }  /**
-   * Actualiza los datos de extras seleccionados - ahora maneja objetos completos en lugar de solo IDs
+   * Actualiza los datos de extras seleccionados y detalles de precios
+   * @param {Array} extrasData - Lista de extras seleccionados
+   * @param {Object} detallesReserva - Detalles de precios calculados (opcional)
    */
-  updateExtras(extrasData) {
+  updateExtras(extrasData, detallesReserva = null) {
     try {
-      logInfo('Actualizando extras', { count: extrasData?.length || 0 });
+      logInfo('Actualizando extras', { 
+        count: extrasData?.length || 0, 
+        hasDetalles: !!detallesReserva 
+      });
       
       // Debug: verificar estado del storage
       const reservationData = sessionStorage.getItem(STORAGE_KEYS.RESERVATION_DATA);
@@ -186,7 +191,8 @@ class ReservationStorageService {
         elapsed: Math.round(elapsed / 1000) + 's',
         remaining: Math.round(remaining / 1000) + 's',
         timerDuration: Math.round(TIMER_DURATION / 1000) + 's',
-        extrasDataType: Array.isArray(extrasData) ? (extrasData.length > 0 ? typeof extrasData[0] : 'empty') : typeof extrasData
+        extrasDataType: Array.isArray(extrasData) ? (extrasData.length > 0 ? typeof extrasData[0] : 'empty') : typeof extrasData,
+        detallesReserva: detallesReserva ? Object.keys(detallesReserva) : null
       });
       
       // Verificar que hay datos de reserva
@@ -209,6 +215,37 @@ class ReservationStorageService {
       // Asegurar que guardamos objetos completos de extras, no solo IDs
       const extrasToSave = Array.isArray(extrasData) ? extrasData : [];
       
+      // Si se proporcionan detalles de reserva, actualizar los datos base
+      if (detallesReserva) {
+        try {
+          const currentData = JSON.parse(reservationData);
+          const updatedData = {
+            ...currentData,
+            detallesReserva,
+            // También agregar campos de compatibilidad para componentes legacy
+            precioBase: detallesReserva.precioCocheBase || detallesReserva.base || 0,
+            precio_base: detallesReserva.precioCocheBase || detallesReserva.base || 0,
+            precioExtras: detallesReserva.precioExtras || detallesReserva.extras || 0,
+            precio_extras: detallesReserva.precioExtras || detallesReserva.extras || 0,
+            precioImpuestos: detallesReserva.iva || detallesReserva.impuestos || 0,
+            precio_impuestos: detallesReserva.iva || detallesReserva.impuestos || 0,
+            precioTotal: detallesReserva.total || 0,
+            precio_total: detallesReserva.total || 0
+          };
+          
+          sessionStorage.setItem(STORAGE_KEYS.RESERVATION_DATA, JSON.stringify(updatedData));
+          
+          logInfo('Detalles de precios actualizados en datos base:', {
+            total: detallesReserva.total,
+            base: detallesReserva.precioCocheBase || detallesReserva.base,
+            extras: detallesReserva.precioExtras || detallesReserva.extras,
+            iva: detallesReserva.iva || detallesReserva.impuestos
+          });
+        } catch (parseError) {
+          logError('Error al actualizar detalles de precios en datos base', parseError);
+        }
+      }
+      
       sessionStorage.setItem(STORAGE_KEYS.RESERVATION_EXTRAS, JSON.stringify(extrasToSave));
       sessionStorage.setItem(STORAGE_KEYS.RESERVATION_STEP, 'conductor');
       
@@ -216,7 +253,8 @@ class ReservationStorageService {
         extrasCount: extrasToSave.length,
         extrasType: extrasToSave.length > 0 ? typeof extrasToSave[0] : 'none',
         hasCompleteObjects: extrasToSave.length > 0 && typeof extrasToSave[0] === 'object' && extrasToSave[0].nombre,
-        nextStep: 'conductor'
+        nextStep: 'conductor',
+        pricingUpdated: !!detallesReserva
       });
       return true;
     } catch (error) {
@@ -872,8 +910,8 @@ export const saveReservationData = (data) => {
   return getReservationStorageService().saveReservationData(data);
 };
 
-export const updateExtras = (extras) => {
-  return getReservationStorageService().updateExtras(extras);
+export const updateExtras = (extras, detallesReserva = null) => {
+  return getReservationStorageService().updateExtras(extras, detallesReserva);
 };
 
 export const updateConductorData = (conductorData) => {

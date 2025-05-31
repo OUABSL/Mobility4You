@@ -5,6 +5,7 @@ Implementa operaciones CRUD completas con manejo de errores y logging robusto
 """
 
 import logging
+import os
 import json
 from datetime import datetime, timedelta
 from typing import Any, List, Optional, Union
@@ -19,8 +20,11 @@ from django.db.models import QuerySet, Count, Sum, Q, Avg
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
+from django.conf import settings
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.utils import timezone
-from django.utils.html import format_html, mark_safe
+from django.utils.html import format_html
 from django.utils.safestring import SafeString
 from django.utils.translation import gettext_lazy as _
 import csv
@@ -38,6 +42,8 @@ from .models import (
 # Importar función para generar contraseñas aleatorias
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import BaseUserManager
+
+
 
 # Configuración del logger para el panel de administración
 logger = logging.getLogger('admin_operations')
@@ -149,6 +155,20 @@ class BaseAdvancedAdmin(admin.ModelAdmin):
             path('bulk-actions/', self.admin_site.admin_view(self.bulk_actions_view), name=f'{self.model._meta.app_label}_{self.model._meta.model_name}_bulk_actions'),
         ]
         return custom_urls + urls
+    
+    def get_readonly_fields(self, request, obj=None):
+        """Campos de solo lectura con manejo seguro de None"""
+        readonly_fields = super().get_readonly_fields(request, obj)
+        if readonly_fields is None:
+            return []
+        return list(readonly_fields)
+
+    def get_exclude(self, request, obj=None):
+        """Campos excluidos con manejo seguro de None"""
+        exclude = super().get_exclude(request, obj)
+        if exclude is None:
+            return []
+        return list(exclude)
     
     @admin_log_action('EXPORT_CSV')
     def export_csv(self, request):
@@ -520,14 +540,14 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
     
     # Fieldsets personalizados
     fieldsets = (
-        ('Información de autenticación', {
+        ('Información de cuenta', {
             'fields': ('username', 'email'),
-            'description': 'Para usuarios admin/empresa se configurará contraseña separadamente.'
+            'description': 'Username es obligatorio. Email para comunicaciones y acceso a reservas.'
         }),
-        ('Contraseña', {
+        ('Contraseña (solo admin/empresa)', {
             'fields': ('password',),
             'classes': ('collapse',),
-            'description': 'Solo necesario para usuarios admin/empresa. Los clientes no requieren contraseña.'
+            'description': 'CLIENTES: Dejar vacío (accederán con email+número reserva). ADMIN/EMPRESA: Obligatorio para acceso al panel.'
         }),
         ('Información personal', {
             'fields': (
@@ -546,7 +566,7 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
         ('Permisos administrativos', {
             'fields': ('is_staff', 'is_superuser'),
             'classes': ('collapse',),
-            'description': 'Solo para usuarios admin/empresa'
+            'description': 'Solo para usuarios admin/empresa. Se configura automáticamente según el rol.'
         }),
         ('Fechas importantes', {
             'fields': ('last_login', 'date_joined'),
@@ -560,21 +580,31 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
     
     # Fieldsets para creación
     add_fieldsets = (
-        ('Información básica', {
+        ('Información básica de cuenta', {
             'classes': ('wide',),
             'fields': (
-                'username', 'email', 'first_name', 'last_name', 
-                'fecha_nacimiento', 'sexo', 'nacionalidad', 
-                'tipo_documento', 'numero_documento', 'telefono', 'rol'
+                'username', 'email', 'rol'
             ),
-            'description': 'Datos básicos del usuario. La contraseña se configurará después si es necesaria.'
+            'description': 'Datos básicos de la cuenta. El rol determina si necesita contraseña.'
         }),
-        ('Configuración de acceso', {
+        ('Contraseña (opcional para clientes)', {
+            'classes': ('wide',),
+            'fields': ('password1', 'password2'),
+            'description': 'IMPORTANTE: Para clientes (rol=cliente) dejar vacío. Para admin/empresa es obligatorio.'
+        }),
+        ('Información personal', {
+            'classes': ('wide',),
+            'fields': (
+                'first_name', 'last_name', 'fecha_nacimiento', 
+                'sexo', 'nacionalidad', 'tipo_documento', 
+                'numero_documento', 'telefono'
+            )
+        }),
+        ('Configuración inicial', {
             'classes': ('wide',),
             'fields': (
                 'is_active', 'registrado', 'verificado'
-            ),
-            'description': 'Configuración inicial de acceso'
+            )
         }),
     )
     
@@ -590,27 +620,39 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
     get_auth_status.short_description = 'Autenticación'
     
     def get_rol(self, obj):
-        """Mostrar rol con color"""
+        """Mostrar rol con indicador de acceso"""
         color_map = {
             'admin': '#dc3545',
             'empresa': '#007bff', 
             'cliente': '#28a745'
         }
         color = color_map.get(obj.rol, '#6c757d')
+        
+        # Indicador de acceso
+        if obj.rol in ['admin', 'empresa']:
+            access_icon = "🔑" if obj.has_usable_password() else "⚠️"
+            access_text = "Con acceso" if obj.has_usable_password() else "Sin contraseña"
+        else:
+            access_icon = "👤"
+            access_text = "Acceso por email+reserva"
+        
         return format_html(
-            '<span style="color: {}; font-weight: bold;">{}</span>',
-            color, obj.get_rol_display()
+            '<span style="color: {}; font-weight: bold;">{} {}</span><br>'
+            '<small style="color: #666;">{} {}</small>',
+            color, access_icon, obj.get_rol_display(),
+            access_icon, access_text
         )
-    get_rol.short_description = 'Rol'
+    get_rol.short_description = 'Rol y Acceso'
     get_rol.admin_order_field = 'rol'
-
     
     @admin_log_action('GET_QUERYSET')
     def get_queryset(self, request):
         """Optimizar consultas con select_related"""
         return super().get_queryset(request).select_related('direccion')
+    
+    
     def save_model(self, request, obj, form, change):
-        """ Manejar contraseñas según tipo de usuario"""
+        """Manejar contraseñas según tipo de usuario"""
         try:
             if not change:  # Nuevo usuario
                 if obj.rol in ['admin', 'empresa']:
@@ -621,13 +663,17 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
                         obj.set_password(temp_password)
                         messages.warning(
                             request, 
-                            f"Se generó contraseña temporal para {obj.username}. "
-                            f"Contraseña: {temp_password}"
+                            f"Usuario ADMIN creado. Contraseña temporal para {obj.username}: {temp_password} "
+                            f"(Se recomienda cambiarla en el primer acceso)"
                         )
                         logger.info(f"Contraseña temporal generada para usuario admin/empresa {obj.username}")
                     else:
                         # Encriptar contraseña proporcionada
                         obj.set_password(obj.password)
+                        messages.success(
+                            request,
+                            f"Usuario ADMIN creado exitosamente: {obj.username}"
+                        )
                     
                     obj.is_staff = True  # Permitir acceso al admin
                     
@@ -635,6 +681,11 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
                     # Clientes no necesitan contraseña
                     obj.set_unusable_password()
                     obj.is_staff = False
+                    messages.success(
+                        request,
+                        f"Usuario CLIENTE creado exitosamente: {obj.username}. "
+                        f"Podrá acceder a sus reservas con email + número de reserva."
+                    )
                     logger.info(f"Usuario cliente creado sin contraseña: {obj.username}")
             
             super().save_model(request, obj, form, change)
@@ -657,7 +708,31 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
         
         return readonly
     
-    actions = ['make_active', 'make_inactive', 'reset_password_action', 'send_welcome_email']
+    actions = [
+        'make_active', 'make_inactive', 'reset_password_admin_only', 
+        'send_welcome_email'
+    ]    
+    
+    
+    # AÑADIR método para obtener formulario personalizado según rol:
+    def get_form(self, request, obj=None, **kwargs):
+        """Personalizar formulario según si es creación o edición"""
+        form = super().get_form(request, obj, **kwargs)
+        
+        if not obj:  # Creando nuevo usuario
+            # Hacer password no obligatorio en creación
+            if 'password1' in form.base_fields:
+                form.base_fields['password1'].required = False
+            if 'password2' in form.base_fields:
+                form.base_fields['password2'].required = False
+            if 'password' in form.base_fields:
+                form.base_fields['password'].required = False
+                form.base_fields['password'].help_text = (
+                    "Dejar vacío para usuarios cliente. "
+                    "Para admin/empresa se generará automáticamente si se deja vacío."
+                )
+        
+        return form
     
     def reset_password_action(self, request, queryset):
         """Resetear contraseñas para usuarios que las necesiten"""
@@ -677,6 +752,35 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
         except Exception as e:
             messages.error(request, f"Error reseteando contraseñas: {str(e)}")
     reset_password_action.short_description = "Resetear contraseñas (admin/empresa)"
+    
+    # AÑADIR acción personalizada para resetear contraseñas:
+    def reset_password_admin_only(self, request, queryset):
+        """Resetear contraseñas solo para usuarios admin/empresa"""
+        try:
+            reset_count = 0
+            for user in queryset:                
+                if user.rol in ['admin', 'empresa']:
+                    temp_password = BaseUserManager().make_random_password()
+                    user.set_password(temp_password)
+                    user.save()
+                    reset_count += 1
+                    messages.info(
+                        request, 
+                        f"Nueva contraseña para {user.username}: {temp_password}"
+                    )
+                else:
+                    messages.warning(
+                        request,
+                        f"Usuario {user.username} es cliente - no necesita contraseña"
+                    )
+            
+            if reset_count > 0:
+                messages.success(request, f"Contraseñas reseteadas para {reset_count} usuarios admin")
+            
+        except Exception as e:
+            messages.error(request, f"Error reseteando contraseñas: {str(e)}")
+
+    reset_password_admin_only.short_description = "Resetear contraseñas (solo admin/empresa)"
     
     @admin_log_action('BULK_ACTIVATE_USERS')
     def make_active(self, request, queryset):
@@ -908,9 +1012,28 @@ class VehiculoAdmin(BaseAdvancedAdmin):
         except Exception as e:
             messages.error(request, f"Error: {str(e)}")
     make_unavailable.short_description = "Marcar como no disponibles"
+    
+    @admin_log_action('BULK_ACTIVATE_VEHICLES')
+    def activate_vehicles(self, request, queryset):
+        """Activar vehículos seleccionados"""
+        try:
+            updated = queryset.update(activo=True)
+            messages.success(request, f"{updated} vehículos activados exitosamente")
+        except Exception as e:
+            messages.error(request, f"Error al activar vehículos: {str(e)}")
+    activate_vehicles.short_description = "Activar vehículos seleccionados"
 
-# Aplicar la corrección al VehiculoAdmin existente
-# Note: get_precio_actual method is already defined within the VehiculoAdmin class
+    @admin_log_action('BULK_DEACTIVATE_VEHICLES')
+    def deactivate_vehicles(self, request, queryset):
+        """Desactivar vehículos seleccionados"""
+        try:
+            updated = queryset.update(activo=False)
+            messages.success(request, f"{updated} vehículos desactivados exitosamente")
+        except Exception as e:
+            messages.error(request, f"Error al desactivar vehículos: {str(e)}")
+    deactivate_vehicles.short_description = "Desactivar vehículos seleccionados"
+
+
 
 
 @admin.register(ImagenVehiculo)
@@ -930,11 +1053,16 @@ class ImagenVehiculoAdmin(BaseAdvancedAdmin):
     def get_imagen_preview(self, obj):
         """Preview de la imagen"""
         if obj.imagen:
-            return format_html(
-                '<img src="{}" style="max-width: 50px; max-height: 50px; border-radius: 4px;">',
-                obj.imagen.url
-            )
-        return "Sin imagen"
+            try:
+                return format_html(
+                    '<img src="{}" style="max-width: 50px; max-height: 50px; border-radius: 4px;" '
+                    'onerror="this.style.display=\'none\'; this.nextSibling.style.display=\'inline\';">'
+                    '<span style="display:none; color: #dc3545;">Imagen no encontrada</span>',
+                    obj.imagen.url
+                )
+            except ValueError:
+                return format_html('<span style="color: #dc3545;">Archivo dañado</span>')
+        return format_html('<span style="color: #6c757d;">Sin imagen</span>')
     get_imagen_preview.short_description = 'Preview'
     
     def get_imagen_path(self, obj):
@@ -944,6 +1072,17 @@ class ImagenVehiculoAdmin(BaseAdvancedAdmin):
         return "No hay imagen"
     get_imagen_path.short_description = 'Ruta de imagen'
 
+    def clean(self):
+        """Validación personalizada para imágenes"""
+        super().clean()
+        if self.imagen:
+            # Validar tamaño de archivo (max 5MB)
+            if self.imagen.size > 5 * 1024 * 1024:
+                raise ValidationError("El archivo de imagen no puede ser mayor a 5MB")
+            
+            # Validar formato
+            if not self.imagen.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                raise ValidationError("Solo se permiten archivos PNG, JPG, JPEG y WebP")
 
 @admin.register(TarifaVehiculo)
 class TarifaVehiculoAdmin(BaseAdvancedAdmin):
@@ -989,19 +1128,6 @@ class TarifaVehiculoAdmin(BaseAdvancedAdmin):
             else:
                 return format_html('<span style="color: red;">● Expirada</span>')
     get_estado_vigencia.short_description = 'Estado'
-    
-    def get_estado_vigencia(self, obj):
-        """Estado de vigencia de la tarifa"""
-        hoy = timezone.now().date()
-        if obj.fecha_inicio <= hoy <= obj.fecha_fin:
-            return format_html('<span style="color: green; font-weight: bold;">● Vigente</span>')
-        elif hoy < obj.fecha_inicio:
-            return format_html('<span style="color: blue;">● Futura</span>')
-        else:
-            return format_html('<span style="color: red;">● Expirada</span>')
-    get_estado_vigencia.short_description = 'Estado'
-    
-    
 
 
 @admin.register(Mantenimiento)
@@ -1023,11 +1149,12 @@ class MantenimientoAdmin(BaseAdvancedAdmin):
     fieldsets = (
         ('Información del mantenimiento', {
             'fields': ('vehiculo', 'tipo_servicio', 'fecha', 'coste')
-        }),        ('Detalles', {
+        }),
+        ('Detalles adicionales', {
             'fields': ('notas',)
         }),
         ('Información del sistema', {
-            'fields': ('created_at',),
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
@@ -1261,9 +1388,15 @@ class TipoPenalizacionAdmin(BaseAdvancedAdmin):
     list_filter = ('tipo_tarifa',)
     search_fields = ('nombre',)
     
+    fieldsets = (
+        ('Información básica', {
+            'fields': ('nombre', 'tipo_tarifa')
+        }),
+    )
+    
     def get_politicas_count(self, obj):
         """Contador de políticas que usan este tipo"""
-        count = obj.politicapenalizacion_set.count()
+        count = obj.politicas.count()
         return format_html(
             '<span style="background: #6f42c1; color: white; padding: 2px 6px; '
             'border-radius: 3px; font-size: 11px;">{}</span>',
@@ -1278,10 +1411,16 @@ class PoliticaPenalizacionAdmin(BaseAdvancedAdmin):
     
     list_display = (
         'get_politica_titulo', 'get_tipo_penalizacion', 
-        'get_importe_formatted'
+        'horas_previas'
     )
     search_fields = ('politica_pago__titulo', 'tipo_penalizacion__nombre')
     list_filter = ('tipo_penalizacion', 'politica_pago')
+    
+    fieldsets = (
+        ('Configuración de penalización', {
+            'fields': ('politica_pago', 'tipo_penalizacion', 'horas_previas')
+        }),
+    )
     
     def get_politica_titulo(self, obj):
         """Título de la política"""
@@ -1292,16 +1431,6 @@ class PoliticaPenalizacionAdmin(BaseAdvancedAdmin):
         """Tipo de penalización"""
         return obj.tipo_penalizacion.nombre
     get_tipo_penalizacion.short_description = 'Tipo'
-    
-    def get_importe_formatted(self, obj):
-        """Importe formateado"""
-        return format_html(
-            '<span style="color: #dc3545; font-weight: bold;">{} €</span>',
-            obj.importe
-        )
-    get_importe_formatted.short_description = 'Importe'
-
-
 @admin.register(Promocion)
 class PromocionAdmin(BaseAdvancedAdmin):
     """Administrador avanzado para promociones"""
@@ -1453,20 +1582,22 @@ class ReservaAdmin(BaseAdvancedAdmin):
         
         if obj:  # Editando objeto existente
             readonly.extend(['vehiculo', 'fecha_recogida', 'fecha_devolucion'])
-    
+        
+        return readonly
     
     def save_model(self, request, obj, form, change):
-        """Calcular precio_dia automáticamente antes de guardar"""
+        """Calcular precios automáticamente antes de guardar"""
         try:
             if not change:  # Nueva reserva
-                # Calcular precio_dia basándose en el vehículo y fechas
+                # Calcular precio_dia automáticamente
                 if obj.vehiculo and obj.fecha_recogida and obj.fecha_devolucion:
                     # Obtener tarifa vigente para el vehículo
-                    fecha_inicio = obj.fecha_recogida.date()
+                    fecha_inicio = obj.fecha_recogida.date() if hasattr(obj.fecha_recogida, 'date') else obj.fecha_recogida
+                    
                     tarifa = obj.vehiculo.tarifas.filter(
                         fecha_inicio__lte=fecha_inicio
                     ).filter(
-                        Q(fecha_fin__gte=fecha_inicio) | Q(fecha_fin__isnull=True)
+                        models.Q(fecha_fin__gte=fecha_inicio) | models.Q(fecha_fin__isnull=True)
                     ).order_by('-fecha_inicio').first()
                     
                     if tarifa:
@@ -1479,12 +1610,14 @@ class ReservaAdmin(BaseAdvancedAdmin):
                     
                     # Calcular precio total si no está establecido
                     if not obj.precio_total:
-                        dias = (obj.fecha_devolucion.date() - obj.fecha_recogida.date()).days
+                        fecha_dev = obj.fecha_devolucion.date() if hasattr(obj.fecha_devolucion, 'date') else obj.fecha_devolucion
+                        fecha_rec = obj.fecha_recogida.date() if hasattr(obj.fecha_recogida, 'date') else obj.fecha_recogida
+                        
+                        dias = (fecha_dev - fecha_rec).days
                         if dias <= 0:
                             dias = 1
                         
                         subtotal = obj.precio_dia * dias
-                        #TODO: ESTABLECER IVA Y OTROS IMPUESTOS
                         obj.precio_impuestos = subtotal * Decimal('0.21')  # IVA 21%
                         obj.precio_total = subtotal + obj.precio_impuestos
                         
@@ -1504,7 +1637,8 @@ class ReservaAdmin(BaseAdvancedAdmin):
             logger.error(f"Error calculando precios de reserva: {str(e)}")
             messages.error(request, f"Error calculando precios: {str(e)}")
             raise
-        
+
+    
     def get_vehiculo_info(self, obj):
         """Información del vehículo"""
         if obj.vehiculo:
@@ -1874,7 +2008,6 @@ class ContratoAdmin(BaseAdvancedAdmin):
             url, obj.reserva.id,
             obj.reserva.vehiculo.matricula if obj.reserva.vehiculo else 'Sin vehículo'
         )    
-        get_reserva_info.short_description = 'Reserva'
     
     def get_cliente_info(self, obj):
         """Información del cliente"""
@@ -1993,7 +2126,7 @@ class FacturaAdmin(BaseAdvancedAdmin):
     def get_queryset(self, request):
         """Optimizar consultas"""
         return super().get_queryset(request).select_related(
-            'reserva', 'reserva__conductor_principal'
+            'reserva', 'reserva__usuario', 'reserva__vehiculo' 
         )
     
     actions = ['mark_as_paid', 'mark_as_unpaid']
@@ -2024,59 +2157,30 @@ class ContactoAdmin(BaseAdvancedAdmin):
     """Administrador para mensajes de contacto"""
     
     list_display = (
-        'numero_contrato', 'get_reserva_info', 'get_cliente_info', 
-        'fecha_firma', 'get_estado_badge', 'get_archivo_link'
+        'nombre', 'email', 'get_asunto_short', 'estado', 
+        'fecha_creacion', 'get_es_reciente', 'get_tiempo_respuesta'
     )
     search_fields = (
-        'numero_contrato', 'reserva__id', 'reserva__usuario__first_name',
-        'reserva__usuario__last_name', 'reserva__usuario__email'
+        'nombre', 'email', 'asunto', 'mensaje', 'respondido_por'
     )
-    list_filter = ('estado', 'fecha_firma', DateRangeFilter)
-    readonly_fields = ('created_at', 'updated_at')
+    list_filter = ('estado', 'fecha_creacion', 'fecha_respuesta', DateRangeFilter)
+    readonly_fields = ('fecha_creacion', 'ip_address', 'user_agent')
     
     fieldsets = (
-        ('Información básica', {
-            'fields': ('reserva', 'numero_contrato', 'estado')
+        ('Información del remitente', {
+            'fields': ('nombre', 'email')
         }),
-        ('Detalles del contrato', {
-            'fields': ('fecha_firma', 'condiciones')
+        ('Mensaje', {
+            'fields': ('asunto', 'mensaje')
         }),
-        ('Archivo', {
-            'fields': ('url_pdf',)
+        ('Estado y respuesta', {
+            'fields': ('estado', 'fecha_respuesta', 'respuesta', 'respondido_por')
         }),
-        ('Información del sistema', {
-            'fields': ('created_at', 'updated_at'),
+        ('Datos técnicos', {
+            'fields': ('ip_address', 'user_agent', 'fecha_creacion'),
             'classes': ('collapse',)
         }),
     )
-    
-    def get_reserva_info(self, obj):
-        """Información de la reserva - CORREGIDO"""
-        if obj.reserva:
-            url = reverse('admin:api_reserva_change', args=[obj.reserva.id])
-            vehiculo_info = ''
-            if obj.reserva.vehiculo:
-                vehiculo_info = f'<br><small style="color: #666;">{obj.reserva.vehiculo.marca} {obj.reserva.vehiculo.modelo}</small>'
-            
-            return format_html(
-                '<a href="{}">Reserva #{}</a>{}',
-                url, obj.reserva.id, vehiculo_info
-            )
-        return format_html('<span style="color: red;">Sin reserva</span>')
-    get_reserva_info.short_description = 'Reserva'
-    
-    def get_cliente_info(self, obj):
-        """Información del cliente - CORREGIDO"""
-        if obj.reserva and obj.reserva.usuario:
-            cliente = obj.reserva.usuario
-            return format_html(
-                '<strong>{} {}</strong><br><small style="color: #666;">{}</small>',
-                cliente.first_name or '', 
-                cliente.last_name or '', 
-                cliente.email or ''
-            )
-        return format_html('<span style="color: red;">Sin cliente</span>')
-    get_cliente_info.short_description = 'Cliente'
     
     def get_asunto_short(self, obj):
         """Asunto truncado"""
@@ -2085,40 +2189,27 @@ class ContactoAdmin(BaseAdvancedAdmin):
         return '-'
     get_asunto_short.short_description = 'Asunto'
     
-    def get_estado_badge(self, obj):
-        """Badge del estado - CORREGIDO"""
-        estados_color = {
-            'pendiente': '#ffc107',
-            'firmado': '#28a745',
-            'anulado': '#dc3545'
-        }
-        color = estados_color.get(obj.estado, '#6c757d')
-        return format_html(
-            '<span style="color: {}; font-weight: bold;">● {}</span>', 
-            color, obj.get_estado_display()
-        )
-    get_estado_badge.short_description = 'Estado'
+    def get_es_reciente(self, obj):
+        """Indica si el mensaje es reciente"""
+        if obj.es_reciente:
+            return format_html('<span style="color: #dc3545; font-weight: bold;">● Nuevo</span>')
+        return format_html('<span style="color: #6c757d;">○ Antiguo</span>')
+    get_es_reciente.short_description = 'Reciente'
     
-    def get_mensaje_preview(self, obj):
-        """Preview del mensaje"""
-        if obj.mensaje:
-            preview = obj.mensaje[:80] + '...' if len(obj.mensaje) > 80 else obj.mensaje
-            return format_html('<small style="color: #666;">{}</small>', preview)
-        return '-'
-    get_mensaje_preview.short_description = 'Mensaje'
+    def get_tiempo_respuesta(self, obj):
+        """Tiempo de respuesta"""
+        if obj.tiempo_respuesta:
+            dias = obj.tiempo_respuesta.days
+            if dias == 0:
+                return "Mismo día"
+            elif dias == 1:
+                return "1 día"
+            else:
+                return f"{dias} días"
+        return "Sin responder"
+    get_tiempo_respuesta.short_description = 'Tiempo respuesta'
     
     actions = ['mark_as_resolved', 'mark_as_pending']
-    
-    def get_archivo_link(self, obj):
-        """Link al archivo si existe - CORREGIDO"""
-        if obj.url_pdf:
-            return format_html(
-                '<a href="{}" target="_blank" style="color: #007bff;">📄 Ver PDF</a>',
-                obj.url_pdf
-            )
-        return format_html('<span style="color: #6c757d;">📄 Sin archivo</span>')
-    get_archivo_link.short_description = 'Archivo'
-
     
     @admin_log_action('BULK_MARK_RESOLVED')
     def mark_as_resolved(self, request, queryset):
@@ -2139,6 +2230,7 @@ class ContactoAdmin(BaseAdvancedAdmin):
         except Exception as e:
             messages.error(request, f"Error: {str(e)}")
     mark_as_pending.short_description = "Marcar como pendientes"
+
 
 
 # ===============================

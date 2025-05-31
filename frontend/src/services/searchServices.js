@@ -5,7 +5,7 @@ import { testingLocationsData } from '../assets/testingData/testingData';
 import { withCache } from './cacheService';
 
 // Constante para modo debug
-export const DEBUG_MODE = true; // TEMPORAL: Activado para resolver 502 errors
+export const DEBUG_MODE = false; // TEMPORAL: Activado para resolver 502 errors
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost/api';
 
 /**

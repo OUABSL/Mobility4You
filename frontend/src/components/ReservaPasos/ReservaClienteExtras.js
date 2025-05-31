@@ -363,9 +363,8 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
         extrasTypes: extrasSeleccionados.map(e => typeof e === 'object' ? `${e.id}(obj:${e.nombre})` : `${e}(id)`),
         hasCompleteObjects: extrasSeleccionados.every(e => typeof e === 'object' && e.nombre && e.precio)
       });
-      
-      try {
-        await storageService.updateExtras(extrasSeleccionados);
+        try {
+        await storageService.updateExtras(extrasSeleccionados, detallesReserva);
       } catch (updateError) {
         console.error('[ReservaClienteExtras] Error al actualizar extras:', updateError);
         
@@ -376,9 +375,8 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
           
           try {
             // Re-guardar datos de reserva para reinicializar timer
-            storageService.saveReservationData(reservaData);
-            // Reintentar actualización de extras
-            await storageService.updateExtras(extrasSeleccionados);
+            storageService.saveReservationData(reservaData);            // Reintentar actualización de extras
+            await storageService.updateExtras(extrasSeleccionados, detallesReserva);
             console.log('[ReservaClienteExtras] Reserva reinicializada y extras actualizados exitosamente');
           } catch (retryError) {
             console.error('[ReservaClienteExtras] Error en reintento:', retryError);
@@ -387,7 +385,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
             try {
               const recovered = autoRecoverReservation();
               if (recovered) {
-                await storageService.updateExtras(extrasSeleccionados);
+                await storageService.updateExtras(extrasSeleccionados, detallesReserva);
                 console.log('[ReservaClienteExtras] Extras actualizados tras recuperación automática');
               } else {
                 throw new Error('Error al guardar extras. Por favor, inténtelo de nuevo.');
@@ -485,7 +483,9 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
               Volver
             </Button>
             <h5 className="mb-0 header-titulo">Extras y Detalles de Reserva</h5>
-            <div style={{ width: '80px' }}></div> {/* Espacio para equilibrar el header */}
+            {isMobile && (
+            <div style={{ width: '80px' }}></div>
+            )}
           </div>
         </Card.Header>
         
@@ -625,40 +625,44 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                 })}
               </Row>              
               <div className="mt-4 d-flex justify-content-between">
-                <div className="d-flex gap-2">
+                <div className="d-flex">
                   {/* Botón para cancelar reserva y volver a la búsqueda */}
                   <Button 
                     variant="outline-danger" 
                     onClick={handleCancelarReserva}
                     disabled={loading}
+                    className='cancelar-btn'
                     title="Cancelar reserva y volver a la búsqueda"
                   >
                     <FontAwesomeIcon icon={faTimes} className="me-2" />
                     Cancelar Reserva
                   </Button>
                 </div>
-                <Button 
-                  variant="primary" 
-                  className="continue-btn"
-                  onClick={handleContinuar}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Spinner
-                        as="span"
-                        animation="border"
-                        size="sm"
-                        role="status"
-                        aria-hidden="true"
-                        className="me-2"
-                      />
-                      Procesando...
-                    </>
-                  ) : (
-                    'Continuar con la reserva'
-                  )}
-                </Button>
+                <div d-flex >                
+                  <Button 
+                    variant="primary" 
+                    className="continue-btn"
+                    onClick={handleContinuar}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner
+                          as="span"
+                          animation="border"
+                          size="sm"
+                          role="status"
+                          aria-hidden="true"
+                          className="me-2"
+                        />
+                        Procesando...
+                      </>
+                    ) : (
+                      'Continuar con la reserva'
+                    )}
+                  </Button>
+
+                </div>
               </div>
             </Col>
           </Row>

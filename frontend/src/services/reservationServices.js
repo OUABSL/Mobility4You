@@ -9,7 +9,7 @@ import { fetchLocations } from './searchServices'; // Import para obtener ubicac
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 // Constante para modo debug
-export const DEBUG_MODE = true; // TEMPORAL: Activado para resolver 502 errors
+export const DEBUG_MODE = false; // TEMPORAL: Desactivado para producción - funcionalidad verificada
 
 // Funciones de logging condicional
 const logInfo = (message, data = null) => {
@@ -518,8 +518,7 @@ export const datosReservaPrueba = {
           codigo_postal: '28001'
         }
       }
-    },
-    {
+    },    {
       reserva_id: 'R12345678',
       conductor_id: 124,
       rol: 'secundario',
@@ -947,6 +946,7 @@ export const mapReservationDataToBackend = async (data) => {  // Debug: Log the 
       logError('Error formatting pickup date', e);
     }
   }
+
   
   if (mapped.fecha_devolucion && typeof mapped.fecha_devolucion === 'string') {
     try {
@@ -959,7 +959,7 @@ export const mapReservationDataToBackend = async (data) => {  // Debug: Log the 
     }
   }
   // Enhanced validation with better error reporting
-  const requiredFields = ['vehiculo_id', 'lugar_recogida_id', 'lugar_devolucion_id', 'fecha_recogida', 'fecha_devolucion'];
+  const requiredFields = ['vehiculo_id', 'lugar_recogida_id', 'lugar_devolucion_id', 'fecha_recogida', 'fecha_devolucion', 'politica_pago_id'];
   const missingFields = requiredFields.filter(field => !mapped[field]);
   
   if (missingFields.length > 0) {
@@ -1009,4 +1009,78 @@ export const mapReservationDataToBackend = async (data) => {  // Debug: Log the 
   }
   
   return mapped;
+};
+
+
+/**
+ * Función para obtener políticas de pago disponibles
+ * @returns {Promise<Array>} - Lista de políticas de pago disponibles
+ */
+export const fetchPoliticasPago = async () => {
+  try {
+    if (DEBUG_MODE) {
+      // Simular delay y devolver datos de prueba
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Importar datos de testing
+      const { testingPoliticas } = await import('../assets/testingData/testingData.js');
+      
+      // Filtrar solo las políticas activas
+      return testingPoliticas.filter(politica => politica.activo === true);
+    }
+
+    // Producción: llamada real a la API
+    const response = await axios.get(`${API_URL}/politicas-pago/`, getAuthHeaders());
+    
+    // Manejar la respuesta que puede tener estructura {success: true, results: [...]} o ser directamente un array
+    if (response.data && response.data.results) {
+      return response.data.results;
+    } else if (Array.isArray(response.data)) {
+      return response.data;
+    } else {
+      throw new Error('Formato de respuesta inesperado');
+    }
+  } catch (error) {
+    console.error('Error fetching payment policies:', error);
+    
+    // En caso de error en producción, fallback a datos de testing si DEBUG_MODE está habilitado
+    if (DEBUG_MODE) {
+      try {
+        console.warn('Fallback: usando datos de testing para políticas de pago');
+        const { testingPoliticas } = await import('../assets/testingData/testingData.js');
+        return testingPoliticas.filter(politica => politica.activo === true);
+      } catch (fallbackError) {
+        console.error('Error al cargar datos de testing de políticas:', fallbackError);
+        // Devolver políticas básicas por defecto
+        return [
+          {
+            id: 1,
+            titulo: 'All Inclusive',
+            descripcion: 'Protección completa sin franquicia',
+            franquicia: 0,
+            activo: true,
+            incluye: [],
+            no_incluye: []
+          },
+          {
+            id: 2,
+            titulo: 'Economy',
+            descripcion: 'Protección básica con franquicia',
+            franquicia: 1200,
+            activo: true,
+            incluye: [],
+            no_incluye: []
+          }
+        ];
+      }
+    }
+    
+    const errorMessage = error.response?.data?.detail || 
+                        error.response?.data?.message || 
+                        error.response?.data?.error ||
+                        error.message || 
+                        'Error al obtener las políticas de pago disponibles.';
+    
+    throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Error al obtener las políticas de pago disponibles.');
+  }
 };

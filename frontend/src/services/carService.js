@@ -6,7 +6,7 @@ import { withCache } from './cacheService';
 // Configuración de API y modo testing
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost/api';
 // Usar DEBUG_MODE de manera consistente con otros servicios
-const DEBUG_MODE = true; // TEMPORAL: Activado para resolver 502 errors
+const DEBUG_MODE = false; // TEMPORAL: Activado para resolver 502 errors
 
 /**
  * Busca vehículos disponibles según criterios (usa servicio unificado)

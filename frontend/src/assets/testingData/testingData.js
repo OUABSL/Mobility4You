@@ -591,7 +591,166 @@ const testingTestimonios = [
 ];
 
 // ========================================
+// DATOS DE POLÍTICAS DE PAGO DE TESTING
+// ========================================
+const testingPoliticas = [
+  {
+    id: 1,
+    titulo: 'All Inclusive',
+    descripcion: 'Política de pago completa sin preocupaciones con cobertura total',
+    franquicia: 0,
+    activo: true,
+    incluye: [
+      {
+        id: 1,
+        titulo: 'Política de combustible Full-Full',
+        descripcion: 'Recoge lleno, devuelve lleno sin cargos adicionales'
+      },
+      {
+        id: 2,
+        titulo: 'Cobertura a todo riesgo sin franquicia',
+        descripcion: 'Protección completa sin depósitos ni franquicias'
+      },
+      {
+        id: 3,
+        titulo: 'Kilometraje ilimitado',
+        descripcion: 'Conduce sin límites de distancia'
+      },
+      {
+        id: 4,
+        titulo: 'Entrega a domicilio GRATIS',
+        descripcion: 'Llevamos el vehículo donde necesites'
+      },
+      {
+        id: 5,
+        titulo: 'Asistencia en carretera 24/7',
+        descripcion: 'Apoyo completo las 24 horas del día'
+      },
+      {
+        id: 6,
+        titulo: 'Pago flexible',
+        descripcion: 'Pago por adelantado o a la llegada'
+      },
+      {
+        id: 7,
+        titulo: 'Cancelación gratuita hasta 24h',
+        descripcion: 'Cancela sin costo hasta 24 horas antes'
+      },
+      {
+        id: 8,
+        titulo: 'Parking express',
+        descripcion: 'Recogida y devolución en parking express'
+      },
+      {
+        id: 9,
+        titulo: 'Conductor adicional gratuito',
+        descripcion: 'Incluye un conductor adicional sin costo'
+      }
+    ],
+    no_incluye: [
+      {
+        id: 1,
+        titulo: 'Daños bajo efectos del alcohol',
+        descripcion: 'Daños causados bajo efectos de alcohol o drogas'
+      },
+      {
+        id: 2,
+        titulo: 'Cargo por no devolver lleno',
+        descripcion: 'Cargo aplicable si no se devuelve con el tanque lleno'
+      }
+    ]
+  },
+  {
+    id: 2,
+    titulo: 'Economy',
+    descripcion: 'Opción económica con protección básica',
+    franquicia: 1200,
+    activo: true,
+    incluye: [
+      {
+        id: 10,
+        titulo: 'Tarifa no reembolsable',
+        descripcion: 'Sin cancelaciones ni modificaciones permitidas'
+      },
+      {
+        id: 11,
+        titulo: 'Kilometraje ampliado',
+        descripcion: '500km/día, máximo 3.500km total'
+      },
+      {
+        id: 12,
+        titulo: 'Cobertura básica con franquicia',
+        descripcion: 'Protección estándar con depósito de 1200€'
+      }
+    ],
+    no_incluye: [
+      {
+        id: 3,
+        titulo: 'Daños bajo efectos del alcohol',
+        descripcion: 'Daños causados bajo efectos de alcohol o drogas'
+      },
+      {
+        id: 4,
+        titulo: 'Cargo por no devolver lleno',
+        descripcion: 'Cargo aplicable si no se devuelve con el tanque lleno'
+      },
+      {
+        id: 5,
+        titulo: 'Cancelaciones o modificaciones',
+        descripcion: 'No se permiten cambios una vez confirmada la reserva'
+      }
+    ]
+  },
+  {
+    id: 3,
+    titulo: 'Premium',
+    descripcion: 'Protección premium con servicios exclusivos',
+    franquicia: 500,
+    activo: true,
+    incluye: [
+      {
+        id: 13,
+        titulo: 'Cobertura premium',
+        descripcion: 'Protección avanzada con franquicia reducida'
+      },
+      {
+        id: 14,
+        titulo: 'Kilometraje extendido',
+        descripcion: '1000km/día, máximo 7.000km total'
+      },
+      {
+        id: 15,
+        titulo: 'Conductor adicional incluido',
+        descripcion: 'Un conductor adicional sin costo extra'
+      },
+      {
+        id: 16,
+        titulo: 'Cancelación flexible',
+        descripcion: 'Cancela hasta 48 horas antes sin penalización'
+      },
+      {
+        id: 17,
+        titulo: 'Upgrade gratuito',
+        descripcion: 'Posibilidad de upgrade de categoría sujeto a disponibilidad'
+      }
+    ],
+    no_incluye: [
+      {
+        id: 6,
+        titulo: 'Daños bajo efectos del alcohol',
+        descripcion: 'Daños causados bajo efectos de alcohol o drogas'
+      },
+      {
+        id: 7,
+        titulo: 'Cargo por combustible',
+        descripcion: 'Cargos por no respetar la política de combustible'
+      }
+    ]
+  }
+];
+
+// ========================================
 // EXPORTACIONES PARA FALLBACK DE TESTING
 // ========================================
-export { testingLocationsData, testingDestinos, testingEstadisticas, testingCaracteristicas, testingTestimonios };
+export { testingLocationsData, testingDestinos, testingEstadisticas, testingCaracteristicas, testingTestimonios, testingPoliticas };
 export default testingCars;

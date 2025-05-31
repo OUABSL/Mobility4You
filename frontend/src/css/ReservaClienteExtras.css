@@ -140,8 +140,17 @@
 /* Responsive */
 @media (max-width: 768px) {
 
+  .header-titulo {
+    font-size: 1rem !important;
+  }
+
+  .continue-btn, .cancelar-btn {
+      font-size: 12px;
+  }
+
+
   .header-extras .header-volver {
-    text-wrap-mode: nowrap;
+    white-space: nowrap;
     font-size: 0.8rem;
   }
 

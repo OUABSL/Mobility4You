@@ -19,6 +19,7 @@ class ReservaService:
     Implementa logging completo, validación robusta y manejo de errores
     """
     
+    
     @staticmethod
     def validar_datos_reserva(datos):
         """
@@ -37,7 +38,24 @@ class ReservaService:
         
         errores = {}
         
-        # Validar campos obligatorios
+        # Mapear campos del frontend al backend
+        # El frontend envía pickupDate/dropoffDate, mapear a fecha_recogida/fecha_devolucion
+        if 'fechas' in datos:
+            fechas_data = datos['fechas']
+            if 'pickupDate' in fechas_data:
+                datos['fecha_recogida'] = fechas_data['pickupDate']
+            if 'dropoffDate' in fechas_data:
+                datos['fecha_devolucion'] = fechas_data['dropoffDate']
+            if 'pickupLocation' in fechas_data and fechas_data['pickupLocation'].get('id'):
+                datos['lugar_recogida_id'] = fechas_data['pickupLocation']['id']
+            if 'dropoffLocation' in fechas_data and fechas_data['dropoffLocation'].get('id'):
+                datos['lugar_devolucion_id'] = fechas_data['dropoffLocation']['id']
+        
+        # Si el frontend envía el coche en 'car'
+        if 'car' in datos and datos['car'].get('id'):
+            datos['vehiculo_id'] = datos['car']['id']
+        
+        # Validar campos obligatorios SIN asignar valores por defecto
         campos_obligatorios = [
             'vehiculo_id', 'fecha_recogida', 'fecha_devolucion',
             'lugar_recogida_id', 'lugar_devolucion_id', 'politica_pago_id'
@@ -51,6 +69,8 @@ class ReservaService:
         try:
             fecha_recogida = datos.get('fecha_recogida')
             fecha_devolucion = datos.get('fecha_devolucion')
+        
+            logger.info(f"Recibidas fechas de reserva: - RCG - DEV: || {fecha_recogida} || {fecha_devolucion}")
             
             if fecha_recogida and fecha_devolucion:
                 if isinstance(fecha_recogida, str):
@@ -58,19 +78,36 @@ class ReservaService:
                 if isinstance(fecha_devolucion, str):
                     fecha_devolucion = timezone.datetime.fromisoformat(fecha_devolucion.replace('Z', '+00:00'))
                 
+                logger.info(f"Las fechas recibidas y formateadas son - RCG - DEV: || {fecha_recogida} || {fecha_devolucion}")
+                
+                # ANTES: if fecha_recogida <= fecha_devolucion: (ESTO ESTABA MAL)
+                # AHORA: La fecha de recogida debe ser ANTES que la de devolución
                 if fecha_recogida >= fecha_devolucion:
                     errores['fechas'] = "La fecha de devolución debe ser posterior a la de recogida"
                 
-                if fecha_recogida <= timezone.now():
-                    errores['fecha_recogida'] = "La fecha de recogida debe ser futura"
-                    
+                # Validación flexible para "fecha futura"
+                # Permitir hasta 1 hora de margen para procesar la reserva
+                now = timezone.now()
+                margen_horas = timezone.timedelta(hours=1)
+                limite_minimo = now - margen_horas
+                
+                if fecha_recogida <= limite_minimo:
+                    errores['fecha_recogida'] = f"La fecha de recogida debe ser futura (con al menos 1 hora de margen)"
+                    logger.warning(f"Fecha recogida muy en el pasado: {fecha_recogida} vs límite: {limite_minimo}")
+                
+                # Validar que la recogida no sea demasiado en el futuro (ej: máximo 2 años)
+                limite_maximo = now + timezone.timedelta(days=730)  # 2 años
+                if fecha_recogida > limite_maximo:
+                    errores['fecha_recogida'] = "La fecha de recogida no puede ser más de 2 años en el futuro"
+                
                 datos['fecha_recogida'] = fecha_recogida
                 datos['fecha_devolucion'] = fecha_devolucion
                 
         except (ValueError, TypeError) as e:
+            logger.error(f"Error parseando fechas: {str(e)}")
             errores['fechas'] = f"Formato de fecha inválido: {str(e)}"
         
-        # Validar IDs de entidades relacionadas
+        # Validar IDs de entidades relacionadas SIN asignar valores por defecto
         try:
             if datos.get('vehiculo_id'):
                 if not Vehiculo.objects.filter(id=datos['vehiculo_id'], disponible=True).exists():
@@ -83,10 +120,12 @@ class ReservaService:
             if datos.get('lugar_devolucion_id'):
                 if not Lugar.objects.filter(id=datos['lugar_devolucion_id']).exists():
                     errores['lugar_devolucion_id'] = "Lugar de devolución no encontrado"
-                    
+            
+            # POLÍTICA DE PAGO: DEBE SER OBLIGARTORIA
             if datos.get('politica_pago_id'):
                 if not PoliticaPago.objects.filter(id=datos['politica_pago_id']).exists():
                     errores['politica_pago_id'] = "Política de pago no encontrada"
+            # Si no se proporciona politica_pago_id, ya se marca como error en campos_obligatorios
                     
             if datos.get('promocion_id'):
                 promocion = Promocion.objects.filter(
@@ -102,13 +141,28 @@ class ReservaService:
             logger.error(f"Error validando entidades relacionadas: {str(e)}")
             errores['database'] = "Error validando datos en base de datos"
         
-        # Validar extras
-        if datos.get('extras'):
-            extras_ids = [extra.get('extra_id') for extra in datos['extras'] if extra.get('extra_id')]
+        # Validar extras con mapeo correcto
+        if datos.get('extras') or datos.get('extrasSeleccionados'):
+            # El frontend puede enviar en 'extras' o 'extrasSeleccionados'
+            extras_data = datos.get('extrasSeleccionados') or datos.get('extras', [])
+            extras_ids = []
+            
+            # Los extras pueden venir como objetos completos con 'id' o como IDs simples
+            for extra in extras_data:
+                if isinstance(extra, dict) and 'id' in extra:
+                    extras_ids.append(extra['id'])
+                elif isinstance(extra, dict) and 'extra_id' in extra:
+                    extras_ids.append(extra['extra_id'])
+                elif isinstance(extra, (int, str)):
+                    extras_ids.append(int(extra))
+            
             if extras_ids:
                 extras_validos = Extras.objects.filter(id__in=extras_ids).count()
                 if extras_validos != len(extras_ids):
                     errores['extras'] = "Algunos extras seleccionados no son válidos"
+                else:
+                    # Convertir a formato esperado por el backend
+                    datos['extras'] = [{'extra_id': extra_id, 'cantidad': 1} for extra_id in extras_ids]
         
         if errores:
             logger.warning(f"Errores de validación encontrados: {errores}")
@@ -121,8 +175,9 @@ class ReservaService:
         datos['metodo_pago'] = metodo_pago
         
         logger.info("Validación de datos completada exitosamente")
+        logger.info(f"Datos validados finales: vehiculo_id={datos.get('vehiculo_id')}, fechas={datos.get('fecha_recogida')} - {datos.get('fecha_devolucion')}, politica_pago_id={datos.get('politica_pago_id')}")
+        
         return datos
-
     @staticmethod
     def calcular_precio_reserva(datos_reserva):
         """

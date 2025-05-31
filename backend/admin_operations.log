@@ -1652,3 +1652,284 @@ django.db.utils.IntegrityError: (1048, "Column 'precio_dia' cannot be null")
 [2025-05-31 16:10:40,567] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
 [2025-05-31 16:10:49,898] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
 [2025-05-31 16:10:49,899] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:14:38,595] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:40,952] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:42,928] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:45,081] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:47,071] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:49,251] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:51,481] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:53,373] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:55,056] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:55,056] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:55,116] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:14:55,174] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:24:53,918] INFO - admin_operations - Panel de administraci�n de Mobility-for-you cargado exitosamente
+[2025-05-31 17:26:23,290] INFO - admin_operations - Panel de administraci�n de Mobility-for-you cargado exitosamente
+[2025-05-31 17:26:31,536] INFO - admin_operations - Panel de administraci�n de Mobility-for-you cargado exitosamente
+[2025-05-31 17:26:53,196] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:27:14,443] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:27:28,572] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:27:41,373] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:11,000] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:13,215] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:15,372] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:17,836] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:20,245] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:22,666] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:25,033] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:26,828] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:28,598] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:28,598] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:28,599] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:28:28,649] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:04,744] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:06,902] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:09,029] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:11,281] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:13,632] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:15,762] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:18,073] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:19,853] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:21,634] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:21,721] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:21,775] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:21,842] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:38,285] INFO - admin_operations - Panel de administraci�n de Mobility-for-you cargado exitosamente
+[2025-05-31 17:29:47,628] INFO - admin_operations - Panel de administraci�n de Mobility-for-you cargado exitosamente
+[2025-05-31 17:31:16,428] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:33:16,587] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:33:22,948] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:33:31,791] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:33:39,061] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:33:59,306] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:34:06,814] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:34:31,526] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:34:39,811] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:34:48,882] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:34:56,556] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:35:03,812] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:35:43,202] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:37:46,494] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:37:54,218] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:40:38,228] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:41:36,136] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:36,136] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:37,947] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:37,948] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:38,559] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:38,560] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:38,727] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:38,727] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:38,928] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:38,928] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:39,127] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:39,128] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:39,339] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:39,340] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:39,543] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:39,543] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:39,735] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:39,736] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:39,960] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 17:41:39,960] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 17:41:53,888] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 17:42:01,128] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:35,514] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:38,685] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:40,717] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:42,716] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:44,654] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:46,611] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:48,792] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:50,485] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:51,988] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:52,017] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:52,124] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 18:50:52,224] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:02:54,159] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:02:54,159] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:02:54,163] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:02:54,166] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:00,319] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:04,476] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:08,039] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:12,303] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:16,644] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:19,750] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:23,264] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:27,296] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:31,077] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:31,118] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:31,168] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:10:31,250] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:16:51,697] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 19:16:51,698] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 19:16:53,964] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 19:16:53,964] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 19:17:03,729] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 19:17:03,729] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 19:17:39,431] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:17:41,967] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:17:44,451] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:17:47,320] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:17:50,455] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:17:53,598] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:17:56,873] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:17:59,145] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:18:01,313] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:18:01,370] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:18:01,433] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:18:01,454] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:23:22,094] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en PoliticaPago
+[2025-05-31 19:23:22,094] INFO - admin_operations - Modificando PoliticaPago ID:1 por usuario mobility4you_admin
+[2025-05-31 19:23:22,098] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en PoliticaPago
+[2025-05-31 19:23:41,485] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en PoliticaPago
+[2025-05-31 19:23:41,485] INFO - admin_operations - Modificando PoliticaPago ID:1 por usuario mobility4you_admin
+[2025-05-31 19:23:41,488] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en PoliticaPago
+[2025-05-31 19:26:19,293] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:26:27,020] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:26:33,618] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:26:39,747] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:26:44,120] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:26:48,632] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:26:53,384] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:26:57,103] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:27:00,123] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:27:00,181] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:27:00,363] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:27:00,406] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:33:29,451] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:33:29,458] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:33:29,463] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 19:33:29,463] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:09,263] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:11,824] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:13,983] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:16,377] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:18,762] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:21,024] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:23,224] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:25,024] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:26,754] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:26,836] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:26,905] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:29:26,957] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 20:46:12,280] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en PoliticaPago
+[2025-05-31 20:46:12,281] INFO - admin_operations - Creando nuevo PoliticaPago por usuario mobility4you_admin
+[2025-05-31 20:46:12,286] INFO - admin_operations - ÉXITO SAVE: Completado en 0.01s por mobility4you_admin en PoliticaPago
+[2025-05-31 20:46:25,089] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:46:25,090] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:46:25,091] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:46:25,092] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:46:25,092] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:46:25,093] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:46:25,093] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:46:25,094] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:46:31,480] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Lugar
+[2025-05-31 20:46:31,481] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Lugar
+[2025-05-31 20:49:22,244] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en Direccion
+[2025-05-31 20:49:22,245] INFO - admin_operations - Creando nuevo Direccion por usuario mobility4you_admin
+[2025-05-31 20:49:22,247] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:49:23,981] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en Lugar
+[2025-05-31 20:49:23,981] INFO - admin_operations - Creando nuevo Lugar por usuario mobility4you_admin
+[2025-05-31 20:49:23,983] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en Lugar
+[2025-05-31 20:49:23,996] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Lugar
+[2025-05-31 20:49:23,997] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Lugar
+[2025-05-31 20:49:25,581] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Lugar
+[2025-05-31 20:49:25,583] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Lugar
+[2025-05-31 20:49:28,807] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:49:28,808] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:49:43,776] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:49:43,778] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:49:43,781] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en Direccion
+[2025-05-31 20:49:43,782] INFO - admin_operations - Modificando Direccion ID:1 por usuario mobility4you_admin
+[2025-05-31 20:49:43,784] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:49:44,846] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Lugar
+[2025-05-31 20:49:44,847] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Lugar
+[2025-05-31 20:49:44,853] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en Lugar
+[2025-05-31 20:49:44,854] INFO - admin_operations - Modificando Lugar ID:1 por usuario mobility4you_admin
+[2025-05-31 20:49:44,855] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en Lugar
+[2025-05-31 20:49:44,941] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Lugar
+[2025-05-31 20:49:44,942] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Lugar
+[2025-05-31 20:49:47,092] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Categoria
+[2025-05-31 20:49:47,093] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Categoria
+[2025-05-31 20:49:49,628] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:49:49,629] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:49:49,629] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:49:49,630] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:49:49,630] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:49:49,631] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:49:49,631] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Direccion
+[2025-05-31 20:49:49,632] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Direccion
+[2025-05-31 20:49:50,837] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Contrato
+[2025-05-31 20:49:50,838] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Contrato
+[2025-05-31 20:50:30,872] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en GrupoCoche
+[2025-05-31 20:50:30,872] INFO - admin_operations - Creando nuevo GrupoCoche por usuario mobility4you_admin
+[2025-05-31 20:50:30,874] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en GrupoCoche
+[2025-05-31 20:50:43,116] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en GrupoCoche
+[2025-05-31 20:50:43,117] INFO - admin_operations - Creando nuevo GrupoCoche por usuario mobility4you_admin
+[2025-05-31 20:50:43,119] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en GrupoCoche
+[2025-05-31 20:50:50,833] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Lugar
+[2025-05-31 20:50:50,835] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Lugar
+[2025-05-31 20:50:52,937] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Mantenimiento
+[2025-05-31 20:50:52,938] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Mantenimiento
+[2025-05-31 20:50:52,939] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Mantenimiento
+[2025-05-31 20:50:52,939] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Mantenimiento
+[2025-05-31 20:51:08,245] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 20:51:08,246] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 20:51:27,615] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:51:27,618] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:51:27,618] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:51:27,619] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:51:30,820] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:51:30,821] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:51:42,480] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:51:42,480] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:04,035] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:04,036] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:13,743] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:13,745] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:13,769] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en Usuario
+[2025-05-31 20:52:13,770] INFO - admin_operations - Modificando Usuario ID:1 por usuario mobility4you_admin
+[2025-05-31 20:52:13,773] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:13,787] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:13,789] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:13,790] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:13,790] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:18,727] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:18,729] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:27,485] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:27,492] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.01s por mobility4you_admin en Usuario
+[2025-05-31 20:52:27,506] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en Usuario
+[2025-05-31 20:52:27,507] INFO - admin_operations - Modificando Usuario ID:1 por usuario mobility4you_admin
+[2025-05-31 20:52:27,508] INFO - admin_operations - ÉXITO SAVE: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:27,526] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:27,527] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:27,528] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:27,528] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:30,230] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:30,231] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:32,736] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:32,738] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:32,770] INFO - admin_operations - INICIO SAVE: Usuario mobility4you_admin (1) ejecutando SAVE en Usuario
+[2025-05-31 20:52:32,773] INFO - admin_operations - Modificando Usuario ID:1 por usuario mobility4you_admin
+[2025-05-31 20:52:32,781] INFO - admin_operations - ÉXITO SAVE: Completado en 0.01s por mobility4you_admin en Usuario
+[2025-05-31 20:52:32,849] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:32,850] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:32,852] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Usuario
+[2025-05-31 20:52:32,853] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Usuario
+[2025-05-31 20:52:43,134] INFO - admin_operations - INICIO GET_QUERYSET: Usuario mobility4you_admin (1) ejecutando GET_QUERYSET en Reserva
+[2025-05-31 20:52:43,135] INFO - admin_operations - ÉXITO GET_QUERYSET: Completado en 0.00s por mobility4you_admin en Reserva
+[2025-05-31 21:23:48,231] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:23:50,641] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:23:52,650] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:23:54,766] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:23:56,779] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:23:58,913] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:24:00,878] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:24:02,535] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:24:04,008] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:24:04,068] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:24:04,069] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente
+[2025-05-31 21:24:04,193] INFO - admin_operations - Panel de administración de Mobility-for-you cargado exitosamente

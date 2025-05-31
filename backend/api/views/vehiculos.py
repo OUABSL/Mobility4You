@@ -137,8 +137,7 @@ class VehiculoViewSet(viewsets.ModelViewSet):
             ).values_list('vehiculo_id', flat=True)
             
             vehiculos = vehiculos.exclude(id__in=reservas_solapadas)
-            
-            # Obtener tarifa actual para cada vehículo
+              # Obtener tarifa actual para cada vehículo
             vehiculos_con_precio = []
             for vehiculo in vehiculos:
                 # Obtener precio para las fechas
@@ -150,10 +149,7 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 # Exluir vehiculos sin tarifa establecida
                 if tarifa:
                     vehiculo.precio_dia = tarifa.precio_dia
-                    vehiculos_con_precio.append(vehiculo)         
-
-                
-                vehiculos_con_precio.append(vehiculo)
+                    vehiculos_con_precio.append(vehiculo)
             
             # Serializar resultados
             serializer = VehiculoDetailSerializer(vehiculos_con_precio, many=True)

@@ -2,6 +2,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.utils import timezone
 
@@ -170,12 +171,22 @@ class Reserva(models.Model):
         return f"Reserva {self.pk} - {self.vehiculo}"
     
     def save(self, *args, **kwargs):
+        """Sobrescribe save con validaciones y cálculo automático de precios"""
+        # Calcular precio total si no está establecido
+        if not self.precio_total and self.precio_dia:
+            self.precio_total = self.calcular_precio_total()
+        
+        # Actualizar timestamps
         if not self.id:
             self.created_at = timezone.now()
         self.updated_at = timezone.now()
+        
+        # Validar antes de guardar
+        self.full_clean()
+        
         super().save(*args, **kwargs)
         
-    # ✅ CORREGIR summary() - quitar campos inexistentes
+    # summary() - quitar campos inexistentes
     def summary(self):
         return {
             'id': self.pk,
@@ -195,6 +206,98 @@ class Reserva(models.Model):
             'created_at': self.created_at,
             'updated_at': self.updated_at,
         }
+        
+    def dias_alquiler(self):
+        """Calcula los días de alquiler"""
+        if self.fecha_recogida and self.fecha_devolucion:
+            fecha_rec = self.fecha_recogida.date() if hasattr(self.fecha_recogida, 'date') else self.fecha_recogida
+            fecha_dev = self.fecha_devolucion.date() if hasattr(self.fecha_devolucion, 'date') else self.fecha_devolucion
+            dias = (fecha_dev - fecha_rec).days
+            return dias if dias > 0 else 1
+        return 1
+    
+    def verificar_disponibilidad_vehiculo(self):
+        """Verifica si el vehículo está disponible para las fechas de la reserva"""
+        if not self.vehiculo or not self.fecha_recogida or not self.fecha_devolucion:
+            return False
+        
+        reservas_conflicto = Reserva.objects.filter(
+            vehiculo=self.vehiculo,
+            estado__in=['confirmada', 'pendiente']
+        ).filter(
+            fecha_recogida__lt=self.fecha_devolucion,
+            fecha_devolucion__gt=self.fecha_recogida
+        )
+        
+        # Excluir la reserva actual si estamos editando
+        if self.pk:
+            reservas_conflicto = reservas_conflicto.exclude(pk=self.pk)
+        
+        return not reservas_conflicto.exists()
+            
+    def clean(self):
+        """Validaciones personalizadas del modelo"""
+        super().clean()
+        
+        # Validar fechas
+        if self.fecha_recogida and self.fecha_devolucion:
+            if self.fecha_recogida >= self.fecha_devolucion:
+                raise ValidationError({
+                    'fecha_devolucion': 'La fecha de devolución debe ser posterior a la fecha de recogida'
+                })
+            
+            if self.fecha_recogida < timezone.now():
+                raise ValidationError({
+                    'fecha_recogida': 'La fecha de recogida debe ser futura'
+                })
+        
+        # Validar disponibilidad del vehículo
+        if not self.verificar_disponibilidad_vehiculo():
+            raise ValidationError({
+                'vehiculo': 'El vehículo no está disponible para las fechas seleccionadas'
+            })
+        
+        # Validar importes
+        if self.precio_total and self.precio_total <= 0:
+            raise ValidationError({
+                'precio_total': 'El precio total debe ser mayor que cero'
+            })
+        
+        # Validar que los importes pagados no excedan el total
+        total_pagado = (self.importe_pagado_inicial or 0) + (self.importe_pagado_extra or 0)
+        if total_pagado > self.precio_total:
+            raise ValidationError('Los importes pagados no pueden exceder el precio total')
+
+    def calcular_precio_total(self):
+        """Calcula el precio total de la reserva incluyendo extras"""
+        if not self.precio_dia or not self.fecha_recogida or not self.fecha_devolucion:
+            return Decimal('0.00')
+        
+        # Precio base
+        dias = self.dias_alquiler()
+        precio_base = self.precio_dia * dias
+        
+        # Precio extras
+        precio_extras = Decimal('0.00')
+        for reserva_extra in self.extras.all():
+            precio_extras += reserva_extra.extra.precio * reserva_extra.cantidad * dias
+        
+        # Aplicar descuento de promoción si existe
+        descuento = Decimal('0.00')
+        if self.promocion:
+            if hasattr(self.promocion, 'descuento_pct'):
+                descuento = (precio_base + precio_extras) * (self.promocion.descuento_pct / 100)
+        
+        # Subtotal
+        subtotal = precio_base + precio_extras - descuento
+        
+        # Impuestos (IVA 21%)
+        impuestos = subtotal * Decimal('0.21')
+        
+        # Total
+        total = subtotal + impuestos
+        
+        return total
 class ReservaConductor(models.Model):
     ROL_CHOICES = [
         ('principal', _('Principal')),
@@ -278,16 +381,18 @@ class Penalizacion(models.Model):
     
     def save(self, *args, **kwargs):
         """Sobrescribe el método save para actualizar los campos de fecha"""
-        if hasattr(self, 'fecha') and isinstance(self._meta.get_field('fecha'), models.DateField):
-            if self.fecha and hasattr(self.fecha, 'date'):
-                self.fecha = self.fecha.date()
+        # Manejar fecha correctamente - no convertir DateTime a Date si es DateTime
+        if hasattr(self, 'fecha') and self.fecha:
+            field = self._meta.get_field('fecha')
+            if isinstance(field, models.DateField) and not isinstance(field, models.DateTimeField):
+                # Solo convertir a fecha si el campo es DateField puro
+                if hasattr(self.fecha, 'date'):
+                    self.fecha = self.fecha.date()
+        
         if not self.id:
             self.created_at = timezone.now()
         self.updated_at = timezone.now()
         super().save(*args, **kwargs)
-        
-    def __str__(self):
-        return f"{self.reserva} - {self.tipo_penalizacion}: {self.importe}€"
 
 
 class Extras(models.Model):
@@ -311,6 +416,27 @@ class Extras(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.precio}€)"
+    
+    def clean(self):
+        """Validaciones personalizadas"""
+        super().clean()
+        
+        if self.precio and self.precio <= 0:
+            raise ValidationError({
+                'precio': 'El precio debe ser mayor que cero'
+            })
+        
+        if self.nombre:
+            # Verificar que no existe otro extra con el mismo nombre
+            existing = Extras.objects.filter(nombre__iexact=self.nombre)
+            if self.pk:
+                existing = existing.exclude(pk=self.pk)
+            
+            if existing.exists():
+                raise ValidationError({
+                    'nombre': 'Ya existe un extra con este nombre'
+                })
+
 
 class ReservaExtra(models.Model):
     reserva = models.ForeignKey(
@@ -343,3 +469,26 @@ class ReservaExtra(models.Model):
 
     def __str__(self):
         return f"{self.extra.nombre} x{self.cantidad} ({self.reserva})"
+    
+    def clean(self):
+        """Validaciones personalizadas"""
+        super().clean()
+        
+        if self.cantidad and self.cantidad <= 0:
+            raise ValidationError({
+                'cantidad': 'La cantidad debe ser mayor que cero'
+            })
+        
+        # Verificar que no se duplique el extra para la misma reserva
+        if self.reserva and self.extra:
+            existing = ReservaExtra.objects.filter(
+                reserva=self.reserva,
+                extra=self.extra
+            )
+            if self.pk:
+                existing = existing.exclude(pk=self.pk)
+            
+            if existing.exists():
+                raise ValidationError({
+                    'extra': 'Este extra ya está agregado a la reserva'
+                })

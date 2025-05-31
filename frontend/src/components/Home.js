@@ -25,6 +25,7 @@ import malagaBackground from '../assets/img/general/malaga_sunset.jpg';
 import logoHome from '../assets/img/general/logo_home_horizontal.png';
 
 import FormBusqueda from './FormBusqueda';
+import ContactUs from './ContactUs'
 import { fetchEstadisticas, fetchCaracteristicas, fetchTestimonios, fetchDestinos, fetchLocations } from '../services/homeServices';
 
 const Home = ({ isMobile = false }) => {
@@ -34,10 +35,10 @@ const Home = ({ isMobile = false }) => {
   const [testimoniosData, setTestimoniosData] = useState([]);
   const [destinos, setDestinos] = useState([]);
   const [locations, setLocations] = useState([]);
-  
-  // UI states
+    // UI states
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const caracteristicasRef = useRef(null);
+  const contactRef = useRef(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
   // Load data on component mount
@@ -240,9 +241,11 @@ const Home = ({ isMobile = false }) => {
                       </div>
                       <p className="testimonial-text mx-3">"{testimonio.comentario}"</p>
                       <div className="testimonial-author d-flex align-items-center mt-4">
+                        {testimonio.avatar && (
                         <div className="testimonial-avatar">
                           {testimonio.avatar}
                         </div>
+                        )}
                         <div className="ms-3">
                           <h5 className="mb-0">{testimonio.nombre}</h5>
                           <small className="text-muted">{testimonio.ubicacion}</small>
@@ -261,6 +264,132 @@ const Home = ({ isMobile = false }) => {
           </Row>
         </Container>
       </section>
+      
+      {/* Sección de contacto */}
+      <section ref={contactRef} className='contact-home'>
+        {/* Elementos flotantes decorativos */}
+        <div className="floating-element"></div>
+        <div className="floating-element"></div>
+        <div className="floating-element"></div>
+        
+        <Container>
+          <Row className="mb-4">
+            <Col className="text-center">
+              <h2 className="section-title">
+                ¿Tienes alguna <span className="text-primary">pregunta</span>?
+              </h2>
+              <p className="section-subtitle">
+                Estamos aquí para ayudarte en cada paso de tu viaje
+              </p>
+            </Col>
+          </Row>
+        </Container>
+        
+        <ContactUs/>
+      </section>
+
+      {/* ===== SECTION: HOW TO RENT STEPS ===== */}
+      <section className="how-to-rent-section">
+        <Container>
+          <Row className="mb-5">
+            <Col lg={10} className="mx-auto text-center">
+              <div className="divider-container mb-4">
+                <span className="divider-line"></span>
+                <span className="divider-text">¿CÓMO ALQUILAR CON MOBILITY 4 YOU?</span>
+                <span className="divider-line"></span>
+              </div>
+              <h2 className="section-title">
+                <span className="lead-text">Pasos sencillos para</span>
+                <span className="highlight-text d-block">¡Alquilar un coche!</span>
+              </h2>
+            </Col>
+          </Row>
+          
+          <Row className="steps-container">
+            <Col xs={12} sm={6} lg={3} className="mb-4">
+              <Card className="step-card h-100">
+                <Card.Body className="text-center p-4">
+                  <div className="step-icon-wrapper mb-4">
+                    <div className="step-number">1</div>
+                    <div className="step-icon bg-primary">
+                      <FontAwesomeIcon icon={faMapMarkerAlt} size="2x" />
+                    </div>
+                  </div>
+                  <h4 className="step-title">Fecha y Ubicación</h4>
+                  <p className="step-description">
+                    Elige la ubicación y las fechas que necesitas para tu alquiler.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+            
+            <Col xs={12} sm={6} lg={3} className="mb-4">
+              <Card className="step-card h-100">
+                <Card.Body className="text-center p-4">
+                  <div className="step-icon-wrapper mb-4">
+                    <div className="step-number">2</div>
+                    <div className="step-icon bg-success">
+                      <FontAwesomeIcon icon={faCar} size="2x" />
+                    </div>
+                  </div>
+                  <h4 className="step-title">Elige tu Vehículo</h4>
+                  <p className="step-description">
+                    Selecciona el vehículo perfecto de nuestro catálogo premium.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+            
+            <Col xs={12} sm={6} lg={3} className="mb-4">
+              <Card className="step-card h-100">
+                <Card.Body className="text-center p-4">
+                  <div className="step-icon-wrapper mb-4">
+                    <div className="step-number">3</div>
+                    <div className="step-icon bg-warning">
+                      <FontAwesomeIcon icon={faUsers} size="2x" />
+                    </div>
+                  </div>
+                  <h4 className="step-title">Haz tu Reserva</h4>
+                  <p className="step-description">
+                    Completa tus datos y detalles de la reserva de forma segura.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+            
+            <Col xs={12} sm={6} lg={3} className="mb-4">
+              <Card className="step-card h-100">
+                <Card.Body className="text-center p-4">
+                  <div className="step-icon-wrapper mb-4">
+                    <div className="step-number">4</div>
+                    <div className="step-icon bg-info">
+                      <FontAwesomeIcon icon={faCheck} size="2x" />
+                    </div>
+                  </div>
+                  <h4 className="step-title">¡Disfruta tu Viaje!</h4>
+                  <p className="step-description">
+                    Recoge tu vehículo y disfruta de nuestro excelente servicio.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+          
+          <Row className="mt-5">
+            <Col className="text-center">
+              <Button 
+                size="lg" 
+                className="btn-cta"
+                onClick={scrollToCaracteristicas}
+              >
+                Comenzar ahora
+                <FontAwesomeIcon icon={faArrowRight} className="ms-2" />
+              </Button>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+      
     </div>
   );
 };

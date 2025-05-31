@@ -485,24 +485,16 @@ const ListadoCoches = ({ isMobile = false }) => {
                               <span>Ilimitado</span>
                             </div>
                           </div>
-                          <div className="mt-auto">
+                          <div className="mt-auto d-flex flex-column">
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <h5 className="precio mb-0">
                                 {formatCurrency(car.precio_dia)}<small>/día</small>
                               </h5>
-                              <Button
-                                variant="outline-primary"
-                                size="sm"
-                                className="btn-ver-mas"
-                                onClick={() => handleVerDetalle(car.id)}
-                              >
-                                <FontAwesomeIcon icon={openCarId === car.id ? 'angle-up' : 'angle-down'} className="me-1" />
-                                {openCarId === car.id ? 'Cerrar' : 'Ver más'}
-                              </Button>
                             </div>
                             <Button
                               variant="primary"
-                              className="w-100 btn-reservar"
+                              className="w-100 btn-reservar align-self-center"
+                              onClick={() => handleVerDetalle(car.id)}
                             >
                               Reservar ahora
                               <FontAwesomeIcon icon={faArrowRight} className="ms-2" />
