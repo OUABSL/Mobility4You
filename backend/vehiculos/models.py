@@ -187,13 +187,14 @@ class Vehiculo(models.Model):
             return Decimal("0.00")
         except Exception as e:
             import logging
-
+            
             logger = logging.getLogger(__name__)
             logger.error(
                 f"Error obteniendo precio actual para vehículo {self.id}: {str(e)}"
             )
-            return Decimal("0.00") @ property
+            return Decimal("0.00")
 
+    @property
     def precio_dia(self) -> Decimal:
         """Alias para compatibilidad con código existente"""
         return self.precio_dia_actual

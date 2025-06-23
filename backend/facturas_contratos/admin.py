@@ -98,7 +98,7 @@ class ContratoAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
 
     list_display = (
@@ -192,7 +192,7 @@ class ContratoAdmin(admin.ModelAdmin):
         
         return format_html(
             '<div class="numero-contrato">'
-            '{} <strong style="color: #2c3e50;">{}</strong>'
+            '{} <strong >{}</strong>'
             '</div>',
             icon, obj.numero_contrato
         )
@@ -288,7 +288,7 @@ class ContratoAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="{}" target="_blank" '
                     'style="background: #e74c3c; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16x; margin-bottom: 5px;">'
                     '📄 PDF</a>',
                     obj.url_pdf
                 )
@@ -300,7 +300,7 @@ class ContratoAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="#" class="btn-firmar-contrato" data-contrato-id="{}" '
                     'style="background: #27ae60; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 5px;">'
                     '✅ Firmar</a>',
                     obj.id
                 )
@@ -314,7 +314,7 @@ class ContratoAdmin(admin.ModelAdmin):
                     format_html(
                         '<a href="{}" '
                         'style="background: #3498db; color: white; padding: 2px 6px; '
-                        'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                        'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 5px;">'
                         '📋 Reserva</a>',
                         url
                     )
@@ -323,7 +323,7 @@ class ContratoAdmin(admin.ModelAdmin):
                 pass
         
         return mark_safe(
-            f'<div class="acciones-contrato">{"<br/>".join(acciones)}</div>'
+            f'<div class="acciones-contrato">{"<br/><br/>".join(acciones)}</div>'
         ) if acciones else format_html('<span style="color: #95a5a6;">Sin acciones</span>')    
 
     @admin.display(description="Estadisticas")
@@ -425,7 +425,7 @@ class FacturaAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
 
     list_display = (
@@ -528,7 +528,7 @@ class FacturaAdmin(admin.ModelAdmin):
         
         return format_html(
             '<div class="numero-factura">'
-            '{} <strong style="color: #2c3e50;">{}</strong>'
+            '{} <strong >{}</strong>'
             '</div>',
             icon, obj.numero_factura
         )
@@ -627,7 +627,7 @@ class FacturaAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="{}" target="_blank" '
                     'style="background: #e74c3c; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 5px;">'
                     '📄 PDF</a>',
                     obj.url_pdf
                 )
@@ -639,7 +639,7 @@ class FacturaAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="#" class="btn-emitir-factura" data-factura-id="{}" '
                     'style="background: #27ae60; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 5px;">'
                     '✅ Emitir</a>',
                     obj.id
                 )
@@ -653,7 +653,7 @@ class FacturaAdmin(admin.ModelAdmin):
                     format_html(
                         '<a href="{}" '
                         'style="background: #3498db; color: white; padding: 2px 6px; '
-                        'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                        'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 5px;">'
                         '📋 Reserva</a>',
                         url
                     )
@@ -662,7 +662,7 @@ class FacturaAdmin(admin.ModelAdmin):
                 pass
         
         return mark_safe(
-            f'<div class="acciones-factura">{"<br/>".join(acciones)}</div>'
+            f'<div class="acciones-factura">{"<br/><br/>".join(acciones)}</div>'
         ) if acciones else format_html('<span style="color: #95a5a6;">Sin acciones</span>')
     
 

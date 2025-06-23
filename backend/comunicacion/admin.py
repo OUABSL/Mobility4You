@@ -5,7 +5,8 @@ from typing import Any, Optional
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.db.models import Count, Q, QuerySet
-from django.http import HttpRequest
+from django.http import HttpRequest, JsonResponse
+from django.urls import path
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -86,8 +87,11 @@ class ContenidoAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
+        js = (
+            get_versioned_asset("js_comunicacion", "admin/js/comunicacion_admin_v9f784c33.js"),
+        )
 
     list_display = (
         "titulo_display",
@@ -260,8 +264,8 @@ class ContenidoAdmin(admin.ModelAdmin):
             acciones.append(
                 format_html(
                     '<a href="#" class="btn-toggle-content" data-content-id="{}" data-action="deactivate" '
-                    'style="background: #95a5a6; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'style="background: #95a5a6; color: white; padding: 2px 6px; margin-bottom: 5px; '
+                    'border-radius: 3px; text-decoration: none; font-size: 16px;">'
                     '⭕ Desactivar</a>',
                     obj.id
                 )
@@ -270,23 +274,16 @@ class ContenidoAdmin(admin.ModelAdmin):
             acciones.append(
                 format_html(
                     '<a href="#" class="btn-toggle-content" data-content-id="{}" data-action="activate" '
-                    'style="background: #27ae60; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'style="background: #27ae60; color: white; padding: 2px 6px; margin-bottom: 5px; '
+                    'border-radius: 3px; text-decoration: none; font-size: 16px;">'
                     '✅ Activar</a>',
                     obj.id
                 )
             )
         
-        # Duplicar contenido
-        acciones.append(
-            '<a href="#" onclick="duplicarContenido({})" '
-            'style="background: #3498db; color: white; padding: 2px 6px; '
-            'border-radius: 3px; text-decoration: none; font-size: 10px;">'
-            '📋 Duplicar</a>'.format(obj.id)
-        )
         
         return mark_safe(
-            f'<div class="acciones-contenido">{"<br>".join(acciones)}</div>'
+            f'<div class="acciones-contenido">{"<br><br>".join(acciones)}</div>'
         )
 
     @admin.display(description="Estadísticas")
@@ -391,6 +388,48 @@ class ContenidoAdmin(admin.ModelAdmin):
         "generar_reporte_contenidos"
     ]
 
+    def get_urls(self):
+        """Agregar URLs personalizadas para acciones AJAX"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/toggle/',
+                self.admin_site.admin_view(self.toggle_contenido),
+                name='comunicacion_contenido_toggle',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def toggle_contenido(self, request, object_id):
+        """Vista AJAX para activar/desactivar contenido"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            contenido = self.get_object(request, object_id)
+            if not contenido:
+                return JsonResponse({'error': 'Contenido no encontrado'}, status=404)
+            
+            # Obtener el estado deseado
+            activo = request.POST.get('activo', '').lower() == 'true'
+            
+            # Actualizar el contenido
+            contenido.activo = activo
+            contenido.updated_at = timezone.now()
+            contenido.save()
+            
+            logger.info(f"Contenido {contenido.id} {'activado' if activo else 'desactivado'} por {request.user.username}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Contenido {"activado" if activo else "desactivado"} exitosamente',
+                'activo': activo
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en toggle_contenido: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+
 
 # ======================
 # ADMIN CONTACTO MEJORADO
@@ -403,8 +442,11 @@ class ContactoAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
+        js = (
+            get_versioned_asset("js_comunicacion", "admin/js/comunicacion_admin_v9f784c33.js"),
+        )
 
     list_display = (
         "contacto_info_display",
@@ -502,7 +544,7 @@ class ContactoAdmin(admin.ModelAdmin):
         
         return format_html(
             '<div class="contacto-info">'
-            '{} <strong style="color: #2c3e50;">{}</strong><br>'
+            '{} <strong >{}</strong><br>'
             '<small style="color: #7f8c8d;">{}</small>'
             '</div>',
             icon, obj.nombre, obj.email
@@ -616,8 +658,8 @@ class ContactoAdmin(admin.ModelAdmin):
         if obj.estado in ["pendiente", "en_proceso"]:
             acciones.append(
                 '<a href="#" onclick="responderContacto({})" '
-                'style="background: #27ae60; color: white; padding: 2px 6px; '
-                'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                'style="background: #27ae60; color: white; padding: 2px 6px; margin-bottom: 5px; '
+                'border-radius: 3px; text-decoration: none; font-size: 16px;">'
                 '💬 Responder</a>'.format(obj.id)
             )
         
@@ -625,8 +667,8 @@ class ContactoAdmin(admin.ModelAdmin):
         if obj.estado != "resuelto":
             acciones.append(
                 '<a href="#" onclick="resolverContacto({})" '
-                'style="background: #3498db; color: white; padding: 2px 6px; '
-                'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                'style="background: #3498db; color: white; padding: 2px 6px; margin-bottom: 5px; '
+                'border-radius: 3px; text-decoration: none; font-size: 16px;">'
                 '✅ Resolver</a>'.format(obj.id)
             )
         
@@ -634,12 +676,12 @@ class ContactoAdmin(admin.ModelAdmin):
         acciones.append(
             '<a href="#" onclick="verMensaje({})" '
             'style="background: #2c3e50; color: white; padding: 2px 6px; '
-            'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+            'border-radius: 3px; text-decoration: none; font-size: 16px;">'
             '👁️ Ver Mensaje</a>'.format(obj.id)
         )
         
         return mark_safe(
-            f'<div class="acciones-contacto">{"<br>".join(acciones)}</div>'
+            f'<div class="acciones-contacto">{"<br><br>".join(acciones)}</div>'
         )
 
 
@@ -809,6 +851,87 @@ class ContactoAdmin(admin.ModelAdmin):
             f"🧹 {count} contactos resueltos antiguos cerrados.",
             level=messages.SUCCESS
         )
+
+    def get_urls(self):
+        """Agregar URLs personalizadas para acciones AJAX"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/resolve/',
+                self.admin_site.admin_view(self.resolve_contacto),
+                name='comunicacion_contacto_resolve',
+            ),
+            path(
+                '<int:object_id>/respond/',
+                self.admin_site.admin_view(self.respond_contacto),
+                name='comunicacion_contacto_respond',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def resolve_contacto(self, request, object_id):
+        """Vista AJAX para resolver contacto"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            contacto = self.get_object(request, object_id)
+            if not contacto:
+                return JsonResponse({'error': 'Contacto no encontrado'}, status=404)
+            
+            contacto.estado = "resuelto"
+            contacto.fecha_respuesta = timezone.now()
+            contacto.respondido_por = request.user
+            contacto.save()
+            
+            logger.info(f"Contacto {contacto.id} resuelto por {request.user.username}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Contacto marcado como resuelto'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en resolve_contacto: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def respond_contacto(self, request, object_id):
+        """Vista AJAX para responder contacto"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            contacto = self.get_object(request, object_id)
+            if not contacto:
+                return JsonResponse({'error': 'Contacto no encontrado'}, status=404)
+            
+            subject = request.POST.get('subject', '')
+            response_text = request.POST.get('message', '')
+            mark_resolved = request.POST.get('mark_resolved', 'false').lower() == 'true'
+            
+            if not subject or not response_text:
+                return JsonResponse({'error': 'Asunto y mensaje son requeridos'}, status=400)
+            
+            # Actualizar el contacto
+            contacto.respuesta = response_text
+            contacto.fecha_respuesta = timezone.now()
+            contacto.respondido_por = request.user
+            contacto.estado = "resuelto" if mark_resolved else "en_proceso"
+            contacto.save()
+            
+            # Aquí podrías agregar lógica para enviar email
+            # send_email_response(contacto, subject, response_text)
+            
+            logger.info(f"Contacto {contacto.id} respondido por {request.user.username}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Respuesta enviada exitosamente'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en respond_contacto: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
 
     actions = [
         "marcar_como_resuelto",

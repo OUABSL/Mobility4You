@@ -5,7 +5,8 @@ from typing import Any, Optional
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.db.models import Avg, Count, Min, Q, Sum
-from django.http import HttpRequest
+from django.http import HttpRequest, JsonResponse
+from django.urls import path
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -121,9 +122,9 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
-        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_va4d427e4.js"),)
+        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
 
     list_display = (
         "titulo_display",
@@ -199,7 +200,7 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
         
         return format_html(
             '<div class="titulo-politica">'
-            '<strong style="color: #2c3e50;">{}</strong><br>'
+            '<strong >{}</strong><br>'
             '<small style="color: {};">Deducible: €{}</small>'
             '</div>',
             obj.titulo, deducible_color, "{}".format(float(obj.deductible))
@@ -284,23 +285,12 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
         """Muestra acciones rápidas"""
         acciones = []
         
-        # Duplicar política
-        acciones.append(
-            format_html(
-                '<a href="#" class="btn-duplicate-policy" data-policy-id="{}" '
-                'style="background: #3498db; color: white; padding: 2px 6px; '
-                'border-radius: 3px; text-decoration: none; font-size: 10px;">'
-                '📋 Duplicar</a>',
-                obj.id
-            )
-        )
-        
         # Ver resumen completo
         acciones.append(
             format_html(
-                '<a href="#" class="btn-view-summary" data-policy-id="{}" '
+                '<a href="#" onclick="verResumenPolitica({})" '
                 'style="background: #2c3e50; color: white; padding: 2px 6px; '
-                'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                 '👁️ Resumen</a>',
                 obj.id
             )
@@ -329,7 +319,7 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
             stats.append(f"Penalizaciones: {penalizaciones_total}")
         
         return format_html(
-            '<div class="estadisticas-politica" style="font-size: 11px; color: #7f8c8d;">{}</div>',
+            '<div class="estadisticas-politica" style="font-size: 11px; color: #333;">{}</div>',
             "<br>".join(stats)
         )
 
@@ -399,6 +389,64 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
 
     actions = ["generar_reporte_politicas"]
 
+    def get_urls(self):
+        """Agregar URLs personalizadas para acciones AJAX"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/view-summary/',
+                self.admin_site.admin_view(self.view_summary),
+                name='politicas_politicapago_summary',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def view_summary(self, request, object_id):
+        """Vista AJAX para mostrar resumen de política"""
+        if request.method != 'GET':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            politica = self.get_object(request, object_id)
+            if not politica:
+                return JsonResponse({'error': 'Política no encontrada'}, status=404)
+            
+            # Construir resumen completo
+            resumen = {
+                'titulo': politica.titulo,
+                'deductible': float(politica.deductible),
+                'descripcion': politica.descripcion or '',
+                'items_incluidos': [],
+                'items_no_incluidos': [],
+                'penalizaciones': [],
+                'fecha_creacion': politica.created_at.strftime('%d/%m/%Y %H:%M'),
+                'fecha_actualizacion': politica.updated_at.strftime('%d/%m/%Y %H:%M')
+            }
+            
+            # Items incluidos/no incluidos
+            for item in politica.items.all():
+                if item.incluye:
+                    resumen['items_incluidos'].append(item.item)
+                else:
+                    resumen['items_no_incluidos'].append(item.item)
+            
+            # Penalizaciones
+            for pen in politica.penalizaciones.all():
+                resumen['penalizaciones'].append({
+                    'nombre': pen.tipo_penalizacion.nombre,
+                    'horas_previas': pen.horas_previas,
+                    'tipo_tarifa': pen.tipo_penalizacion.get_tipo_tarifa_display(),
+                    'valor_tarifa': float(pen.tipo_penalizacion.valor_tarifa)
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'resumen': resumen
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en view_summary: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
 
 # ======================
 # ADMIN ITEMS INCLUIDOS
@@ -430,7 +478,7 @@ class PoliticaIncluyeAdmin(admin.ModelAdmin):
     def item_display(self, obj):
         """Muestra el item con formato"""
         return format_html(
-            '<strong style="color: #2c3e50;">{}</strong>',
+            '<strong >{}</strong>',
             obj.item
         )
 
@@ -460,9 +508,9 @@ class TipoPenalizacionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
-        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_va4d427e4.js"),)
+        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
 
     list_display = (
         "nombre_display",
@@ -492,7 +540,7 @@ class TipoPenalizacionAdmin(admin.ModelAdmin):
     def nombre_display(self, obj):
         """Muestra el nombre con formato"""
         return format_html(
-            '<strong style="color: #2c3e50;">{}</strong>',
+            '<strong >{}</strong>',
             obj.nombre
         )
 
@@ -562,7 +610,7 @@ class TipoPenalizacionAdmin(admin.ModelAdmin):
         return format_html(
             '<a href="#" class="btn-view-policies" data-tipo-id="{}" '
             'style="background: #2c3e50; color: white; padding: 2px 6px; '
-            'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+            'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
             '👁️ Ver Políticas</a>',
             obj.id
         )
@@ -648,9 +696,9 @@ class PromocionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
-        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_va4d427e4.js"),)
+        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
 
     list_display = (
         "nombre_display",
@@ -789,7 +837,7 @@ class PromocionAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="#" class="btn-toggle-promo" data-promo-id="{}" data-action="deactivate" '
                     'style="background: #95a5a6; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                     '⭕ Desactivar</a>',
                     obj.id
                 )
@@ -799,7 +847,7 @@ class PromocionAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="#" class="btn-toggle-promo" data-promo-id="{}" data-action="activate" '
                     'style="background: #27ae60; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                     '✅ Activar</a>',
                     obj.id
                 )
@@ -811,7 +859,7 @@ class PromocionAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="#" class="btn-extend-promo" data-promo-id="{}" '
                     'style="background: #f39c12; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                     '⏰ Extender</a>',
                     obj.id
                 )
@@ -949,5 +997,46 @@ class PromocionAdmin(admin.ModelAdmin):
         "desactivar_promociones",
         "generar_reporte_promociones"
     ]
+
+    def get_urls(self):
+        """Agregar URLs personalizadas para acciones AJAX"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/toggle-estado/',
+                self.admin_site.admin_view(self.toggle_estado_promocion),
+                name='politicas_promocion_toggle_estado',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def toggle_estado_promocion(self, request, object_id):
+        """Vista AJAX para activar/desactivar promoción"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            promocion = self.get_object(request, object_id)
+            if not promocion:
+                return JsonResponse({'error': 'Promoción no encontrada'}, status=404)
+            
+            # Obtener el nuevo estado del POST data
+            nuevo_estado = request.POST.get('activo', '').lower() == 'true'
+            promocion.activo = nuevo_estado
+            promocion.save()
+            
+            # Log de la acción
+            action = "activada" if nuevo_estado else "desactivada"
+            logger.info(f"Promoción {promocion.id} {action} por {request.user.username}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Promoción {action} exitosamente',
+                'new_state': nuevo_estado
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en toggle_estado_promocion: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
 
 

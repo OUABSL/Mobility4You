@@ -1,0 +1,65 @@
+{% extends "admin/base.html" %} {% load static %} {% block extrahead %} 
+{{block.super }}
+<!-- CSS personalizado global para todo el panel de administración -->
+<link rel="stylesheet" type="text/css" href="{% static custom_css %}" />
+
+<!-- Estilos adicionales para el logo -->
+<style>
+  .admin-logo {
+    max-height: 40px;
+    max-width: 200px;
+    margin-right: 15px;
+    vertical-align: middle;
+  }
+
+  #header h1 {
+    display: flex;
+    align-items: center;
+  }
+
+  #header h1 a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+  }
+
+  .admin-title {
+    color: #f5dd5d;
+    font-weight: bold;
+  }
+
+  /* Responsive logo */
+  @media (max-width: 768px) {
+    .admin-logo {
+      max-height: 30px;
+      max-width: 150px;
+      margin-right: 10px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .admin-logo {
+      max-height: 25px;
+      max-width: 120px;
+      margin-right: 8px;
+    }
+
+    .admin-title {
+      font-size: 14px;
+    }
+  }
+</style>
+{% endblock %} {% block branding %}
+<h1 id="site-name">
+  <a href="{% url 'admin:index' %}">
+    <img
+      src="{% static logo_url %}"
+      alt="{{ site_logo_title }}"
+      class="admin-logo"
+    />
+    <span class="admin-title"
+      >{{ site_header|default:_('Django administration') }}</span
+    >
+  </a>
+</h1>
+{% endblock %}

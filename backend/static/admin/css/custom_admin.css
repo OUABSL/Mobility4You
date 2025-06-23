@@ -45,7 +45,6 @@
 }
 
 #branding h1:before {
-  content: "🚗 ";
   font-size: 1.5rem;
   margin-right: 0.5rem;
 }
@@ -138,7 +137,6 @@ div.breadcrumbs a:hover {
 
 #content-main .module table th {
   font-weight: 600;
-  color: var(--mobility-dark);
   text-transform: uppercase;
   font-size: 0.8rem;
   letter-spacing: 0.5px;
@@ -150,15 +148,18 @@ div.breadcrumbs a:hover {
 }
 
 #content-main .module table a {
-  color: var(--mobility-primary);
   text-decoration: none;
   font-weight: 500;
   transition: all 0.3s ease;
   white-space: nowrap;
 }
 
+#content-main .module table caption a {
+  color: var(--mobility-light);
+} 
+
 #content-main .module table a:hover {
-  color: var(--mobility-dark);
+  color: var(--mobility-info);
   text-decoration: underline;
   transform: translateX(2px);
 }
@@ -176,6 +177,7 @@ div.breadcrumbs a:hover {
   display: flex;
   align-items: center;
   gap: 1rem;
+  min-height: 40px;
 }
 
 #changelist .actions label {
@@ -332,9 +334,9 @@ div.breadcrumbs a:hover {
   font-style: italic;
   margin-top: 0.25rem;
 }
-  .form-row select {
-      height: 3rem;
-  }
+.form-row select {
+  height: 3rem;
+}
 
 /* Fieldsets */
 fieldset.module {

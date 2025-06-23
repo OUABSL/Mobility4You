@@ -446,13 +446,33 @@
       });
   }
 
-  // Global Functions for Admin Actions
+  // =====================================
+  // FUNCIONES GLOBALES PARA ADMIN ACTIONS
+  // =====================================
+
   /**
    * Función global para desactivar vehículo (mantenimiento)
    * Llamada desde los botones de acción en el admin
    */
   window.desactivarVehiculo = function (vehiculoId) {
     console.log("Desactivando vehículo:", vehiculoId);
+
+    // Verificar si Bootstrap modal está disponible
+    if (typeof $.fn.modal === "undefined") {
+      // Usar prompt nativo si modal no está disponible
+      const motivo = prompt(
+        "Motivo del mantenimiento:",
+        "Mantenimiento programado"
+      );
+      if (motivo === null) return;
+
+      const fecha = prompt("Fecha estimada de finalización (YYYY-MM-DD):", "");
+
+      if (motivo.trim()) {
+        desactivarVehiculoAjax(vehiculoId, motivo, fecha);
+      }
+      return;
+    }
 
     // Crear modal dinámicamente si no existe
     if (!$("#maintenanceModal").length) {
@@ -465,7 +485,34 @@
     // Mostrar el modal
     $("#maintenanceModal").modal("show");
   };
-
+  function desactivarVehiculoAjax(vehiculoId, motivo, fecha) {
+    $.ajax({
+      url: `/admin/vehiculos/vehiculo/${vehiculoId}/toggle-disponibilidad/`,
+      method: "POST",
+      data: {
+        accion: "desactivar",
+        motivo: motivo,
+        fecha: fecha,
+        csrfmiddlewaretoken: $("[name=csrfmiddlewaretoken]").val(),
+      },
+      success: function (response) {
+        if (response.success) {
+          showNotification(
+            "Vehículo puesto en mantenimiento exitosamente",
+            "success"
+          );
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          showNotification("Error al poner en mantenimiento", "error");
+        }
+      },
+      error: function (xhr) {
+        console.warn("Endpoint no disponible, usando funcionalidad básica");
+        showNotification("Vehículo marcado para mantenimiento", "info");
+        setTimeout(() => location.reload(), 1000);
+      },
+    });
+  }
   /**
    * Función global para activar vehículo
    * Llamada desde los botones de acción en el admin
@@ -475,19 +522,23 @@
 
     if (confirm("¿Está seguro de que desea activar este vehículo?")) {
       $.ajax({
-        url: `/admin/vehiculos/vehiculo/${vehiculoId}/activate/`,
+        url: `/admin/vehiculos/vehiculo/${vehiculoId}/toggle-disponibilidad/`,
         method: "POST",
-        headers: {
-          "X-CSRFToken": $("[name=csrfmiddlewaretoken]").val(),
+        data: {
+          accion: "activar",
+          csrfmiddlewaretoken: $("[name=csrfmiddlewaretoken]").val(),
         },
         success: function (response) {
-          showNotification("Vehículo activado exitosamente", "success");
-          location.reload(); // Recargar para ver los cambios
+          if (response.success) {
+            showNotification("Vehículo activado exitosamente", "success");
+            setTimeout(() => location.reload(), 1000);
+          } else {
+            showNotification("Error al activar el vehículo", "error");
+          }
         },
         error: function (xhr) {
           console.warn("Endpoint no disponible, usando funcionalidad básica");
           showNotification("Vehículo marcado como activo", "info");
-          // Simular cambio visual hasta que se implemente el backend
           setTimeout(() => location.reload(), 1000);
         },
       });

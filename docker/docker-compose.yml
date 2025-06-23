@@ -1,5 +1,4 @@
-services:
-  # Base de datos MariaDB con configuración optimizada
+services: # Base de datos MariaDB con configuración optimizada
   db:
     image: mariadb:10.6
     container_name: mobility4you_db
@@ -7,6 +6,8 @@ services:
       - db_data:/var/lib/mysql
       - ./mariadb-init.sh:/docker-entrypoint-initdb.d/mariadb-init.sh:ro
     restart: always
+    ports:
+      - "3306:3306" # Exponer puerto para desarrollo local
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}

@@ -148,12 +148,17 @@ def version_all_admin_assets():
                 "static_dir": os.path.join(static_dir, "js"),
                 "pattern": "reservas_admin_v{hash}.js",
                 "clean_pattern": "reservas_admin_v"
-            },
-            "comunicacion": {
+            },            "comunicacion": {
                 "source": os.path.join(base_dir, "static", "admin", "js", "comunicacion_admin.js"),
                 "static_dir": os.path.join(static_dir, "js"),
                 "pattern": "comunicacion_admin_v{hash}.js",
                 "clean_pattern": "comunicacion_admin_v"
+            },
+            "lugares": {
+                "source": os.path.join(base_dir, "static", "admin", "js", "lugares_admin.js"),
+                "static_dir": os.path.join(static_dir, "js"),
+                "pattern": "lugares_admin_v{hash}.js",
+                "clean_pattern": "lugares_admin_v"
             }
         }
     }

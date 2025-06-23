@@ -127,9 +127,9 @@ class PagoStripeAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
-        js = (get_versioned_asset("js_payments", "admin/js/payments_admin_va2ab12d0.js"),)
+        js = (get_versioned_asset("js_payments", "admin/js/payments_admin_v74cfa735.js"),)
 
     list_display = [
         "numero_pedido_link",
@@ -312,7 +312,7 @@ class PagoStripeAdmin(admin.ModelAdmin):
         """Muestra información completa del cliente"""
         return format_html(
             '<div class="cliente-info">'
-            '<strong style="color: #2c3e50;">{}</strong><br/>'
+            '<strong >{}</strong><br/>'
             '<small style="color: #7f8c8d;">{}</small>'
             '</div>',
             obj.nombre_cliente or "Sin nombre",
@@ -585,7 +585,7 @@ class PagoStripeAdmin(admin.ModelAdmin):
 
             return format_html(
                 '<div class="reserva-info" style="font-size: 12px;">'
-                '<strong style="color: #2c3e50;">Reserva #{}</strong><br/>'
+                '<strong >Reserva #{}</strong><br/>'
                 '<span style="color: #7f8c8d;">Estado: {}</span><br/>'
                 '<span style="color: #7f8c8d;">Vehículo: {}</span><br/>'
                 '<span style="color: #7f8c8d;">Fechas: {}</span>'
@@ -864,7 +864,7 @@ class ReembolsoStripeAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': ("admin/css/custom_admin_v211d00a2.css",)
+            'all': ("admin/css/custom_admin_v78b65000.css",)
         }
         js = ('admin/js/payments_admin.js',)
 
@@ -1093,7 +1093,7 @@ class ReembolsoStripeAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="{}" target="_blank" '
                     'style="background: #6772e5; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                     '👁️ Stripe</a>',
                     stripe_url
                 )
@@ -1105,7 +1105,7 @@ class ReembolsoStripeAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="#" class="btn-retry-refund" data-refund-id="{}" '
                     'style="background: #e74c3c; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                     '🔄 Reintentar</a>',
                     obj.id
                 )
@@ -1198,7 +1198,7 @@ class WebhookStripeAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': ("admin/css/custom_admin_v211d00a2.css",)
+            'all': ("admin/css/custom_admin_v78b65000.css",)
         }
         js = ('admin/js/payments_admin.js',)
 
@@ -1405,7 +1405,7 @@ class WebhookStripeAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="{}" target="_blank" '
                     'style="background: #6772e5; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                     '👁️ Stripe</a>',
                     stripe_url
                 )
@@ -1417,7 +1417,7 @@ class WebhookStripeAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="#" class="btn-reprocess-webhook" data-webhook-id="{}" '
                     'style="background: #3498db; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                     '🔄 Reprocesar</a>',
                     obj.id
                 )
@@ -1428,7 +1428,7 @@ class WebhookStripeAdmin(admin.ModelAdmin):
             format_html(
                 '<a href="#" class="btn-view-json" data-webhook-id="{}" '
                 'style="background: #2c3e50; color: white; padding: 2px 6px; '
-                'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                 '📋 JSON</a>',
                 obj.id
             )

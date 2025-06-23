@@ -5,8 +5,8 @@ from typing import Any, Optional
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.db.models import Avg, Count, Q, QuerySet
-from django.http import HttpRequest
-from django.urls import reverse
+from django.http import HttpRequest, JsonResponse
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -82,7 +82,7 @@ class MantenimientoInline(admin.TabularInline):
 class CategoriaAdmin(admin.ModelAdmin):
     list_display = (
         "nombre", 
-        "descripcion_short", 
+        "notas_short", 
         "vehiculos_count",
         "reservas_count",
         "created_at"
@@ -112,7 +112,7 @@ class CategoriaAdmin(admin.ModelAdmin):
         ),
     )
 
-    def descripcion_short(self, obj):
+    def notas_short(self, obj):
         if obj.descripcion:
             return obj.descripcion[:50] + "..." if len(obj.descripcion) > 50 else obj.descripcion
         return "-"
@@ -151,7 +151,7 @@ class GrupoCocheAdmin(admin.ModelAdmin):
         "nombre", 
         "edad_minima", 
         "vehiculos_count",
-        "descripcion_short",
+        "notas_short",
         "created_at"
     )
     list_filter = ("edad_minima",)
@@ -181,7 +181,7 @@ class GrupoCocheAdmin(admin.ModelAdmin):
         ),
     )
 
-    def descripcion_short(self, obj):
+    def notas_short(self, obj):
         if obj.descripcion:
             return obj.descripcion[:50] + "..." if len(obj.descripcion) > 50 else obj.descripcion
         return "-"
@@ -520,10 +520,80 @@ class VehiculoAdmin(admin.ModelAdmin):
             messages.error(request, f"Error al guardar: {str(e)}")
             raise
 
+    def get_urls(self):
+        """Agregar URLs personalizadas para acciones AJAX"""  
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/toggle-disponibilidad/',
+                self.admin_site.admin_view(self.toggle_disponibilidad),
+                name='vehiculos_vehiculo_toggle_disponibilidad',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def toggle_disponibilidad(self, request, object_id):
+        """Vista AJAX para activar/desactivar vehículo"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            vehiculo = self.get_object(request, object_id)
+            if not vehiculo:
+                return JsonResponse({'error': 'Vehículo no encontrado'}, status=404)
+            
+            # Obtener datos del formulario
+            accion = request.POST.get('accion', '')
+            motivo = request.POST.get('motivo', '')
+            fecha_mantenimiento = request.POST.get('fecha', '')
+            
+            if accion == 'desactivar':
+                # Desactivar vehículo para mantenimiento
+                vehiculo.disponible = False
+                vehiculo.save()
+                
+                # Crear registro de mantenimiento si se proporcionaron datos
+                if motivo:
+                    from .models import Mantenimiento
+                    mantenimiento = Mantenimiento.objects.create(
+                        vehiculo=vehiculo,
+                        tipo_servicio=motivo,
+                        fecha=timezone.now().date(),
+                        coste=0,
+                        notas=f"Vehículo puesto en mantenimiento por {request.user.username}"
+                    )
+                
+                logger.info(f"Vehículo {vehiculo.id} desactivado para mantenimiento por {request.user.username}: {motivo}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Vehículo puesto en mantenimiento exitosamente',
+                    'new_state': False
+                })
+                
+            elif accion == 'activar':
+                # Activar vehículo
+                vehiculo.disponible = True
+                vehiculo.save()
+                
+                logger.info(f"Vehículo {vehiculo.id} activado por {request.user.username}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Vehículo activado exitosamente',
+                    'new_state': True
+                })
+            else:
+                return JsonResponse({'error': 'Acción no válida'}, status=400)
+                
+        except Exception as e:
+            logger.error(f"Error en toggle_disponibilidad: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+
     class Media:
-        js = (get_versioned_asset("js_vehiculos", "admin/js/vehiculos_admin_v6b84047c.js"),)
+        js = (get_versioned_asset("js_vehiculos", "admin/js/vehiculos_admin_vfd3d29f9.js"),)
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            "all": (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
 
 
@@ -673,7 +743,7 @@ class MantenimientoAdmin(admin.ModelAdmin):
         "vehiculo__modelo", 
         "vehiculo__matricula",
         "tipo_servicio",
-        "descripcion"
+        "notas"
     )
     date_hierarchy = "fecha"
     readonly_fields = ("created_at", "updated_at", "tiempo_desde_mantenimiento")
@@ -693,7 +763,7 @@ class MantenimientoAdmin(admin.ModelAdmin):
         (
             "Detalles",
             {
-                "fields": ("descripcion",)
+                "fields": ("notas",)
             },
         ),
         (
@@ -734,7 +804,9 @@ class MantenimientoAdmin(admin.ModelAdmin):
     def estado_urgencia(self, obj):
         """Indicar si es un mantenimiento urgente basado en el tiempo transcurrido"""
         hoy = timezone.now().date()
-        dias_transcurridos = (hoy - obj.fecha).days
+        # Convertir datetime a date si es necesario para comparación
+        fecha_obj = obj.fecha.date() if hasattr(obj.fecha, 'date') else obj.fecha
+        dias_transcurridos = (hoy - fecha_obj).days
         
         if dias_transcurridos < 30:
             return format_html('<span style="color: #28a745;">🔧 Reciente</span>')
@@ -745,7 +817,9 @@ class MantenimientoAdmin(admin.ModelAdmin):
 
     def tiempo_desde_mantenimiento(self, obj):
         hoy = timezone.now().date()
-        dias = (hoy - obj.fecha).days
+        # Convertir datetime a date si es necesario para comparación
+        fecha_obj = obj.fecha.date() if hasattr(obj.fecha, 'date') else obj.fecha
+        dias = (hoy - fecha_obj).days
         if dias == 0:
             return "Hoy"
         elif dias == 1:

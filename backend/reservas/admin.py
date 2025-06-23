@@ -7,8 +7,8 @@ from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.db import transaction
 from django.db.models import Q, QuerySet, Sum
-from django.http import HttpRequest
-from django.urls import reverse
+from django.http import HttpRequest, JsonResponse
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -276,19 +276,36 @@ class ReservaAdmin(admin.ModelAdmin):
         """Botones de acción rápida"""
         actions = []
         
+        # Solo mostrar acciones según el estado actual
         if obj.estado == "pendiente":
             actions.append(
-            '<a href="#" onclick="confirmarReserva({})" '
-            'style="color: #28a745; text-decoration: none;">✅ Confirmar</a>'.format(obj.pk)
+                '<a href="#" onclick="confirmarReserva({})" '
+                'style="color: #28a745; text-decoration: none; font-weight: bold;">✅ Confirmar</a>'.format(obj.pk)
             )
-        
-        if obj.estado != "cancelada":
             actions.append(
-            '<a href="#" onclick="cancelarReserva({})" '
-            'style="color: #dc3545; text-decoration: none;">❌ Cancelar</a>'.format(obj.pk)
+                '<a href="#" onclick="cancelarReserva({})" '
+                'style="color: #dc3545; text-decoration: none; font-weight: bold;">❌ Cancelar</a>'.format(obj.pk)
+            )
+        elif obj.estado == "confirmada":
+            # Verificar si la reserva ya terminó
+            now = timezone.now()
+            if obj.fecha_devolucion < now:
+                # Reserva completada - no mostrar acciones
+                actions.append(
+                    '<span style="color: #28a745; font-weight: bold;">✅ Completada</span>'
+                )
+            else:
+                # Reserva activa - solo permitir cancelación con confirmación
+                actions.append(
+                    '<a href="#" onclick="cancelarReservaConfirmada({})" '
+                    'style="color: #dc3545; text-decoration: none; font-weight: bold;">⚠️ Cancelar Confirmada</a>'.format(obj.pk)
+                )
+        elif obj.estado == "cancelada":
+            actions.append(
+                '<span style="color: #6c757d; font-weight: bold;">❌ Cancelada</span>'
             )
             
-        return mark_safe('<br>'.join(actions))
+        return mark_safe('<br>'.join(actions) if actions else '<span style="color: #6c757d;">Sin acciones</span>')
 
     @admin.display(description="Dias Alquiler")
     def dias_alquiler_display(self, obj):
@@ -355,6 +372,87 @@ class ReservaAdmin(admin.ModelAdmin):
                 '<span style="color: #dc3545;">❌ Conflicto de disponibilidad</span>'
             )
 
+    def get_urls(self):
+        """Agregar URLs personalizadas para acciones AJAX"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/confirm/',
+                self.admin_site.admin_view(self.confirm_reserva),
+                name='reservas_reserva_confirm',
+            ),
+            path(
+                '<int:object_id>/cancel/',
+                self.admin_site.admin_view(self.cancel_reserva),
+                name='reservas_reserva_cancel',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def confirm_reserva(self, request, object_id):
+        """Vista AJAX para confirmar reserva"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            reserva = self.get_object(request, object_id)
+            if not reserva:
+                return JsonResponse({'error': 'Reserva no encontrada'}, status=404)
+            
+            if reserva.estado != 'pendiente':
+                return JsonResponse({'error': 'Solo se pueden confirmar reservas pendientes'}, status=400)
+            
+            # Verificar disponibilidad del vehículo
+            if not reserva.verificar_disponibilidad_vehiculo():
+                return JsonResponse({'error': 'El vehículo no está disponible para estas fechas'}, status=400)
+            
+            reserva.estado = 'confirmada'
+            reserva.save()
+            
+            logger.info(f"Reserva {reserva.id} confirmada por {request.user.username}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Reserva confirmada exitosamente'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en confirm_reserva: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def cancel_reserva(self, request, object_id):
+        """Vista AJAX para cancelar reserva"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            reserva = self.get_object(request, object_id)
+            if not reserva:
+                return JsonResponse({'error': 'Reserva no encontrada'}, status=404)
+            
+            if reserva.estado == 'cancelada':
+                return JsonResponse({'error': 'La reserva ya está cancelada'}, status=400)
+            
+            # Verificar si es una cancelación confirmada (para reservas confirmadas)
+            confirmed_cancellation = request.POST.get('confirmed_cancellation', 'false').lower() == 'true'
+            
+            if reserva.estado == 'confirmada' and not confirmed_cancellation:
+                return JsonResponse({'error': 'Se requiere confirmación adicional para cancelar reservas confirmadas'}, status=400)
+            
+            reserva.estado = 'cancelada'
+            reserva.save()
+            
+            logger.info(f"Reserva {reserva.id} cancelada por {request.user.username}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Reserva cancelada exitosamente'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en cancel_reserva: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+
     # Acciones masivas
     def confirmar_reservas(self, request, queryset):
         """Confirmar reservas seleccionadas"""
@@ -405,9 +503,9 @@ class ReservaAdmin(admin.ModelAdmin):
             raise
 
     class Media:
-        js = (get_versioned_asset("js_reservas", "admin/js/reservas_admin_va3222537.js"),)
+        js = (get_versioned_asset("js_reservas", "admin/js/reservas_admin_v74440271.js"),)
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            "all": (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
 
 

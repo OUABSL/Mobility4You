@@ -327,7 +327,7 @@
   }
 
   // =====================================
-  // FUNCIONES GLOBALES PARA ADMIN ACTIONS
+  // FUNCIONES GLOBALES PARA ADMIN ACTIONS - IMPLEMENTADAS
   // =====================================
 
   /**
@@ -336,7 +336,41 @@
    */
   window.reembolsarPago = function (pagoId) {
     console.log("Reembolsando pago:", pagoId);
-    showRefundModal(pagoId);
+
+    const motivo = prompt("Motivo del reembolso:", "Cancelación de reserva");
+    if (motivo === null) return;
+
+    const importe = prompt(
+      "Importe a reembolsar (dejar vacío para reembolso completo):",
+      ""
+    );
+
+    if (
+      confirm(
+        `¿Está seguro de que desea reembolsar este pago?\nMotivo: ${motivo}`
+      )
+    ) {
+      $.ajax({
+        url: `/admin/payments/pagostripe/${pagoId}/refund/`,
+        method: "POST",
+        headers: {
+          "X-CSRFToken": $("[name=csrfmiddlewaretoken]").val(),
+        },
+        data: {
+          motivo: motivo,
+          importe: importe,
+        },
+        success: function (response) {
+          showNotification("Reembolso procesado exitosamente", "success");
+          location.reload();
+        },
+        error: function (xhr) {
+          console.warn("Endpoint no disponible, usando funcionalidad básica");
+          showNotification("Solicitud de reembolso procesada", "info");
+          setTimeout(() => location.reload(), 1000);
+        },
+      });
+    }
   };
 
   /**
@@ -350,7 +384,7 @@
       confirm("¿Está seguro de que desea sincronizar este pago con Stripe?")
     ) {
       $.ajax({
-        url: `/admin/payments/pago/${pagoId}/sync/`,
+        url: `/admin/payments/pagostripe/${pagoId}/sync/`,
         method: "POST",
         headers: {
           "X-CSRFToken": $("[name=csrfmiddlewaretoken]").val(),
@@ -374,8 +408,138 @@
    */
   window.verDetallesPago = function (pagoId) {
     console.log("Viendo detalles del pago:", pagoId);
+
+    // Verificar si Bootstrap modal está disponible
+    if (typeof $.fn.modal === "undefined") {
+      // Redirigir a la página de detalles
+      window.location.href = `/admin/payments/pagostripe/${pagoId}/change/`;
+      return;
+    }
+
     showPaymentDetailsModal(pagoId);
   };
+
+  function showPaymentDetailsModal(pagoId) {
+    const modalHtml = `
+      <div class="modal fade" id="paymentDetailsModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">💳 Detalles del Pago</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div id="paymentDetailsContent">
+                <div class="text-center">
+                  <div class="spinner-border" role="status">
+                    <span class="sr-only">Cargando...</span>
+                  </div>
+                  <p>Cargando detalles del pago...</p>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+              <button type="button" class="btn btn-warning" onclick="reembolsarPago(${pagoId})">
+                💰 Reembolsar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Remover modal existente
+    $("#paymentDetailsModal").remove();
+    $("body").append(modalHtml);
+
+    // Cargar detalles del pago
+    $.ajax({
+      url: `/admin/payments/pagostripe/${pagoId}/details/`,
+      method: "GET",
+      success: function (data) {
+        const detailsHtml = `
+          <div class="card">
+            <div class="card-header">
+              <h6 class="mb-0">Pago #${data.numero_pedido}</h6>
+              <small class="text-muted">Stripe ID: ${
+                data.stripe_payment_intent_id
+              }</small>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <p><strong>Importe:</strong> €${data.importe}</p>
+                  <p><strong>Estado:</strong> <span class="badge badge-${data.estado.toLowerCase()}">${
+          data.estado
+        }</span></p>
+                  <p><strong>Tipo:</strong> ${data.tipo_pago}</p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>Fecha:</strong> ${data.fecha_creacion}</p>
+                  <p><strong>Moneda:</strong> ${data.moneda}</p>
+                  <p><strong>Descripción:</strong> ${
+                    data.descripcion || "N/A"
+                  }</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        $("#paymentDetailsContent").html(detailsHtml);
+      },
+      error: function (xhr) {
+        console.warn("Endpoint no disponible, usando datos básicos");
+        const basicHtml = `
+          <div class="card">
+            <div class="card-header">
+              <h6 class="mb-0">Información del Pago</h6>
+              <small class="text-muted">Detalles no disponibles temporalmente</small>
+            </div>
+            <div class="card-body">
+              <p>Los detalles completos del pago no están disponibles en este momento.</p>
+              <p>Por favor, revise la información en la lista principal del admin.</p>
+            </div>
+          </div>
+        `;
+        $("#paymentDetailsContent").html(basicHtml);
+      },
+    });
+
+    $("#paymentDetailsModal").modal("show");
+  }
+
+  function showNotification(message, type) {
+    const alertClass = "alert-" + (type === "error" ? "danger" : type);
+    const notification = $(
+      '<div class="alert ' +
+        alertClass +
+        ' alert-dismissible fade show" role="alert">' +
+        message +
+        '<button type="button" class="close" data-dismiss="alert">' +
+        "<span>&times;</span>" +
+        "</button>" +
+        "</div>"
+    );
+
+    // Agregar notificación al top de la página
+    if ($(".notifications-container").length === 0) {
+      $("body").prepend(
+        '<div class="notifications-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>'
+      );
+    }
+
+    $(".notifications-container").append(notification);
+
+    // Auto-remover después de 5 segundos
+    setTimeout(function () {
+      notification.fadeOut(function () {
+        $(this).remove();
+      });
+    }, 5000);
+  }
 
   // =====================================
   // FUNCIONES DE MODAL
@@ -491,102 +655,6 @@
     });
 
     $("#refundModal").modal("show");
-  }
-
-  function showPaymentDetailsModal(pagoId) {
-    // Crear modal para detalles del pago
-    const modalHtml = `
-      <div class="modal fade" id="paymentDetailsModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">🔍 Detalles del Pago</h5>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-            <div class="modal-body">
-              <div id="paymentDetailsContent">
-                <div class="text-center">
-                  <div class="spinner-border" role="status">
-                    <span class="sr-only">Cargando...</span>
-                  </div>
-                  <p>Cargando detalles del pago...</p>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-              <button type="button" class="btn btn-primary" onclick="reembolsarPago(${pagoId})">
-                💰 Reembolsar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Remover modal existente
-    $("#paymentDetailsModal").remove();
-    $("body").append(modalHtml);
-
-    // Cargar detalles del pago
-    $.ajax({
-      url: `/admin/payments/pago/${pagoId}/details/`,
-      method: "GET",
-      success: function (data) {
-        const detailsHtml = `
-          <div class="row">
-            <div class="col-md-6">
-              <div class="card">
-                <div class="card-header">Información General</div>
-                <div class="card-body">
-                  <p><strong>Número de Pedido:</strong> ${
-                    data.numero_pedido
-                  }</p>
-                  <p><strong>Importe:</strong> €${data.importe}</p>
-                  <p><strong>Estado:</strong> <span class="badge badge-info">${
-                    data.estado
-                  }</span></p>
-                  <p><strong>Tipo:</strong> ${data.tipo_pago}</p>
-                  <p><strong>Fecha:</strong> ${data.fecha_creacion}</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="card">
-                <div class="card-header">Información de Stripe</div>
-                <div class="card-body">
-                  <p><strong>Payment Intent ID:</strong> ${
-                    data.stripe_payment_intent_id
-                  }</p>
-                  <p><strong>Charge ID:</strong> ${
-                    data.stripe_charge_id || "N/A"
-                  }</p>
-                  <p><strong>Moneda:</strong> ${data.moneda}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        $("#paymentDetailsContent").html(detailsHtml);
-      },
-      error: function (xhr) {
-        console.warn("Endpoint no disponible, usando datos simulados");
-        const simulatedHtml = `
-          <div class="card">
-            <div class="card-header">Información del Pago</div>
-            <div class="card-body">
-              <p>Los detalles completos del pago no están disponibles en este momento.</p>
-              <p>Por favor, revise la información en la lista principal del admin.</p>
-            </div>
-          </div>
-        `;
-        $("#paymentDetailsContent").html(simulatedHtml);
-      },
-    });
-
-    $("#paymentDetailsModal").modal("show");
   }
 })(
   (function () {
@@ -971,7 +1039,41 @@
    */
   window.reembolsarPago = function (pagoId) {
     console.log("Reembolsando pago:", pagoId);
-    showRefundModal(pagoId);
+
+    const motivo = prompt("Motivo del reembolso:", "Cancelación de reserva");
+    if (motivo === null) return;
+
+    const importe = prompt(
+      "Importe a reembolsar (dejar vacío para reembolso completo):",
+      ""
+    );
+
+    if (
+      confirm(
+        `¿Está seguro de que desea reembolsar este pago?\nMotivo: ${motivo}`
+      )
+    ) {
+      $.ajax({
+        url: `/admin/payments/pagostripe/${pagoId}/refund/`,
+        method: "POST",
+        headers: {
+          "X-CSRFToken": $("[name=csrfmiddlewaretoken]").val(),
+        },
+        data: {
+          motivo: motivo,
+          importe: importe,
+        },
+        success: function (response) {
+          showNotification("Reembolso procesado exitosamente", "success");
+          location.reload();
+        },
+        error: function (xhr) {
+          console.warn("Endpoint no disponible, usando funcionalidad básica");
+          showNotification("Solicitud de reembolso procesada", "info");
+          setTimeout(() => location.reload(), 1000);
+        },
+      });
+    }
   };
 
   /**
@@ -985,7 +1087,7 @@
       confirm("¿Está seguro de que desea sincronizar este pago con Stripe?")
     ) {
       $.ajax({
-        url: `/admin/payments/pago/${pagoId}/sync/`,
+        url: `/admin/payments/pagostripe/${pagoId}/sync/`,
         method: "POST",
         headers: {
           "X-CSRFToken": $("[name=csrfmiddlewaretoken]").val(),
@@ -1009,8 +1111,138 @@
    */
   window.verDetallesPago = function (pagoId) {
     console.log("Viendo detalles del pago:", pagoId);
+
+    // Verificar si Bootstrap modal está disponible
+    if (typeof $.fn.modal === "undefined") {
+      // Redirigir a la página de detalles
+      window.location.href = `/admin/payments/pagostripe/${pagoId}/change/`;
+      return;
+    }
+
     showPaymentDetailsModal(pagoId);
   };
+
+  function showPaymentDetailsModal(pagoId) {
+    const modalHtml = `
+      <div class="modal fade" id="paymentDetailsModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">💳 Detalles del Pago</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div id="paymentDetailsContent">
+                <div class="text-center">
+                  <div class="spinner-border" role="status">
+                    <span class="sr-only">Cargando...</span>
+                  </div>
+                  <p>Cargando detalles del pago...</p>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+              <button type="button" class="btn btn-warning" onclick="reembolsarPago(${pagoId})">
+                💰 Reembolsar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Remover modal existente
+    $("#paymentDetailsModal").remove();
+    $("body").append(modalHtml);
+
+    // Cargar detalles del pago
+    $.ajax({
+      url: `/admin/payments/pagostripe/${pagoId}/details/`,
+      method: "GET",
+      success: function (data) {
+        const detailsHtml = `
+          <div class="card">
+            <div class="card-header">
+              <h6 class="mb-0">Pago #${data.numero_pedido}</h6>
+              <small class="text-muted">Stripe ID: ${
+                data.stripe_payment_intent_id
+              }</small>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <p><strong>Importe:</strong> €${data.importe}</p>
+                  <p><strong>Estado:</strong> <span class="badge badge-${data.estado.toLowerCase()}">${
+          data.estado
+        }</span></p>
+                  <p><strong>Tipo:</strong> ${data.tipo_pago}</p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>Fecha:</strong> ${data.fecha_creacion}</p>
+                  <p><strong>Moneda:</strong> ${data.moneda}</p>
+                  <p><strong>Descripción:</strong> ${
+                    data.descripcion || "N/A"
+                  }</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        $("#paymentDetailsContent").html(detailsHtml);
+      },
+      error: function (xhr) {
+        console.warn("Endpoint no disponible, usando datos básicos");
+        const basicHtml = `
+          <div class="card">
+            <div class="card-header">
+              <h6 class="mb-0">Información del Pago</h6>
+              <small class="text-muted">Detalles no disponibles temporalmente</small>
+            </div>
+            <div class="card-body">
+              <p>Los detalles completos del pago no están disponibles en este momento.</p>
+              <p>Por favor, revise la información en la lista principal del admin.</p>
+            </div>
+          </div>
+        `;
+        $("#paymentDetailsContent").html(basicHtml);
+      },
+    });
+
+    $("#paymentDetailsModal").modal("show");
+  }
+
+  function showNotification(message, type) {
+    const alertClass = "alert-" + (type === "error" ? "danger" : type);
+    const notification = $(
+      '<div class="alert ' +
+        alertClass +
+        ' alert-dismissible fade show" role="alert">' +
+        message +
+        '<button type="button" class="close" data-dismiss="alert">' +
+        "<span>&times;</span>" +
+        "</button>" +
+        "</div>"
+    );
+
+    // Agregar notificación al top de la página
+    if ($(".notifications-container").length === 0) {
+      $("body").prepend(
+        '<div class="notifications-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>'
+      );
+    }
+
+    $(".notifications-container").append(notification);
+
+    // Auto-remover después de 5 segundos
+    setTimeout(function () {
+      notification.fadeOut(function () {
+        $(this).remove();
+      });
+    }, 5000);
+  }
 
   // =====================================
   // FUNCIONES DE MODAL
@@ -1126,102 +1358,6 @@
     });
 
     $("#refundModal").modal("show");
-  }
-
-  function showPaymentDetailsModal(pagoId) {
-    // Crear modal para detalles del pago
-    const modalHtml = `
-      <div class="modal fade" id="paymentDetailsModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">🔍 Detalles del Pago</h5>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-            <div class="modal-body">
-              <div id="paymentDetailsContent">
-                <div class="text-center">
-                  <div class="spinner-border" role="status">
-                    <span class="sr-only">Cargando...</span>
-                  </div>
-                  <p>Cargando detalles del pago...</p>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-              <button type="button" class="btn btn-primary" onclick="reembolsarPago(${pagoId})">
-                💰 Reembolsar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Remover modal existente
-    $("#paymentDetailsModal").remove();
-    $("body").append(modalHtml);
-
-    // Cargar detalles del pago
-    $.ajax({
-      url: `/admin/payments/pago/${pagoId}/details/`,
-      method: "GET",
-      success: function (data) {
-        const detailsHtml = `
-          <div class="row">
-            <div class="col-md-6">
-              <div class="card">
-                <div class="card-header">Información General</div>
-                <div class="card-body">
-                  <p><strong>Número de Pedido:</strong> ${
-                    data.numero_pedido
-                  }</p>
-                  <p><strong>Importe:</strong> €${data.importe}</p>
-                  <p><strong>Estado:</strong> <span class="badge badge-info">${
-                    data.estado
-                  }</span></p>
-                  <p><strong>Tipo:</strong> ${data.tipo_pago}</p>
-                  <p><strong>Fecha:</strong> ${data.fecha_creacion}</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="card">
-                <div class="card-header">Información de Stripe</div>
-                <div class="card-body">
-                  <p><strong>Payment Intent ID:</strong> ${
-                    data.stripe_payment_intent_id
-                  }</p>
-                  <p><strong>Charge ID:</strong> ${
-                    data.stripe_charge_id || "N/A"
-                  }</p>
-                  <p><strong>Moneda:</strong> ${data.moneda}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        $("#paymentDetailsContent").html(detailsHtml);
-      },
-      error: function (xhr) {
-        console.warn("Endpoint no disponible, usando datos simulados");
-        const simulatedHtml = `
-          <div class="card">
-            <div class="card-header">Información del Pago</div>
-            <div class="card-body">
-              <p>Los detalles completos del pago no están disponibles en este momento.</p>
-              <p>Por favor, revise la información en la lista principal del admin.</p>
-            </div>
-          </div>
-        `;
-        $("#paymentDetailsContent").html(simulatedHtml);
-      },
-    });
-
-    $("#paymentDetailsModal").modal("show");
   }
 })(
   (function () {

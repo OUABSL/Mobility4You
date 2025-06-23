@@ -21,6 +21,9 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
+# Importar nuestro admin personalizado
+from .admin import mobility_admin_site
+
 
 # Simple health check view
 def health_check(request):
@@ -28,7 +31,7 @@ def health_check(request):
 
 urlpatterns = [
     path("health/", health_check, name="health-check"),
-    path("admin/", admin.site.urls),
+    path("admin/", mobility_admin_site.urls),  # Usar nuestro admin personalizado
     # APIs modulares (sin namespace por ahora para evitar conflictos)
     path("api/usuarios/", include("usuarios.urls")),
     path("api/lugares/", include("lugares.urls")),

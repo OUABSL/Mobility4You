@@ -177,3 +177,5 @@ settings/local.py
 /frontend/node_modules
 /backend/venv
 /backend/api_old
+/backend/config/__pycache__
+/backend/config/__pycache__

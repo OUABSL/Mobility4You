@@ -17,6 +17,20 @@ class MobilityAdminSite(AdminSite):
     site_title = _("Mobility Admin")
     index_title = _("Gestión del Sistema de Alquiler de Vehículos")
 
+    def each_context(self, request):
+        """
+        Agregar contexto adicional para todos los templates del admin
+        """
+        context = super().each_context(request)
+        from utils.static_mapping import get_versioned_asset
+        
+        context.update({
+            'custom_css': get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),
+            'logo_url': "admin/img/logo_home_horizontal.png",
+            'site_logo_title': _("Mobility4You"),
+        })
+        return context
+
     def get_app_list(self, request, app_label=None):
         """
         Personaliza la lista de aplicaciones en el panel de administración
@@ -100,27 +114,58 @@ class MobilityAdminSite(AdminSite):
 # Crear una instancia del sitio personalizado
 mobility_admin_site = MobilityAdminSite(name="mobility_admin")
 
-# Registrar todas las aplicaciones en el sitio personalizado
-from django.apps import apps
+# Importar y registrar todos los admin classes manualmente
+from comunicacion.admin import ContactoAdmin, ContenidoAdmin
+from comunicacion.models import Contacto, Contenido
+from facturas_contratos.admin import ContratoAdmin, FacturaAdmin
+from facturas_contratos.models import Contrato, Factura
+from lugares.admin import DireccionAdmin, LugarAdmin
+from lugares.models import Direccion, Lugar
+from payments.admin import (PagoStripeAdmin, ReembolsoStripeAdmin,
+                            WebhookStripeAdmin)
+from payments.models import PagoStripe, ReembolsoStripe, WebhookStripe
+from politicas.admin import (PoliticaIncluyeAdmin, PoliticaPagoAdmin,
+                             PoliticaPenalizacionAdmin, PromocionAdmin,
+                             TipoPenalizacionAdmin)
+from politicas.models import (PoliticaIncluye, PoliticaPago,
+                              PoliticaPenalizacion, Promocion,
+                              TipoPenalizacion)
+from reservas.admin import (ExtrasAdmin, PenalizacionAdmin, ReservaAdmin,
+                            ReservaConductorAdmin, ReservaExtraAdmin)
+from reservas.models import (Extras, Penalizacion, Reserva, ReservaConductor,
+                             ReservaExtra)
+from usuarios.admin import UsuarioAdmin
+from usuarios.models import Usuario
+from vehiculos.admin import (CategoriaAdmin, GrupoCocheAdmin,
+                             ImagenVehiculoAdmin, MantenimientoAdmin,
+                             TarifaVehiculoAdmin, VehiculoAdmin)
+from vehiculos.models import (Categoria, GrupoCoche, ImagenVehiculo,
+                              Mantenimiento, TarifaVehiculo, Vehiculo)
 
-
-def register_all_models():
-    """
-    Registra automáticamente todos los modelos en el sitio personalizado
-    """
-    for model in apps.get_models():
-        try:
-            # Solo registrar si no está ya registrado en el admin por defecto
-            if not admin.site.is_registered(model):
-                mobility_admin_site.register(model)
-            else:
-                # Si ya está registrado, copiar la configuración
-                admin_class = admin.site._registry.get(model)
-                if admin_class:
-                    mobility_admin_site.register(model, admin_class.__class__)
-        except admin.sites.AlreadyRegistered:
-            pass
-
-
-# Llamar a la función de registro
-register_all_models()
+# Registrar todos los modelos en nuestro admin personalizado
+mobility_admin_site.register(Usuario, UsuarioAdmin)
+mobility_admin_site.register(Direccion, DireccionAdmin)
+mobility_admin_site.register(Lugar, LugarAdmin)
+mobility_admin_site.register(Categoria, CategoriaAdmin)
+mobility_admin_site.register(GrupoCoche, GrupoCocheAdmin)
+mobility_admin_site.register(Vehiculo, VehiculoAdmin)
+mobility_admin_site.register(ImagenVehiculo, ImagenVehiculoAdmin)
+mobility_admin_site.register(TarifaVehiculo, TarifaVehiculoAdmin)
+mobility_admin_site.register(Mantenimiento, MantenimientoAdmin)
+mobility_admin_site.register(Reserva, ReservaAdmin)
+mobility_admin_site.register(ReservaConductor, ReservaConductorAdmin)
+mobility_admin_site.register(Penalizacion, PenalizacionAdmin)
+mobility_admin_site.register(Extras, ExtrasAdmin)
+mobility_admin_site.register(ReservaExtra, ReservaExtraAdmin)
+mobility_admin_site.register(PoliticaPago, PoliticaPagoAdmin)
+mobility_admin_site.register(PoliticaIncluye, PoliticaIncluyeAdmin)
+mobility_admin_site.register(TipoPenalizacion, TipoPenalizacionAdmin)
+mobility_admin_site.register(PoliticaPenalizacion, PoliticaPenalizacionAdmin)
+mobility_admin_site.register(Promocion, PromocionAdmin)
+mobility_admin_site.register(Contrato, ContratoAdmin)
+mobility_admin_site.register(Factura, FacturaAdmin)
+mobility_admin_site.register(Contenido, ContenidoAdmin)
+mobility_admin_site.register(Contacto, ContactoAdmin)
+mobility_admin_site.register(PagoStripe, PagoStripeAdmin)
+mobility_admin_site.register(ReembolsoStripe, ReembolsoStripeAdmin)
+mobility_admin_site.register(WebhookStripe, WebhookStripeAdmin)

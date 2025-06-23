@@ -1,13 +1,20 @@
 # lugares/admin.py
+import logging
+
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.db.models import Count, Q
+from django.http import JsonResponse
+from django.urls import path
+from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from utils.static_mapping import get_versioned_asset
 
 from .models import Direccion, Lugar
+
+logger = logging.getLogger("admin_operations")
 
 
 class CiudadFilter(SimpleListFilter):
@@ -31,7 +38,7 @@ class DireccionAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v211d00a2.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
 
     list_display = (
@@ -64,7 +71,7 @@ class DireccionAdmin(admin.ModelAdmin):
         """Muestra la dirección completa con formato"""
         return format_html(
             '<div class="direccion-completa">'
-            '<strong style="color: #2c3e50;">{}</strong><br/>'
+            '<strong >{}</strong><br/>'
             '<small style="color: #7f8c8d;">{}</small>'
             '</div>',
             obj.calle or "Sin calle especificada",
@@ -88,7 +95,7 @@ class DireccionAdmin(admin.ModelAdmin):
         """Muestra la provincia"""
         if obj.provincia:
             return format_html(
-                '<span style="color: #2c3e50;">{}</span>',
+                '<span >{}</span>',
                 obj.provincia
             )
         return format_html('<span style="color: #95a5a6;">Sin provincia</span>')
@@ -106,7 +113,7 @@ class DireccionAdmin(admin.ModelAdmin):
         flag = flag_map.get(obj.pais, "🌍")
         
         return format_html(
-            '<span style="color: #2c3e50;">{} {}</span>',
+            '<span >{} {}</span>',
             flag, obj.pais
         )
     
@@ -149,9 +156,12 @@ class LugarAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': ("admin/css/custom_admin_v211d00a2.css",)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
         }
-
+        js = (
+            get_versioned_asset("js_lugares", "admin/js/lugares_admin_v6ba3dda2.js"),
+        )
+    
     list_display = (
         "nombre_display",
         "direccion_info", 
@@ -243,7 +253,7 @@ class LugarAdmin(admin.ModelAdmin):
         
         return format_html(
             '<div class="nombre-lugar">'
-            '{} <strong style="color: #2c3e50;">{}</strong> {}'
+            '{} <strong >{}</strong> {}'
             '</div>',
             icon, obj.nombre, star
         )
@@ -254,7 +264,7 @@ class LugarAdmin(admin.ModelAdmin):
         if obj.direccion:
             return format_html(
                 '<div class="direccion-info" style="font-size: 12px;">'
-                '<strong style="color: #2c3e50;">{}</strong><br/>'
+                '<strong >{}</strong><br/>'
                 '<span style="color: #7f8c8d;">{}, {}</span><br/>'
                 '<code style="background: #f8f9fa; padding: 1px 4px; border-radius: 2px;">{}</code>'
                 '</div>',
@@ -343,7 +353,7 @@ class LugarAdmin(admin.ModelAdmin):
                 format_html(
                     '<a href="{}" target="_blank" '
                     'style="background: #3498db; color: white; padding: 2px 6px; '
-                    'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                    'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                     '🗺️ Mapa</a>',
                     maps_url
                 )
@@ -356,7 +366,7 @@ class LugarAdmin(admin.ModelAdmin):
             format_html(
                 '<a href="#" class="btn-toggle-estado" data-lugar-id="{}" '
                 'style="background: {}; color: white; padding: 2px 6px; '
-                'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                 '{}</a>',
                 obj.id, estado_color, estado_text
             )
@@ -369,14 +379,14 @@ class LugarAdmin(admin.ModelAdmin):
             format_html(
                 '<a href="#" class="btn-toggle-popular" data-lugar-id="{}" '
                 'style="background: {}; color: white; padding: 2px 6px; '
-                'border-radius: 3px; text-decoration: none; font-size: 10px;">'
+                'border-radius: 3px; text-decoration: none; font-size: 16px; margin-bottom: 4px;">'
                 '{}</a>',
                 obj.id, popular_color, popular_text
             )
         )
         
         return mark_safe(
-            f'<div class="acciones-lugar">{"<br/>".join(acciones)}</div>'
+            f'<div class="acciones-lugar">{"<br/><br/>".join(acciones)}</div>'
         )
     
 
@@ -420,6 +430,83 @@ class LugarAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimiza las consultas"""
         return super().get_queryset(request).select_related('direccion')
+
+    def get_urls(self):
+        """Agregar URLs personalizadas para acciones AJAX"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/toggle-estado/',
+                self.admin_site.admin_view(self.toggle_estado_lugar),
+                name='lugares_lugar_toggle_estado',
+            ),
+            path(
+                '<int:object_id>/toggle-popular/',
+                self.admin_site.admin_view(self.toggle_popular_lugar),
+                name='lugares_lugar_toggle_popular',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def toggle_estado_lugar(self, request, object_id):
+        """Vista AJAX para activar/desactivar lugar"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            lugar = self.get_object(request, object_id)
+            if not lugar:
+                return JsonResponse({'error': 'Lugar no encontrado'}, status=404)
+            
+            # Obtener el nuevo estado del POST data
+            nuevo_estado = request.POST.get('activo', '').lower() == 'true'
+            lugar.activo = nuevo_estado
+            lugar.updated_at = timezone.now()
+            lugar.save()
+            
+            # Log de la acción
+            action = "activado" if nuevo_estado else "desactivado"
+            logger.info(f"Lugar {lugar.id} {action} por {request.user.username}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Lugar {action} exitosamente',
+                'new_state': nuevo_estado
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en toggle_estado_lugar: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def toggle_popular_lugar(self, request, object_id):
+        """Vista AJAX para marcar/desmarcar lugar como popular"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            lugar = self.get_object(request, object_id)
+            if not lugar:
+                return JsonResponse({'error': 'Lugar no encontrado'}, status=404)
+            
+            # Obtener el nuevo estado del POST data
+            nuevo_estado = request.POST.get('popular', '').lower() == 'true'
+            lugar.popular = nuevo_estado
+            lugar.updated_at = timezone.now()
+            lugar.save()
+            
+            # Log de la acción
+            action = "marcado como popular" if nuevo_estado else "desmarcado como popular"
+            logger.info(f"Lugar {lugar.id} {action} por {request.user.username}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Lugar {action} exitosamente',
+                'new_state': nuevo_estado
+            })
+            
+        except Exception as e:
+            logger.error(f"Error en toggle_popular_lugar: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
 
     # Acciones administrativas
     @admin.action(description="🟢 Activar lugares seleccionados")
