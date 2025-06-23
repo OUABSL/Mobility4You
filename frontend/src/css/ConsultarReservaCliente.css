@@ -17,7 +17,11 @@
 /* Header con color primario */
 .reserva-cliente-card .card-header {
   padding: 1.5rem;
-  background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-hover) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primario) 0%,
+    var(--color-hover) 100%
+  );
   border-bottom: none;
 }
 
@@ -64,7 +68,7 @@
   .reserva-cliente-card .card-header {
     padding: 1.25rem;
   }
-  
+
   .reserva-cliente-card .card-body {
     padding: 1.5rem;
   }

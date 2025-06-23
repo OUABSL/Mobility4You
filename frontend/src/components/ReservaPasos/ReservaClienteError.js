@@ -1,21 +1,21 @@
 // src/components/ReservaPasos/ReservaClienteError.js
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Alert } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faExclamationTriangle,
-  faHome,
+import {
   faArrowLeft,
   faEnvelope,
-  faPhone
+  faExclamationTriangle,
+  faHome,
+  faPhone,
 } from '@fortawesome/free-solid-svg-icons';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { getReservationStorageService } from '../../services/reservationStorageService';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from 'react';
+import { Alert, Button, Card, Col, Container, Row } from 'react-bootstrap';
+import { useLocation, useNavigate } from 'react-router-dom';
 import '../../css/ReservaClienteError.css';
+import { getReservationStorageService } from '../../services/reservationStorageService';
 
 /**
  * Componente para mostrar errores en el proceso de reserva
- * 
+ *
  * Este componente se muestra cuando ocurre un error durante cualquier paso del proceso
  * de reserva, proporcionando información sobre el error y opciones para continuar.
  */
@@ -30,7 +30,7 @@ const ReservaClienteError = () => {
       // Obtener datos del error desde el state de navegación o sessionStorage
       const errorFromState = location.state;
       const errorFromStorage = sessionStorage.getItem('reservaError');
-      
+
       if (errorFromState) {
         setErrorData(errorFromState);
       } else if (errorFromStorage) {
@@ -41,10 +41,11 @@ const ReservaClienteError = () => {
         // Error genérico si no hay información específica
         setErrorData({
           errorType: 'general',
-          errorMessage: 'Ha ocurrido un error inesperado durante el proceso de reserva.'
+          errorMessage:
+            'Ha ocurrido un error inesperado durante el proceso de reserva.',
         });
       }
-        // Limpiar storage de reserva si es necesario
+      // Limpiar storage de reserva si es necesario
       if (storageService && errorFromState?.clearStorage !== false) {
         setTimeout(() => {
           try {
@@ -58,45 +59,61 @@ const ReservaClienteError = () => {
       console.error('Error al procesar datos de error:', err);
       setErrorData({
         errorType: 'general',
-        errorMessage: 'Ha ocurrido un error inesperado durante el proceso de reserva.'
+        errorMessage:
+          'Ha ocurrido un error inesperado durante el proceso de reserva.',
       });
     }
   }, [location.state, storageService]);
 
   // Obtener el mensaje y tipo de error apropiado
   const getErrorInfo = () => {
-    if (!errorData) return { title: 'Error', message: 'Error desconocido', variant: 'danger' };
+    if (!errorData)
+      return {
+        title: 'Error',
+        message: 'Error desconocido',
+        variant: 'danger',
+      };
 
     switch (errorData.errorType) {
       case 'payment':
         return {
           title: 'Error en el Pago',
-          message: errorData.errorMessage || 'No se pudo procesar el pago. Por favor, verifica los datos de tu tarjeta e inténtalo de nuevo.',
-          variant: 'warning'
+          message:
+            errorData.errorMessage ||
+            'No se pudo procesar el pago. Por favor, verifica los datos de tu tarjeta e inténtalo de nuevo.',
+          variant: 'warning',
         };
       case 'validation':
         return {
           title: 'Error de Validación',
-          message: errorData.errorMessage || 'Los datos proporcionados no son válidos. Por favor, revisa la información e inténtalo de nuevo.',
-          variant: 'warning'
+          message:
+            errorData.errorMessage ||
+            'Los datos proporcionados no son válidos. Por favor, revisa la información e inténtalo de nuevo.',
+          variant: 'warning',
         };
       case 'connection':
         return {
           title: 'Error de Conexión',
-          message: errorData.errorMessage || 'No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet e inténtalo de nuevo.',
-          variant: 'info'
+          message:
+            errorData.errorMessage ||
+            'No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet e inténtalo de nuevo.',
+          variant: 'info',
         };
       case 'availability':
         return {
           title: 'Vehículo No Disponible',
-          message: errorData.errorMessage || 'El vehículo seleccionado ya no está disponible para las fechas elegidas. Por favor, selecciona otro vehículo.',
-          variant: 'warning'
+          message:
+            errorData.errorMessage ||
+            'El vehículo seleccionado ya no está disponible para las fechas elegidas. Por favor, selecciona otro vehículo.',
+          variant: 'warning',
         };
       default:
         return {
           title: 'Error',
-          message: errorData.errorMessage || 'Ha ocurrido un error inesperado durante el proceso de reserva.',
-          variant: 'danger'
+          message:
+            errorData.errorMessage ||
+            'Ha ocurrido un error inesperado durante el proceso de reserva.',
+          variant: 'danger',
         };
     }
   };
@@ -148,20 +165,31 @@ const ReservaClienteError = () => {
       <Row className="justify-content-center">
         <Col lg={8} md={10}>
           <Card className="shadow-sm">
-            <Card.Header className={`bg-${errorInfo.variant} text-white text-center py-4`}>
+            <Card.Header
+              className={`bg-${errorInfo.variant} text-white text-center py-4`}
+            >
               <div className="d-flex justify-content-center align-items-center">
-                <FontAwesomeIcon icon={faExclamationTriangle} size="2x" className="me-3" />
+                <FontAwesomeIcon
+                  icon={faExclamationTriangle}
+                  size="2x"
+                  className="me-3"
+                />
                 <h3 className="mb-0">{errorInfo.title}</h3>
               </div>
             </Card.Header>
-            
+
             <Card.Body className="text-center py-5">
-              <Alert variant={errorInfo.variant} className="mx-auto" style={{ maxWidth: '500px' }}>
+              <Alert
+                variant={errorInfo.variant}
+                className="mx-auto"
+                style={{ maxWidth: '500px' }}
+              >
                 <p className="mb-0 fs-6">{errorInfo.message}</p>
               </Alert>
 
               {/* Información de contacto para errores graves */}
-              {errorData?.errorType === 'connection' || errorData?.errorType === 'general' ? (
+              {errorData?.errorType === 'connection' ||
+              errorData?.errorType === 'general' ? (
                 <div className="mt-4 p-3 bg-light rounded">
                   <h6 className="mb-3">¿Necesitas ayuda?</h6>
                   <p className="small text-muted mb-2">
@@ -183,8 +211,8 @@ const ReservaClienteError = () => {
               {/* Botones de acción */}
               <div className="d-flex justify-content-center gap-3 mt-4">
                 {errorData?.errorType !== 'general' && (
-                  <Button 
-                    variant="outline-secondary" 
+                  <Button
+                    variant="outline-secondary"
                     onClick={handleVolver}
                     className="px-4"
                   >
@@ -192,19 +220,20 @@ const ReservaClienteError = () => {
                     Volver
                   </Button>
                 )}
-                
-                {(errorData?.errorType === 'payment' || errorData?.errorType === 'validation') && (
-                  <Button 
-                    variant="primary" 
+
+                {(errorData?.errorType === 'payment' ||
+                  errorData?.errorType === 'validation') && (
+                  <Button
+                    variant="primary"
                     onClick={handleReintentar}
                     className="px-4"
                   >
                     Reintentar
                   </Button>
                 )}
-                
-                <Button 
-                  variant="outline-primary" 
+
+                <Button
+                  variant="outline-primary"
                   onClick={handleVolverInicio}
                   className="px-4"
                 >

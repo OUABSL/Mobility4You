@@ -1,29 +1,28 @@
 // frontend/src/components/StripePayment/StripePaymentForm.js
-import React, { useState, useEffect } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
 import {
-  Elements,
-  CardElement,
-  useStripe,
-  useElements
-} from '@stripe/react-stripe-js';
-import { Card, Form, Button, Alert, Spinner, Row, Col } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faLock, 
-  faCreditCard, 
+  faCreditCard,
   faExclamationTriangle,
-  faCheckCircle,
-  faInfoCircle 
+  faInfoCircle,
+  faLock,
 } from '@fortawesome/free-solid-svg-icons';
-import { 
-  createPaymentIntent, 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  CardElement,
+  Elements,
+  useElements,
+  useStripe,
+} from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { useEffect, useState } from 'react';
+import { Alert, Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap';
+import { DEBUG_MODE } from '../../assets/testingData/testingData';
+import '../../css/StripePaymentForm.css';
+import {
   confirmPaymentIntent,
+  createPaymentIntent,
   getStripeConfig,
   validateCardData,
-  DEBUG_MODE 
 } from '../../services/stripePaymentServices';
-import '../../css/StripePaymentForm.css';
 
 // Configuración de Stripe Elements
 const CARD_ELEMENT_OPTIONS = {
@@ -33,27 +32,27 @@ const CARD_ELEMENT_OPTIONS = {
       color: '#424770',
       fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
       '::placeholder': {
-        color: '#aab7c4'
-      }
+        color: '#aab7c4',
+      },
     },
     invalid: {
-      color: '#9e2146'
-    }
+      color: '#9e2146',
+    },
   },
-  hidePostalCode: true
+  hidePostalCode: true,
 };
 
 // Componente interno del formulario (dentro de Elements provider)
-const PaymentForm = ({ 
-  reservaData, 
-  tipoPago = 'INICIAL', 
-  onPaymentSuccess, 
+const PaymentForm = ({
+  reservaData,
+  tipoPago = 'INICIAL',
+  onPaymentSuccess,
   onPaymentError,
-  loading: externalLoading = false
+  loading: externalLoading = false,
 }) => {
   const stripe = useStripe();
   const elements = useElements();
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [paymentIntent, setPaymentIntent] = useState(null);
@@ -61,7 +60,7 @@ const PaymentForm = ({
   const [billingDetails, setBillingDetails] = useState({
     name: '',
     email: '',
-    phone: ''
+    phone: '',
   });
 
   // Extraer datos del conductor de la reserva
@@ -71,7 +70,7 @@ const PaymentForm = ({
       setBillingDetails({
         name: `${conductor.nombre || ''} ${conductor.apellidos || ''}`.trim(),
         email: conductor.email || '',
-        phone: conductor.telefono || ''
+        phone: conductor.telefono || '',
       });
     }
   }, [reservaData]);
@@ -80,13 +79,13 @@ const PaymentForm = ({
   useEffect(() => {
     const initializePayment = async () => {
       if (!reservaData) return;
-      
+
       try {
         setLoading(true);
         setError(null);
-        
+
         const intent = await createPaymentIntent(reservaData, tipoPago);
-        
+
         if (intent.success) {
           setPaymentIntent(intent);
         } else {
@@ -107,7 +106,7 @@ const PaymentForm = ({
 
   const handleCardChange = (event) => {
     setCardComplete(event.complete);
-    
+
     if (event.error) {
       setError(event.error.message);
     } else {
@@ -117,9 +116,9 @@ const PaymentForm = ({
 
   const handleBillingChange = (e) => {
     const { name, value } = e.target;
-    setBillingDetails(prev => ({
+    setBillingDetails((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -127,7 +126,9 @@ const PaymentForm = ({
     event.preventDefault();
 
     if (!stripe || !elements || !paymentIntent) {
-      setError('El sistema de pagos no está listo. Por favor, intenta de nuevo.');
+      setError(
+        'El sistema de pagos no está listo. Por favor, intenta de nuevo.',
+      );
       return;
     }
 
@@ -142,21 +143,21 @@ const PaymentForm = ({
     try {
       // Validar la tarjeta antes de proceder
       const validation = await validateCardData(stripe, elements);
-      
+
       if (!validation.valid) {
         throw new Error(validation.error || 'Datos de tarjeta inválidos');
       }
 
       // Confirmar el pago
       const result = await confirmPaymentIntent(
-        stripe, 
-        elements, 
+        stripe,
+        elements,
         paymentIntent.client_secret,
         {
           name: billingDetails.name,
           email: billingDetails.email,
-          phone: billingDetails.phone
-        }
+          phone: billingDetails.phone,
+        },
       );
 
       if (result.success) {
@@ -164,7 +165,7 @@ const PaymentForm = ({
           onPaymentSuccess({
             ...result,
             numero_pedido: paymentIntent.numero_pedido,
-            importe: paymentIntent.importe
+            importe: paymentIntent.importe,
           });
         }
       } else {
@@ -173,7 +174,7 @@ const PaymentForm = ({
     } catch (err) {
       const errorMessage = err.message || 'Error procesando el pago';
       setError(errorMessage);
-      
+
       if (onPaymentError) {
         onPaymentError(new Error(errorMessage));
       }
@@ -183,7 +184,8 @@ const PaymentForm = ({
   };
 
   const isFormReady = stripe && elements && paymentIntent && !externalLoading;
-  const canSubmit = isFormReady && cardComplete && billingDetails.name && billingDetails.email;
+  const canSubmit =
+    isFormReady && cardComplete && billingDetails.name && billingDetails.email;
 
   return (
     <Form onSubmit={handleSubmit}>
@@ -195,7 +197,9 @@ const PaymentForm = ({
         </div>
         <small className="text-muted">
           {DEBUG_MODE && (
-            <span className="badge bg-warning text-dark me-2">MODO DESARROLLO</span>
+            <span className="badge bg-warning text-dark me-2">
+              MODO DESARROLLO
+            </span>
           )}
           Tus datos están protegidos con encriptación de nivel bancario
         </small>
@@ -223,7 +227,7 @@ const PaymentForm = ({
                 <h4 className="mb-0 text-primary">
                   {new Intl.NumberFormat('es-ES', {
                     style: 'currency',
-                    currency: paymentIntent.currency?.toUpperCase() || 'EUR'
+                    currency: paymentIntent.currency?.toUpperCase() || 'EUR',
                   }).format(paymentIntent.importe)}
                 </h4>
               </div>
@@ -307,20 +311,23 @@ const PaymentForm = ({
               )}
             </div>
           </Form.Group>
-          
+
           {DEBUG_MODE && (
             <Alert variant="info" className="mt-3">
               <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
-              <strong>Modo desarrollo:</strong> Usa 4242 4242 4242 4242 con cualquier fecha futura y CVC
+              <strong>Modo desarrollo:</strong> Usa 4242 4242 4242 4242 con
+              cualquier fecha futura y CVC
             </Alert>
           )}
-          
+
           <div className="accepted-cards mt-3">
             <small className="text-muted">Aceptamos: </small>
             <span className="card-brands">
               <span className="badge bg-light text-dark me-1">Visa</span>
               <span className="badge bg-light text-dark me-1">Mastercard</span>
-              <span className="badge bg-light text-dark me-1">American Express</span>
+              <span className="badge bg-light text-dark me-1">
+                American Express
+              </span>
             </span>
           </div>
         </Card.Body>
@@ -350,13 +357,13 @@ const PaymentForm = ({
           ) : (
             <>
               <FontAwesomeIcon icon={faLock} className="me-2" />
-              Pagar {paymentIntent ? 
-                new Intl.NumberFormat('es-ES', {
-                  style: 'currency',
-                  currency: paymentIntent.currency?.toUpperCase() || 'EUR'
-                }).format(paymentIntent.importe) 
-                : ''
-              }
+              Pagar{' '}
+              {paymentIntent
+                ? new Intl.NumberFormat('es-ES', {
+                    style: 'currency',
+                    currency: paymentIntent.currency?.toUpperCase() || 'EUR',
+                  }).format(paymentIntent.importe)
+                : ''}
             </>
           )}
         </Button>
@@ -366,8 +373,8 @@ const PaymentForm = ({
       <div className="payment-footer-info mt-3 text-center">
         <small className="text-muted">
           <FontAwesomeIcon icon={faLock} className="me-1" />
-          Procesado de forma segura por Stripe. 
-          No guardamos los datos de tu tarjeta.
+          Procesado de forma segura por Stripe. No guardamos los datos de tu
+          tarjeta.
         </small>
       </div>
     </Form>
@@ -375,12 +382,12 @@ const PaymentForm = ({
 };
 
 // Componente principal con provider de Stripe
-const StripePaymentForm = ({ 
-  reservaData, 
+const StripePaymentForm = ({
+  reservaData,
   tipoPago = 'INICIAL',
-  onPaymentSuccess, 
+  onPaymentSuccess,
   onPaymentError,
-  loading = false
+  loading = false,
 }) => {
   const [stripePromise, setStripePromise] = useState(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -391,10 +398,12 @@ const StripePaymentForm = ({
       try {
         setConfigLoading(true);
         setConfigError(null);
-        
+
         if (DEBUG_MODE) {
           // CORREGIR: usar clave de entorno en lugar de hardcoded
-          const testKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder';
+          const testKey =
+            process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY ||
+            'pk_test_placeholder';
           setStripePromise(loadStripe(testKey));
         } else {
           // Obtener configuración del backend
@@ -411,8 +420,8 @@ const StripePaymentForm = ({
       }
     };
 
-  initializeStripe();
-}, [onPaymentError]);
+    initializeStripe();
+  }, [onPaymentError]);
 
   if (configLoading) {
     return (

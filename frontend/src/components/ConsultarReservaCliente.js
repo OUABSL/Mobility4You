@@ -1,19 +1,29 @@
 // src/components/ConsultarReservaCliente.js
-import React, { useState, useEffect } from 'react';
-import { Container, Card, Form, Button, Row, Col, Alert, Spinner, InputGroup } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faSearch, 
-  faExclamationTriangle, 
-  faIdCard, 
-  faEnvelope, 
+import {
+  faEnvelope,
+  faExclamationTriangle,
+  faIdCard,
   faInfoCircle,
-  faArrowRight,
-  faRedo
+  faRedo,
+  faSearch,
 } from '@fortawesome/free-solid-svg-icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Container,
+  Form,
+  InputGroup,
+  Row,
+  Spinner,
+} from 'react-bootstrap';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { DEBUG_MODE } from '../assets/testingData/testingData';
 import '../css/ConsultarReservaCliente.css';
-import { findReservation, DEBUG_MODE } from '../services/reservationServices';
+import { findReservation } from '../services/reservationServices';
 
 /**
  * Componente para consultar una reserva existente mediante ID y email
@@ -29,81 +39,81 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
   const [error, setError] = useState(null);
   const [touched, setTouched] = useState({ reservaId: false, email: false });
   const [success, setSuccess] = useState(null);
-  
+
   // Navegación
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Efecto para detectar mensajes en el state de location
   useEffect(() => {
     if (location.state?.message) {
       setSuccess(location.state.message);
-      
+
       // Limpiar el mensaje después de 5 segundos
       const timer = setTimeout(() => {
         setSuccess(null);
         // También limpiamos el historial para evitar que el mensaje reaparezca al navegar atrás
         window.history.replaceState({}, document.title);
       }, 5000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [location.state]);
-  
+
   // Validadores
   const reservaIdValid = reservaId.trim().length > 0;
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  
+
   // Marcar campos como tocados al perder foco
   const handleBlur = (field) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
-  
+
   // Manejar el envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Marcar ambos campos como tocados para mostrar validación
     setTouched({ reservaId: true, email: true });
-    
+
     // Validar campos
     if (!reservaIdValid || !emailValid) {
       setError('Por favor, completa correctamente ambos campos.');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
     setSuccess(null);
-    
+
     try {
       // Intentar buscar la reserva
       await findReservation(reservaId, email);
-      
+
       // Si llegamos aquí, la reserva existe
       setLoading(false);
       setSuccess('Reserva encontrada. Redirigiendo...');
-      
+
       // Redirigir a la página de detalles
       setTimeout(() => {
-        navigate(`/reservations/${reservaId}`, { 
-          state: { 
+        navigate(`/reservations/${reservaId}`, {
+          state: {
             email,
             // Pasamos a la página de detalles que venimos de la consulta
-            source: 'consulta'
-          } 
+            source: 'consulta',
+          },
         });
       }, 1200);
     } catch (err) {
       console.error('Error al buscar reserva:', err);
       setError(
-        err.message || 
-        'No se encontró ninguna reserva con esos datos. Por favor, verifique y vuelva a intentar.'
+        err.message ||
+          'No se encontró ninguna reserva con esos datos. Por favor, verifique y vuelva a intentar.',
       );
       setLoading(false);
     }
   };
-  
+
   // Limpiar formulario
   const handleReset = () => {
     setReservaId('');
@@ -111,7 +121,7 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
     setError(null);
     setTouched({ reservaId: false, email: false });
   };
-  
+
   // Clases para los mensajes de error de validación
   const getInputClass = (field, isValid) => {
     if (!touched[field]) return '';
@@ -129,31 +139,40 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
               {success}
             </Alert>
           )}
-          
+
           <Card className="reserva-cliente-card shadow-sm border-0">
             <Card.Header className="text-center bg-primario text-white py-4">
               <h3 className="mb-0">Gestión de Reservas</h3>
-              <p className="mb-0 mt-2 small text-white-50">Consulta los detalles de tu reserva</p>
+              <p className="mb-0 mt-2 small text-white-50">
+                Consulta los detalles de tu reserva
+              </p>
             </Card.Header>
-            
+
             <Card.Body className="p-4">
               {error && (
                 <Alert variant="danger" className="mb-4">
-                  <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" />
+                  <FontAwesomeIcon
+                    icon={faExclamationTriangle}
+                    className="me-2"
+                  />
                   {error}
                 </Alert>
               )}
-              
+
               <p className="mb-4 text-muted text-center">
-                Introduce tu ID de reserva y el correo electrónico utilizado para completar los detalles de tu reserva.
+                Introduce tu ID de reserva y el correo electrónico utilizado
+                para completar los detalles de tu reserva.
               </p>
-            
+
               <Form onSubmit={handleSubmit}>
                 <Row className="g-4">
                   <Col xs={12}>
                     <Form.Group controlId="reservaId">
                       <Form.Label className="fw-semibold">
-                        <FontAwesomeIcon icon={faIdCard} className="me-2 text-primary" />
+                        <FontAwesomeIcon
+                          icon={faIdCard}
+                          className="me-2 text-primary"
+                        />
                         ID de Reserva
                       </Form.Label>
                       <InputGroup hasValidation>
@@ -161,7 +180,7 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
                           type="text"
                           placeholder="Ej. R12345"
                           value={reservaId}
-                          onChange={e => setReservaId(e.target.value)}
+                          onChange={(e) => setReservaId(e.target.value)}
                           onBlur={() => handleBlur('reservaId')}
                           className={getInputClass('reservaId', reservaIdValid)}
                           disabled={loading}
@@ -172,17 +191,24 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
                       </InputGroup>
                       {DEBUG_MODE && (
                         <p className="text-muted small mt-1">
-                          <FontAwesomeIcon icon={faInfoCircle} className="me-1" />
-                          En modo debug, use cualquier ID que empiece por "R" (ej: R12345)
+                          <FontAwesomeIcon
+                            icon={faInfoCircle}
+                            className="me-1"
+                          />
+                          En modo debug, use cualquier ID que empiece por "R"
+                          (ej: R12345)
                         </p>
                       )}
                     </Form.Group>
                   </Col>
-                  
+
                   <Col xs={12}>
                     <Form.Group controlId="emailUsuario">
                       <Form.Label className="fw-semibold">
-                        <FontAwesomeIcon icon={faEnvelope} className="me-2 text-primary" />
+                        <FontAwesomeIcon
+                          icon={faEnvelope}
+                          className="me-2 text-primary"
+                        />
                         Correo Electrónico
                       </Form.Label>
                       <InputGroup hasValidation>
@@ -190,7 +216,7 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
                           type="email"
                           placeholder="usuario@ejemplo.com"
                           value={email}
-                          onChange={e => setEmail(e.target.value)}
+                          onChange={(e) => setEmail(e.target.value)}
                           onBlur={() => handleBlur('email')}
                           className={getInputClass('email', emailValid)}
                           disabled={loading}
@@ -201,14 +227,18 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
                       </InputGroup>
                       {DEBUG_MODE && (
                         <p className="text-muted small mt-1">
-                          <FontAwesomeIcon icon={faInfoCircle} className="me-1" />
-                          En modo debug, use cualquier email que contenga @ (ej: test@example.com)
+                          <FontAwesomeIcon
+                            icon={faInfoCircle}
+                            className="me-1"
+                          />
+                          En modo debug, use cualquier email que contenga @ (ej:
+                          test@example.com)
                         </p>
                       )}
                     </Form.Group>
                   </Col>
                 </Row>
-                
+
                 <div className="d-flex justify-content-center mt-4 gap-3">
                   <Button
                     type="button"
@@ -219,7 +249,7 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
                     <FontAwesomeIcon icon={faRedo} className="me-2" />
                     Limpiar
                   </Button>
-                  
+
                   <Button
                     type="submit"
                     className="btn-primario px-4 py-2"
@@ -228,7 +258,11 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
                   >
                     {loading ? (
                       <>
-                        <Spinner animation="border" size="sm" className="me-2" />
+                        <Spinner
+                          animation="border"
+                          size="sm"
+                          className="me-2"
+                        />
                         Buscando...
                       </>
                     ) : (
@@ -240,21 +274,24 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
                   </Button>
                 </div>
               </Form>
-              
+
               <div className="mt-4 pt-3 border-top text-center">
                 <p className="text-muted mb-0">
                   <small>
-                    ¿No encuentras tu reserva? <a href="/contactus">Contacta con nuestro equipo de soporte</a>
+                    ¿No encuentras tu reserva?{' '}
+                    <a href="/contactus">
+                      Contacta con nuestro equipo de soporte
+                    </a>
                   </small>
                 </p>
               </div>
             </Card.Body>
           </Card>
-          
+
           <div className="text-center mt-3">
-            <Button 
-              variant="link" 
-              size="sm" 
+            <Button
+              variant="link"
+              size="sm"
               onClick={() => navigate('/')}
               className="text-muted"
             >

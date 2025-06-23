@@ -2,7 +2,8 @@
 
 /* Estilos generales para la página de detalles */
 .detalles-reserva {
-  font-family: ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT', 'Arial Rounded MT Bold', Calibri, sans-serif;
+  font-family: ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa,
+    Manjari, 'Arial Rounded MT', 'Arial Rounded MT Bold', Calibri, sans-serif;
 }
 
 /* Estilos para la tarjeta principal */
@@ -107,7 +108,7 @@
 
 .protection-card .card-header {
   background-color: #f8f9fa;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* Estilos para extras */
@@ -119,7 +120,7 @@
 
 .extras-card .card-header {
   background-color: #f8f9fa;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .price-badge {
@@ -135,7 +136,7 @@
 
 .drivers-card .card-header {
   background-color: #f8f9fa;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .driver-name {
@@ -163,7 +164,7 @@
 
 .price-summary-card .card-header {
   color: var(--color-primario);
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .price-summary-card .card-body {
@@ -178,15 +179,13 @@
   transition: box-shadow 0.3s ease;
 }
 
-
-
 .accordion-card:hover {
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .accordion-card .card-header {
   background-color: #f8f9fa;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   padding: 1rem 1.5rem;
 }
 
@@ -195,7 +194,9 @@
   font-weight: 500;
 }
 
-.extras-card .card-header, .drivers-card .card-header, .protection-card .card-header {
+.extras-card .card-header,
+.drivers-card .card-header,
+.protection-card .card-header {
   color: var(--color-texto-negro);
 }
 
@@ -206,24 +207,28 @@
     padding: 0;
     margin: 0;
   }
-  
-  button, .btn, .nav-tabs {
+
+  button,
+  .btn,
+  .nav-tabs {
     display: none !important;
   }
-  
+
   .card {
     break-inside: avoid;
     border: 1px solid #ddd !important;
     box-shadow: none !important;
   }
-  
+
   .card-header {
     background-color: #f8f9fa !important;
     color: #000 !important;
   }
-  
-  .col-md-4, .col-md-8, 
-  .col-lg-4, .col-lg-8 {
+
+  .col-md-4,
+  .col-md-8,
+  .col-lg-4,
+  .col-lg-8 {
     width: 100% !important;
     max-width: 100% !important;
     flex: 0 0 100% !important;
@@ -235,28 +240,27 @@
   .detalles-reserva .card-body {
     padding: 1rem;
   }
-  
+
   .pickup-section {
     border-right: none !important;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     padding-bottom: 1rem;
     margin-bottom: 1rem;
   }
-  
+
   .location-title {
     margin-top: 0.5rem;
   }
-  
+
   .icon-wrapper {
     width: 20px;
   }
-  
+
   .price-badge {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
   }
 }
-
 
 /* Botonera superior responsiva */
 .botonera-superior {
@@ -337,7 +341,6 @@
     margin-bottom: 1rem !important;
   }
 }
-
 
 /* .icon-svg {
   filter: brightness(0) saturate(100%) invert(14%) sepia(42%) saturate(2602%) hue-rotate(187deg) brightness(96%) contrast(105%) !important;

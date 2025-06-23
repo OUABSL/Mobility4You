@@ -1,6 +1,6 @@
 // Hook personalizado para manejar el timer de reserva
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getReservationStorageService } from '../services/reservationStorageService';
 
@@ -10,7 +10,7 @@ import { getReservationStorageService } from '../services/reservationStorageServ
 const useReservationTimer = () => {
   const navigate = useNavigate();
   const storageService = useRef(getReservationStorageService());
-    // Estados del timer
+  // Estados del timer
   const [remainingTime, setRemainingTime] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
@@ -25,11 +25,11 @@ const useReservationTimer = () => {
       const remaining = storageService.current.getRemainingTime();
       const formatted = storageService.current.getFormattedRemainingTime();
       const hasActive = storageService.current.hasActiveReservation();
-      
+
       setRemainingTime(remaining);
       setFormattedTime(formatted);
       setIsActive(hasActive);
-      
+
       // Solo mostrar modal de expiración si la reserva estaba activa anteriormente
       // y ahora ha expirado (para evitar mostrar modal al cargar página con datos expirados)
       if (remaining <= 0 && hasActive && isActive) {
@@ -40,7 +40,8 @@ const useReservationTimer = () => {
       console.error('[useReservationTimer] Error al actualizar tiempo:', error);
       setIsActive(false);
       setRemainingTime(0);
-      setFormattedTime('00:00');    }
+      setFormattedTime('00:00');
+    }
   }, [isActive]);
 
   /**
@@ -52,11 +53,14 @@ const useReservationTimer = () => {
         const data = await storageService.current.getCompleteReservationData();
         setReservationData(data);
       } catch (error) {
-        console.error('[useReservationTimer] Error al cargar datos de reserva:', error);
+        console.error(
+          '[useReservationTimer] Error al cargar datos de reserva:',
+          error,
+        );
         setReservationData(null);
       }
     };
-    
+
     loadReservationData();
   }, [isActive]); // Recargar cuando el estado del timer cambie
 
@@ -81,26 +85,29 @@ const useReservationTimer = () => {
   /**
    * Inicializa el timer con una nueva reserva
    */
-  const startTimer = useCallback((reservationData) => {
-    try {
-      console.log('[useReservationTimer] Iniciando timer para nueva reserva');
-      
-      if (!reservationData) {
-        throw new Error('No se proporcionaron datos de reserva');
+  const startTimer = useCallback(
+    (reservationData) => {
+      try {
+        console.log('[useReservationTimer] Iniciando timer para nueva reserva');
+
+        if (!reservationData) {
+          throw new Error('No se proporcionaron datos de reserva');
+        }
+
+        // Guardar datos y comenzar timer
+        storageService.current.saveReservationData(reservationData);
+        setIsActive(true);
+        updateTime();
+
+        console.log('[useReservationTimer] Timer iniciado correctamente');
+        return true;
+      } catch (error) {
+        console.error('[useReservationTimer] Error al iniciar timer:', error);
+        return false;
       }
-      
-      // Guardar datos y comenzar timer
-      storageService.current.saveReservationData(reservationData);
-      setIsActive(true);
-      updateTime();
-      
-      console.log('[useReservationTimer] Timer iniciado correctamente');
-      return true;
-    } catch (error) {
-      console.error('[useReservationTimer] Error al iniciar timer:', error);
-      return false;
-    }
-  }, [updateTime]);
+    },
+    [updateTime],
+  );
 
   /**
    * Extiende el timer por 30 minutos más
@@ -108,7 +115,7 @@ const useReservationTimer = () => {
   const extendTimer = useCallback(async () => {
     try {
       console.log('[useReservationTimer] Extendiendo timer');
-      
+
       const success = storageService.current.extendTimer();
       if (success) {
         setShowWarningModal(false);
@@ -152,7 +159,7 @@ const useReservationTimer = () => {
       setShowExpiredModal(false);
       setRemainingTime(0);
       setFormattedTime('00:00');
-      
+
       // Navegar al inicio
       navigate('/');
       return true;
@@ -171,12 +178,15 @@ const useReservationTimer = () => {
       storageService.current.clearAllReservationData();
       setShowExpiredModal(false);
       setIsActive(false);
-      
+
       // Navegar a búsqueda de coches
       navigate('/coches');
       return true;
     } catch (error) {
-      console.error('[useReservationTimer] Error al iniciar nueva reserva:', error);
+      console.error(
+        '[useReservationTimer] Error al iniciar nueva reserva:',
+        error,
+      );
       return false;
     }
   }, [navigate]);
@@ -191,7 +201,7 @@ const useReservationTimer = () => {
 
   /**
    * Obtiene el estado actual completo de la reserva
-   */  const getReservationState = useCallback(() => {
+   */ const getReservationState = useCallback(() => {
     try {
       return {
         isActive,
@@ -199,7 +209,7 @@ const useReservationTimer = () => {
         formattedTime,
         hasActiveReservation: storageService.current.hasActiveReservation(),
         currentStep: storageService.current.getCurrentStep(),
-        reservationData: reservationData
+        reservationData: reservationData,
       };
     } catch (error) {
       console.error('[useReservationTimer] Error al obtener estado:', error);
@@ -209,7 +219,8 @@ const useReservationTimer = () => {
         formattedTime: '00:00',
         hasActiveReservation: false,
         currentStep: 'extras',
-        reservationData: null      };
+        reservationData: null,
+      };
     }
   }, [isActive, remainingTime, formattedTime, reservationData]);
   /**
@@ -218,23 +229,25 @@ const useReservationTimer = () => {
   const restoreExistingReservation = useCallback(() => {
     try {
       console.log('[useReservationTimer] Verificando reserva existente');
-      
+
       const hasReservation = storageService.current.hasActiveReservation();
       const remainingTime = storageService.current.getRemainingTime();
-      
+
       if (hasReservation) {
         console.log('[useReservationTimer] Datos de reserva encontrados');
-        
+
         // Si el tiempo restante es 0 o negativo, la reserva ha expirado
         if (remainingTime <= 0) {
-          console.log('[useReservationTimer] Reserva expirada encontrada, limpiando datos');
+          console.log(
+            '[useReservationTimer] Reserva expirada encontrada, limpiando datos',
+          );
           storageService.current.clearAllReservationData();
           setIsActive(false);
           setRemainingTime(0);
           setFormattedTime('00:00');
           return;
         }
-        
+
         console.log('[useReservationTimer] Restaurando reserva válida');
         setIsActive(true);
         updateTime();
@@ -253,16 +266,19 @@ const useReservationTimer = () => {
     try {
       storageService.current.setOnWarningCallback(handleWarning);
       storageService.current.setOnExpirationCallback(handleExpiration);
-      
+
       // Restaurar reserva existente si la hay
       restoreExistingReservation();
-      
+
       return () => {
         storageService.current.setOnWarningCallback(null);
         storageService.current.setOnExpirationCallback(null);
       };
     } catch (error) {
-      console.error('[useReservationTimer] Error al configurar callbacks:', error);
+      console.error(
+        '[useReservationTimer] Error al configurar callbacks:',
+        error,
+      );
     }
   }, [handleWarning, handleExpiration, restoreExistingReservation]);
 
@@ -282,7 +298,7 @@ const useReservationTimer = () => {
     formattedTime,
     showWarningModal,
     showExpiredModal,
-    
+
     // Acciones
     startTimer,
     extendTimer,
@@ -290,17 +306,17 @@ const useReservationTimer = () => {
     cancelReservation,
     startNewReservation,
     closeModals,
-    
+
     // Utilidades
     getReservationState,
     restoreExistingReservation,
     updateTime,
-    
+
     // Funciones para los modales
     onExtendTimer: extendTimer,
     onCancelReservation: cancelReservation,
     onStartNewReservation: startNewReservation,
-    onCloseModals: closeModals
+    onCloseModals: closeModals,
   };
 };
 

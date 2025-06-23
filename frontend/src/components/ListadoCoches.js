@@ -1,38 +1,46 @@
 // src/components/ListadoCoches.js
-import React, { useEffect, useState, useRef } from 'react';
-import { Container, Row, Col, Card, Button, Form, Spinner, Badge, Alert } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faCar,
-  faSearch, 
-  faFilter, 
-  faExclamationTriangle, 
-  faList,
-  faSortAmountDown,
-  faIdCard,
-  faUser,
-  faGasPump,
-  faRoad,
-  faMapMarkerAlt,
-  faCalendarAlt,
   faArrowRight,
-  faInfoCircle
+  faCalendarAlt,
+  faCar,
+  faExclamationTriangle,
+  faGasPump,
+  faIdCard,
+  faInfoCircle,
+  faList,
+  faMapMarkerAlt,
+  faRoad,
+  faSearch,
+  faUser,
 } from '@fortawesome/free-solid-svg-icons';
-import { addDays, format } from 'date-fns';
-import axios from 'axios';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Col,
+  Container,
+  Row,
+  Spinner,
+} from 'react-bootstrap';
+import { useLocation, useNavigate } from 'react-router-dom';
 import '../css/listadoCoches.css';
 
 // Componentes
 import FichaCoche from './FichaCoche';
-import FormBusqueda from './FormBusqueda';
 import FiltroSelect from './FiltroSelect';
-
-import backgroundHero from '../assets/img/general/audi_wallpaper.png';
+import FormBusqueda from './FormBusqueda';
 
 import { useAlertContext } from '../context/AlertContext'; // Importar el contexto de alertas
-import { validateSearchForm, saveSearchParams, searchAvailableVehicles } from '../services/searchServices';
 import { fetchCarsService } from '../services/carService';
+import {
+  fetchLocations,
+  saveSearchParams,
+  searchAvailableVehicles,
+  validateSearchForm,
+} from '../services/searchServices';
 
 const ListadoCoches = ({ isMobile = false }) => {
   // Estados principales
@@ -42,31 +50,64 @@ const ListadoCoches = ({ isMobile = false }) => {
   const [error, setError] = useState(null);
   const [openCarId, setOpenCarId] = useState(null);
   const [hasBusquedaData, setHasBusquedaData] = useState(false);
+  const [locations, setLocations] = useState([]); // Estado para las ubicaciones
   // Contexto de alertas
   const { showSuccess, showError, showWarning } = useAlertContext();
 
-  
   // Estado para los filtros
   const [filterValues, setFilterValues] = useState({
     marca: '',
     modelo: '',
     combustible: '',
-    orden: ''
+    orden: '',
   });
-  
+
   // Estado para las opciones de filtrado
   const [filterOptions, setFilterOptions] = useState({
     marca: [],
     modelo: [],
     combustible: [],
-    orden: ["Precio ascendente", "Precio descendente", "Marca A-Z", "Marca Z-A"]
+    orden: [
+      'Precio ascendente',
+      'Precio descendente',
+      'Marca A-Z',
+      'Marca Z-A',
+    ],
   });
-  
+
   const navigate = useNavigate();
   const location = useLocation();
   const resultsRef = useRef(null);
+  // Cargar ubicaciones solo si son necesarias
+  useEffect(() => {
+    const loadLocations = async () => {
+      // Solo cargar ubicaciones si no las tenemos y las necesitamos
+      if (locations.length === 0) {
+        try {
+          console.log('🔍 [ListadoCoches] Cargando ubicaciones...');
+          const locationsData = await fetchLocations();
+          setLocations(locationsData);
+          console.log(
+            '✅ [ListadoCoches] Ubicaciones cargadas:',
+            locationsData.length,
+          );
+        } catch (error) {
+          console.error(
+            '❌ [ListadoCoches] Error cargando ubicaciones:',
+            error,
+          );
+          // No mostrar error ya que el FormBusqueda puede funcionar sin las ubicaciones precargadas
+        }
+      } else {
+        console.log(
+          '✅ [ListadoCoches] Usando ubicaciones ya disponibles:',
+          locations.length,
+        );
+      }
+    };
 
-
+    loadLocations();
+  }, []); // Solo ejecutar una vez al montar
 
   // Verificar si hay datos de búsqueda en sessionStorage al cargar
   useEffect(() => {
@@ -75,25 +116,27 @@ const ListadoCoches = ({ isMobile = false }) => {
       if (storedData) {
         try {
           const data = JSON.parse(storedData);
-          if (data.fechas && 
-              data.fechas.pickupLocation && 
-              data.fechas.pickupDate && 
-              data.fechas.dropoffDate) {
+          if (
+            data.fechas &&
+            data.fechas.pickupLocation &&
+            data.fechas.pickupDate &&
+            data.fechas.dropoffDate
+          ) {
             setHasBusquedaData(true);
           } else {
             setHasBusquedaData(false);
           }
         } catch (err) {
-          console.error("Error parsing reservaData:", err);
+          console.error('Error parsing reservaData:', err);
           setHasBusquedaData(false);
         }
       } else {
         setHasBusquedaData(false);
       }
     };
-    
+
     checkReservaData();
-    
+
     // Actualizar el estado de carga según si tenemos datos de búsqueda
     if (hasBusquedaData) {
       fetchCars();
@@ -106,20 +149,22 @@ const ListadoCoches = ({ isMobile = false }) => {
   const fetchCars = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Verificar si hay datos de búsqueda guardados
       const storedData = sessionStorage.getItem('reservaData');
       let useSearchService = false;
       let searchParams = null;
-      
+
       if (storedData) {
         try {
           const data = JSON.parse(storedData);
-          if (data.fechas && 
-              data.fechas.pickupLocation && 
-              data.fechas.pickupDate && 
-              data.fechas.dropoffDate) {
+          if (
+            data.fechas &&
+            data.fechas.pickupLocation &&
+            data.fechas.pickupDate &&
+            data.fechas.dropoffDate
+          ) {
             useSearchService = true;
             searchParams = {
               pickupLocation: data.fechas.pickupLocation,
@@ -127,7 +172,7 @@ const ListadoCoches = ({ isMobile = false }) => {
               dropoffLocation: data.fechas.dropoffLocation,
               dropoffDate: data.fechas.dropoffDate,
               categoria_id: data.categoria_id,
-              grupo_id: data.grupo_id
+              grupo_id: data.grupo_id,
             };
           }
         } catch (parseError) {
@@ -141,21 +186,32 @@ const ListadoCoches = ({ isMobile = false }) => {
         result = await searchAvailableVehicles(searchParams);
         setCars(result.results || []);
         setTotalCars(result.count || 0);
-        
+
         // Aplicar filtros locales si están definidos
-        if (filterValues.marca || filterValues.modelo || filterValues.combustible || filterValues.orden) {
+        if (
+          filterValues.marca ||
+          filterValues.modelo ||
+          filterValues.combustible ||
+          filterValues.orden
+        ) {
           let filteredCars = [...(result.results || [])];
-          
+
           if (filterValues.marca) {
-            filteredCars = filteredCars.filter(car => car.marca === filterValues.marca);
+            filteredCars = filteredCars.filter(
+              (car) => car.marca === filterValues.marca,
+            );
           }
           if (filterValues.modelo) {
-            filteredCars = filteredCars.filter(car => car.modelo === filterValues.modelo);
+            filteredCars = filteredCars.filter(
+              (car) => car.modelo === filterValues.modelo,
+            );
           }
           if (filterValues.combustible) {
-            filteredCars = filteredCars.filter(car => car.combustible === filterValues.combustible);
+            filteredCars = filteredCars.filter(
+              (car) => car.combustible === filterValues.combustible,
+            );
           }
-          
+
           // Aplicar ordenación
           if (filterValues.orden) {
             switch (filterValues.orden) {
@@ -177,12 +233,12 @@ const ListadoCoches = ({ isMobile = false }) => {
           }
           setCars(filteredCars);
         }
-        
+
         // Extraer opciones de filtro
         if (result.filterOptions) {
-          setFilterOptions(prevOptions => ({
+          setFilterOptions((prevOptions) => ({
             ...prevOptions,
-            ...result.filterOptions
+            ...result.filterOptions,
           }));
         }
       } else {
@@ -190,18 +246,21 @@ const ListadoCoches = ({ isMobile = false }) => {
         result = await fetchCarsService(filterValues);
         setCars(result.cars || []);
         setTotalCars(result.total || 0);
-        
+
         // Extraer opciones de filtro
         if (result.filterOptions) {
-          setFilterOptions(prevOptions => ({
+          setFilterOptions((prevOptions) => ({
             ...prevOptions,
-            ...result.filterOptions
+            ...result.filterOptions,
           }));
         }
       }
     } catch (error) {
       console.error('Error al cargar los coches:', error);
-      setError(error.message || 'No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.');
+      setError(
+        error.message ||
+          'No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.',
+      );
       setCars([]);
       setTotalCars(0);
     } finally {
@@ -220,55 +279,59 @@ const ListadoCoches = ({ isMobile = false }) => {
     // Validar los datos de búsqueda
     const { isValid, errors } = validateSearchForm({
       ...dataBusqueda,
-      checkMayor21: dataBusqueda.mayor21
+      checkMayor21: dataBusqueda.mayor21,
     });
-    
+
     if (!isValid) {
       // Mostrar errores
       const errorMessage = Object.values(errors).join('. ');
       showError(errorMessage, { timeout: 8000 });
       return;
     }
-    
+
     // Guardar datos en sessionStorage
     const saved = saveSearchParams(dataBusqueda);
     if (!saved) {
-      showWarning('No se pudieron guardar los datos de búsqueda', { timeout: 5000 });
+      showWarning('No se pudieron guardar los datos de búsqueda', {
+        timeout: 5000,
+      });
     }
-    
+
     // Indicar que tenemos datos de búsqueda
     setHasBusquedaData(true);
     setLoading(true);
-    
+
     try {
       // Usar servicio unificado de búsqueda
       const result = await searchAvailableVehicles(dataBusqueda);
       setCars(result.results || []);
       setTotalCars(result.count || 0);
-      
+
       // Actualizar opciones de filtro
       if (result.filterOptions) {
-        setFilterOptions(prevOptions => ({
+        setFilterOptions((prevOptions) => ({
           ...prevOptions,
-          ...result.filterOptions
+          ...result.filterOptions,
         }));
       }
-      
+
       showSuccess('Búsqueda realizada con éxito', { timeout: 3000 });
     } catch (error) {
       showError('Error al buscar vehículos disponibles', { timeout: 7000 });
-      setError(error.message || 'No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.');
+      setError(
+        error.message ||
+          'No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.',
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  
   // Función para manejar la apertura/cierre de la ficha
   const handleVerDetalle = (carId) => {
     const newId = openCarId === carId ? null : carId;
     setOpenCarId(newId);
-  
+
     if (newId) {
       // Después de un pequeño delay, hacemos scroll suave hasta la ficha
       setTimeout(() => {
@@ -282,11 +345,11 @@ const ListadoCoches = ({ isMobile = false }) => {
 
   // Formatear el precio como moneda
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-ES', { 
-      style: 'currency', 
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
       currency: 'EUR',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(value);
   };
 
@@ -296,7 +359,7 @@ const ListadoCoches = ({ isMobile = false }) => {
       <div className="search-hero-section">
         <div className="search-hero-background"></div>
         <div className="search-hero-overlay"></div>
-        
+
         <Container className="search-hero-content">
           <Row className="justify-content-center mb-5">
             <Col lg={10} className="text-center">
@@ -304,11 +367,12 @@ const ListadoCoches = ({ isMobile = false }) => {
                 Encuentra el vehículo ideal para tu viaje
               </h1>
               <p className="search-hero-subtitle">
-                Descubre nuestra flota premium y disfruta de la mejor experiencia de conducción
+                Descubre nuestra flota premium y disfruta de la mejor
+                experiencia de conducción
               </p>
             </Col>
           </Row>
-          
+
           <Row className="justify-content-center">
             <Col lg={12} xl={12} className="search-form-container">
               <div className="search-card">
@@ -319,12 +383,13 @@ const ListadoCoches = ({ isMobile = false }) => {
                   </h4>
                 </div>
                 <div className="search-card-body">
-                  <FormBusqueda 
-                    onSearch={handleSearch} 
-                    collapsible={false} 
-                    isMobile={isMobile} 
+                  {' '}
+                  <FormBusqueda
+                    onSearch={handleSearch}
+                    collapsible={false}
+                    isMobile={isMobile}
+                    locations={locations}
                   />
-                  
                   <div className="search-tips mt-4">
                     <h6 className="search-tips-title">
                       <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
@@ -332,15 +397,24 @@ const ListadoCoches = ({ isMobile = false }) => {
                     </h6>
                     <ul className="search-tips-list">
                       <li>
-                        <FontAwesomeIcon icon={faCalendarAlt} className="me-2 text-primary" />
+                        <FontAwesomeIcon
+                          icon={faCalendarAlt}
+                          className="me-2 text-primary"
+                        />
                         Reserva con antelación para obtener mejores tarifas
                       </li>
                       <li>
-                        <FontAwesomeIcon icon={faMapMarkerAlt} className="me-2 text-primary" />
+                        <FontAwesomeIcon
+                          icon={faMapMarkerAlt}
+                          className="me-2 text-primary"
+                        />
                         Disponemos de oficinas en aeropuertos y centros urbanos
                       </li>
                       <li>
-                        <FontAwesomeIcon icon={faCar} className="me-2 text-primary" />
+                        <FontAwesomeIcon
+                          icon={faCar}
+                          className="me-2 text-primary"
+                        />
                         Amplia variedad de vehículos para cada necesidad
                       </li>
                     </ul>
@@ -358,16 +432,17 @@ const ListadoCoches = ({ isMobile = false }) => {
   const renderCarsList = () => {
     return (
       <Container className="listado-coches my-4 mx-auto">
+        {' '}
         {/* Formulario de búsqueda plegado */}
         <div className="search-section-listado mb-4">
-          <FormBusqueda 
-            onSearch={handleSearch} 
-            collapsible={true} 
-            listado={true} 
-            isMobile={isMobile} 
+          <FormBusqueda
+            onSearch={handleSearch}
+            collapsible={true}
+            listado={true}
+            isMobile={isMobile}
+            locations={locations}
           />
         </div>
-        
         <Row className="mb-4">
           <Col>
             <div className="d-flex justify-content-between align-items-center">
@@ -387,14 +462,12 @@ const ListadoCoches = ({ isMobile = false }) => {
             <hr className="separador" />
           </Col>
         </Row>
-    
         {/* Bloque de filtros mejorado */}
-        <FiltroSelect 
-          filters={filterValues} 
-          setFilters={setFilterValues} 
-          options={filterOptions} 
+        <FiltroSelect
+          filters={filterValues}
+          setFilters={setFilterValues}
+          options={filterOptions}
         />
-    
         {/* Mensajes de carga o error */}
         {loading && (
           <div className="text-center py-5">
@@ -404,120 +477,155 @@ const ListadoCoches = ({ isMobile = false }) => {
             <p className="mt-3">Buscando vehículos disponibles...</p>
           </div>
         )}
-        
         {error && (
           <Alert variant="danger" className="my-4" role="alert">
             <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" />
             {error}
           </Alert>
         )}
-        
         {/* Mensaje "Sin resultados" */}
         {!loading && !error && cars.length === 0 && (
           <div className="text-center py-5">
             <div className="empty-results">
-              <FontAwesomeIcon icon={faExclamationTriangle} size="3x" className="text-warning mb-3" />
+              <FontAwesomeIcon
+                icon={faExclamationTriangle}
+                size="3x"
+                className="text-warning mb-3"
+              />
               <h4>No se encontraron vehículos</h4>
               <p className="text-muted">
                 No hay vehículos disponibles con los filtros seleccionados.
                 <br />
                 Intenta con otros criterios de búsqueda.
               </p>
-              <Button 
+              <Button
                 variant="outline-primary"
-                onClick={() => setFilterValues({ marca: '', modelo: '', combustible: '', orden: '' })}
+                onClick={() =>
+                  setFilterValues({
+                    marca: '',
+                    modelo: '',
+                    combustible: '',
+                    orden: '',
+                  })
+                }
               >
                 Limpiar filtros
               </Button>
             </div>
           </div>
         )}
-    
         {/* Listado de tarjetas */}
         <div ref={resultsRef}>
-          {!loading && !error && cars.length > 0 && (() => {
-            // Partir el array en grupos de 3
-            const filas = [];
-            for (let i = 0; i < cars.length; i += 3) {
-              filas.push(cars.slice(i, i + 3));
-            }
+          {!loading &&
+            !error &&
+            cars.length > 0 &&
+            (() => {
+              // Partir el array en grupos de 3
+              const filas = [];
+              for (let i = 0; i < cars.length; i += 3) {
+                filas.push(cars.slice(i, i + 3));
+              }
               return filas.map((grupo, rowIdx) => (
-              <React.Fragment key={`row-${rowIdx}`}>
-                {/* Fila de hasta 3 tarjetas */}
-                <Row className="results-container mb-4">
-                  {grupo.map(car => (
-                    <Col key={`car-${car.id}`} md={4} sm={6} className="mb-4">
-                      <Card
-                        className={`car-card h-100 ${
-                          openCarId === car.id ? 'selected-card' : ''
-                        }`}
-                      >
-                        <div className="img-container">
-                          <div className="fuel-tag">
-                            <FontAwesomeIcon icon={faGasPump} className="me-1" />
-                            {car.combustible}
-                          </div>
-                          <Card.Img 
-                            src={car.imagenPrincipal || 'https://via.placeholder.com/300x200?text=Sin+Imagen'} 
-                            alt={`${car.marca} ${car.modelo}`} 
-                          />
-                        </div>
-                        <Card.Body className="d-flex flex-column">
-                          <Card.Title className="car-card-title">{car.marca} {car.modelo}</Card.Title>
-                          <div className="vehicle-badges mb-2">
-                            <Badge bg="secondary" className="me-1">{car.categoria.nombre}</Badge>
-                            <Badge bg="info">{car.grupo.nombre}</Badge>
-                          </div>
-                          <Card.Text className="car-card-description my-2">
-                            {car.descripcion || 'Descripción no disponible.'}
-                          </Card.Text>
-                          <div className="car-features-list my-3">
-                            <div className="car-feature">
-                              <FontAwesomeIcon icon={faUser} className="text-primary" />
-                              <span>{car.num_pasajeros} asientos</span>
+                <React.Fragment key={`row-${rowIdx}`}>
+                  {/* Fila de hasta 3 tarjetas */}
+                  <Row className="results-container mb-4">
+                    {grupo.map((car) => (
+                      <Col key={`car-${car.id}`} md={4} sm={6} className="mb-4">
+                        <Card
+                          className={`car-card h-100 ${
+                            openCarId === car.id ? 'selected-card' : ''
+                          }`}
+                        >
+                          <div className="img-container">
+                            <div className="fuel-tag">
+                              <FontAwesomeIcon
+                                icon={faGasPump}
+                                className="me-1"
+                              />
+                              {car.combustible}
                             </div>
-                            <div className="car-feature">
-                              <FontAwesomeIcon icon={faIdCard} className="text-primary" />
-                              <span>{car.grupo.edad_minima}+ años</span>
-                            </div>
-                            <div className="car-feature">
-                              <FontAwesomeIcon icon={faRoad} className="text-primary" />
-                              <span>Ilimitado</span>
-                            </div>
+                            <Card.Img
+                              src={
+                                car.imagenPrincipal ||
+                                'https://via.placeholder.com/300x200?text=Sin+Imagen'
+                              }
+                              alt={`${car.marca} ${car.modelo}`}
+                            />
                           </div>
-                          <div className="mt-auto d-flex flex-column">
-                            <div className="d-flex justify-content-between align-items-center mb-3">
-                              <h5 className="precio mb-0">
-                                {formatCurrency(car.precio_dia)}<small>/día</small>
-                              </h5>
+                          <Card.Body className="d-flex flex-column">
+                            <Card.Title className="car-card-title">
+                              {car.marca} {car.modelo}
+                            </Card.Title>
+                            <div className="vehicle-badges mb-2">
+                              <Badge bg="secondary" className="me-1">
+                                {car.categoria.nombre}
+                              </Badge>
+                              <Badge bg="info">{car.grupo.nombre}</Badge>
                             </div>
-                            <Button
-                              variant="primary"
-                              className="w-100 btn-reservar align-self-center"
-                              onClick={() => handleVerDetalle(car.id)}
-                            >
-                              Reservar ahora
-                              <FontAwesomeIcon icon={faArrowRight} className="ms-2" />
-                            </Button>
-                          </div>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>                {/* Si el coche seleccionado está en este grupo, muestro la ficha justo después de la fila */}
-                {grupo.some(car => car.id === openCarId) && (
-                  <Row key={`ficha-${rowIdx}-${openCarId}`} className="mb-5">
-                    <Col md={12}>
-                      <FichaCoche
-                        car={cars.find(c => c.id === openCarId)}
-                        onClose={() => handleVerDetalle(openCarId)}
-                      />
-                    </Col>
-                  </Row>
-                )}
-              </React.Fragment>
-            ));
-          })()}
+                            <Card.Text className="car-card-description my-2">
+                              {car.descripcion || 'Descripción no disponible.'}
+                            </Card.Text>
+                            <div className="car-features-list my-3">
+                              <div className="car-feature">
+                                <FontAwesomeIcon
+                                  icon={faUser}
+                                  className="text-primary"
+                                />
+                                <span>{car.num_pasajeros} asientos</span>
+                              </div>
+                              <div className="car-feature">
+                                <FontAwesomeIcon
+                                  icon={faIdCard}
+                                  className="text-primary"
+                                />
+                                <span>{car.grupo.edad_minima}+ años</span>
+                              </div>
+                              <div className="car-feature">
+                                <FontAwesomeIcon
+                                  icon={faRoad}
+                                  className="text-primary"
+                                />
+                                <span>Ilimitado</span>
+                              </div>
+                            </div>
+                            <div className="mt-auto d-flex flex-column">
+                              <div className="d-flex justify-content-between align-items-center mb-3">
+                                <h5 className="precio mb-0">
+                                  {formatCurrency(car.precio_dia)}
+                                  <small>/día</small>
+                                </h5>
+                              </div>
+                              <Button
+                                variant="primary"
+                                className="w-100 btn-reservar align-self-center"
+                                onClick={() => handleVerDetalle(car.id)}
+                              >
+                                Reservar ahora
+                                <FontAwesomeIcon
+                                  icon={faArrowRight}
+                                  className="ms-2"
+                                />
+                              </Button>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>{' '}
+                  {/* Si el coche seleccionado está en este grupo, muestro la ficha justo después de la fila */}
+                  {grupo.some((car) => car.id === openCarId) && (
+                    <Row key={`ficha-${rowIdx}-${openCarId}`} className="mb-5">
+                      <Col md={12}>
+                        <FichaCoche
+                          car={cars.find((c) => c.id === openCarId)}
+                          onClose={() => handleVerDetalle(openCarId)}
+                        />
+                      </Col>
+                    </Row>
+                  )}
+                </React.Fragment>
+              ));
+            })()}
         </div>
       </Container>
     );

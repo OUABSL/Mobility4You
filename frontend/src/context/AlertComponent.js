@@ -1,13 +1,13 @@
 // src/context/AlertComponent.js
-import React, { useEffect } from 'react';
-import { Alert, Container } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faCheckCircle, 
-  faExclamationTriangle, 
-  faExclamationCircle, 
-  faInfoCircle, 
+import {
+  faCheckCircle,
+  faExclamationCircle,
+  faExclamationTriangle,
+  faInfoCircle,
 } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect } from 'react';
+import { Alert, Container } from 'react-bootstrap';
 import { useAlertContext } from './AlertContext';
 
 /**
@@ -16,7 +16,7 @@ import { useAlertContext } from './AlertContext';
  */
 const AlertComponent = () => {
   const { alert, hideAlert } = useAlertContext();
-  
+
   // Función para obtener el ícono según el tipo de alerta
   const getAlertIcon = () => {
     switch (alert.icon || alert.variant) {
@@ -35,26 +35,27 @@ const AlertComponent = () => {
         return faInfoCircle;
     }
   };
-  
+
   // Restablecer temporizador cuando cambia alert.show
   useEffect(() => {
     if (alert.show && alert.timeout !== 0) {
       const timeout = setTimeout(() => {
         hideAlert();
       }, alert.timeout || 300000);
-      
+
       return () => clearTimeout(timeout);
     }
   }, [alert.show, alert.timeout, hideAlert]);
-  
+
   // No renderizar nada si no hay alerta para mostrar
   if (!alert.show) {
     return null;
   }
-  
+
   // Clases adicionales según la posición
-  const positionClass = alert.position === 'bottom' ? 'alert-bottom' : 'alert-top';
-  
+  const positionClass =
+    alert.position === 'bottom' ? 'alert-bottom' : 'alert-top';
+
   return (
     <div className={`global-alert-container ${positionClass}`}>
       <Container>
@@ -68,14 +69,12 @@ const AlertComponent = () => {
             <div className="alert-icon me-3">
               <FontAwesomeIcon icon={getAlertIcon()} />
             </div>
-            <div className="alert-content">
-              {alert.message}
-            </div>
+            <div className="alert-content">{alert.message}</div>
           </div>
-          <button 
-            type="button" 
-            className="btn-close" 
-            aria-label="Close" 
+          <button
+            type="button"
+            className="btn-close"
+            aria-label="Close"
             onClick={hideAlert}
           />
         </Alert>

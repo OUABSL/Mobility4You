@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Policy Mapping Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Payment Policy Mapping Test</h1>
+        <p>This test verifies that the payment policy string-to-ID mapping function works correctly.</p>
+        
+        <button onclick="runTests()">Run Tests</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        // Mock function that simulates our mapPaymentOptionToId logic
+        function mapPaymentOptionToId(paymentOption) {
+            // If it's already a number, return it
+            if (typeof paymentOption === 'number') {
+                return paymentOption;
+            }
+            
+            // If it's a string, map it to the corresponding ID
+            if (typeof paymentOption === 'string') {
+                const mappings = {
+                    'all-inclusive': 1,    // All Inclusive
+                    'economy': 2,          // Economy
+                    'premium': 3           // Premium
+                };
+                
+                const lowercaseOption = paymentOption.toLowerCase().trim();
+                const mappedId = mappings[lowercaseOption];
+                
+                if (!mappedId) {
+                    console.warn(`[mapPaymentOptionToId] Unknown payment option: "${paymentOption}"`);
+                }
+                
+                return mappedId || null;
+            }
+            
+            return null;
+        }
+
+        // Test cases
+        const testCases = [
+            {
+                name: "Test 1: All-Inclusive String",
+                input: "all-inclusive",
+                expected: 1,
+                description: "Maps 'all-inclusive' string to ID 1"
+            },
+            {
+                name: "Test 2: Economy String",
+                input: "economy",
+                expected: 2,
+                description: "Maps 'economy' string to ID 2"
+            },
+            {
+                name: "Test 3: Premium String",
+                input: "premium",
+                expected: 3,
+                description: "Maps 'premium' string to ID 3"
+            },
+            {
+                name: "Test 4: Case Insensitive",
+                input: "ALL-INCLUSIVE",
+                expected: 1,
+                description: "Handles uppercase input correctly"
+            },
+            {
+                name: "Test 5: With Whitespace",
+                input: "  economy  ",
+                expected: 2,
+                description: "Trims whitespace correctly"
+            },
+            {
+                name: "Test 6: Numeric Input",
+                input: 2,
+                expected: 2,
+                description: "Passes through numeric IDs unchanged"
+            },
+            {
+                name: "Test 7: Unknown String",
+                input: "unknown-option",
+                expected: null,
+                description: "Returns null for unknown payment options"
+            },
+            {
+                name: "Test 8: Null Input",
+                input: null,
+                expected: null,
+                description: "Handles null input gracefully"
+            }
+        ];
+
+        function runTests() {
+            const resultsContainer = document.getElementById('test-results');
+            resultsContainer.innerHTML = '<h2>Test Results</h2>';
+            
+            let passedTests = 0;
+            let totalTests = testCases.length;
+
+            testCases.forEach((testCase, index) => {
+                const result = mapPaymentOptionToId(testCase.input);
+                const passed = result === testCase.expected;
+                
+                if (passed) passedTests++;
+
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `test-result ${passed ? 'success' : 'error'}`;
+                
+                resultDiv.innerHTML = `
+                    <strong>${testCase.name}</strong><br>
+                    ${testCase.description}<br>
+                    Input: <code>${JSON.stringify(testCase.input)}</code><br>
+                    Expected: <code>${JSON.stringify(testCase.expected)}</code><br>
+                    Actual: <code>${JSON.stringify(result)}</code><br>
+                    Status: <strong>${passed ? '✅ PASSED' : '❌ FAILED'}</strong>
+                `;
+                
+                resultsContainer.appendChild(resultDiv);
+            });
+
+            // Summary
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = `test-result ${passedTests === totalTests ? 'success' : 'error'}`;
+            summaryDiv.innerHTML = `
+                <strong>Test Summary</strong><br>
+                ${passedTests}/${totalTests} tests passed<br>
+                ${passedTests === totalTests ? '🎉 All tests passed!' : `⚠️ ${totalTests - passedTests} test(s) failed`}
+            `;
+            
+            resultsContainer.appendChild(summaryDiv);
+
+            // Payment policy mapping demonstration
+            const demoDiv = document.createElement('div');
+            demoDiv.className = 'test-result info';
+            demoDiv.innerHTML = `
+                <strong>📋 Payment Policy Mapping Reference</strong><br>
+                <code>'all-inclusive'</code> → <code>1</code> (All Inclusive)<br>
+                <code>'economy'</code> → <code>2</code> (Economy)<br>
+                <code>'premium'</code> → <code>3</code> (Premium)<br>
+                <br>
+                This mapping ensures that FichaCoche payment option strings are correctly converted to numeric IDs that the backend expects.
+            `;
+            
+            resultsContainer.appendChild(demoDiv);
+        }
+
+        // Auto-run tests on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            runTests();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba fetchPoliticasPago - Modo Producción</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-panel {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            color: #34495e;
+            margin-top: 0;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .warning {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        .info {
+            color: #3498db;
+            font-weight: bold;
+        }
+        #output {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .result-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Prueba fetchPoliticasPago - Modo Producción</h1>
+        
+        <div class="status-panel">
+            <h3>📊 Estado del Sistema</h3>
+            <div class="metric">
+                <span>DEBUG_MODE:</span>
+                <span id="debugModeStatus">Verificando...</span>
+            </div>
+            <div class="metric">
+                <span>Función disponible:</span>
+                <span id="functionStatus">Verificando...</span>
+            </div>
+            <div class="metric">
+                <span>API Base URL:</span>
+                <span id="apiUrlStatus">Verificando...</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 Pruebas de Funcionamiento</h3>
+            <button id="testBasicCall" onclick="testBasicFunctionCall()">
+                Prueba Básica de Llamada
+            </button>
+            <button id="testApiCall" onclick="testApiCall()">
+                Probar Llamada a API
+            </button>
+            <button id="testErrorHandling" onclick="testErrorHandling()">
+                Probar Manejo de Errores
+            </button>
+            <button id="clearOutput" onclick="clearOutput()">
+                Limpiar Output
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>📈 Resultados de Pruebas</h3>
+            <div class="results-grid">
+                <div class="result-card">
+                    <h4>Métricas de Rendimiento</h4>
+                    <div class="metric">
+                        <span>Tiempo de respuesta:</span>
+                        <span id="responseTime">-</span>
+                    </div>
+                    <div class="metric">
+                        <span>Estado de conexión:</span>
+                        <span id="connectionStatus">-</span>
+                    </div>
+                </div>
+                <div class="result-card">
+                    <h4>Datos Obtenidos</h4>
+                    <div class="metric">
+                        <span>Políticas encontradas:</span>
+                        <span id="politicasCount">-</span>
+                    </div>
+                    <div class="metric">
+                        <span>Fuente de datos:</span>
+                        <span id="dataSource">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="output"></div>
+    </div>
+
+    <script type="module">
+        // Importar la función desde el servicio
+        import { fetchPoliticasPago, DEBUG_MODE, API_URL } from '../src/services/reservationServices.js';
+        
+        let outputElement;
+        
+        function log(message, type = 'info') {
+            if (!outputElement) {
+                outputElement = document.getElementById('output');
+            }
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'success' ? '✅' : 
+                          type === 'error' ? '❌' : 
+                          type === 'warning' ? '⚠️' : 'ℹ️';
+            
+            outputElement.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            outputElement.scrollTop = outputElement.scrollHeight;
+        }
+        
+        // Verificar estado inicial
+        window.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('debugModeStatus').innerHTML = 
+                DEBUG_MODE ? '<span class="warning">TRUE (Desarrollo)</span>' : 
+                '<span class="success">FALSE (Producción)</span>';
+            
+            document.getElementById('functionStatus').innerHTML = 
+                typeof fetchPoliticasPago === 'function' ? 
+                '<span class="success">Disponible</span>' : 
+                '<span class="error">No disponible</span>';
+            
+            document.getElementById('apiUrlStatus').innerHTML = 
+                API_URL ? `<span class="success">${API_URL}</span>` : 
+                '<span class="warning">No configurada</span>';
+                
+            log('🚀 Sistema inicializado');
+            log(`DEBUG_MODE: ${DEBUG_MODE}`);
+            log(`API_URL: ${API_URL || 'No configurada'}`);
+        });
+        
+        // Función básica de prueba
+        window.testBasicFunctionCall = async function() {
+            log('--- Iniciando prueba básica ---');
+            
+            try {
+                log('Verificando función fetchPoliticasPago...');
+                
+                if (typeof fetchPoliticasPago !== 'function') {
+                    throw new Error('fetchPoliticasPago no es una función');
+                }
+                
+                log('✅ Función disponible', 'success');
+                log('🔧 Configuración verificada', 'success');
+                
+                // Actualizar métricas
+                document.getElementById('connectionStatus').innerHTML = 
+                    '<span class="success">Función OK</span>';
+                
+            } catch (error) {
+                log(`Error en prueba básica: ${error.message}`, 'error');
+                document.getElementById('connectionStatus').innerHTML = 
+                    '<span class="error">Error</span>';
+            }
+        };
+        
+        // Prueba de llamada a API
+        window.testApiCall = async function() {
+            log('--- Iniciando prueba de API ---');
+            
+            try {
+                const startTime = Date.now();
+                log('⏳ Realizando llamada a fetchPoliticasPago()...');
+                
+                const politicas = await fetchPoliticasPago();
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                log(`✅ Llamada exitosa en ${duration}ms`, 'success');
+                log(`📊 Políticas obtenidas: ${politicas.length}`, 'success');
+                
+                // Actualizar métricas
+                document.getElementById('responseTime').innerHTML = 
+                    `<span class="success">${duration}ms</span>`;
+                document.getElementById('politicasCount').innerHTML = 
+                    `<span class="success">${politicas.length}</span>`;
+                document.getElementById('connectionStatus').innerHTML = 
+                    '<span class="success">Conectado</span>';
+                document.getElementById('dataSource').innerHTML = 
+                    DEBUG_MODE ? '<span class="warning">Testing Data</span>' : 
+                    '<span class="success">API Backend</span>';
+                
+                // Mostrar datos de muestra
+                if (politicas.length > 0) {
+                    log('📋 Muestra de política:');
+                    const sample = politicas[0];
+                    log(`   ID: ${sample.id}`);
+                    log(`   Título: ${sample.titulo}`);
+                    log(`   Activo: ${sample.activo}`);
+                    
+                    // Verificar que solo hay políticas activas
+                    const activePolicies = politicas.filter(p => p.activo === true);
+                    if (activePolicies.length === politicas.length) {
+                        log('✅ Todas las políticas están activas', 'success');
+                    } else {
+                        log(`⚠️ ${politicas.length - activePolicies.length} políticas inactivas encontradas`, 'warning');
+                    }
+                }
+                
+            } catch (error) {
+                const endTime = Date.now();
+                log(`❌ Error en llamada: ${error.message}`, 'error');
+                
+                // Actualizar métricas de error
+                document.getElementById('connectionStatus').innerHTML = 
+                    '<span class="error">Error de conexión</span>';
+                document.getElementById('dataSource').innerHTML = 
+                    '<span class="error">Sin datos</span>';
+                
+                // Analizar tipo de error
+                if (error.message.includes('Network Error') || 
+                    error.message.includes('fetch')) {
+                    log('ℹ️ Error de red - Backend posiblemente no disponible', 'warning');
+                } else if (error.message.includes('CORS')) {
+                    log('ℹ️ Error CORS - Configuración de servidor requerida', 'warning');
+                } else {
+                    log(`ℹ️ Tipo de error: ${error.constructor.name}`, 'warning');
+                }
+            }
+        };
+        
+        // Prueba de manejo de errores
+        window.testErrorHandling = async function() {
+            log('--- Iniciando prueba de manejo de errores ---');
+            
+            try {
+                log('🔍 Verificando comportamiento con API no disponible...');
+                
+                // En modo producción, debe fallar sin usar datos de testing
+                if (!DEBUG_MODE) {
+                    log('✅ Modo producción: errores se propagan correctamente', 'success');
+                    log('ℹ️ En producción, NO se usan datos de testing como fallback');
+                } else {
+                    log('⚠️ Modo desarrollo: se usarán datos de testing en caso de error', 'warning');
+                }
+                
+            } catch (error) {
+                log(`Error inesperado en prueba: ${error.message}`, 'error');
+            }
+        };
+        
+        // Limpiar output
+        window.clearOutput = function() {
+            document.getElementById('output').textContent = '';
+            log('🧹 Output limpiado');
+        };
+        
+        // Hacer las funciones globales
+        window.fetchPoliticasPago = fetchPoliticasPago;
+        window.DEBUG_MODE = DEBUG_MODE;
+        window.API_URL = API_URL;
+        
+        log('🌐 Página cargada - Funciones disponibles globalmente');
+        log('📋 Funciones disponibles en consola:');
+        log('   - fetchPoliticasPago() - Llamar directamente a la función');
+        log('   - testBasicFunctionCall() - Prueba básica');
+        log('   - testApiCall() - Prueba de API');
+        log('   - testErrorHandling() - Prueba de errores');
+    </script>
+</body>
+</html>

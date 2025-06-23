@@ -1,15 +1,15 @@
 // Componente modal para manejar advertencias y expiración del timer de reserva
 
-import React, { useState, useEffect } from 'react';
-import { Modal, Button, Alert, ProgressBar } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faExclamationTriangle, 
-  faClock, 
+import {
+  faClock,
+  faExclamationTriangle,
+  faInfoCircle,
   faRefresh,
   faSignOutAlt,
-  faInfoCircle
 } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from 'react';
+import { Alert, Button, Modal, ProgressBar } from 'react-bootstrap';
 import '../../css/ReservationTimerModal.css';
 
 /**
@@ -22,7 +22,7 @@ const ReservationTimerModal = ({
   onExtend = null,
   onContinue = null,
   onCancel = null,
-  onClose = null
+  onClose = null,
 }) => {
   const [timeLeft, setTimeLeft] = useState(remainingTime);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -32,7 +32,7 @@ const ReservationTimerModal = ({
     if (!show || type === 'expired') return;
 
     const interval = setInterval(() => {
-      setTimeLeft(prev => {
+      setTimeLeft((prev) => {
         const newTime = Math.max(0, prev - 1000);
         if (newTime <= 0 && type === 'warning') {
           // Cambiar a modo expirado automáticamente
@@ -125,22 +125,23 @@ const ReservationTimerModal = ({
           title: 'Tu reserva expirará pronto',
           variant: 'warning',
           icon: faExclamationTriangle,
-          message: 'Tu sesión de reserva expirará en unos minutos. ¿Deseas continuar?',
+          message:
+            'Tu sesión de reserva expirará en unos minutos. ¿Deseas continuar?',
           showProgress: true,
           actions: [
             {
               label: 'Continuar reserva',
               variant: 'primary',
               onClick: handleExtend,
-              icon: faRefresh
+              icon: faRefresh,
             },
             {
               label: 'Salir',
               variant: 'outline-secondary',
               onClick: handleCancel,
-              icon: faSignOutAlt
-            }
-          ]
+              icon: faSignOutAlt,
+            },
+          ],
         };
 
       case 'expired':
@@ -148,22 +149,23 @@ const ReservationTimerModal = ({
           title: 'Reserva expirada',
           variant: 'danger',
           icon: faClock,
-          message: 'Tu sesión de reserva ha expirado. Los datos han sido eliminados por seguridad.',
+          message:
+            'Tu sesión de reserva ha expirado. Los datos han sido eliminados por seguridad.',
           showProgress: false,
           actions: [
             {
               label: 'Crear nueva reserva',
               variant: 'primary',
               onClick: handleContinue,
-              icon: faRefresh
+              icon: faRefresh,
             },
             {
               label: 'Volver al inicio',
               variant: 'outline-secondary',
               onClick: handleCancel,
-              icon: faSignOutAlt
-            }
-          ]
+              icon: faSignOutAlt,
+            },
+          ],
         };
 
       case 'extend':
@@ -171,22 +173,23 @@ const ReservationTimerModal = ({
           title: 'Extender tiempo de reserva',
           variant: 'info',
           icon: faInfoCircle,
-          message: '¿Deseas extender el tiempo de tu reserva por 30 minutos más?',
+          message:
+            '¿Deseas extender el tiempo de tu reserva por 30 minutos más?',
           showProgress: false,
           actions: [
             {
               label: 'Extender tiempo',
               variant: 'primary',
               onClick: handleExtend,
-              icon: faRefresh
+              icon: faRefresh,
             },
             {
               label: 'No, continuar',
               variant: 'outline-secondary',
               onClick: onClose,
-              icon: faSignOutAlt
-            }
-          ]
+              icon: faSignOutAlt,
+            },
+          ],
         };
 
       default:
@@ -200,9 +203,9 @@ const ReservationTimerModal = ({
             {
               label: 'Cerrar',
               variant: 'secondary',
-              onClick: onClose
-            }
-          ]
+              onClick: onClose,
+            },
+          ],
         };
     }
   };
@@ -219,7 +222,9 @@ const ReservationTimerModal = ({
       className="reservation-timer-modal"
     >
       <Modal.Header className={`bg-${config.variant} bg-opacity-10`}>
-        <Modal.Title className={`text-${config.variant} d-flex align-items-center`}>
+        <Modal.Title
+          className={`text-${config.variant} d-flex align-items-center`}
+        >
           <FontAwesomeIcon icon={config.icon} className="me-2" />
           {config.title}
         </Modal.Title>
@@ -238,7 +243,13 @@ const ReservationTimerModal = ({
               {formatTime(timeLeft)}
             </h4>
             <ProgressBar
-              variant={getTimePercentage() > 50 ? 'success' : getTimePercentage() > 25 ? 'warning' : 'danger'}
+              variant={
+                getTimePercentage() > 50
+                  ? 'success'
+                  : getTimePercentage() > 25
+                  ? 'warning'
+                  : 'danger'
+              }
               now={getTimePercentage()}
               className="mb-2"
               style={{ height: '8px' }}
@@ -252,9 +263,9 @@ const ReservationTimerModal = ({
         {type === 'expired' && (
           <div className="expired-info">
             <p className="text-muted">
-              Por motivos de seguridad y para mantener el sistema optimizado, 
-              los datos de reserva se eliminan automáticamente después de 30 minutos 
-              de inactividad.
+              Por motivos de seguridad y para mantener el sistema optimizado,
+              los datos de reserva se eliminan automáticamente después de 30
+              minutos de inactividad.
             </p>
           </div>
         )}
@@ -276,7 +287,9 @@ const ReservationTimerModal = ({
               </span>
             ) : (
               <span>
-                {action.icon && <FontAwesomeIcon icon={action.icon} className="me-2" />}
+                {action.icon && (
+                  <FontAwesomeIcon icon={action.icon} className="me-2" />
+                )}
                 {action.label}
               </span>
             )}

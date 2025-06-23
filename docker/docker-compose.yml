@@ -1,6 +1,5 @@
 services:
-  # Servicio para la base de datos
-  # Se utiliza MariaDB como base de datos
+  # Base de datos MariaDB con configuración optimizada
   db:
     image: mariadb:10.6
     container_name: mobility4you_db
@@ -16,13 +15,22 @@ services:
     networks:
       - mobility4you_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mobility", "-p$MYSQL_PASSWORD"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "mobility",
+          "-p$MYSQL_PASSWORD",
+        ]
       timeout: 20s
       retries: 10
       interval: 10s
-
-  # Servicio para el backend Django
-  # Se utiliza Gunicorn como servidor WSGI
+  # Backend Django con arquitectura modular
+  # Apps: usuarios, vehiculos, reservas, politicas, facturas_contratos, comunicacion
   backend:
     build:
       context: ../backend
@@ -33,9 +41,13 @@ services:
       - ../backend:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+      - ../backend/logs:/app/logs
+      - ../backend/entrypoint.sh:/entrypoint.sh:ro # Montar entrypoint desde backend/
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
       - DJANGO_ENV=${DJANGO_ENV:-development}
@@ -43,25 +55,25 @@ services:
       - DB_NAME=${MYSQL_DATABASE}
       - DB_USER=${MYSQL_USER}
       - DB_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - SECRET_KEY=${SECRET_KEY}
-      - ALLOWED_HOST=${ALLOWED_HOST}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0}
       - DEBUG=${DEBUG:-True}
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
       # Stripe Configuration
       - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - STRIPE_ENVIRONMENT=${STRIPE_ENVIRONMENT:-test}
       - STRIPE_API_VERSION=${STRIPE_API_VERSION:-2023-10-16}
+      # URLs
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
     networks:
       - mobility4you_network
     ports:
       - "8000:8000"
-
-  # Servicio para el frontend React
-  # Se utiliza Nginx como servidor web
+  # Frontend React con optimizaciones de desarrollo
   frontend:
     build:
       context: ../frontend
@@ -69,6 +81,7 @@ services:
     container_name: mobility4you_frontend
     restart: always
     volumes:
+      - ../frontend/src:/usr/app/src
       - /usr/app/node_modules
     depends_on:
       - backend
@@ -77,13 +90,13 @@ services:
       - REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
       - REACT_APP_API_URL=${REACT_APP_API_URL}
       - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+      - CHOKIDAR_USEPOLLING=true
     ports:
       - "3000:3000"
     networks:
       - mobility4you_network
 
-  # Servicio para Nginx
-  # Se utiliza Nginx como proxy inverso
+  # Nginx como proxy inverso y servidor de archivos estáticos
   nginx:
     image: nginx:1.21
     container_name: mobility4you_nginx
@@ -95,21 +108,31 @@ services:
       - media_volume:/usr/share/nginx/media
     depends_on:
       - frontend
+      - backend
     networks:
       - mobility4you_network
     restart: always
 
+  # Redis para caché y sesiones
   redis:
     image: redis:6.2
     container_name: mobility4you_redis
     restart: always
+    volumes:
+      - redis_data:/data
     networks:
       - mobility4you_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   db_data:
   static_volume:
   media_volume:
+  redis_data:
 
 networks:
   mobility4you_network:

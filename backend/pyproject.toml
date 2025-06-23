@@ -1,0 +1,64 @@
+# backend/pyproject.toml
+[tool.black]
+line-length = 88 # Longitud de línea consistente con la mayoría de estándares Python
+
+[tool.ruff]
+line-length = 88 # Ruff también respeta la longitud de línea de Black
+target-version = "py310" # Ajusta a la versión de Python de tu proyecto (ej: "py39", "py311")
+
+# Excluye directorios y archivos específicos del linting y formato de Ruff
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv", # Excluye el entorno virtual si está en la misma carpeta que pyproject.toml
+    ".venv",
+    "env",
+    "node_modules", # Por si acaso hay un node_modules dentro de backend
+    "**/migrations/", # Ignora archivos de migraciones de Django
+    "**/admin.py", # A veces se ignora para evitar quejas sobre clases Admin
+]
+
+# Reglas de linting que Ruff debe aplicar
+select = [
+    "E", "F", "W", "C90", # Pyflakes, pycodestyle, complejidad ciclomática
+    "I", # isort (organización de imports)
+    "B", # flake8-bugbear
+    "Q", # flake8-quotes
+    "N", # pep8-naming
+    "ANN", # flake8-annotations (para type hints, opcional, puede ser estricto)
+    "ASYNC", # flake8-async (si usas asyncio)
+    "DJ", # Reglas específicas de Django (gracias a ruff[django])
+    "PIE", # flake8-pie
+    "UP", # pyupgrade (sugiere sintaxis Python moderna)
+]
+
+# Reglas que Ruff debe ignorar (Black se encarga de E501)
+ignore = [
+    "E501", # Line too long (lo maneja Black)
+    "ANN101", # Missing type annotation for `self` in method (común de ignorar si usas ANN)
+    "ANN102", # Missing type annotation for `cls` in classmethod (común de ignorar si usas ANN)
+    "B008", # Do not pass implicit arguments to a function call that has been assigned to a variable
+    "D", # Pydocstyle (si prefieres no forzar docstrings estrictos, o configúralo aparte)
+]
+
+# Habilita el autofixing para Ruff al guardar
+fix = true
+
+# Configuraciones específicas para reglas (ej. isort)
+[tool.ruff.isort]
+# Añade los nombres de tus apps de Django para que Ruff sepa que son de "first-party"
+known-first-party = [
+    "config",
+    "usuarios",
+    "vehiculos",
+    "reservas",
+    "politicas",
+    "facturas_contratos",
+    "comunicacion",
+    "payments",
+    "api" # Si mantienes tu app 'api'
+]
+force-single-line = false
+combine-as-imports = true

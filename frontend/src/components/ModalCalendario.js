@@ -18,8 +18,8 @@ const ModalCalendario = ({
 }) => {
     
     // Estados para fechas y horas
-    const [pickupDate, setPickupDate] = useState(initialValues.pickupDate || new Date());
-    const [dropoffDate, setDropoffDate] = useState(initialValues.dropoffDate || addDays(new Date(), 1));
+    const [pickupDate, setPickupDate] = useState(initialValues.pickupDate || addDays(new Date(), 1));
+    const [dropoffDate, setDropoffDate] = useState(initialValues.dropoffDate || addDays(new Date(), 8));
     const [pickupTime, setPickupTime] = useState(initialValues.pickupTime || availableTimes[0]);
     const [dropoffTime, setDropoffTime] = useState(initialValues.dropoffTime || availableTimes[0]);
 

@@ -1,0 +1,69 @@
+# MariaDB Production Configuration
+# Optimized for production performance and security
+
+[mysqld]
+# Basic settings
+user = mysql
+pid-file = /var/run/mysqld/mysqld.pid
+socket = /var/run/mysqld/mysqld.sock
+port = 3306
+basedir = /usr
+datadir = /var/lib/mysql
+tmpdir = /tmp
+lc-messages-dir = /usr/share/mysql
+
+# Security settings
+bind-address = 0.0.0.0
+skip-name-resolve = 1
+local-infile = 0
+
+# Performance tuning
+max_connections = 200
+max_connect_errors = 1000
+table_open_cache = 2000
+max_allowed_packet = 64M
+binlog_cache_size = 1M
+max_heap_table_size = 64M
+read_buffer_size = 2M
+read_rnd_buffer_size = 16M
+sort_buffer_size = 8M
+join_buffer_size = 8M
+thread_cache_size = 8
+thread_concurrency = 8
+query_cache_size = 64M
+query_cache_limit = 2M
+ft_min_word_len = 4
+default_table_type = innodb
+thread_stack = 192K
+transaction_isolation = REPEATABLE-READ
+tmp_table_size = 64M
+
+# InnoDB settings
+innodb_buffer_pool_size = 256M
+innodb_log_buffer_size = 8M
+innodb_file_per_table = 1
+innodb_open_files = 400
+innodb_io_capacity = 400
+innodb_flush_method = O_DIRECT
+
+# Logging
+log_error = /var/log/mysql/error.log
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+
+# Binary logging for replication
+server_id = 1
+log_bin = /var/log/mysql/mysql-bin.log
+expire_logs_days = 7
+max_binlog_size = 100M
+
+# Character set
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+[mysql]
+default-character-set = utf8mb4
+
+[client]
+default-character-set = utf8mb4
