@@ -103,59 +103,62 @@ def version_all_admin_assets():
     if os.path.exists("/app"):
         base_dir = "/app"
         static_dir = "/app/staticfiles/admin"
+        source_base = "/app/staticfiles/admin"
     else:
         # Desarrollo local
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         static_dir = os.path.join(base_dir, "staticfiles", "admin")
+        source_base = os.path.join(base_dir, "staticfiles", "admin")
     
     print(f"🔄 Base directory: {base_dir}")
     print(f"🔄 Static directory: {static_dir}")
+    print(f"🔄 Source base: {source_base}")
     
-    # Archivos a versionar
+    # Archivos a versionar - ahora todos desde staticfiles
     assets = {
         "css": {
-            "source": os.path.join(base_dir, "static", "admin", "css", "custom_admin.css"),
+            "source": os.path.join(source_base, "css", "custom_admin.css"),
             "static_dir": os.path.join(static_dir, "css"),
             "pattern": "custom_admin_v{hash}.css",
             "clean_pattern": "custom_admin_v"
         },
         "js": {
             "vehiculos": {
-                "source": os.path.join(base_dir, "static", "admin", "js", "vehiculos_admin.js"),
+                "source": os.path.join(source_base, "js", "vehiculos_admin.js"),
                 "static_dir": os.path.join(static_dir, "js"),
                 "pattern": "vehiculos_admin_v{hash}.js",
                 "clean_pattern": "vehiculos_admin_v"
             },
             "politicas": {
-                "source": os.path.join(base_dir, "static", "admin", "js", "politicas_admin.js"),
+                "source": os.path.join(source_base, "js", "politicas_admin.js"),
                 "static_dir": os.path.join(static_dir, "js"),
                 "pattern": "politicas_admin_v{hash}.js",
                 "clean_pattern": "politicas_admin_v"
             },
             "usuarios": {
-                "source": os.path.join(base_dir, "static", "admin", "js", "usuarios_admin.js"),
+                "source": os.path.join(source_base, "js", "usuarios_admin.js"),
                 "static_dir": os.path.join(static_dir, "js"),
                 "pattern": "usuarios_admin_v{hash}.js",
                 "clean_pattern": "usuarios_admin_v"
             },
             "payments": {
-                "source": os.path.join(base_dir, "static", "admin", "js", "payments_admin.js"),
+                "source": os.path.join(source_base, "js", "payments_admin.js"),
                 "static_dir": os.path.join(static_dir, "js"),
                 "pattern": "payments_admin_v{hash}.js",
                 "clean_pattern": "payments_admin_v"            },
             "reservas": {
-                "source": os.path.join(base_dir, "static", "admin", "js", "reservas_admin.js"),
+                "source": os.path.join(source_base, "js", "reservas_admin.js"),
                 "static_dir": os.path.join(static_dir, "js"),
                 "pattern": "reservas_admin_v{hash}.js",
                 "clean_pattern": "reservas_admin_v"
             },            "comunicacion": {
-                "source": os.path.join(base_dir, "static", "admin", "js", "comunicacion_admin.js"),
+                "source": os.path.join(source_base, "js", "comunicacion_admin.js"),
                 "static_dir": os.path.join(static_dir, "js"),
                 "pattern": "comunicacion_admin_v{hash}.js",
                 "clean_pattern": "comunicacion_admin_v"
             },
             "lugares": {
-                "source": os.path.join(base_dir, "static", "admin", "js", "lugares_admin.js"),
+                "source": os.path.join(source_base, "js", "lugares_admin.js"),
                 "static_dir": os.path.join(static_dir, "js"),
                 "pattern": "lugares_admin_v{hash}.js",
                 "clean_pattern": "lugares_admin_v"

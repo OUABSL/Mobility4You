@@ -14,6 +14,9 @@ def imagen_vehiculo_upload_path(instance: Any, filename: str) -> str:
     """
     Genera la ruta de carga para las imágenes de vehículos
     Formato: vehiculos/{vehiculo_id}_{imagenvehiculo_id}.jpg
+    
+    Nota: Las imágenes se almacenan en staticfiles/media/vehiculos/
+    ya que MEDIA_ROOT apunta a staticfiles/media/
     """
     # Extraer la extensión del archivo
     ext = filename.split(".")[-1] if "." in filename else "jpg"

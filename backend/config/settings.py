@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "rest_framework",  # Agregado
     "corsheaders",  # Agregado
     "django_filters",  # Agregado por Ouael el 22-05    # Aplicaciones modulares
+    "config",  # Para servir archivos estáticos personalizados del admin
     "usuarios",
     "lugares",  # Nueva app para lugares y direcciones
     "vehiculos",
@@ -66,6 +67,7 @@ INSTALLED_APPS = [
     "facturas_contratos",
     "comunicacion",
     "payments",  # Aplicación de pagos existente
+    "utils",  # Utilidades del sistema incluye comandos de gestión
     # Aplicación original (DESACTIVADA - migración completada)
     # 'api',       # ✅ Funcionalidad migrada a apps modulares
 ]
@@ -208,14 +210,14 @@ USE_TZ = True
 STATIC_URL = "/django-static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
-# Additional locations of static files
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),
-]
+# Additional locations of static files - DEPRECATED: All files now in staticfiles/
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, "static"),  # Moved to staticfiles/
+# ]
 
-# Media files (uploaded files)
+# Media files (uploaded files) - NOW UNIFIED IN STATICFILES but with separate URL
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

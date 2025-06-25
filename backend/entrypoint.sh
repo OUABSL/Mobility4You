@@ -36,7 +36,7 @@ echo "✅ Archivos estáticos recopilados"
 # Versionar archivos estáticos
 echo "🏷️ Versionando archivos estáticos..."
 if [ -f "utils/static_versioning.py" ]; then
-    python utils/static_versioning.py
+    python manage.py version_static_assets
     echo "✅ Archivos estáticos versionados exitosamente"
 else
     echo "⚠️ Sistema de versionado no disponible"
