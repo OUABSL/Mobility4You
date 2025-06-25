@@ -765,6 +765,47 @@ const testingPoliticas = [
 ];
 
 // ========================================
+// OPCIONES DE PAGO DE FALLBACK PARA FICHA COCHE
+// ========================================
+// SOLO se usan cuando DEBUG_MODE = TRUE y la API falla en FichaCoche.js
+const testingPaymentOptions = [
+  {
+    id: 'all-inclusive',
+    title: 'All Inclusive',
+    deductible: 0,
+    incluye: [
+      'Política de combustible Full-Full',
+      'Cobertura a todo riesgo sin franquicia ni depósitos',
+      'Kilometraje ilimitado',
+      'Entrega a domicilio (GRATIS)',
+      'Asistencia en carretera completa 24/7',
+      'Pago por adelantado o a la llegada',
+      'Cancelación gratuita hasta 24h antes',
+      'Recogida y devolución en el parking express',
+      'Conductor adicional gratuito',
+    ],
+    noIncluye: [
+      'Daños bajo efectos del alcohol o drogas',
+      'Cargo por no devolver lleno',
+    ],
+  },
+  {
+    id: 'economy',
+    title: 'Economy',
+    deductible: 1200,
+    incluye: [
+      'No Reembolsable (sin cancelaciones ni modificaciones)',
+      'Kilometraje ampliado (500km/día, máx 3.500km)',
+      'Cobertura básica con franquicia (depósito 1200€)',
+    ],
+    noIncluye: [
+      'Daños bajo efectos del alcohol o drogas',
+      'Cargo por no devolver lleno',
+    ],
+  },
+];
+
+// ========================================
 // DATOS DE RESERVA COMPLETA DE TESTING
 // ========================================
 // Para tests de flujo completo de reserva
@@ -916,21 +957,20 @@ const testingSimpleReservationData = {
 // CONFIGURACIÓN DE DEBUG MODE
 // ========================================
 /**
- * Configuración central para el modo de debugging
- * SOLO debe ser true en desarrollo cuando se necesite testing
+ * ⚠️ IMPORTANTE: Este archivo contiene SOLO datos de testing
+ * 
+ * - Los datos aquí definidos NO deben usarse jamás en producción
+ * - Solo se acceden cuando DEBUG_MODE está activo Y el backend falla
+ * - La configuración de DEBUG_MODE se encuentra en src/config/appConfig.js
+ * 
+ * @see src/config/appConfig.js para la configuración de DEBUG_MODE
  */
-export const DEBUG_MODE =
-  process.env.NODE_ENV === 'development' &&
-  process.env.REACT_APP_DEBUG_MODE === 'true';
 
 /**
- * Helper para verificar si se debe usar datos de testing
- * @param {boolean} backendFailed - Si el backend falló
- * @returns {boolean} - Si se deben usar datos de testing
+ * Re-exportar funciones de configuración para compatibilidad
+ * @deprecated Usar directamente desde src/config/appConfig.js
  */
-export const shouldUseTestingData = (backendFailed = false) => {
-  return DEBUG_MODE && backendFailed;
-};
+export { DEBUG_MODE, shouldUseTestingData } from '../../config/appConfig';
 
 // ========================================
 // EXPORTACIONES PARA FALLBACK DE TESTING
@@ -941,6 +981,7 @@ export {
   testingEstadisticas,
   testingLocationsData,
   testingPaymentMappingData,
+  testingPaymentOptions,
   testingPoliticas,
   testingReservationData,
   testingSimpleReservationData,

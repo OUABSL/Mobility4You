@@ -32,7 +32,7 @@ class PoliticaPagoSerializer(serializers.ModelSerializer):
     class Meta:
         model = PoliticaPago
         fields = [
-            'id', 'titulo', 'deductible', 'descripcion', 
+            'id', 'titulo', 'deductible', 'descripcion', 'activo',
             'items', 'penalizaciones', 'created_at', 'updated_at'
         ]
 

@@ -1,29 +1,27 @@
 // frontend/src/services/stripePaymentServices.js
 import { loadStripe } from '@stripe/stripe-js';
-import {
-  shouldUseTestingData,
-  testingStripeMocks,
-} from '../assets/testingData/testingData';
+import { testingStripeMocks } from '../assets/testingData/testingData';
+import { API_URL, createServiceLogger, DEBUG_MODE, shouldUseTestingData } from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import { withTimeout } from './func';
 import universalMapper from './universalDataMapper';
 
-// URL base de la API
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-
 // Configuración de Stripe
 let stripePromise = null;
 
-// Helper function para logging condicional - ahora usando DEBUG_MODE centralizado
+// Crear logger para el servicio de Stripe
+const logger = createServiceLogger('STRIPE_SERVICE');
+
+// Helper functions para logging condicional usando la configuración centralizada
 const logInfo = (message, data = null) => {
-  if (shouldUseTestingData(false)) {
-    console.log(`[STRIPE SERVICE] ${message}`, data);
+  if (DEBUG_MODE) {
+    logger.info(`[STRIPE SERVICE] ${message}`, data);
   }
 };
 
 const logError = (message, error = null) => {
-  if (shouldUseTestingData(false)) {
-    console.error(`[STRIPE SERVICE ERROR] ${message}`, error);
+  if (DEBUG_MODE) {
+    logger.error(`[STRIPE SERVICE ERROR] ${message}`, error);
   }
 };
 
@@ -597,7 +595,7 @@ export const validateCardData = async (stripe, elements) => {
  * @deprecated Usar universalMapper.formatCurrency y universalMapper.formatPaymentDate
  */
 export const formatCurrency = (amount, currency = 'EUR') => {
-  console.warn('[DEPRECATED] Usar universalMapper.formatCurrency en su lugar');
+  logger.warn('[DEPRECATED] Usar universalMapper.formatCurrency en su lugar');
   return universalMapper.formatCurrency(amount, currency);
 };
 
@@ -606,7 +604,7 @@ export const formatCurrency = (amount, currency = 'EUR') => {
  * @deprecated Usar universalMapper.formatPaymentDate
  */
 export const formatPaymentDate = (dateString) => {
-  console.warn(
+  logger.warn(
     '[DEPRECATED] Usar universalMapper.formatPaymentDate en su lugar',
   );
   return universalMapper.formatPaymentDate(dateString);
@@ -617,7 +615,7 @@ export const formatPaymentDate = (dateString) => {
  * @deprecated Usar universalMapper.mapStripeStatus
  */
 export const mapStripeStatus = (stripeStatus) => {
-  console.warn('[DEPRECATED] Usar universalMapper.mapStripeStatus en su lugar');
+  logger.warn('[DEPRECATED] Usar universalMapper.mapStripeStatus en su lugar');
   return universalMapper.mapStripeStatus(stripeStatus);
 };
 

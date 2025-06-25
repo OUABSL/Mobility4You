@@ -2,6 +2,10 @@
 // configurar interceptor:
 
 import axios from 'axios';
+import { createServiceLogger } from '../config/appConfig';
+
+// Crear logger para middleware
+const logger = createServiceLogger('MIDDLEWARE');
 
 // Configurar axios con la URL base del backend (usando nginx proxy)
 // NOTA: Los servicios individuales manejan sus propias URLs completas
@@ -13,7 +17,7 @@ axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 404) {
-      console.error('Endpoint no encontrado:', error.config.url);
+      logger.error('Endpoint no encontrado:', error.config.url);
     }
     return Promise.reject(error);
   },

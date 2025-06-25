@@ -5,6 +5,7 @@
  * con limpieza automática y manejo de expiración
  */
 
+import { createServiceLogger, DEBUG_MODE } from '../config/appConfig';
 import { roundToDecimals } from './universalDataMapper';
 
 // Constantes de configuración
@@ -20,20 +21,22 @@ const STORAGE_KEYS = {
 
 const TIMER_DURATION = 30 * 60 * 1000; // 30 minutos en millisegundos
 const WARNING_TIME = 5 * 60 * 1000; // Avisar 5 minutos antes
-const DEBUG_MODE = false; //process.env.NODE_ENV === 'development';
+
+// Crear logger para el servicio de almacenamiento
+const logger = createServiceLogger('RESERVATION_STORAGE');
 
 /**
- * Helper para logging condicional
+ * Helper para logging condicional usando la configuración centralizada
  */
 const logInfo = (message, data = null) => {
   if (DEBUG_MODE) {
-    console.log(`[ReservationStorage] ${message}`, data || '');
+    logger.info(`${message}`, data || '');
   }
 };
 
 const logError = (message, error = null) => {
   if (DEBUG_MODE) {
-    console.error(`[ReservationStorage] ${message}`, error || '');
+    logger.error(`${message}`, error || '');
   }
 };
 
@@ -621,8 +624,8 @@ class ReservationStorageService {
     // Si no hay datos de reserva, no hay reserva activa
     if (!data) {
       if (DEBUG_MODE) {
-        console.log(
-          '[ReservationStorage] hasActiveReservation = false: No reservation data',
+        logInfo(
+          'hasActiveReservation = false: No reservation data',
         );
       }
       return false;
@@ -631,8 +634,8 @@ class ReservationStorageService {
     // Si la reserva está marcada como completada, está activa pero no necesita timer
     if (step === 'completed') {
       if (DEBUG_MODE) {
-        console.log(
-          '[ReservationStorage] hasActiveReservation = true: Reservation completed',
+        logInfo(
+          'hasActiveReservation = true: Reservation completed',
         );
       }
       return true;
@@ -641,8 +644,8 @@ class ReservationStorageService {
     // Si no hay timer start, la reserva no está activa (se requiere timer para validez)
     if (!timerStart) {
       if (DEBUG_MODE) {
-        console.log(
-          '[ReservationStorage] hasActiveReservation = false: No timer start found',
+        logInfo(
+          'hasActiveReservation = false: No timer start found',
         );
       }
       return false;
@@ -653,7 +656,7 @@ class ReservationStorageService {
     const isActive = elapsed < TIMER_DURATION;
 
     if (DEBUG_MODE) {
-      console.log('[ReservationStorage] hasActiveReservation =', isActive, {
+      logInfo('hasActiveReservation =', isActive, {
         elapsed: Math.round(elapsed / 1000) + 's',
         duration: Math.round(TIMER_DURATION / 1000) + 's',
         step: step,
@@ -663,8 +666,8 @@ class ReservationStorageService {
     // Si ha expirado, limpiar datos automáticamente
     if (!isActive) {
       if (DEBUG_MODE) {
-        console.log(
-          '[ReservationStorage] Reservation expired, cleaning up data',
+        logInfo(
+          'Reservation expired, cleaning up data',
         );
       }
       this.clearAllReservationData();

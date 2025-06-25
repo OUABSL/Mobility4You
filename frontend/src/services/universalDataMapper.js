@@ -29,15 +29,13 @@
  * - Extras (extras)
  * - Conductores (drivers)
  *
- * @author Mobility for You Team
+ * @author OUAEL BOUSSIALI
  * @version 4.0.0
  * @created 2025-06-20
  */
 
-import {
-  shouldUseTestingData,
-  testingLocationsData,
-} from '../assets/testingData/testingData';
+import { testingLocationsData } from '../assets/testingData/testingData';
+import { API_URL, createServiceLogger, DEBUG_MODE, shouldUseTestingData } from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import { getCachedData, invalidateCache, setCachedData } from './cacheService';
 import { withTimeout } from './func';
@@ -45,7 +43,6 @@ import { withTimeout } from './func';
 // ========================================
 // CONFIGURACIÓN GLOBAL
 // ========================================
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const CONFIG = {
   CACHE: {
@@ -61,26 +58,29 @@ const CONFIG = {
     default: 8000,
     locations: 10000,
   },
-  DEBUG_MODE: true, // Forzar debug mode para depuración
+  // Usar el DEBUG_MODE centralizado de la configuración
+  DEBUG_MODE,
 };
 
 // ========================================
 // LOGGING CENTRALIZADO
 // ========================================
+const appLogger = createServiceLogger('UNIVERSAL_MAPPER');
+
 const logger = {
   info: (message, data = null) => {
     if (CONFIG.DEBUG_MODE) {
-      console.log(`🚀 [UNIVERSAL_MAPPER] ${message}`, data || '');
+      appLogger.info(`🚀 [UNIVERSAL_MAPPER] ${message}`, data || '');
     }
   },
   warn: (message, data = null) => {
     if (CONFIG.DEBUG_MODE) {
-      console.warn(`⚠️ [UNIVERSAL_MAPPER] ${message}`, data || '');
+      appLogger.warn(`⚠️ [UNIVERSAL_MAPPER] ${message}`, data || '');
     }
   },
   error: (message, error = null, data = null) => {
     if (CONFIG.DEBUG_MODE) {
-      console.error(
+      appLogger.error(
         `❌ [UNIVERSAL_MAPPER] ${message}`,
         error || '',
         data || '',
@@ -301,6 +301,97 @@ const MAPPING_SCHEMAS = {
     },
   },
 
+  // POLÍTICAS DE PAGO: Backend -> Frontend
+  policies: {
+    fromBackend: {
+      id: {
+        sources: ['id'],
+        required: true,
+        validator: positiveNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, null),
+      },
+      titulo: {
+        sources: ['titulo'],
+        required: true,
+        validator: (v) => typeof v === 'string' && v.length > 0,
+      },
+      descripcion: {
+        sources: ['descripcion'],
+        default: '',
+        validator: (v) => typeof v === 'string',
+      },
+      deductible: {
+        sources: ['deductible'],
+        default: 0,
+        validator: nonNegativeNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
+      // Campo de compatibilidad legacy
+      franquicia: {
+        sources: ['deductible'],
+        default: 0,
+        validator: nonNegativeNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
+      activo: {
+        sources: ['activo'],
+        default: true,
+        validator: (v) => typeof v === 'boolean',
+      },
+      incluye: {
+        sources: ['items'],
+        default: [],
+        transformer: (item, value) => {
+          if (!Array.isArray(value)) return [];
+          return value
+            .filter(i => i.incluye === true || i.incluye === 1)
+            .map(i => ({
+              id: i.id || Date.now() + Math.random(),
+              titulo: i.item,
+              descripcion: i.descripcion || ''
+            }));
+        },
+      },
+      no_incluye: {
+        sources: ['items'],
+        default: [],
+        transformer: (item, value) => {
+          if (!Array.isArray(value)) return [];
+          return value
+            .filter(i => i.incluye === false || i.incluye === 0)
+            .map(i => ({
+              id: i.id || Date.now() + Math.random(),
+              titulo: i.item,
+              descripcion: i.descripcion || ''
+            }));
+        },
+      },
+      penalizaciones: {
+        sources: ['penalizaciones'],
+        default: [],
+        transformer: (item, value) => {
+          if (!Array.isArray(value)) return [];
+          return value.map(p => ({
+            tipo: p.tipo_penalizacion?.nombre || 'No especificado',
+            horas_previas: p.horas_previas || 0,
+            valor: p.tipo_penalizacion?.valor_tarifa || 0,
+            tipo_tarifa: p.tipo_penalizacion?.tipo_tarifa || 'fijo'
+          }));
+        },
+      },
+      created_at: {
+        sources: ['created_at'],
+        default: null,
+        transformer: (item, value) => value ? new Date(value).toISOString() : null,
+      },
+      updated_at: {
+        sources: ['updated_at'],
+        default: null,
+        transformer: (item, value) => value ? new Date(value).toISOString() : null,
+      },
+    },
+  },
+
   // TESTIMONIOS: Backend -> Frontend
   testimonials: {
     fromBackend: {
@@ -433,7 +524,32 @@ const MAPPING_SCHEMAS = {
         required: true,
         transformer: (item, value) => {
           if (typeof value === 'number') return value;
+          
+          // Si es un objeto (como los de FichaCoche), extraer el ID
+          if (typeof value === 'object' && value !== null) {
+            // Primero intentar extraer de originalData
+            if (value.originalData && value.originalData.id) {
+              return value.originalData.id;
+            }
+            // Si no hay originalData, buscar en id directo
+            if (value.id) {
+              // Si el id es string del tipo "politica-N", extraer N
+              if (typeof value.id === 'string' && value.id.startsWith('politica-')) {
+                const numericId = parseInt(value.id.replace('politica-', ''));
+                if (!isNaN(numericId)) return numericId;
+              }
+              // Si es numérico, devolverlo directamente
+              if (typeof value.id === 'number') return value.id;
+            }
+          }
+          
           if (typeof value === 'string') {
+            // Si es string del tipo "politica-N", extraer N
+            if (value.startsWith('politica-')) {
+              const numericId = parseInt(value.replace('politica-', ''));
+              if (!isNaN(numericId)) return numericId;
+            }
+            // Mapeos predefinidos para compatibilidad
             const mappings = {
               'all-inclusive': 1,
               economy: 2,
@@ -645,13 +761,13 @@ function extractByPath(obj, path) {
     }, obj);
 
     if (CONFIG.DEBUG_MODE) {
-      console.log(`[EXTRACT_PATH] ${path} from object -> ${result}`);
+      appLogger.info(`[EXTRACT_PATH] ${path} from object -> ${result}`);
     }
 
     return result;
   } catch (error) {
     if (CONFIG.DEBUG_MODE) {
-      console.warn(`[EXTRACT_PATH] Error extracting ${path}:`, error);
+      appLogger.warn(`[EXTRACT_PATH] Error extracting ${path}:`, error);
     }
     return undefined;
   }
@@ -1230,6 +1346,15 @@ class UniversalDataMapper {
   }
 
   /**
+   * Mapea políticas de pago del backend al frontend
+   * @param {Array} backendData - Datos del backend
+   * @returns {Promise<Array>} Políticas mapeadas
+   */
+  async mapPolicies(backendData) {
+    return await this.mapData(backendData, 'policies', 'fromBackend');
+  }
+
+  /**
    * Mapea datos de reservación del frontend al backend
    * @param {object} frontendData - Datos del frontend
    * @returns {Promise<object>} Datos de reservación mapeados
@@ -1299,48 +1424,48 @@ class UniversalDataMapper {
    * @returns {Promise<object>} Datos de reservación mapeados con logs detallados
    */
   async debugReservationMapping(frontendData) {
-    console.log('🔍 [DEBUG RESERVATION MAPPING] Iniciando debug...');
-    console.log('📋 Datos de entrada:', JSON.stringify(frontendData, null, 2));
+    appLogger.info('🔍 [DEBUG RESERVATION MAPPING] Iniciando debug...');
+    appLogger.info('📋 Datos de entrada:', JSON.stringify(frontendData, null, 2));
 
     // Verificar campos específicos que están causando problemas
-    console.log('🎯 Verificando campos específicos:');
-    console.log('- car.id:', extractByPath(frontendData, 'car.id'));
-    console.log(
+    appLogger.info('🎯 Verificando campos específicos:');
+    appLogger.info('- car.id:', extractByPath(frontendData, 'car.id'));
+    appLogger.info(
       '- fechas.pickupLocation.id:',
       extractByPath(frontendData, 'fechas.pickupLocation.id'),
     );
-    console.log(
+    appLogger.info(
       '- fechas.dropoffLocation.id:',
       extractByPath(frontendData, 'fechas.dropoffLocation.id'),
     );
-    console.log(
+    appLogger.info(
       '- fechas.pickupDate:',
       extractByPath(frontendData, 'fechas.pickupDate'),
     );
-    console.log(
+    appLogger.info(
       '- fechas.dropoffDate:',
       extractByPath(frontendData, 'fechas.dropoffDate'),
     );
-    console.log(
+    appLogger.info(
       '- paymentOption:',
       extractByPath(frontendData, 'paymentOption'),
     );
-    console.log(
+    appLogger.info(
       '- detallesReserva.total:',
       extractByPath(frontendData, 'detallesReserva.total'),
     );
-    console.log(
+    appLogger.info(
       '- detallesReserva.precioCocheBase:',
       extractByPath(frontendData, 'detallesReserva.precioCocheBase'),
     );
 
-    console.log('🔧 Procediendo con mapeo normal...');
+    appLogger.info('🔧 Procediendo con mapeo normal...');
     try {
       const result = await this.mapReservationToBackend(frontendData);
-      console.log('✅ Mapeo exitoso:', JSON.stringify(result, null, 2));
+      appLogger.info('✅ Mapeo exitoso:', JSON.stringify(result, null, 2));
       return result;
     } catch (error) {
-      console.error('❌ Error en mapeo:', error);
+      appLogger.error('❌ Error en mapeo:', error);
       throw error;
     }
   }
@@ -1525,6 +1650,7 @@ export const mapDestinations = (data) => universalMapper.mapDestinations(data);
 export const mapTestimonials = (data) => universalMapper.mapTestimonials(data);
 export const mapLocations = (data) => universalMapper.mapLocations(data);
 export const mapVehicles = (data) => universalMapper.mapVehicles(data);
+export const mapPolicies = (data) => universalMapper.mapPolicies(data);
 export const mapReservationToBackend = (data) =>
   universalMapper.mapReservationToBackend(data);
 

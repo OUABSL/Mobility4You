@@ -1,10 +1,12 @@
 // src/services/contactService.js
 import axios from 'axios';
+import { BACKEND_URL, createServiceLogger } from '../config/appConfig';
 
 // Configuración del backend
-const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 const API_BASE_URL = `${BACKEND_URL}/api/comunicacion`;
+
+// Crear logger para el servicio de contacto
+const logger = createServiceLogger('CONTACT_SERVICE');
 
 // Configuración de axios para el servicio de contacto
 const contactAPI = axios.create({
@@ -20,7 +22,7 @@ contactAPI.interceptors.response.use(
   (response) => response,
   (error) => {
     // Log del error para debugging
-    console.error('Contact API Error:', error);
+    logger.error('Contact API Error:', error);
 
     // Personalizar mensajes de error
     if (error.code === 'ECONNABORTED') {

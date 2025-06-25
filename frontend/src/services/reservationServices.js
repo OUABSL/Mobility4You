@@ -6,26 +6,34 @@ import universalMapper, {
 } from './universalDataMapper';
 
 import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
-import {
-  DEBUG_MODE,
+import { 
+  DEBUG_MODE, 
   shouldUseTestingData,
-} from '../assets/testingData/testingData';
+  createServiceLogger,
+  API_URLS,
+  TIMEOUT_CONFIG
+} from '../config/appConfig';
+import { withCache } from './cacheService';
+import { withTimeout } from './func';
 import { validateReservationData } from '../validations/reservationValidations'; // Importar validaciones
 import { fetchLocations } from './searchServices'; // Import para obtener ubicaciones
 
 // URL base de la API
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = API_URLS.BASE;
 
-// Funciones de logging condicional - ahora usando DEBUG_MODE centralizado
+// Logger específico para este servicio
+const logger = createServiceLogger('RESERVATIONS');
+
+// Helper functions para logging condicional
 const logInfo = (message, data = null) => {
-  if (shouldUseTestingData(false)) {
-    console.log(`[RESERVATIONS] ${message}`, data);
+  if (DEBUG_MODE) {
+    logger.info(message, data);
   }
 };
 
 const logError = (message, error = null) => {
-  if (shouldUseTestingData(false)) {
-    console.error(`[RESERVATIONS ERROR] ${message}`, error);
+  if (DEBUG_MODE) {
+    logger.error(message, error);
   }
 };
 
@@ -111,7 +119,7 @@ export const createReservation = async (data) => {
       throw new Error('Error procesando las fechas de reserva');
     }
 
-    console.log('Sending reservation data:', mappedData);
+    logger.info('Sending reservation data:', mappedData);
     const response = await axios.post(
       `${API_URL}/reservas/reservas/`,
       mappedData,
@@ -119,8 +127,8 @@ export const createReservation = async (data) => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error creating reservation:', error);
-    console.error('Error response:', error.response);
+    logger.error('Error creating reservation:', error);
+    logger.error('Error response:', error.response);
 
     // Manejo mejorado de errores
     if (!error.response) {
@@ -246,7 +254,7 @@ export const findReservation = async (reservaId, email) => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error finding reservation:', error);
+    logger.error('Error finding reservation:', error);
     const errorMessage =
       error.response?.data?.detail ||
       error.response?.data?.message ||
@@ -342,7 +350,7 @@ export const calculateReservationPrice = async (data) => {
 
     return response.data;
   } catch (error) {
-    console.error('Error calculating reservation price:', error);
+    logger.error('Error calculating reservation price:', error);
     const errorMessage =
       error.response?.data?.detail ||
       error.response?.data?.message ||
@@ -407,7 +415,7 @@ export const editReservation = async (reservaId, data) => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error editing reservation:', error);
+    logger.error('Error editing reservation:', error);
     const errorMessage =
       error.response?.data?.detail ||
       error.response?.data?.message ||
@@ -487,7 +495,7 @@ export const deleteReservation = async (reservaId) => {
       getAuthHeaders(),
     );
   } catch (error) {
-    console.error('Error canceling reservation:', error);
+    logger.error('Error canceling reservation:', error);
     const errorMessage =
       error.response?.data?.detail ||
       error.response?.data?.message ||
@@ -599,7 +607,7 @@ export const getExtrasDisponibles = async () => {
       throw new Error('Formato de respuesta inesperado');
     }
   } catch (error) {
-    console.error('Error fetching extras:', error);
+    logger.error('Error fetching extras:', error);
     const errorMessage =
       error.response?.data?.detail ||
       error.response?.data?.message ||
@@ -723,7 +731,7 @@ export const getExtrasAvailable = async () => {
       throw new Error('Formato de respuesta inesperado');
     }
   } catch (error) {
-    console.error('Error fetching available extras:', error);
+    logger.error('Error fetching available extras:', error);
     // Fallback a la función principal si el endpoint específico falla
     return await getExtrasDisponibles();
   }
@@ -750,7 +758,7 @@ export const getExtrasPorPrecio = async (orden = 'asc') => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error fetching extras by price:', error);
+    logger.error('Error fetching extras by price:', error);
     // Fallback a la función principal y ordenar localmente
     const extras = await getExtrasDisponibles();
     return extras.sort((a, b) =>
@@ -1523,7 +1531,7 @@ const getCachedLocations = async () => {
     try {
       locationsCache = await fetchLocations();
     } catch (error) {
-      console.error('Error loading locations for lookup:', error);
+      logger.error('Error loading locations for lookup:', error);
       // Return empty array if locations can't be loaded
       locationsCache = [];
     }
@@ -1621,17 +1629,17 @@ const findLocationIdByName = async (locationName) => {
     );
 
     if (partialMatch) {
-      console.warn(
+      logger.warn(
         `Location exact match not found for "${locationName}", using partial match: "${partialMatch.nombre}"`,
       );
       return partialMatch.id;
     }
 
     // No fallbacks - report the error instead
-    console.error(`Location not found: "${locationName}"`);
+    logger.error(`Location not found: "${locationName}"`);
     return null;
   } catch (error) {
-    console.error('Error finding location ID by name:', error);
+    logger.error('Error finding location ID by name:', error);
 
     // No fallbacks in case of error - return null and let caller handle it
     return null;
@@ -1726,7 +1734,7 @@ const mapPaymentOptionToId = (paymentOption) => {
     const mappedId = mappings[lowercaseOption];
 
     if (DEBUG_MODE && !mappedId) {
-      console.warn(
+      logger.warn(
         `[mapPaymentOptionToId] Unknown payment option: "${paymentOption}"`,
       );
     }
@@ -2093,87 +2101,82 @@ const mapReservationDataToBackend_FALLBACK = async (data) => {
  * @throws {Error} - Error específico si hay problemas de conexión o formato inesperado
  */
 export const fetchPoliticasPago = async () => {
-  try {
-    if (DEBUG_MODE) {
-      // Simular delay y devolver datos de prueba
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Importar datos de testing
-      const { testingPoliticas } = await import(
-        '../assets/testingData/testingData.js'
+  return await withCache('policies', async () => {
+    try {
+      // PRIMERA PRIORIDAD: Consultar API de Django
+      logger.info('Consultando políticas de pago desde API de Django');
+      const response = await withTimeout(
+        axios.get(`${API_URL}/politicas/politicas-pago/`, {
+          params: { activo: true },
+        }),
+        TIMEOUT_CONFIG.POLICIES,
       );
 
-      // Filtrar solo las políticas activas
-      return testingPoliticas.filter((politica) => politica.activo === true);
-    }
+      // Normalizar respuesta del backend
+      let dataArray = response.data;
+      if (!Array.isArray(dataArray)) {
+        // Manejar estructura {success: true, results: [...]} o {count: N, results: [...]}
+        if (dataArray.results && Array.isArray(dataArray.results)) {
+          dataArray = dataArray.results;
+        } else {
+          throw new Error('Formato de respuesta inesperado de la API');
+        }
+      }
 
-    // Producción: llamada real a la API
-    const response = await axios.get(
-      `${API_URL}/politicas/politicas-pago/`,
-      getAuthHeaders(),
-    );
+      // Filtrar solo políticas activas
+      const activePolicies = dataArray.filter(policy => policy.activo !== false);
 
-    // Manejar la respuesta que puede tener estructura {success: true, results: [...]} o ser directamente un array
-    if (response.data && response.data.results) {
-      return response.data.results;
-    } else if (Array.isArray(response.data)) {
-      return response.data;
-    } else {
-      throw new Error('Formato de respuesta inesperado');
-    }
-  } catch (error) {
-    console.error('Error fetching payment policies:', error);
+      // Usar el mapper universal para normalizar datos y transformar al formato del componente
+      const mappedData = await universalMapper.mapPolicies(activePolicies);
 
-    // En caso de error en producción, fallback a datos de testing si DEBUG_MODE está habilitado
-    if (DEBUG_MODE) {
-      try {
-        console.warn(
-          'Fallback: usando datos de testing para políticas de pago',
-        );
-        const { testingPoliticas } = await import(
+      // Transformar los datos mapeados al formato específico requerido por FichaCoche
+      const transformedForComponent = mappedData.map(politica => ({
+        id: `politica-${politica.id}`,
+        title: politica.titulo,
+        deductible: politica.deductible,
+        descripcion: politica.descripcion,
+        incluye: politica.incluye.map(item => item.titulo),
+        noIncluye: politica.no_incluye.map(item => item.titulo),
+        originalData: politica // Guardar datos originales para la reserva
+      }));
+
+      logger.info('Políticas de pago cargadas y transformadas desde API de Django', { 
+        count: transformedForComponent.length,
+        policies: transformedForComponent.map(p => ({ 
+          id: p.id, 
+          title: p.title, 
+          deductible: p.deductible,
+          incluye_count: p.incluye.length,
+          noIncluye_count: p.noIncluye.length
+        }))
+      });
+
+      return transformedForComponent;
+
+    } catch (error) {
+      logger.error('Error al consultar políticas de pago desde API de Django', error);
+
+      // FALLBACK: Solo si DEBUG_MODE está activo Y la API falló
+      if (shouldUseTestingData(true)) {
+        logger.info('Fallback: usando datos de testing para políticas de pago');
+        
+        const { testingPaymentOptions } = await import(
           '../assets/testingData/testingData.js'
         );
-        return testingPoliticas.filter((politica) => politica.activo === true);
-      } catch (fallbackError) {
-        console.error(
-          'Error al cargar datos de testing de políticas:',
-          fallbackError,
-        );
-        // Devolver políticas básicas por defecto
-        return [
-          {
-            id: 1,
-            titulo: 'All Inclusive',
-            descripcion: 'Protección completa sin franquicia',
-            franquicia: 0,
-            activo: true,
-            incluye: [],
-            no_incluye: [],
-          },
-          {
-            id: 2,
-            titulo: 'Economy',
-            descripcion: 'Protección básica con franquicia',
-            franquicia: 1200,
-            activo: true,
-            incluye: [],
-            no_incluye: [],
-          },
-        ];
+
+        // Las opciones de testing ya vienen en el formato correcto
+        logger.info('Políticas de pago cargadas desde datos de testing', { 
+          count: testingPaymentOptions.length 
+        });
+
+        return testingPaymentOptions;
       }
+
+      // EN PRODUCCIÓN: Error sin fallback
+      logger.error('Error en producción - no hay datos de políticas disponibles');
+      throw new Error(
+        'Error al cargar políticas de pago. Por favor, intente nuevamente.',
+      );
     }
-
-    const errorMessage =
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
-      error.response?.data?.error ||
-      error.message ||
-      'Error al obtener las políticas de pago disponibles.';
-
-    throw new Error(
-      typeof errorMessage === 'string'
-        ? errorMessage
-        : 'Error al obtener las políticas de pago disponibles.',
-    );
-  }
+  });
 };

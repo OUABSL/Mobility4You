@@ -1,15 +1,14 @@
 // src/services/searchServices.js
-import {
-  DEBUG_MODE,
-  shouldUseTestingData,
-  testingLocationsData,
-} from '../assets/testingData/testingData';
+import { testingLocationsData } from '../assets/testingData/testingData';
+import { API_URL, createServiceLogger, shouldUseTestingData } from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import { withCache } from './cacheService';
 import { withTimeout } from './func';
 
-// Constante para modo debug - ahora centralizada
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+// Crear logger para el servicio de búsqueda
+const logger = createServiceLogger('SEARCH_SERVICE');
+
+
 
 /**
  * Obtiene las ubicaciones disponibles para recogida/devolución
@@ -34,7 +33,7 @@ export const fetchLocations = async () => {
         if (response.data.results && Array.isArray(response.data.results)) {
           // Formato estructurado: {success: true, count: X, results: [...]}
           locations = response.data.results;
-          console.log(
+          logger.info(
             '✅ [fetchLocations] Datos cargados desde BD (estructura nueva):',
             locations.length,
             'ubicaciones',
@@ -42,13 +41,13 @@ export const fetchLocations = async () => {
         } else if (Array.isArray(response.data)) {
           // Formato directo legacy: []
           locations = response.data;
-          console.log(
+          logger.info(
             '✅ [fetchLocations] Datos cargados desde BD (array directo):',
             locations.length,
             'ubicaciones',
           );
         } else {
-          console.warn(
+          logger.warn(
             '⚠️ [fetchLocations] Formato de respuesta inesperado:',
             response.data,
           );
@@ -56,7 +55,7 @@ export const fetchLocations = async () => {
         }
       } else {
         // El backend devolvió success: false
-        console.warn(
+        logger.warn(
           '⚠️ [fetchLocations] Backend devolvió error:',
           response.data.message || response.data.error || 'Error desconocido',
         );
@@ -69,7 +68,7 @@ export const fetchLocations = async () => {
           localStorage.setItem('cachedLocations', JSON.stringify(locations));
           localStorage.setItem('cacheTimestamp', Date.now().toString());
         } catch (e) {
-          console.warn('⚠️ No se pudo guardar cache de ubicaciones:', e);
+          logger.warn('⚠️ No se pudo guardar cache de ubicaciones:', e);
         }
       }
 
@@ -91,7 +90,7 @@ export const fetchLocations = async () => {
           errorMessage = `Error HTTP ${status}: ${error.response.statusText}`;
         } // Para errores 404, no hay lugares disponibles
         if (status === 404) {
-          console.warn(
+          logger.warn(
             '⚠️ [fetchLocations] No hay lugares disponibles en la base de datos',
           );
           // En caso de 404, devolver array vacío sin intentar fallbacks
@@ -100,22 +99,22 @@ export const fetchLocations = async () => {
         // Para errores 500, intentar fallback
         else if (status >= 500) {
           shouldUseFallback = true;
-          console.error(
+          logger.error(
             '❌ [fetchLocations] Error del servidor:',
             errorMessage,
           );
         } else if (status >= 400) {
-          console.warn('⚠️ [fetchLocations] Error del cliente:', errorMessage);
+          logger.warn('⚠️ [fetchLocations] Error del cliente:', errorMessage);
         }
       } else if (error.request) {
         // No hubo respuesta del servidor
         errorMessage = 'Sin respuesta del servidor';
         shouldUseFallback = true;
-        console.error('❌ [fetchLocations] Sin respuesta del servidor');
+        logger.error('❌ [fetchLocations] Sin respuesta del servidor');
       } else {
         // Error en la configuración de la petición
         errorMessage = error.message;
-        console.error(
+        logger.error(
           '❌ [fetchLocations] Error de configuración:',
           errorMessage,
         );
@@ -123,7 +122,7 @@ export const fetchLocations = async () => {
 
       // Intentar recuperación desde cache para errores de servidor
       if (shouldUseFallback) {
-        console.warn(
+        logger.warn(
           '🔄 [fetchLocations] Intentando recuperación desde cache...',
         );
 
@@ -135,23 +134,23 @@ export const fetchLocations = async () => {
             const cacheAge = Date.now() - parseInt(cacheTimestamp);
             // Usar cache si tiene menos de 24 horas
             if (cacheAge < 24 * 60 * 60 * 1000) {
-              console.log(
+              logger.info(
                 '✅ [fetchLocations] Usando ubicaciones cacheadas como fallback',
               );
               return JSON.parse(cachedLocations);
             } else {
-              console.warn('⚠️ [fetchLocations] Cache expirado (>24h)');
+              logger.warn('⚠️ [fetchLocations] Cache expirado (>24h)');
             }
           }
         } catch (cacheError) {
-          console.warn(
+          logger.warn(
             '⚠️ [fetchLocations] Error accediendo al cache local:',
             cacheError,
           );
         }
       } // FALLBACK FINAL: Solo si DEBUG_MODE está activo Y el backend falló
       if (shouldUseFallback && shouldUseTestingData(true)) {
-        console.log(
+        logger.info(
           '🔄 [fetchLocations] Usando datos de testing como último recurso (DEBUG_MODE + backend error)',
         );
         await new Promise((resolve) => setTimeout(resolve, 300)); // Simular delay de red
@@ -159,7 +158,7 @@ export const fetchLocations = async () => {
       }
 
       // EN PRODUCCIÓN: Devolver array vacío para evitar crashes
-      console.error(
+      logger.error(
         '❌ [fetchLocations] Sin fallbacks disponibles - modo producción o DEBUG_MODE desactivado',
       );
       return [];
@@ -277,7 +276,7 @@ export const searchAvailableVehicles = async (searchParams) => {
         throw new Error(errorMessage);
       }
 
-      console.log(
+      logger.info(
         '🔍 [searchAvailableVehicles] Consultando disponibilidad en BD con parámetros:',
         searchParams,
       );
@@ -317,7 +316,7 @@ export const searchAvailableVehicles = async (searchParams) => {
         12000,
       );
 
-      console.log(
+      logger.info(
         '✅ [searchAvailableVehicles] Datos cargados desde BD:',
         response.data.count,
         'vehículos disponibles',
@@ -343,7 +342,7 @@ export const searchAvailableVehicles = async (searchParams) => {
           extractFilterOptions(response.data.results || []),
       };
     } catch (error) {
-      console.warn(
+      logger.warn(
         '⚠️ [searchAvailableVehicles] Error consultando BD:',
         error.message,
       );
@@ -365,8 +364,8 @@ export const searchAvailableVehicles = async (searchParams) => {
       }
 
       // FALLBACK: Solo si DEBUG_MODE está activo
-      if (DEBUG_MODE) {
-        console.log(
+      if (shouldUseTestingData(true)) {
+        logger.info(
           '🔄 [searchAvailableVehicles] Usando datos de testing como fallback',
         );
 
@@ -449,13 +448,13 @@ export const saveSearchParams = (searchParams) => {
     };
 
     sessionStorage.setItem('reservaData', JSON.stringify(updatedData));
-    console.log(
+    logger.info(
       '💾 [saveSearchParams] Datos guardados correctamente:',
       updatedData,
     );
     return true;
   } catch (error) {
-    console.error('❌ [saveSearchParams] Error saving search params:', error);
+    logger.error('❌ [saveSearchParams] Error saving search params:', error);
     return false;
   }
 };
@@ -482,7 +481,7 @@ export const getStoredSearchParams = () => {
       mayor21: data.mayor21,
     };
   } catch (error) {
-    console.error('Error retrieving search params:', error);
+    logger.error('Error retrieving search params:', error);
     return null;
   }
 };

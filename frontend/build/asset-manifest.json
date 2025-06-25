@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/static/css/main.2ca1585d.css",
-    "main.js": "/static/js/main.e6c7ec44.js",
+    "main.css": "/static/css/main.24490be3.css",
+    "main.js": "/static/js/main.7d19e962.js",
     "static/js/453.d855a71b.chunk.js": "/static/js/453.d855a71b.chunk.js",
     "static/media/gps.png": "/static/media/gps.ba702c909300b932a87c.png",
     "static/media/BMW-320i-M-Sport.jpg": "/static/media/BMW-320i-M-Sport.11a60d044b4aba3563d2.jpg",
@@ -14,15 +14,14 @@
     "static/media/logo_home_horizontal.png": "/static/media/logo_home_horizontal.673a3e2d0664baa9acd1.png",
     "static/media/wifi.png": "/static/media/wifi.a1c9e711d93b3db28cd7.png",
     "static/media/automatic-gear.svg": "/static/media/automatic-gear.dc70d94fdbd40f6efa0debb0f95f4abe.svg",
-    "static/media/gear-stick-manual.svg": "/static/media/gear-stick-manual.bf73dd0902b69badfb008b636a613121.svg",
     "index.html": "/index.html",
     "static/media/car-door-left.svg": "/static/media/car-door-left.a2e43805f19de18d6d3938d05a338727.svg",
-    "main.2ca1585d.css.map": "/static/css/main.2ca1585d.css.map",
-    "main.e6c7ec44.js.map": "/static/js/main.e6c7ec44.js.map",
+    "main.24490be3.css.map": "/static/css/main.24490be3.css.map",
+    "main.7d19e962.js.map": "/static/js/main.7d19e962.js.map",
     "453.d855a71b.chunk.js.map": "/static/js/453.d855a71b.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.2ca1585d.css",
-    "static/js/main.e6c7ec44.js"
+    "static/css/main.24490be3.css",
+    "static/js/main.7d19e962.js"
   ]
 }

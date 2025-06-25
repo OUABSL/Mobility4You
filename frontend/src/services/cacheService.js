@@ -1,5 +1,7 @@
 // src/services/cacheService.js
 
+import { CACHE_CONFIG, createServiceLogger } from '../config/appConfig';
+
 /**
  * Servicio de caché global para evitar llamadas duplicadas a la API
  * Implementa un sistema de caché en memoria con invalidación automática
@@ -9,33 +11,11 @@
 const dataCache = new Map();
 const pendingRequests = new Map();
 
-// Configuración de caché por tipo de dato
-const CACHE_CONFIG = {
-  locations: {
-    key: 'app_locations',
-    ttl: 30 * 60 * 1000, // 30 minutos
-  },
-  cars: {
-    key: 'app_cars',
-    ttl: 10 * 60 * 1000, // 10 minutos
-  },
-  stats: {
-    key: 'app_stats',
-    ttl: 60 * 60 * 1000, // 1 hora
-  },
-  features: {
-    key: 'app_features',
-    ttl: 60 * 60 * 1000, // 1 hora
-  },
-  testimonials: {
-    key: 'app_testimonials',
-    ttl: 30 * 60 * 1000, // 30 minutos
-  },
-  destinations: {
-    key: 'app_destinations',
-    ttl: 60 * 60 * 1000, // 1 hora
-  },
-};
+// Crear logger para el servicio de caché
+const logger = createServiceLogger('CACHE');
+
+// Configuración de caché por tipo de dato - ahora viene del config centralizado
+// Las claves se mantienen aquí por compatibilidad, pero TTL viene de appConfig
 
 /**
  * Obtiene datos del caché si están vigentes
@@ -52,7 +32,7 @@ const getCachedData = (cacheKey) => {
     return null;
   }
 
-  console.log(
+  logger.info(
     `📦 [CACHE HIT] ${cacheKey} - datos válidos hasta`,
     new Date(cached.expiry),
   );
@@ -72,7 +52,7 @@ const setCachedData = (cacheKey, data, ttl) => {
     expiry,
     timestamp: Date.now(),
   });
-  console.log(`💾 [CACHE SET] ${cacheKey} - válido hasta`, new Date(expiry));
+  logger.info(`💾 [CACHE SET] ${cacheKey} - válido hasta`, new Date(expiry));
 };
 
 /**
@@ -81,7 +61,7 @@ const setCachedData = (cacheKey, data, ttl) => {
  */
 const invalidateCache = (cacheKey) => {
   dataCache.delete(cacheKey);
-  console.log(`🗑️ [CACHE INVALIDATED] ${cacheKey}`);
+  logger.info(`🗑️ [CACHE INVALIDATED] ${cacheKey}`);
 };
 
 /**
@@ -90,7 +70,7 @@ const invalidateCache = (cacheKey) => {
 const clearAllCache = () => {
   dataCache.clear();
   pendingRequests.clear();
-  console.log('🧹 [CACHE CLEARED] Todo el caché ha sido limpiado');
+  logger.info('🧹 [CACHE CLEARED] Todo el caché ha sido limpiado');
 };
 
 /**
@@ -116,7 +96,7 @@ const withCache = async (dataType, fetchFunction) => {
 
   // 2. Verificar si hay una petición pendiente para evitar duplicados
   if (pendingRequests.has(cacheKey)) {
-    console.log(
+    logger.info(
       `⏳ [CACHE PENDING] Esperando petición en curso para ${cacheKey}`,
     );
     return await pendingRequests.get(cacheKey);
@@ -125,7 +105,7 @@ const withCache = async (dataType, fetchFunction) => {
   // 3. Crear nueva petición y almacenarla como pendiente
   const fetchPromise = (async () => {
     try {
-      console.log(`🌐 [CACHE FETCH] Obteniendo datos frescos para ${cacheKey}`);
+      logger.info(`🌐 [CACHE FETCH] Obteniendo datos frescos para ${cacheKey}`);
       const data = await fetchFunction();
 
       // Almacenar en caché solo si la respuesta es válida
@@ -135,7 +115,7 @@ const withCache = async (dataType, fetchFunction) => {
 
       return data;
     } catch (error) {
-      console.error(
+      logger.error(
         `❌ [CACHE ERROR] Error obteniendo ${cacheKey}:`,
         error.message,
       );
@@ -146,7 +126,7 @@ const withCache = async (dataType, fetchFunction) => {
         error.message.includes('502') ||
         error.message.includes('Connection refused')
       ) {
-        console.warn(
+        logger.warn(
           `🚫 [CACHE] Evitando reintento automático para ${cacheKey} debido a error de conexión`,
         );
         throw new Error(
@@ -212,7 +192,6 @@ const getCacheStats = () => {
 };
 
 export {
-  CACHE_CONFIG,
   clearAllCache,
   getCachedData,
   getCacheStats,

@@ -1,7 +1,11 @@
 // No imports are needed for this function as it only uses built-in JavaScript features.
 // Just export the function as you have done.
 
+import { createServiceLogger } from '../config/appConfig';
 import universalMapper from './universalDataMapper';
+
+// Crear logger para utilidades
+const logger = createServiceLogger('FUNC_UTILS');
 
 export function withTimeout(promise, ms = 10000) {
   return new Promise((resolve, reject) => {
@@ -42,7 +46,7 @@ export function formatCurrency(
     maximumFractionDigits = 2,
   } = {},
 ) {
-  console.warn(
+  logger.warn(
     '[DEPRECATED] func.formatCurrency - usar universalMapper.formatCurrency en su lugar',
   );
 
@@ -54,7 +58,7 @@ export function formatCurrency(
     let numberValue = typeof value === 'number' ? value : Number(value);
 
     if (Number.isNaN(numberValue)) {
-      console.warn(`[formatCurrency] Valor inválido: ${value}`);
+      logger.warn(`[formatCurrency] Valor inválido: ${value}`);
       return '';
     }
 

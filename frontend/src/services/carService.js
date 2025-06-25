@@ -1,6 +1,5 @@
-import testingCars, {
-  shouldUseTestingData,
-} from '../assets/testingData/testingData';
+import testingCars from '../assets/testingData/testingData';
+import { API_URL, createServiceLogger, shouldUseTestingData } from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import { withCache } from './cacheService';
 import { withTimeout } from './func';
@@ -10,8 +9,10 @@ import {
 } from './searchServices';
 import universalMapper from './universalDataMapper';
 
-// Configuración de API y modo testing
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+// Crear logger para el servicio de carros
+const logger = createServiceLogger('CAR_SERVICE');
+
+
 
 /**
  * Busca vehículos disponibles según criterios (usa servicio unificado)
@@ -37,7 +38,7 @@ export const fetchCarsService = async (filterValues = {}) => {
     async () => {
       try {
         // PRIMERA PRIORIDAD: Intentar consultar la API real
-        console.log(
+        logger.info(
           '🔍 [fetchCarsService] Consultando API con filtros:',
           filterValues,
         );
@@ -59,7 +60,7 @@ export const fetchCarsService = async (filterValues = {}) => {
         const filterOptions =
           data.filterOptions || extractFilterOptions(mappedCars);
 
-        console.log(
+        logger.info(
           '✅ [fetchCarsService] Datos cargados desde API y mapeados:',
           mappedCars.length,
           'vehículos',
@@ -72,14 +73,14 @@ export const fetchCarsService = async (filterValues = {}) => {
           success: data.success !== undefined ? data.success : true,
         };
       } catch (error) {
-        console.warn(
+        logger.warn(
           '⚠️ [fetchCarsService] Error consultando API:',
           error.message,
         );
 
         // FALLBACK: Solo si DEBUG_MODE está activo Y backend falló
         if (shouldUseTestingData(true)) {
-          console.log(
+          logger.info(
             '🔄 [fetchCarsService] DEBUG_MODE activo y backend falló - usando datos de testing como fallback',
           );
 
@@ -135,7 +136,7 @@ export const fetchCarsService = async (filterValues = {}) => {
         }
 
         // EN PRODUCCIÓN: Manejar error gracefully sin fallback
-        console.error(
+        logger.error(
           '❌ [fetchCarsService] Error en producción - no hay fallback disponible',
         );
         let message =

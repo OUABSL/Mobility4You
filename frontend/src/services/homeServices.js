@@ -14,18 +14,23 @@ import universalMapper from './universalDataMapper';
 // ========================================
 // CONFIGURACIÓN Y CONSTANTES
 // ========================================
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+import { API_URLS, createServiceLogger, DEBUG_MODE } from '../config/appConfig';
 
-// Funciones de logging condicional - ahora usando DEBUG_MODE centralizado
+const API_URL = API_URLS.BASE;
+
+// Crear logger para el servicio
+const logger = createServiceLogger('HOME_SERVICE');
+
+// Helper functions para logging condicional
 const logInfo = (message, data = null) => {
-  if (shouldUseTestingData(false)) {
-    console.log(`[HOME SERVICES] ${message}`, data);
+  if (DEBUG_MODE) {
+    logger.info(message, data);
   }
 };
 
 const logError = (message, error = null) => {
-  if (shouldUseTestingData(false)) {
-    console.error(`[HOME SERVICES ERROR] ${message}`, error);
+  if (DEBUG_MODE) {
+    logger.error(message, error);
   }
 };
 

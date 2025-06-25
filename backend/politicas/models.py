@@ -18,6 +18,7 @@ class PoliticaPago(models.Model):
         validators=[MinValueValidator(Decimal("0.00"))],
     )    
     descripcion = models.TextField(_("Descripción"), null=True, blank=True)
+    activo = models.BooleanField(_("Activo"), default=True, null=False)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(default=timezone.now)
 
