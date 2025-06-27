@@ -546,10 +546,17 @@ const ListadoCoches = ({ isMobile = false }) => {
                             </div>
                             <Card.Img
                               src={
-                                car.imagenPrincipal ||
-                                'https://via.placeholder.com/300x200?text=Sin+Imagen'
+                                car.imagen_principal ||
+                                car.imagenPrincipal?.original ||
+                                car.imagenPrincipal?.placeholder ||
+                                'https://via.placeholder.com/300x200/e3f2fd/1976d2.png?text=Vehículo'
                               }
                               alt={`${car.marca} ${car.modelo}`}
+                              onError={(e) => {
+                                e.target.src =
+                                  car.imagenPrincipal?.placeholder ||
+                                  'https://via.placeholder.com/300x200/e3f2fd/1976d2.png?text=Vehículo';
+                              }}
                             />
                           </div>
                           <Card.Body className="d-flex flex-column">

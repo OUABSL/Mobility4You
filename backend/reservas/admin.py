@@ -613,38 +613,27 @@ class PenalizacionAdmin(admin.ModelAdmin):
 
 @admin.register(Extras)
 class ExtrasAdmin(admin.ModelAdmin):
-    list_display = (
-        "nombre", 
-        "precio_display", 
-        "disponible_display",
-        "veces_usado",
-        "created_at"
-    )
-    list_filter = ("created_at",)
+    list_display = ("nombre", "imagen_preview", "precio", "created_at")
+    list_filter = ("precio", "created_at")
     search_fields = ("nombre", "descripcion")
-    readonly_fields = ("created_at", "updated_at", "veces_usado", "ingresos_generados")
-
+    readonly_fields = ("imagen_preview", "created_at", "updated_at")
+    
     fieldsets = (
         (
             "Información del Extra",
             {
-                "fields": (
-                    "nombre",
-                    "descripcion",
-                    "precio",
-                    "imagen",
-                )
+                "fields": ("nombre", "descripcion", "precio")
             },
         ),
         (
-            "Estadísticas",
+            "Imagen",
             {
-                "fields": ("veces_usado", "ingresos_generados"),
+                "fields": ("imagen", "imagen_preview"),
                 "classes": ("collapse",),
             },
         ),
         (
-            "Metadatos",
+            "Información del Sistema",
             {
                 "fields": ("created_at", "updated_at"),
                 "classes": ("collapse",),
@@ -652,34 +641,25 @@ class ExtrasAdmin(admin.ModelAdmin):
         ),
     )
 
-    @admin.display(description="Precio")
-    def precio_display(self, obj):
-        return format_html(
-            '<strong style="color: #007bff;">€{}/día</strong>',
-            obj.precio
-        )
+    def imagen_preview(self, obj):
+        """Mostrar una vista previa de la imagen en el admin"""
+        if obj.imagen:
+            from django.utils.safestring import mark_safe
 
-    @admin.display(description="Disponible")
-    def disponible_display(self, obj):
-        # Aquí podrías agregar lógica para verificar disponibilidad
-        return format_html(
-            '<span style="color: #28a745;">✅ Disponible</span>'
-        )
+            # Construir URL de la imagen
+            imagen_url = obj.imagen.url
+            
+            return mark_safe(
+                f'<img src="{imagen_url}" style="max-width: 150px; max-height: 150px; object-fit: cover; border-radius: 8px;" />'
+            )
+        return "Sin imagen"
+    
+    imagen_preview.short_description = "Vista previa"
 
-    def veces_usado(self, obj):
-        """Cuántas veces se ha usado este extra"""
-        count = ReservaExtra.objects.filter(extra=obj).count()
-        return count
-
-    def ingresos_generados(self, obj):
-        """Total de ingresos generados por este extra"""
-        total = ReservaExtra.objects.filter(extra=obj).aggregate(
-            total=Sum('cantidad') * obj.precio
-        )['total'] or 0
-        return format_html(
-            '<strong style="color: #28a745;">€{}</strong>',
-            total
-        )
+    class Media:
+        css = {
+            'all': ('admin/css/custom_admin.css',)
+        }
 
 
 @admin.register(ReservaExtra)

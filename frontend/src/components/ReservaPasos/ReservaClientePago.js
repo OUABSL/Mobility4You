@@ -739,12 +739,19 @@ const ReservaClientePago = ({
                   <div className="d-flex align-items-center mb-3">
                     <img
                       src={
+                        car?.imagen_principal ||
                         car?.imagen ||
-                        car?.imagenPrincipal ||
-                        'https://via.placeholder.com/150x100?text=Coche'
+                        car?.imagenPrincipal?.original ||
+                        car?.imagenPrincipal?.placeholder ||
+                        'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo'
                       }
                       alt={`${car?.marca} ${car?.modelo}`}
                       className="reserva-car-img me-3"
+                      onError={(e) => {
+                        e.target.src =
+                          car?.imagenPrincipal?.placeholder ||
+                          'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo';
+                      }}
                     />
                     <div>
                       <h5>

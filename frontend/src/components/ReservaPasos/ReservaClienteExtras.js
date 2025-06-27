@@ -62,21 +62,43 @@ const imageMap = {
   internet: wifiLogo,
 };
 
-// Función helper para obtener imagen: prioriza Django admin, luego fallback local
+// Función helper para obtener imagen: prioriza imagen del backend, luego fallback local
 const getImageForExtra = (extra) => {
-  // 1. Si el extra tiene imagen del Django admin, usarla
-  if (extra.imagen && extra.imagen.trim() !== '') {
+  // 1. Si el extra tiene imagen_url del serializer optimizado
+  if (
+    extra.imagen_url &&
+    typeof extra.imagen_url === 'string' &&
+    extra.imagen_url.trim() !== ''
+  ) {
+    return extra.imagen_url;
+  }
+
+  // 2. Si el extra tiene estructura de imagen del universal mapper
+  if (extra.imagen && typeof extra.imagen === 'object') {
+    return extra.imagen.original || extra.imagen.placeholder;
+  }
+
+  // 3. Si el extra tiene imagen directa del Django admin, usarla
+  if (
+    extra.imagen &&
+    typeof extra.imagen === 'string' &&
+    extra.imagen.trim() !== ''
+  ) {
     // Si la imagen ya es una URL completa, usarla directamente
     if (extra.imagen.startsWith('http')) {
       return extra.imagen;
     }
     // Si es una ruta relativa, construir la URL completa
-    return `${API_BASE_URL}${extra.imagen.startsWith('/') ? '' : '/'}${
+    const baseUrl =
+      process.env.REACT_APP_BACKEND_URL ||
+      process.env.REACT_APP_API_URL?.replace('/api', '') ||
+      window.location.origin;
+    return `${baseUrl}${extra.imagen.startsWith('/') ? '' : '/media/extras/'}${
       extra.imagen
     }`;
   }
 
-  // 2. Si no hay imagen en Django admin, usar imagen local basada en palabras clave
+  // 4. Fallback a imagen local basada en palabras clave
   const nombre = extra.nombre?.toLowerCase() || '';
   const categoria = extra.categoria?.toLowerCase() || '';
 
@@ -87,7 +109,7 @@ const getImageForExtra = (extra) => {
     }
   }
 
-  // 3. Imagen por defecto si no se encuentra ninguna coincidencia
+  // 5. Imagen por defecto si no se encuentra ninguna coincidencia
   return wifiLogo;
 };
 
@@ -614,12 +636,19 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                     {' '}
                     <img
                       src={
-                        car.imagenPrincipal ||
+                        car.imagen_principal ||
+                        car.imagenPrincipal?.original ||
+                        car.imagenPrincipal?.placeholder ||
                         car.imagen ||
-                        'https://via.placeholder.com/150x100?text=Sin+Imagen'
+                        'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo'
                       }
                       alt={`${car.marca} ${car.modelo}`}
                       className="reserva-car-img me-3"
+                      onError={(e) => {
+                        e.target.src =
+                          car.imagenPrincipal?.placeholder ||
+                          'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo';
+                      }}
                     />
                     <div>
                       <h5>
@@ -755,9 +784,13 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                         <div className="extra-card-inner">
                           <div className="extra-img-container">
                             <img
-                              src={extra.imagen}
+                              src={getImageForExtra(extra)}
                               alt={extra.nombre}
                               className="extra-img"
+                              onError={(e) => {
+                                e.target.src =
+                                  'https://via.placeholder.com/80x80/f3e5f5/7b1fa2.png?text=Extra';
+                              }}
                             />
                             <div className="extra-check">
                               <FontAwesomeIcon

@@ -23,6 +23,8 @@ from django.urls import include, path
 
 # Importar nuestro admin personalizado
 from .admin import mobility_admin_site
+# Importar placeholders
+from .placeholders import placeholder_urlpatterns
 
 
 # Simple health check view
@@ -41,6 +43,8 @@ urlpatterns = [
     path("api/facturas-contratos/", include("facturas_contratos.urls")),
     path("api/comunicacion/", include("comunicacion.urls")),
     path("api/payments/", include("payments.urls", namespace="payments")),
+    # Placeholders dinámicos
+    *placeholder_urlpatterns,
     # API monolítica original (DESACTIVADA - funcionalidad migrada)
     # path('api/', include('api.urls')),  # ✅ Migrado a apps modulares
 ]
@@ -48,3 +52,6 @@ urlpatterns = [
 # Serve media files during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Incluir URLs de placeholders
+urlpatterns += placeholder_urlpatterns

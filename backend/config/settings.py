@@ -219,6 +219,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
 
+# Base URL para construcción de URLs absolutas cuando no hay request disponible
+BASE_URL = env("BASE_URL", default="http://localhost:8000")
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -644,3 +647,9 @@ elif DJANGO_ENV == "development":
 # AGREGAR configuración de zona horaria para España
 TIME_ZONE = "Europe/Madrid"
 USE_TZ = True
+
+# Configuración para servir archivos de medios en desarrollo
+if DEBUG:
+    from django.conf.urls.static import static
+
+    # Estas líneas se añadirán automáticamente al final del archivo urls.py

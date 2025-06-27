@@ -299,3 +299,82 @@ class ReservaViewSet(viewsets.ModelViewSet):
                 {"success": False, "error": "Error interno del servidor"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(detail=True, methods=["post"])
+    def buscar(self, request, pk=None):
+        """
+        Buscar una reserva específica por ID y email.
+        Endpoint público para consulta de reservas sin autenticación.
+        """
+        try:
+            # Obtener datos del request (compatibilidad con diferentes tipos de request)
+            if hasattr(request, 'data') and request.data:
+                email = request.data.get('email', '').strip().lower()
+            else:
+                # Fallback para requests que no tienen data
+                import json
+                try:
+                    data = json.loads(request.body) if request.body else {}
+                    email = data.get('email', '').strip().lower()
+                except (json.JSONDecodeError, AttributeError):
+                    email = ''
+            
+            reserva_id = pk  # El ID viene de la URL
+            
+            if not email:
+                return Response(
+                    {"success": False, "error": "Email es requerido"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            logger.info(f"Buscando reserva {reserva_id} para email {email}")
+            
+            # Buscar la reserva por ID y verificar que el email coincida
+            try:
+                reserva = Reserva.objects.select_related(
+                    "usuario", "vehiculo", "lugar_recogida", "lugar_devolucion", "politica_pago"
+                ).prefetch_related(
+                    "extras", "conductores", "penalizaciones"
+                ).get(id=reserva_id)
+                
+                # Verificar que el email del usuario coincida
+                if reserva.usuario.email.lower() != email:
+                    logger.warning(f"Email {email} no coincide para reserva {reserva_id}")
+                    return Response(
+                        {"success": False, "error": "Reserva no encontrada o email incorrecto"},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+                
+                # Serializar la reserva con detalles completos
+                serializer = ReservaDetailSerializer(reserva, context={"request": request})
+                
+                logger.info(f"Reserva {reserva_id} encontrada exitosamente")
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Reserva encontrada",
+                        "reserva": serializer.data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+                
+            except Reserva.DoesNotExist:
+                logger.warning(f"Reserva {reserva_id} no encontrada")
+                return Response(
+                    {"success": False, "error": "Reserva no encontrada"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+                
+        except Exception as e:
+            logger.error(f"Error buscando reserva {pk}: {str(e)}")
+            return Response(
+                {"success": False, "error": "Error interno del servidor"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=False, methods=["post"])
+    def crear_reserva(self, request):
+        """
+        Alias para el método create para mantener compatibilidad con URLs legacy.
+        """
+        return self.create(request)

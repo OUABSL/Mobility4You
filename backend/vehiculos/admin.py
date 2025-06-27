@@ -54,10 +54,25 @@ class DisponibilidadFilter(SimpleListFilter):
 class ImagenVehiculoInline(admin.TabularInline):
     model = ImagenVehiculo
     extra = 1
-    fields = ["imagen", "portada", "ancho", "alto"]
-    readonly_fields = ["ancho", "alto"]
+    fields = ["imagen", "imagen_preview", "portada", "ancho", "alto"]
+    readonly_fields = ["imagen_preview", "ancho", "alto"]
     verbose_name = "Imagen"
     verbose_name_plural = "Imágenes"
+
+    def imagen_preview(self, obj):
+        """Mostrar una vista previa de la imagen en el admin"""
+        if obj.imagen:
+            from django.utils.safestring import mark_safe
+
+            # Construir URL de la imagen
+            imagen_url = obj.imagen.url
+            
+            return mark_safe(
+                f'<img src="{imagen_url}" style="max-width: 100px; max-height: 100px; object-fit: cover;" />'
+            )
+        return "Sin imagen"
+    
+    imagen_preview.short_description = "Vista previa"
 
 
 class TarifaVehiculoInline(admin.TabularInline):

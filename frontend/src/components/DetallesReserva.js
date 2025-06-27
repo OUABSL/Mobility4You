@@ -51,6 +51,7 @@ import {
 
 import DeleteReservationModal from './Modals/DeleteReservationModal';
 import EditReservationModal from './Modals/EditReservationModal';
+import ImageManager from './common/ImageManager';
 
 /**
  * Componente DetallesReserva - Muestra los detalles completos de una reserva
@@ -200,21 +201,33 @@ const DetallesReserva = ({ isMobile = false }) => {
 
   // Función para preparar los datos del conductor para mostrar en la UI
   const prepareDriverData = (driver) => {
-    if (!driver || !driver.direccion) return null;
+    if (!driver) return null;
 
-    // Formatear la dirección completa
-    const direccionCompleta = `${driver.direccion.calle}, ${driver.direccion.codigo_postal} ${driver.direccion.ciudad}, ${driver.direccion.provincia}, ${driver.direccion.pais}`;
+    // Formatear la dirección completa con verificaciones seguras
+    const direccionCompleta = driver.direccion
+      ? `${driver.direccion.calle || ''}, ${
+          driver.direccion.codigo_postal || ''
+        } ${driver.direccion.ciudad || ''}, ${
+          driver.direccion.provincia || ''
+        }, ${driver.direccion.pais || ''}`
+          .replace(/,\s*,/g, ',')
+          .replace(/^\s*,\s*|\s*,\s*$/g, '')
+      : 'Dirección no disponible';
 
-    // Capitalizar la primera letra de nacionalidad y tipo de documento
-    const nacionalidadFormatted =
-      driver.nacionalidad.charAt(0).toUpperCase() +
-      driver.nacionalidad.slice(1);
+    // Capitalizar la primera letra de nacionalidad y tipo de documento de forma segura
+    const nacionalidadFormatted = driver.nacionalidad
+      ? driver.nacionalidad.charAt(0).toUpperCase() +
+        driver.nacionalidad.slice(1)
+      : 'No especificada';
+
     const tipoDocumentoFormatted =
       driver.tipo_documento === 'dni'
         ? 'DNI'
         : driver.tipo_documento === 'nif'
         ? 'NIF'
-        : 'Pasaporte';
+        : driver.tipo_documento === 'pasaporte'
+        ? 'Pasaporte'
+        : 'Documento';
 
     return {
       ...driver,
@@ -230,15 +243,29 @@ const DetallesReserva = ({ isMobile = false }) => {
       setLoading(true);
       setError(null);
       try {
-        // Cambiar a POST para enviar el email
-        const data = await findReservation(reservaId, email);
-        setDatos(data);
+        // Obtener datos de la reserva
+        const responseData = await findReservation(reservaId, email);
+
+        // Verificar si hay datos de reserva en la respuesta
+        const reservaData = responseData.reserva || responseData;
+
+        // Mapear datos usando el universal mapper
+        const { default: universalMapper } = await import(
+          '../services/universalDataMapper'
+        );
+        const mappedData = await universalMapper.mapReservationFromBackend(
+          reservaData,
+        );
+
+        setDatos(mappedData);
       } catch (err) {
+        console.error('Error cargando reserva:', err);
         setError('No se pudo cargar la reserva.');
       } finally {
         setLoading(false);
       }
     };
+
     if (reservaId && email) {
       fetchReserva();
     }
@@ -459,55 +486,72 @@ const DetallesReserva = ({ isMobile = false }) => {
                 <Card.Body>
                   <Row className="align-items-center">
                     <Col md={4} className="text-center">
-                      {' '}
-                      <img
+                      <ImageManager
                         src={
-                          datos.vehiculo.imagenPrincipal ||
-                          'https://via.placeholder.com/300x200?text=Sin+Imagen'
+                          datos.vehiculo?.imagen_principal ||
+                          datos.vehiculo?.imagenPrincipal?.original ||
+                          datos.vehiculo?.imagenPrincipal?.placeholder
                         }
-                        alt={`${datos.vehiculo.marca} ${datos.vehiculo.modelo}`}
+                        alt={`${datos.vehiculo?.marca || ''} ${
+                          datos.vehiculo?.modelo || ''
+                        }`}
                         className="img-fluid car-img rounded"
+                        placeholderType="vehiculo"
+                        showPlaceholder={true}
                       />
                     </Col>
                     <Col md={8}>
                       <h3 className="vehicle-title">
-                        {datos.vehiculo.marca} {datos.vehiculo.modelo}
+                        {datos.vehiculo?.marca || ''}{' '}
+                        {datos.vehiculo?.modelo || ''}
                       </h3>
                       <div className="d-flex flex-wrap align-items-center vehicle-tags mb-2">
-                        <Badge bg="secondary" className="me-2 mb-1">
-                          {datos.vehiculo.categoria.nombre}
-                        </Badge>
-                        <Badge bg="info" className="me-2 mb-1">
-                          {datos.vehiculo.grupo.nombre}
-                        </Badge>
-                        <Badge bg="light" text="dark" className="mb-1">
-                          {datos.vehiculo.combustible}
-                        </Badge>
+                        {datos.vehiculo?.categoria?.nombre && (
+                          <Badge bg="secondary" className="me-2 mb-1">
+                            {datos.vehiculo.categoria.nombre}
+                          </Badge>
+                        )}
+                        {datos.vehiculo?.grupo?.nombre && (
+                          <Badge bg="info" className="me-2 mb-1">
+                            {datos.vehiculo.grupo.nombre}
+                          </Badge>
+                        )}
+                        {datos.vehiculo?.combustible && (
+                          <Badge bg="light" text="dark" className="mb-1">
+                            {datos.vehiculo.combustible}
+                          </Badge>
+                        )}
                       </div>
                       <div className="vehicle-features">
-                        <span className="me-3">
-                          <FontAwesomeIcon
-                            icon={faUser}
-                            className="me-1 text-muted"
-                          />
-                          {datos.vehiculo.numPasajeros} asientos
-                        </span>
-                        <span className="me-3">
-                          <Image
-                            src={carDoorLeft}
-                            style={{ maxWidth: '18px' }}
-                            alt="Puertas"
-                            className="icon-svg text-secondary mb-1 me-1"
-                          />
-                          {datos.vehiculo.numPuertas} puertas
-                        </span>
-                        <span>
-                          <FontAwesomeIcon
-                            icon={faShieldAlt}
-                            className="me-1 text-success"
-                          />
-                          {datos.politicaPago.titulo}
-                        </span>
+                        {datos.vehiculo?.numPasajeros && (
+                          <span className="me-3">
+                            <FontAwesomeIcon
+                              icon={faUser}
+                              className="me-1 text-muted"
+                            />
+                            {datos.vehiculo.numPasajeros} asientos
+                          </span>
+                        )}
+                        {datos.vehiculo?.numPuertas && (
+                          <span className="me-3">
+                            <Image
+                              src={carDoorLeft}
+                              style={{ maxWidth: '18px' }}
+                              alt="Puertas"
+                              className="icon-svg text-secondary mb-1 me-1"
+                            />
+                            {datos.vehiculo.numPuertas} puertas
+                          </span>
+                        )}
+                        {datos.politicaPago?.titulo && (
+                          <span>
+                            <FontAwesomeIcon
+                              icon={faShieldAlt}
+                              className="me-1 text-success"
+                            />
+                            {datos.politicaPago.titulo}
+                          </span>
+                        )}
                       </div>
                     </Col>
                   </Row>
@@ -715,95 +759,134 @@ const DetallesReserva = ({ isMobile = false }) => {
                 </Card>
               )}
 
-              {/* Datos de Conductores */}
-              <Card className="drivers-card">
-                <Card.Header>
-                  <h5 className="text-start mb-0">
-                    <FontAwesomeIcon icon={faUser} className="me-2" />
-                    Conductor{datos.conductores.length > 1 ? 'es' : ''}
-                  </h5>
-                </Card.Header>
-                <Card.Body>
-                  {/* Iterar sobre los conductores usando el array de la relación */}
-                  {datos.conductores.map((conductorRelacion, index) => {
-                    const conductor = conductorRelacion.conductor;
-                    const esPrincipal = conductorRelacion.rol === 'principal';
-                    return (
-                      <div key={index} className={index > 0 ? 'mt-4' : ''}>
-                        <div className="d-flex justify-content-between align-items-start">
-                          <h6 className="driver-name">
-                            <FontAwesomeIcon
-                              icon={esPrincipal ? faUser : faUserPlus}
-                              className="me-2 text-primary"
-                            />
-                            {esPrincipal
-                              ? 'Conductor Principal'
-                              : 'Conductor Adicional'}
-                          </h6>
+              {/* Datos de Conductores - Solo mostrar si datos está completamente cargado */}
+              {datos && datos.conductores !== undefined && (
+                <Card className="drivers-card">
+                  <Card.Header>
+                    <h5 className="text-start mb-0">
+                      <FontAwesomeIcon icon={faUser} className="me-2" />
+                      Conductor
+                      {datos.conductores && datos.conductores.length > 1
+                        ? 'es'
+                        : ''}
+                    </h5>
+                  </Card.Header>
+                  <Card.Body>
+                    {/* Iterar sobre los conductores usando el array de la relación */}
+                    {datos.conductores && datos.conductores.length > 0 ? (
+                      datos.conductores
+                        .map((conductorRelacion, index) => {
+                          // Protección triple: verificar que conductorRelacion existe y tiene conductor
+                          if (!conductorRelacion) return null;
 
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            onClick={() =>
-                              handleShowDriverDetails({
-                                ...conductor,
-                                esSegundoConductor: !esPrincipal,
-                              })
-                            }
-                          >
-                            Ver detalles
-                          </Button>
-                        </div>
+                          const conductor = conductorRelacion.conductor || {};
+                          const esPrincipal =
+                            conductorRelacion.rol === 'principal';
 
-                        <Row className="mt-2">
-                          <Col md={6} className="mb-2">
-                            <div className="d-flex align-items-center">
-                              <FontAwesomeIcon
-                                icon={faUser}
-                                className="me-2 text-muted"
-                              />
-                              <span>
-                                {conductor.nombre} {conductor.apellido}
-                              </span>
-                            </div>
-                          </Col>
-                          <Col md={6} className="mb-2">
-                            <div className="d-flex align-items-center">
-                              <FontAwesomeIcon
-                                icon={faIdCard}
-                                className="me-2 text-muted"
-                              />
-                              <span>{conductor.documento}</span>
-                            </div>
-                          </Col>
-                          <Col md={6} className="mb-2">
-                            <div className="d-flex align-items-center">
-                              <FontAwesomeIcon
-                                icon={faEnvelope}
-                                className="me-2 text-muted"
-                              />
-                              <span>{conductor.email}</span>
-                            </div>
-                          </Col>
-                          <Col md={6}>
-                            <div className="d-flex align-items-center">
-                              <FontAwesomeIcon
-                                icon={faPhone}
-                                className="me-2 text-muted"
-                              />
-                              <span>{conductor.telefono}</span>
-                            </div>
-                          </Col>
-                        </Row>
+                          return (
+                            <div
+                              key={conductorRelacion.id || index}
+                              className={index > 0 ? 'mt-4' : ''}
+                            >
+                              <div className="d-flex justify-content-between align-items-start">
+                                <h6 className="driver-name">
+                                  <FontAwesomeIcon
+                                    icon={esPrincipal ? faUser : faUserPlus}
+                                    className="me-2 text-primary"
+                                  />
+                                  {esPrincipal
+                                    ? 'Conductor Principal'
+                                    : 'Conductor Adicional'}
+                                </h6>
 
-                        {index < datos.conductores.length - 1 && (
-                          <hr className="my-3" />
-                        )}
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleShowDriverDetails({
+                                      ...conductor,
+                                      email:
+                                        conductorRelacion.email ||
+                                        conductor.email ||
+                                        '',
+                                      esSegundoConductor: !esPrincipal,
+                                    })
+                                  }
+                                >
+                                  Ver detalles
+                                </Button>
+                              </div>
+
+                              <Row className="mt-2">
+                                <Col md={6} className="mb-2">
+                                  <div className="d-flex align-items-center">
+                                    <FontAwesomeIcon
+                                      icon={faUser}
+                                      className="me-2 text-muted"
+                                    />
+                                    <span>
+                                      {conductor.nombre || 'Conductor'}{' '}
+                                      {conductor.apellido || ''}
+                                    </span>
+                                  </div>
+                                </Col>
+                                <Col md={6} className="mb-2">
+                                  <div className="d-flex align-items-center">
+                                    <FontAwesomeIcon
+                                      icon={faIdCard}
+                                      className="me-2 text-muted"
+                                    />
+                                    <span>
+                                      {conductor.documento ||
+                                        conductor.numero_documento ||
+                                        'No disponible'}
+                                    </span>
+                                  </div>
+                                </Col>
+                                <Col md={6} className="mb-2">
+                                  <div className="d-flex align-items-center">
+                                    <FontAwesomeIcon
+                                      icon={faEnvelope}
+                                      className="me-2 text-muted"
+                                    />
+                                    <span>
+                                      {conductor.email ||
+                                        conductorRelacion.email ||
+                                        'No disponible'}
+                                    </span>
+                                  </div>
+                                </Col>
+                                <Col md={6}>
+                                  <div className="d-flex align-items-center">
+                                    <FontAwesomeIcon
+                                      icon={faPhone}
+                                      className="me-2 text-muted"
+                                    />
+                                    <span>
+                                      {conductor.telefono || 'No disponible'}
+                                    </span>
+                                  </div>
+                                </Col>
+                              </Row>
+
+                              {datos.conductores &&
+                                datos.conductores.length > 0 &&
+                                index < datos.conductores.length - 1 && (
+                                  <hr className="my-3" />
+                                )}
+                            </div>
+                          );
+                        })
+                        .filter(Boolean) // Filtrar elementos null/undefined
+                    ) : (
+                      <div className="text-center text-muted py-3">
+                        <FontAwesomeIcon icon={faUser} className="me-2" />
+                        No hay información de conductores disponible
                       </div>
-                    );
-                  })}
-                </Card.Body>
-              </Card>
+                    )}
+                  </Card.Body>
+                </Card>
+              )}
             </Col>
 
             {/* Columna secundaria (derecha) */}

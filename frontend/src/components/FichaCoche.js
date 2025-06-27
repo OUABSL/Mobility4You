@@ -16,7 +16,7 @@ import {
   faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Badge,
   Button,
@@ -34,12 +34,12 @@ import autoGear from '../assets/img/icons/automatic-gear.svg';
 import carDoorLeft from '../assets/img/icons/car-door-left.svg';
 
 import '../css/FichaCoche.css';
+import { fetchPoliticasPago } from '../services/reservationServices';
 import { getStoredSearchParams } from '../services/searchServices';
 import {
   calculateTaxAmount,
   roundToDecimals,
 } from '../services/universalDataMapper';
-import { fetchPoliticasPago } from '../services/reservationServices';
 
 const FichaCoche = ({ car, onClose }) => {
   const navigate = useNavigate();
@@ -55,19 +55,18 @@ const FichaCoche = ({ car, onClose }) => {
     const loadPoliticasPago = async () => {
       try {
         setLoadingPolicies(true);
-        
+
         // Usar el servicio centralizado que maneja API, caché, fallback y transformación automáticamente
         const transformedOptions = await fetchPoliticasPago();
-        
+
         if (transformedOptions.length > 0) {
           setPaymentOptions(transformedOptions);
         } else {
           throw new Error('No se encontraron políticas activas disponibles');
         }
-        
       } catch (error) {
         console.error('❌ Error cargando políticas desde servicio:', error);
-        
+
         // Fallback mínimo en caso de error completo del servicio
         setPaymentOptions([
           {
@@ -77,7 +76,7 @@ const FichaCoche = ({ car, onClose }) => {
             descripcion: 'Opción de emergencia - contacte con soporte',
             incluye: ['Cobertura básica'],
             noIncluye: ['Servicios adicionales limitados'],
-          }
+          },
         ]);
       } finally {
         setLoadingPolicies(false);
@@ -85,7 +84,7 @@ const FichaCoche = ({ car, onClose }) => {
     };
 
     loadPoliticasPago();
-  }, []);  // Manejadores
+  }, []); // Manejadores
   const handlePriceModalShow = () => setShowPriceModal(true);
   const handlePriceModalClose = () => setShowPriceModal(false);
   const handleSelectPayment = (option) => {
@@ -94,7 +93,7 @@ const FichaCoche = ({ car, onClose }) => {
     } else {
       setSelectedPayment(option);
     }
-  };// Función para continuar a reserva
+  }; // Función para continuar a reserva
   const handleContinuar = () => {
     if (!selectedPayment) return;
 
@@ -144,7 +143,10 @@ const FichaCoche = ({ car, onClose }) => {
     const reservaData = {
       car: {
         ...car,
-        imagen: car.imagenPrincipal,
+        imagen:
+          car.imagen_principal ||
+          car.imagenPrincipal?.original ||
+          car.imagenPrincipal?.placeholder,
       },
       paymentOption: selectedPayment,
       fechas: {
@@ -191,8 +193,11 @@ const FichaCoche = ({ car, onClose }) => {
           <Col lg={6}>
             <Carousel className="ficha-carousel mb-4">
               {car.imagenes && car.imagenes.length > 0 ? (
-                car.imagenes.map((img, idx) => (
-                  <Carousel.Item key={idx} className="ficha-carousel-item">
+                car.imagenes.map((imagen, idx) => (
+                  <Carousel.Item
+                    key={imagen.id || idx}
+                    className="ficha-carousel-item"
+                  >
                     <div className="ficha-image-container">
                       <span className="ficha-fuel-tag">
                         <FontAwesomeIcon icon={faGasPump} className="me-1" />
@@ -201,13 +206,18 @@ const FichaCoche = ({ car, onClose }) => {
                       <img
                         className="d-block w-100 ficha-image"
                         src={
-                          img.imagen_url ||
-                          img.url ||
-                          img.imagen ||
-                          car.imagenPrincipal ||
-                          'https://via.placeholder.com/600x400?text=Sin+Imagen'
+                          imagen.imagen_url ||
+                          imagen.imagen ||
+                          imagen.url ||
+                          car.imagen_principal ||
+                          car.imagenPrincipal?.placeholder
                         }
-                        alt={`${car.marca} ${car.modelo}`}
+                        alt={imagen.alt || `${car.marca} ${car.modelo}`}
+                        onError={(e) => {
+                          e.target.src =
+                            car.imagenPrincipal?.placeholder ||
+                            'https://via.placeholder.com/600x400/e3f2fd/1976d2.png?text=Vehículo';
+                        }}
                       />
                     </div>
                   </Carousel.Item>
@@ -222,10 +232,17 @@ const FichaCoche = ({ car, onClose }) => {
                     <img
                       className="d-block w-100 ficha-image"
                       src={
-                        car.imagenPrincipal ||
-                        'https://via.placeholder.com/600x400?text=Sin+Imagen'
+                        car.imagen_principal ||
+                        car.imagenPrincipal?.original ||
+                        car.imagenPrincipal?.placeholder ||
+                        'https://via.placeholder.com/600x400/e3f2fd/1976d2.png?text=Vehículo'
                       }
                       alt={`${car.marca} ${car.modelo}`}
+                      onError={(e) => {
+                        e.target.src =
+                          car.imagenPrincipal?.placeholder ||
+                          'https://via.placeholder.com/600x400/e3f2fd/1976d2.png?text=Vehículo';
+                      }}
                     />
                   </div>
                 </Carousel.Item>
@@ -288,7 +305,9 @@ const FichaCoche = ({ car, onClose }) => {
             </Card>
           </Col>
 
-          <Col lg={6}>            <div className="payment-section">
+          <Col lg={6}>
+            {' '}
+            <div className="payment-section">
               <h5 className="payment-title mb-3">
                 <FontAwesomeIcon
                   icon={faShieldAlt}
@@ -305,112 +324,124 @@ const FichaCoche = ({ car, onClose }) => {
               {loadingPolicies ? (
                 <div className="text-center py-4">
                   <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Cargando políticas de pago...</span>
+                    <span className="visually-hidden">
+                      Cargando políticas de pago...
+                    </span>
                   </div>
-                  <p className="mt-2 text-muted">Obteniendo políticas desde la API...</p>
+                  <p className="mt-2 text-muted">
+                    Obteniendo políticas desde la API...
+                  </p>
                 </div>
-              ) : (                
+              ) : (
                 paymentOptions.map((option) => (
-                <Card
-                  key={option.id}
-                  className={`payment-card mb-3 ${
-                    selectedPayment?.id === option.id ? 'active' : ''
-                  }`}
-                  onClick={() => handleSelectPayment(option)}
-                >
-                  <Card.Body>
-                    <div className="payment-card-header">
-                      <div className="d-flex align-items-center">
-                        <div
-                          className={`payment-check me-3 ${
-                            selectedPayment?.id === option.id ? 'active' : ''
-                          }`}
-                        >
-                          <FontAwesomeIcon
-                            icon={
-                              selectedPayment?.id === option.id
-                                ? faCheckCircle
-                                : faCircleCheck
-                            }
-                            size="lg"
-                            className={
-                              selectedPayment?.id === option.id
-                                ? 'text-primary'
-                                : 'text-muted'
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Card.Title className="mb-1">
-                            {option.title}
-                          </Card.Title>
-                          <div className="payment-card-badge">
-                            {option.deductible === 0 ? (
-                              <Badge bg="success" className="protection-badge">
-                                Sin franquicia
-                              </Badge>
-                            ) : (
-                              <Badge
-                                bg="warning"
-                                text="dark"
-                                className="protection-badge"
-                              >
-                                Franquicia {option.deductible}€
-                              </Badge>
-                            )}
+                  <Card
+                    key={option.id}
+                    className={`payment-card mb-3 ${
+                      selectedPayment?.id === option.id ? 'active' : ''
+                    }`}
+                    onClick={() => handleSelectPayment(option)}
+                  >
+                    <Card.Body>
+                      <div className="payment-card-header">
+                        <div className="d-flex align-items-center">
+                          <div
+                            className={`payment-check me-3 ${
+                              selectedPayment?.id === option.id ? 'active' : ''
+                            }`}
+                          >
+                            <FontAwesomeIcon
+                              icon={
+                                selectedPayment?.id === option.id
+                                  ? faCheckCircle
+                                  : faCircleCheck
+                              }
+                              size="lg"
+                              className={
+                                selectedPayment?.id === option.id
+                                  ? 'text-primary'
+                                  : 'text-muted'
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Card.Title className="mb-1">
+                              {option.title}
+                            </Card.Title>
+                            <div className="payment-card-badge">
+                              {option.deductible === 0 ? (
+                                <Badge
+                                  bg="success"
+                                  className="protection-badge"
+                                >
+                                  Sin franquicia
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  bg="warning"
+                                  text="dark"
+                                  className="protection-badge"
+                                >
+                                  Franquicia {option.deductible}€
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <FontAwesomeIcon
-                        icon={faInfoCircle}
-                        className="info-icon ms-auto"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPaymentInfo(option);
-                          setShowPaymentInfo(true);
-                        }}
-                      />
-                    </div>                    
-                    <div className="payment-card-features mt-3">
-                      {option.incluye && option.incluye.length > 0 ? (
-                        <>
-                          <ul className="features-list">
-                            {option.incluye.slice(0, 3).map((item, idx) => (
-                              <li key={idx} className="feature-item">
-                                <FontAwesomeIcon
-                                  icon={faCheckCircle}
-                                  className="text-success me-2"
-                                />
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                          {option.incluye.length > 3 && (
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="show-more-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPaymentInfo(option);
-                                setShowPaymentInfo(true);
-                              }}
-                            >
-                              Ver todas las coberturas ({option.incluye.length} total)
-                            </Button>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-muted small mb-0">
-                          <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
-                          Haz clic en el icono de información para ver los detalles
-                        </p>
-                      )}
-                    </div>
-                  </Card.Body>
+                        <FontAwesomeIcon
+                          icon={faInfoCircle}
+                          className="info-icon ms-auto"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPaymentInfo(option);
+                            setShowPaymentInfo(true);
+                          }}
+                        />
+                      </div>
+                      <div className="payment-card-features mt-3">
+                        {option.incluye && option.incluye.length > 0 ? (
+                          <>
+                            <ul className="features-list">
+                              {option.incluye.slice(0, 3).map((item, idx) => (
+                                <li key={idx} className="feature-item">
+                                  <FontAwesomeIcon
+                                    icon={faCheckCircle}
+                                    className="text-success me-2"
+                                  />
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                            {option.incluye.length > 3 && (
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="show-more-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPaymentInfo(option);
+                                  setShowPaymentInfo(true);
+                                }}
+                              >
+                                Ver todas las coberturas (
+                                {option.incluye.length} total)
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-muted small mb-0">
+                            <FontAwesomeIcon
+                              icon={faInfoCircle}
+                              className="me-2"
+                            />
+                            Haz clic en el icono de información para ver los
+                            detalles
+                          </p>
+                        )}
+                      </div>
+                    </Card.Body>
                   </Card>
-              ))
+                ))
               )}
 
               <div className="price-section mt-4">
@@ -574,7 +605,8 @@ const FichaCoche = ({ car, onClose }) => {
                 : `Franquicia Hasta: ${paymentInfo?.deductible}€`}
             </Badge>
           </div>
-        </Modal.Header>        <Modal.Body>
+        </Modal.Header>{' '}
+        <Modal.Body>
           <div className="protection-details">
             {/* Mostrar descripción de la política si existe */}
             {paymentInfo?.descripcion && (
@@ -584,7 +616,7 @@ const FichaCoche = ({ car, onClose }) => {
                 <hr className="divider" />
               </div>
             )}
-            
+
             <h5 className="mb-3 includes-title">
               <FontAwesomeIcon
                 icon={faCheckCircle}
@@ -605,7 +637,9 @@ const FichaCoche = ({ car, onClose }) => {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted">No hay información específica de coberturas incluidas.</p>
+              <p className="text-muted">
+                No hay información específica de coberturas incluidas.
+              </p>
             )}
 
             <hr className="divider" />
@@ -630,7 +664,9 @@ const FichaCoche = ({ car, onClose }) => {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted">No hay exclusiones específicas listadas.</p>
+              <p className="text-muted">
+                No hay exclusiones específicas listadas.
+              </p>
             )}
 
             <div className="protection-info-box mt-4">
@@ -649,7 +685,8 @@ const FichaCoche = ({ car, onClose }) => {
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowPaymentInfo(false)}>
             Cerrar
-          </Button>          <Button
+          </Button>{' '}
+          <Button
             variant="primary"
             onClick={() => {
               setShowPaymentInfo(false);

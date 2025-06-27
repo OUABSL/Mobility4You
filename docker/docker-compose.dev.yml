@@ -69,6 +69,7 @@ services:
       # URLs
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
+      - BASE_URL=${BASE_URL:-http://localhost}
     networks:
       - mobility4you_network
     ports:

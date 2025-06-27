@@ -78,6 +78,12 @@
   margin-bottom: 1.5rem;
 }
 
+/* Iconos SVG */
+.icon-svg {
+  max-width: 20px;
+  fill: var(--color-primario);
+  filter: brightness(0) saturate(100%) invert(12%) sepia(99%) saturate(5794%) hue-rotate(227deg) brightness(85%) contrast(110%) !important;
+}
 
 
 .spec-icon {
@@ -91,6 +97,7 @@
   border-radius: 10%;
   margin-right: 0.75rem;
 }
+
 
 .spec-text {
   display: flex;

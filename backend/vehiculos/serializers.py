@@ -39,10 +39,17 @@ class ImagenVehiculoSerializer(serializers.ModelSerializer):
     def get_imagen_url(self, obj: ImagenVehiculo) -> Optional[str]:
         """Obtener la URL de la imagen para compatibilidad con el frontend"""
         if obj.imagen:
+            # Construir URL absoluta para imágenes
+            from django.conf import settings
+
+            # En desarrollo, usar la URL del request o construir manualmente
             request = self.context.get("request")
             if request:
                 return request.build_absolute_uri(obj.imagen.url)
-            return obj.imagen.url
+            else:
+                # Fallback cuando no hay request (ej. en seeds, tests, etc.)
+                base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
+                return f"{base_url}{obj.imagen.url}"
         return None
 
 

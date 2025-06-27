@@ -12,19 +12,24 @@ router.register(r"extras", ExtrasViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),
-    # URLs específicas migradas desde api/urls.py
+    # URLs específicas para acciones personalizadas
     path(
-        "reservas/<str:reserva_id>/cancel/",
+        "reservas/<int:pk>/cancel/",
         ReservaViewSet.as_view({"post": "cancelar"}),
         name="cancel-reserva",
     ),
     path(
-        "reservas/create-new/",
-        ReservaViewSet.as_view({"post": "crear_reserva"}),
-        name="create-reserva",
+        "reservas/<int:pk>/confirm/",
+        ReservaViewSet.as_view({"post": "confirmar"}),
+        name="confirm-reserva",
     ),
     path(
-        "reservas/<str:reserva_id>/find/",
+        "reservas/<int:pk>/summary/",
+        ReservaViewSet.as_view({"get": "resumen"}),
+        name="summary-reserva",
+    ),
+    path(
+        "reservas/<str:pk>/find/",
         ReservaViewSet.as_view({"post": "buscar"}),
         name="find-reserva",
     ),
@@ -32,5 +37,10 @@ urlpatterns = [
         "reservas/calculate-price/",
         ReservaViewSet.as_view({"post": "calcular_precio"}),
         name="calculate-reservation-price",
+    ),
+    path(
+        "reservas/create-new/",
+        ReservaViewSet.as_view({"post": "crear_reserva"}),
+        name="create-reserva-legacy",
     ),
 ]

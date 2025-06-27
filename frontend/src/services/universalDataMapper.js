@@ -35,7 +35,12 @@
  */
 
 import { testingLocationsData } from '../assets/testingData/testingData';
-import { API_URL, createServiceLogger, DEBUG_MODE, shouldUseTestingData } from '../config/appConfig';
+import {
+  API_URL,
+  createServiceLogger,
+  DEBUG_MODE,
+  shouldUseTestingData,
+} from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import { getCachedData, invalidateCache, setCachedData } from './cacheService';
 import { withTimeout } from './func';
@@ -344,11 +349,11 @@ const MAPPING_SCHEMAS = {
         transformer: (item, value) => {
           if (!Array.isArray(value)) return [];
           return value
-            .filter(i => i.incluye === true || i.incluye === 1)
-            .map(i => ({
+            .filter((i) => i.incluye === true || i.incluye === 1)
+            .map((i) => ({
               id: i.id || Date.now() + Math.random(),
               titulo: i.item,
-              descripcion: i.descripcion || ''
+              descripcion: i.descripcion || '',
             }));
         },
       },
@@ -358,11 +363,11 @@ const MAPPING_SCHEMAS = {
         transformer: (item, value) => {
           if (!Array.isArray(value)) return [];
           return value
-            .filter(i => i.incluye === false || i.incluye === 0)
-            .map(i => ({
+            .filter((i) => i.incluye === false || i.incluye === 0)
+            .map((i) => ({
               id: i.id || Date.now() + Math.random(),
               titulo: i.item,
-              descripcion: i.descripcion || ''
+              descripcion: i.descripcion || '',
             }));
         },
       },
@@ -371,23 +376,25 @@ const MAPPING_SCHEMAS = {
         default: [],
         transformer: (item, value) => {
           if (!Array.isArray(value)) return [];
-          return value.map(p => ({
+          return value.map((p) => ({
             tipo: p.tipo_penalizacion?.nombre || 'No especificado',
             horas_previas: p.horas_previas || 0,
             valor: p.tipo_penalizacion?.valor_tarifa || 0,
-            tipo_tarifa: p.tipo_penalizacion?.tipo_tarifa || 'fijo'
+            tipo_tarifa: p.tipo_penalizacion?.tipo_tarifa || 'fijo',
           }));
         },
       },
       created_at: {
         sources: ['created_at'],
         default: null,
-        transformer: (item, value) => value ? new Date(value).toISOString() : null,
+        transformer: (item, value) =>
+          value ? new Date(value).toISOString() : null,
       },
       updated_at: {
         sources: ['updated_at'],
         default: null,
-        transformer: (item, value) => value ? new Date(value).toISOString() : null,
+        transformer: (item, value) =>
+          value ? new Date(value).toISOString() : null,
       },
     },
   },
@@ -438,7 +445,7 @@ const MAPPING_SCHEMAS = {
       },
     },
   },
-  // RESERVACIONES: Frontend -> Backend
+  // RESERVACIONES: Frontend -> Backend y Backend -> Frontend
   reservations: {
     toBackend: {
       vehiculo: {
@@ -524,7 +531,7 @@ const MAPPING_SCHEMAS = {
         required: true,
         transformer: (item, value) => {
           if (typeof value === 'number') return value;
-          
+
           // Si es un objeto (como los de FichaCoche), extraer el ID
           if (typeof value === 'object' && value !== null) {
             // Primero intentar extraer de originalData
@@ -534,7 +541,10 @@ const MAPPING_SCHEMAS = {
             // Si no hay originalData, buscar en id directo
             if (value.id) {
               // Si el id es string del tipo "politica-N", extraer N
-              if (typeof value.id === 'string' && value.id.startsWith('politica-')) {
+              if (
+                typeof value.id === 'string' &&
+                value.id.startsWith('politica-')
+              ) {
                 const numericId = parseInt(value.id.replace('politica-', ''));
                 if (!isNaN(numericId)) return numericId;
               }
@@ -542,7 +552,7 @@ const MAPPING_SCHEMAS = {
               if (typeof value.id === 'number') return value.id;
             }
           }
-          
+
           if (typeof value === 'string') {
             // Si es string del tipo "politica-N", extraer N
             if (value.startsWith('politica-')) {
@@ -645,6 +655,266 @@ const MAPPING_SCHEMAS = {
         transformer: (item, value) => safeNumberTransformer(value, null),
       },
     },
+    fromBackend: {
+      id: {
+        sources: ['id'],
+        required: true,
+        validator: positiveNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, null),
+      },
+      estado: {
+        sources: ['estado'],
+        default: 'pendiente',
+        validator: (v) => ['pendiente', 'confirmada', 'cancelada'].includes(v),
+      },
+      fechaRecogida: {
+        sources: ['fecha_recogida'],
+        required: true,
+        transformer: (item, value) => {
+          if (!value) return null;
+          return new Date(value).toISOString();
+        },
+      },
+      fechaDevolucion: {
+        sources: ['fecha_devolucion'],
+        required: true,
+        transformer: (item, value) => {
+          if (!value) return null;
+          return new Date(value).toISOString();
+        },
+      },
+      vehiculo: {
+        sources: ['vehiculo_detail', 'vehiculo'],
+        transformer: (item, value) => {
+          if (!value) {
+            // Crear objeto básico desde campos planos
+            return {
+              id: item.vehiculo,
+              marca: item.vehiculo_marca || '',
+              modelo: item.vehiculo_modelo || '',
+              matricula: item.vehiculo_matricula || '',
+              imagenPrincipal: ImageUtils.prepareImageData(
+                item.vehiculo_imagen_principal,
+                'vehicle',
+              ),
+              precio_dia: safeNumberTransformer(item.vehiculo_precio_dia, 0),
+              categoria: { nombre: '' },
+              grupo: { nombre: '' },
+              combustible: '',
+              numPasajeros: 0,
+              numPuertas: 0,
+              imagenes: [],
+            };
+          }
+
+          // Si tenemos el objeto completo del vehículo
+          return {
+            id: value.id,
+            marca: value.marca || '',
+            modelo: value.modelo || '',
+            matricula: value.matricula || '',
+            precio_dia: safeNumberTransformer(value.precio_dia, 0),
+            combustible: value.combustible || '',
+            numPasajeros: value.num_pasajeros || 0,
+            numPuertas: value.num_puertas || 0,
+            categoria: {
+              nombre: value.categoria?.nombre || '',
+            },
+            grupo: {
+              nombre: value.grupo?.nombre || '',
+            },
+            // Usar imagen_principal del backend o la primera imagen marcada como portada
+            imagenPrincipal: ImageUtils.prepareImageData(
+              value.imagen_principal ||
+                value.imagenes?.find((img) => img.portada)?.imagen_url ||
+                value.imagenes?.[0]?.imagen_url,
+              'vehicle',
+            ),
+            // Procesar todas las imágenes disponibles
+            imagenes: value.imagenes
+              ? value.imagenes.map((img) => ({
+                  id: img.id,
+                  url: ImageUtils.processImageUrl(img.imagen_url || img.imagen),
+                  esPortada: img.portada || false,
+                  alt: `${value.marca} ${value.modelo}`,
+                }))
+              : [],
+          };
+        },
+      },
+      lugarRecogida: {
+        sources: ['lugar_recogida_detail', 'lugar_recogida'],
+        transformer: (item, value) => {
+          if (!value) {
+            return {
+              id: item.lugar_recogida,
+              nombre: item.lugar_recogida_nombre || 'Ubicación',
+            };
+          }
+          return value;
+        },
+      },
+      lugarDevolucion: {
+        sources: ['lugar_devolucion_detail', 'lugar_devolucion'],
+        transformer: (item, value) => {
+          if (!value) {
+            return {
+              id: item.lugar_devolucion,
+              nombre: item.lugar_devolucion_nombre || 'Ubicación',
+            };
+          }
+          return value;
+        },
+      },
+      politicaPago: {
+        sources: ['politica_pago_detail', 'politica_pago'],
+        transformer: (item, value) => {
+          if (!value) {
+            return {
+              id: item.politica_pago,
+              titulo: item.politica_pago_titulo || 'Política de Pago',
+            };
+          }
+          return value;
+        },
+      },
+      usuario: {
+        sources: ['usuario'],
+        transformer: (item, value) => ({
+          id: value || item.usuario,
+          nombre: item.usuario_nombre || '',
+          email: item.usuario_email || '',
+        }),
+      },
+      extras: {
+        sources: ['extras_detail', 'extras'],
+        default: [],
+        transformer: (item, value) => {
+          if (!value || !Array.isArray(value)) return [];
+
+          return value.map((extra) => ({
+            id: extra.id,
+            nombre: extra.nombre || extra.extra_nombre || 'Extra',
+            precio: safeNumberTransformer(
+              extra.precio || extra.extra_precio,
+              0,
+            ),
+            cantidad: safeNumberTransformer(extra.cantidad, 1),
+            imagen: ImageUtils.prepareImageData(
+              extra.imagen_url || extra.imagen || extra.extra_imagen,
+              'extra',
+            ),
+            descripcion: extra.descripcion || extra.extra_descripcion || '',
+          }));
+        },
+      },
+      precioExtras: {
+        sources: ['precio_extras'],
+        default: 0,
+        transformer: (item, value) => {
+          // Si no hay valor directo, calcular desde los extras
+          if (value === null || value === undefined) {
+            const extras = item.extras_detail || item.extras || [];
+            return extras.reduce((total, extra) => {
+              const precio = safeNumberTransformer(
+                extra.precio || extra.extra_precio,
+                0,
+              );
+              const cantidad = safeNumberTransformer(extra.cantidad, 1);
+              return total + precio * cantidad;
+            }, 0);
+          }
+          return safeNumberTransformer(value, 0);
+        },
+      },
+      conductores: {
+        sources: ['conductores'],
+        default: [],
+        transformer: (item, value) => {
+          if (!value || !Array.isArray(value)) return [];
+
+          return value.map((conductorRelacion) => {
+            // El backend solo nos da información básica del conductor
+            // Crear un objeto conductor con la información disponible
+            const conductor = {
+              id: conductorRelacion.id || Date.now() + Math.random(),
+              email: conductorRelacion.conductor_email || '',
+              nombre: 'Conductor', // Información no disponible en esta respuesta
+              apellido: '', // Información no disponible en esta respuesta
+              documento: '', // Información no disponible en esta respuesta
+              telefono: '', // Información no disponible en esta respuesta
+              nacionalidad: '', // Información no disponible en esta respuesta
+              // Agregar más campos por defecto si es necesario
+            };
+
+            return {
+              id: conductorRelacion.id,
+              rol: conductorRelacion.rol || 'principal',
+              conductor: conductor,
+            };
+          });
+        },
+      },
+      precioTotal: {
+        sources: ['precio_total'],
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
+      precioImpuestos: {
+        sources: ['precio_impuestos'],
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
+      metodoPago: {
+        sources: ['metodo_pago'],
+        default: 'tarjeta',
+      },
+    },
+  },
+
+  // TESTIMONIOS: Backend -> Frontend
+  testimonials: {
+    fromBackend: {
+      id: {
+        sources: ['id'],
+        required: true,
+        validator: (v) => typeof v === 'number' && v > 0,
+      },
+      nombre: {
+        sources: ['nombre', 'apellido'],
+        default: 'Usuario',
+        transformer: (item) =>
+          `${item.nombre || ''} ${item.apellido || ''}`.trim() || 'Usuario',
+      },
+      ubicacion: {
+        sources: ['direccion'],
+        default: 'Ubicación',
+        transformer: (item) => {
+          if (!item.direccion) return 'Ubicación';
+          const ciudad = item.direccion.ciudad || '';
+          const pais = item.direccion.pais || '';
+          return (
+            `${ciudad}, ${pais}`.replace(/^,\s*|,\s*$/g, '') || 'Ubicación'
+          );
+        },
+      },
+      rating: {
+        sources: ['info_adicional'],
+        default: 5,
+        transformer: (item) =>
+          extractFromJsonField(item.info_adicional, 'rating', 5),
+        validator: (v) => typeof v === 'number' && v >= 1 && v <= 5,
+      },
+      comentario: {
+        sources: ['info_adicional'],
+        default: '',
+        transformer: (item) =>
+          extractFromJsonField(item.info_adicional, 'comentario', ''),
+      },
+      avatar: {
+        sources: ['avatar_url'],
+        default: null,
+        transformer: () => null, // Avatar temporalmente deshabilitado
+      },
+    },
   },
 
   // UBICACIONES: Backend -> Frontend
@@ -692,6 +962,11 @@ const MAPPING_SCHEMAS = {
         required: true,
         validator: (v) => typeof v === 'string' && v.length > 0,
       },
+      matricula: {
+        sources: ['matricula'],
+        default: '',
+        validator: (v) => typeof v === 'string',
+      },
       precio_dia: {
         sources: ['precio_dia'],
         required: true,
@@ -708,7 +983,208 @@ const MAPPING_SCHEMAS = {
         default: 'Manual',
         validator: (v) => typeof v === 'string',
       },
+      num_pasajeros: {
+        sources: ['num_pasajeros'],
+        default: 4,
+        validator: positiveNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 4),
+      },
+      num_puertas: {
+        sources: ['num_puertas'],
+        default: 4,
+        validator: positiveNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 4),
+      },
+      capacidad_maletero: {
+        sources: ['capacidad_maletero'],
+        default: 350,
+        validator: positiveNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 350),
+      },
+      anio: {
+        sources: ['anio'],
+        default: new Date().getFullYear(),
+        validator: positiveNumberValidator,
+        transformer: (item, value) =>
+          safeNumberTransformer(value, new Date().getFullYear()),
+      },
+      categoria: {
+        sources: ['categoria'],
+        default: { id: null, nombre: '' },
+        transformer: (item, value) => ({
+          id: value?.id || null,
+          nombre: value?.nombre || 'Categoría',
+        }),
+      },
+      grupo: {
+        sources: ['grupo'],
+        default: { id: null, nombre: '', edad_minima: 21 },
+        transformer: (item, value) => ({
+          id: value?.id || null,
+          nombre: value?.nombre || 'Grupo',
+          edad_minima: value?.edad_minima || 21,
+        }),
+      },
+      descripcion: {
+        sources: ['descripcion'],
+        default: '',
+        validator: (v) => typeof v === 'string',
+      },
+      fianza: {
+        sources: ['fianza'],
+        default: 0,
+        validator: positiveNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
+      kilometraje: {
+        sources: ['kilometraje'],
+        default: 0,
+        validator: positiveNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
+      disponible: {
+        sources: ['disponible'],
+        default: true,
+        validator: (v) => typeof v === 'boolean',
+      },
+      activo: {
+        sources: ['activo'],
+        default: true,
+        validator: (v) => typeof v === 'boolean',
+      },
+      imagenPrincipal: {
+        sources: ['imagen_principal', 'imagenes'],
+        transformer: (item, value) => {
+          // Si hay imagen_principal directa desde el serializer
+          if (value && typeof value === 'string') {
+            return ImageUtils.prepareImageData(value, 'vehicle');
+          }
+
+          // Buscar en el array de imágenes la que esté marcada como portada
+          if (item.imagenes && Array.isArray(item.imagenes)) {
+            const imagenPortada = item.imagenes.find((img) => img.portada);
+            if (imagenPortada) {
+              return ImageUtils.prepareImageData(
+                imagenPortada.imagen_url || imagenPortada.imagen,
+                'vehicle',
+              );
+            }
+
+            // Si no hay portada marcada, usar la primera disponible
+            if (item.imagenes.length > 0) {
+              return ImageUtils.prepareImageData(
+                item.imagenes[0].imagen_url || item.imagenes[0].imagen,
+                'vehicle',
+              );
+            }
+          }
+
+          // Fallback a placeholder
+          return ImageUtils.prepareImageData(null, 'vehicle');
+        },
+      },
+      imagenes: {
+        sources: ['imagenes'],
+        default: [],
+        transformer: (item, value) => {
+          if (!value || !Array.isArray(value)) return [];
+
+          return value.map((img) => ({
+            id: img.id,
+            url: ImageUtils.processImageUrl(img.imagen_url || img.imagen),
+            esPortada: img.portada || false,
+            alt:
+              `${item.marca || ''} ${item.modelo || ''}`.trim() || 'Vehículo',
+            ancho: img.ancho || null,
+            alto: img.alto || null,
+          }));
+        },
+      },
     },
+  },
+};
+
+// ========================================
+// UTILIDADES DE GESTIÓN DE IMÁGENES
+// ========================================
+
+const ImageUtils = {
+  /**
+   * Procesar URL de imagen del backend
+   */
+  processImageUrl(url, baseUrl = null) {
+    if (!url) return null;
+
+    // Si es una URL completa, devolverla tal cual
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+
+    // Obtener base URL del backend
+    // En desarrollo con nginx, las imágenes se sirven desde la misma URL base
+    const backendUrl =
+      baseUrl ||
+      process.env.REACT_APP_BACKEND_URL ||
+      process.env.REACT_APP_API_URL?.replace('/api', '') ||
+      window.location.origin;
+
+    // Si es una ruta relativa del backend que ya empieza con /media/
+    if (url.startsWith('/media/')) {
+      return `${backendUrl}${url}`;
+    }
+
+    // Si es una ruta que empieza con media/ (sin barra inicial)
+    if (url.startsWith('media/')) {
+      return `${backendUrl}/${url}`;
+    }
+
+    // Si es solo el nombre del archivo, detectar el tipo basado en el contexto
+    if (!url.startsWith('/') && !url.includes('/')) {
+      // Detectar tipo de imagen por patrones en el nombre
+      if (url.match(/\d+_\d+\./)) {
+        // Patrón de imagen de vehículo: vehiculoId_imagenId.extensión
+        return `${backendUrl}/media/vehiculos/${url}`;
+      } else {
+        // Por defecto, asumir que es un extra
+        return `${backendUrl}/media/extras/${url}`;
+      }
+    }
+
+    // Para cualquier otra ruta relativa
+    if (!url.startsWith('/')) {
+      return `${backendUrl}/media/${url}`;
+    }
+
+    return `${backendUrl}${url}`;
+  },
+
+  /**
+   * Obtener placeholder por tipo
+   */
+  getPlaceholder(type = 'default', width = 300, height = 200) {
+    const placeholders = {
+      default: `https://via.placeholder.com/${width}x${height}/f0f0f0/666666.png?text=Sin+Imagen`,
+      vehicle: `https://via.placeholder.com/${width}x${height}/e3f2fd/1976d2.png?text=Vehículo`,
+      extra: `https://via.placeholder.com/${width}x${height}/f3e5f5/7b1fa2.png?text=Extra`,
+      user: `https://via.placeholder.com/${width}x${height}/e8f5e8/388e3c.png?text=Usuario`,
+      location: `https://via.placeholder.com/${width}x${height}/fff3e0/f57c00.png?text=Ubicación`,
+    };
+
+    return placeholders[type] || placeholders.default;
+  },
+
+  /**
+   * Preparar datos de imagen con fallbacks
+   */
+  prepareImageData(imageUrl, type = 'default', dimensions = {}) {
+    const { width = 300, height = 200 } = dimensions;
+
+    return {
+      original: this.processImageUrl(imageUrl),
+      placeholder: this.getPlaceholder(type, width, height),
+      hasImage: !!imageUrl,
+      type,
+    };
   },
 };
 
@@ -1321,7 +1797,7 @@ class UniversalDataMapper {
   /**
    * Mapea testimonios del backend al frontend
    * @param {Array} backendData - Datos del backend
-   * @returns {Promise<Array>} Testimonios mapeados
+   * @returns {Promise<Array} Testimonios mapeados
    */
   async mapTestimonials(backendData) {
     return await this.mapData(backendData, 'testimonials', 'fromBackend');
@@ -1419,13 +1895,52 @@ class UniversalDataMapper {
   }
 
   /**
+   * Mapear reserva desde formato backend a frontend
+   */
+  async mapReservationFromBackend(backendData) {
+    logger.info(
+      '🔄 [RESERVATION MAPPING] Mapeando desde backend...',
+      backendData,
+    );
+
+    try {
+      const result = await this.mapData(
+        backendData,
+        'reservations',
+        'fromBackend',
+      );
+
+      logger.info(
+        '✅ [RESERVATION MAPPING] Mapeo completado exitosamente',
+        result,
+      );
+
+      return result;
+    } catch (error) {
+      logger.error(
+        '❌ [RESERVATION MAPPING] Error en mapeo desde backend:',
+        error,
+        backendData,
+      );
+      throw new UniversalMappingError(
+        `Error mapeando reserva desde backend: ${error.message}`,
+        'RESERVATION_MAPPING_ERROR',
+        { backendData, originalError: error },
+      );
+    }
+  }
+
+  /**
    * DEBUG: Función de debugging específica para mapeo de reservas
    * @param {object} frontendData - Datos del frontend
    * @returns {Promise<object>} Datos de reservación mapeados con logs detallados
    */
   async debugReservationMapping(frontendData) {
     appLogger.info('🔍 [DEBUG RESERVATION MAPPING] Iniciando debug...');
-    appLogger.info('📋 Datos de entrada:', JSON.stringify(frontendData, null, 2));
+    appLogger.info(
+      '📋 Datos de entrada:',
+      JSON.stringify(frontendData, null, 2),
+    );
 
     // Verificar campos específicos que están causando problemas
     appLogger.info('🎯 Verificando campos específicos:');
@@ -1653,6 +2168,8 @@ export const mapVehicles = (data) => universalMapper.mapVehicles(data);
 export const mapPolicies = (data) => universalMapper.mapPolicies(data);
 export const mapReservationToBackend = (data) =>
   universalMapper.mapReservationToBackend(data);
+export const mapReservationFromBackend = (data) =>
+  universalMapper.mapReservationFromBackend(data);
 
 // Exports de funciones utilitarias
 export const clearMappingCaches = () => universalMapper.clearAllCaches();
@@ -1672,3 +2189,6 @@ export const debugReservationMapping = (data) =>
 // Logging de inicialización del servicio
 logger.info('🚀 UniversalDataMapper service loaded successfully');
 logger.info(`Supported data types: ${Object.keys(MAPPING_SCHEMAS).join(', ')}`);
+
+// Export ImageUtils para uso externo
+export { ImageUtils };

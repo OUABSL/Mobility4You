@@ -45,9 +45,25 @@ class PenalizacionSerializer(serializers.ModelSerializer):
 
 
 class ExtrasSerializer(serializers.ModelSerializer):
+    imagen_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Extras
-        fields = ["id", "nombre", "descripcion", "precio", "imagen"]
+        fields = ["id", "nombre", "descripcion", "precio", "imagen", "imagen_url"]
+
+    def get_imagen_url(self, obj):
+        """Obtener URL absoluta de la imagen del extra"""
+        if obj.imagen:
+            from django.conf import settings
+            
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.imagen.url)
+            else:
+                # Fallback cuando no hay request
+                base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
+                return f"{base_url}{obj.imagen.url}"
+        return None
 
 
 class ReservaExtraSerializer(serializers.ModelSerializer):
@@ -56,10 +72,34 @@ class ReservaExtraSerializer(serializers.ModelSerializer):
     extra_precio = serializers.DecimalField(
         source="extra.precio", max_digits=10, decimal_places=2, read_only=True
     )
+    extra_imagen = serializers.SerializerMethodField()
+    extra_descripcion = serializers.CharField(source="extra.descripcion", read_only=True)
 
     class Meta:
         model = ReservaExtra
-        fields = ["id", "extra_id", "extra_nombre", "extra_precio", "cantidad"]
+        fields = [
+            "id", 
+            "extra_id", 
+            "extra_nombre", 
+            "extra_precio", 
+            "extra_imagen", 
+            "extra_descripcion",
+            "cantidad"
+        ]
+
+    def get_extra_imagen(self, obj):
+        """Obtener URL absoluta de la imagen del extra"""
+        if obj.extra and obj.extra.imagen:
+            from django.conf import settings
+            
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.extra.imagen.url)
+            else:
+                # Fallback cuando no hay request
+                base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
+                return f"{base_url}{obj.extra.imagen.url}"
+        return None
 
 
 class ReservaSerializer(serializers.ModelSerializer):
@@ -107,38 +147,65 @@ class ReservaSerializer(serializers.ModelSerializer):
 
 
 class ReservaDetailSerializer(ReservaSerializer):
-    # Campos básicos de relaciones sin serializers anidados para evitar dependencias circulares
+    # Serializers anidados completos para detalles
+    vehiculo_detail = VehiculoDetailSerializer(source="vehiculo", read_only=True)
+    lugar_recogida_detail = LugarSerializer(source="lugar_recogida", read_only=True)
+    lugar_devolucion_detail = LugarSerializer(source="lugar_devolucion", read_only=True)
+    politica_pago_detail = PoliticaPagoSerializer(source="politica_pago", read_only=True)
+    promocion_detail = PromocionSerializer(source="promocion", read_only=True)
+    
+    # Campos básicos de relaciones para compatibilidad con frontend existente
     vehiculo_marca = serializers.CharField(source="vehiculo.marca", read_only=True)
     vehiculo_modelo = serializers.CharField(source="vehiculo.modelo", read_only=True)
-    vehiculo_matricula = serializers.CharField(
-        source="vehiculo.matricula", read_only=True
-    )
+    vehiculo_matricula = serializers.CharField(source="vehiculo.matricula", read_only=True)
+    vehiculo_imagen_principal = serializers.CharField(source="vehiculo.imagen_principal", read_only=True)
+    vehiculo_precio_dia = serializers.DecimalField(source="vehiculo.precio_dia", max_digits=10, decimal_places=2, read_only=True)
 
-    lugar_recogida_nombre = serializers.CharField(
-        source="lugar_recogida.nombre", read_only=True
-    )
-    lugar_devolucion_nombre = serializers.CharField(
-        source="lugar_devolucion.nombre", read_only=True
-    )
+    lugar_recogida_nombre = serializers.CharField(source="lugar_recogida.nombre", read_only=True)
+    lugar_devolucion_nombre = serializers.CharField(source="lugar_devolucion.nombre", read_only=True)
 
-    politica_pago_titulo = serializers.CharField(
-        source="politica_pago.titulo", read_only=True
-    )
+    politica_pago_titulo = serializers.CharField(source="politica_pago.titulo", read_only=True)
     promocion_nombre = serializers.CharField(source="promocion.nombre", read_only=True)
     usuario_nombre = serializers.CharField(source="usuario.first_name", read_only=True)
     usuario_email = serializers.EmailField(source="usuario.email", read_only=True)
 
+    # Extras con imágenes
+    extras_detail = serializers.SerializerMethodField()
+
+    def get_extras_detail(self, obj):
+        """Obtener extras con información completa incluyendo imágenes"""
+        extras_data = []
+        for reserva_extra in obj.extras.all():
+            extra = reserva_extra.extra
+            extras_data.append({
+                'id': extra.id,
+                'nombre': extra.nombre,
+                'descripcion': extra.descripcion,
+                'precio': extra.precio,
+                'imagen': extra.imagen.url if extra.imagen else None,
+                'cantidad': reserva_extra.cantidad
+            })
+        return extras_data
+
     class Meta(ReservaSerializer.Meta):
         fields = ReservaSerializer.Meta.fields + [
+            "vehiculo_detail",
+            "lugar_recogida_detail", 
+            "lugar_devolucion_detail",
+            "politica_pago_detail",
+            "promocion_detail",
             "vehiculo_marca",
             "vehiculo_modelo", 
             "vehiculo_matricula",
+            "vehiculo_imagen_principal",
+            "vehiculo_precio_dia",
             "lugar_recogida_nombre",
             "lugar_devolucion_nombre",
             "politica_pago_titulo",
             "promocion_nombre",
             "usuario_nombre",
             "usuario_email",
+            "extras_detail",
         ]
 
 
