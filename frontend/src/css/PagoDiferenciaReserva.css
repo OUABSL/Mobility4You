@@ -22,7 +22,11 @@
 /* Header estilizado */
 .pago-diferencia-card .card-header {
   padding: 1.5rem;
-  background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-hover) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primario) 0%,
+    var(--color-hover) 100%
+  );
   border-bottom: none;
   color: var(--color-fundo-blanco);
   font-weight: 600;
@@ -266,6 +270,96 @@
   border: none;
 }
 
+/* Estilos mejorados para el desglose de precios */
+.price-breakdown {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border: 1px solid #e9ecef;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.05);
+}
+
+.price-breakdown h6 {
+  color: #495057;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+}
+
+.price-breakdown .row {
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.price-breakdown .row:last-child {
+  margin-bottom: 0;
+}
+
+.price-breakdown .row.text-muted {
+  font-size: 0.85rem;
+  padding-left: 1rem;
+}
+
+.price-breakdown hr {
+  margin: 0.75rem 0;
+  border-color: #dee2e6;
+  opacity: 0.6;
+}
+
+.price-breakdown .text-success {
+  color: #28a745 !important;
+  font-weight: 600;
+}
+
+.price-breakdown .text-danger {
+  color: #dc3545 !important;
+  font-weight: 600;
+}
+
+/* Contenedor del importe mejorado */
+.importe-container {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  padding: 1.75rem;
+  border-radius: 0.75rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(40, 167, 69, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.importe-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.1) 25%,
+    transparent 25%,
+    transparent 75%,
+    rgba(255, 255, 255, 0.1) 75%
+  );
+  background-size: 20px 20px;
+  opacity: 0.1;
+}
+
+.importe-container.diferencia-negativa {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  box-shadow: 0 0.25rem 0.75rem rgba(220, 53, 69, 0.3);
+}
+
+.importe-container.diferencia-cero {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  box-shadow: 0 0.25rem 0.75rem rgba(108, 117, 125, 0.3);
+}
+
 /* Animaciones */
 @keyframes successPulse {
   0% {
@@ -282,31 +376,59 @@
   }
 }
 
+/* Animaciones de entrada */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.price-breakdown {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.importe-container {
+  animation: fadeInUp 0.6s ease-out 0.1s both;
+}
+
+.payment-methods-container {
+  animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.action-buttons {
+  animation: fadeInUp 0.6s ease-out 0.3s both;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .pago-diferencia-card .card-header {
     padding: 1.25rem;
   }
-  
+
   .pago-diferencia-card .card-body {
     padding: 1.5rem;
   }
-  
+
   .importe-container {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .importe-value {
     font-size: 1.5rem;
   }
-  
+
   .action-buttons {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .btn-pagar,
   .btn-volver {
     width: 100%;
@@ -318,20 +440,44 @@
   .pago-diferencia-card .card-header {
     padding: 1rem;
   }
-  
+
   .pago-diferencia-card .card-body {
     padding: 1.25rem;
   }
-  
+
   .importe-value {
     font-size: 1.25rem;
   }
-  
+
   .secure-payment-info {
     padding: 0.75rem 1rem;
   }
-  
+
   .payment-method-option {
     padding: 0.75rem;
+  }
+
+  .price-breakdown {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .price-breakdown h6 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .price-breakdown .row {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .price-breakdown .row.text-muted {
+    font-size: 0.8rem;
+    padding-left: 0.5rem;
+  }
+
+  .importe-container {
+    padding: 1.25rem;
   }
 }

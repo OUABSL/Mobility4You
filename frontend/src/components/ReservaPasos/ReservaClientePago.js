@@ -26,9 +26,10 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { DEBUG_MODE } from '../../assets/testingData/testingData';
+import { createServiceLogger, DEBUG_MODE } from '../../config/appConfig';
 import '../../css/ReservaClientePago.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
+import { formatTaxRate, logError, logInfo } from '../../services/func';
 import {
   createReservation,
   editReservation,
@@ -38,24 +39,14 @@ import StripePaymentForm from '../StripePayment/StripePaymentForm';
 import { ReservationTimerBadge } from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
 
+// Crear logger para el componente
+const logger = createServiceLogger('RESERVA_CLIENTE_PAGO');
+
 // Configuraciones de pago
 const STRIPE_ENABLED = true; // Variable para habilitar/deshabilitar Stripe
 const PAYMENT_METHODS = {
   CARD: 'tarjeta',
   CASH: 'efectivo',
-};
-
-// Funciones de logging condicional
-const logInfo = (message, data = null) => {
-  if (DEBUG_MODE) {
-    console.log(`[PAYMENT] ${message}`, data);
-  }
-};
-
-const logError = (message, error = null) => {
-  if (DEBUG_MODE) {
-    console.error(`[PAYMENT ERROR] ${message}`, error);
-  }
 };
 
 const ReservaClientePago = ({
@@ -138,7 +129,7 @@ const ReservaClientePago = ({
 
   // Función para simular pago con tarjeta (sin Stripe real)
   const simulateCardPayment = async (amount, paymentData) => {
-    logInfo('Simulando pago con tarjeta', { amount, paymentData });
+    logInfo('Simulando pago con tarjeta', { amount, paymentData }, logger);
 
     // Simular delay de procesamiento
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -828,7 +819,9 @@ const ReservaClientePago = ({
                         </span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
-                        <span>IVA (21%):</span>
+                        <span>
+                          IVA{formatTaxRate(detallesReserva.tasaImpuesto)}:
+                        </span>
                         <span>{(detallesReserva.iva || 0).toFixed(2)}€</span>
                       </div>
                       {(detallesReserva.precioExtras || 0) > 0 && (

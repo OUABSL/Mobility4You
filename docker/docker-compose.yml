@@ -40,9 +40,10 @@ services: # Base de datos MariaDB con configuración optimizada
     volumes:
       - ../backend:/app
       - static_volume:/app/staticfiles
-      # media_volume DEPRECATED: Media files now unified in staticfiles/media/
       - ../backend/logs:/app/logs
       - ../backend/entrypoint.sh:/entrypoint.sh:ro # Montar entrypoint desde backend/
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy

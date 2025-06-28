@@ -5,37 +5,29 @@ import universalMapper, {
   roundToDecimals,
 } from './universalDataMapper';
 
-import bmwImage from '../assets/img/coches/BMW-320i-M-Sport.jpg';
-import { 
-  DEBUG_MODE, 
-  shouldUseTestingData,
-  createServiceLogger,
+import {
   API_URLS,
-  TIMEOUT_CONFIG
+  createServiceLogger,
+  DEBUG_MODE,
+  shouldUseTestingData,
+  TIMEOUT_CONFIG,
 } from '../config/appConfig';
-import { withCache } from './cacheService';
-import { withTimeout } from './func';
 import { validateReservationData } from '../validations/reservationValidations'; // Importar validaciones
+import { withCache } from './cacheService';
+import { logError, logInfo, logWarning, withTimeout } from './func';
 import { fetchLocations } from './searchServices'; // Import para obtener ubicaciones
+
+// Import test data from centralized location
+import {
+  datosReservaPrueba,
+  extrasDisponiblesPrueba,
+} from '../assets/testingData/testingData';
 
 // URL base de la API
 const API_URL = API_URLS.BASE;
 
 // Logger específico para este servicio
 const logger = createServiceLogger('RESERVATIONS');
-
-// Helper functions para logging condicional
-const logInfo = (message, data = null) => {
-  if (DEBUG_MODE) {
-    logger.info(message, data);
-  }
-};
-
-const logError = (message, error = null) => {
-  if (DEBUG_MODE) {
-    logger.error(message, error);
-  }
-};
 
 // Helper function para obtener headers de autenticación
 const getAuthHeaders = () => {
@@ -248,7 +240,7 @@ export const findReservation = async (reservaId, email) => {
       throw new Error('Reserva no encontrada con los datos proporcionados');
     } // En modo producción, usar la URL específica definida en backend/api/urls.py
     const response = await axios.post(
-      `${API_URL}/reservas/reservas/${reservaId}/find/`,
+      `${API_URL}/reservas/reservas/${reservaId}/buscar/`,
       { reserva_id: reservaId, email },
       getAuthHeaders(),
     );
@@ -311,20 +303,80 @@ export const findReservation = async (reservaId, email) => {
  */
 export const calculateReservationPrice = async (data) => {
   try {
+    // En modo DEBUG, intentar backend primero, fallback mínimo solo si falla
     if (DEBUG_MODE) {
-      const base = 316;
-      const extras = (data.extras?.length || 0) * 10;
-      const dateDiff =
-        data.fechaRecogida !== datosReservaPrueba.fechaRecogida ||
-        data.fechaDevolucion !== datosReservaPrueba.fechaDevolucion
-          ? 20
-          : 0;
-      const newPrice = base + extras + dateDiff;
-      return {
-        originalPrice: base,
-        newPrice,
-        difference: newPrice - base,
-      };
+      logInfo(
+        '⚠️ MODO DEBUG: Intentando calcular precio en backend primero...',
+      );
+
+      try {
+        // Mapear campos para el backend
+        const mappedData = {
+          vehiculo_id: data.vehiculo?.id || data.vehiculo_id,
+          fecha_recogida: data.fechaRecogida || data.fecha_recogida,
+          fecha_devolucion: data.fechaDevolucion || data.fecha_devolucion,
+          lugar_recogida_id: data.lugarRecogida?.id || data.lugar_recogida_id,
+          lugar_devolucion_id:
+            data.lugarDevolucion?.id || data.lugar_devolucion_id,
+          politica_pago_id: data.politicaPago?.id || data.politica_pago_id,
+          extras:
+            data.extras?.map((extra) =>
+              typeof extra === 'object' ? extra.id : extra,
+            ) || [],
+        };
+
+        const response = await axios.post(
+          `${API_URL}/reservas/calcular-precio/`,
+          mappedData,
+          getAuthHeaders(),
+        );
+
+        logInfo('✅ Precio calculado desde backend:', response.data);
+        return response.data;
+      } catch (backendError) {
+        logError(
+          '❌ Error en backend, modo DEBUG fallback activado:',
+          backendError,
+        );
+
+        // Fallback mínimo solo para DEBUG
+        logInfo('⚠️ FALLBACK DEBUG: Estimación temporal básica');
+
+        const fechaInicio = new Date(data.fechaRecogida || data.fecha_recogida);
+        const fechaFin = new Date(
+          data.fechaDevolucion || data.fecha_devolucion,
+        );
+        const diasAlquiler = Math.ceil(
+          (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24),
+        );
+
+        // Estimación muy básica para DEBUG SOLAMENTE (NO usar en producción)
+        const estimatedPrice = diasAlquiler * 50; // Solo para fallback de DEBUG
+
+        logInfo('⚠️ CRÍTICO: Estimación temporal, verificar con backend');
+
+        return {
+          originalPrice: estimatedPrice * 0.8,
+          newPrice: estimatedPrice,
+          difference: estimatedPrice * 0.2,
+          diasAlquiler,
+          isEstimate: true,
+          warningMessage: 'Estimación temporal - backend no disponible',
+          breakdown: {
+            precio_base: estimatedPrice * 0.8,
+            precio_extras: 0,
+            subtotal: estimatedPrice * 0.8,
+            impuestos: estimatedPrice * 0.2,
+            total: estimatedPrice,
+            note: 'Estimación temporal - usar backend para cálculos reales',
+          },
+        };
+      }
+    }
+
+    // Si hay un ID de reserva, es una edición
+    if (data.id) {
+      return await calculateEditReservationPrice(data.id, data);
     }
 
     // Mapear campos para el backend
@@ -343,7 +395,7 @@ export const calculateReservationPrice = async (data) => {
 
     // Llamar al endpoint de cálculo
     const response = await axios.post(
-      `${API_URL}/reservas/reservas/calculate-price/`,
+      `${API_URL}/reservas/reservas/calcular-precio/`,
       mappedData,
       getAuthHeaders(),
     );
@@ -362,6 +414,179 @@ export const calculateReservationPrice = async (data) => {
       typeof errorMessage === 'string'
         ? errorMessage
         : 'Error al calcular el precio.',
+    );
+  }
+};
+
+/**
+ * ✏️💰 CALCULAR PRECIO DE EDICIÓN DE RESERVA
+ *
+ * Función específica para calcular el precio de una reserva que se está editando,
+ * incluyendo la diferencia con el precio original. Útil para mostrar al cliente
+ * cuánto más o menos pagará con los cambios propuestos.
+ *
+ * @param {string} reservaId - ID de la reserva a editar
+ * @param {Object} editData - Nuevos datos de la reserva
+ * @returns {Promise<Object>} - Precio calculado con diferencia
+ */
+export const calculateEditReservationPrice = async (reservaId, editData) => {
+  try {
+    if (DEBUG_MODE) {
+      logInfo('🔄 Calculando precio de edición en modo DEBUG', {
+        reservaId,
+        editData,
+      });
+
+      // Obtener datos de la reserva original del sessionStorage
+      const reservaOriginal = JSON.parse(
+        sessionStorage.getItem('reservaData') || '{}',
+      );
+      const editReservaData = JSON.parse(
+        sessionStorage.getItem('editReservaData') || '{}',
+      );
+
+      // Usar precio original real de la reserva (SIN valores hardcodeados para producción)
+      const originalPrice = parseFloat(
+        reservaOriginal.precio_total ||
+          editReservaData.originalReservation?.precio_total ||
+          0,
+      );
+
+      logInfo('💰 Precio original de la reserva:', originalPrice);
+
+      // Calcular días de alquiler para la nueva configuración
+      const fechaInicio = new Date(
+        editData.fechaRecogida || editData.fecha_recogida,
+      );
+      const fechaFin = new Date(
+        editData.fechaDevolucion || editData.fecha_devolucion,
+      );
+      const diasAlquiler = Math.ceil(
+        (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24),
+      );
+
+      logInfo(`� Duración de la reserva: ${diasAlquiler} días`);
+
+      // FALLBACK DEBUG: Solo para desarrollo cuando falla la API
+      if (!DEBUG_MODE) {
+        throw new Error(
+          'Cálculo de precios en frontend no disponible en producción. Usar backend.',
+        );
+      }
+
+      // Variables para el cálculo fallback (solo DEBUG)
+      const precioDiario =
+        reservaOriginal?.car?.precio_dia ||
+        editReservaData?.car?.precio_dia ||
+        50; // Fallback temporal
+      const precioBase = precioDiario * diasAlquiler;
+
+      // Calcular precio de extras
+      let totalExtras = 0;
+      if (editData.extras && editData.extras.length > 0) {
+        totalExtras = editData.extras.reduce((total, extra) => {
+          // Sin fallback hardcodeado - debe venir del backend
+          const precioExtra = extra.precio || 0; // No calcular sin datos reales
+          return total + precioExtra;
+        }, 0);
+      }
+
+      // Subtotal antes de impuestos
+      const subtotal = precioBase + totalExtras;
+
+      // Sin valores hardcodeados de IVA - debe venir del backend
+      logError('❌ No se puede calcular IVA sin datos del backend');
+      const iva = 0; // Sin cálculo sin datos del backend
+      const newPrice = subtotal; // Solo subtotal sin impuestos
+
+      // Calcular diferencia
+      const difference = newPrice - originalPrice;
+
+      logInfo(`📊 Desglose del cálculo (MODO DEBUG - SIN IMPUESTOS):`);
+      logInfo(
+        `  💶 Precio base: €${precioBase.toFixed(
+          2,
+        )} (${diasAlquiler} días × €${precioDiario})`,
+      );
+      logInfo(`  🎁 Extras: €${totalExtras.toFixed(2)}`);
+      logInfo(`  📋 Subtotal: €${subtotal.toFixed(2)}`);
+      logInfo(`  🏛️ IVA: No calculado (requiere backend)`);
+      logInfo(`  💳 Total nuevo: €${newPrice.toFixed(2)}`);
+      logInfo(`  📊 Precio original: €${originalPrice.toFixed(2)}`);
+      logInfo(`  🔄 Diferencia: €${difference.toFixed(2)}`);
+
+      logWarning('⚠️ CÁLCULO SIN IVA - Los impuestos deben venir del backend');
+
+      return {
+        originalPrice: parseFloat(originalPrice.toFixed(2)),
+        newPrice: parseFloat(newPrice.toFixed(2)),
+        difference: parseFloat(difference.toFixed(2)),
+        diasAlquiler,
+        breakdown: {
+          precio_base: parseFloat(precioBase.toFixed(2)),
+          precio_extras: parseFloat(totalExtras.toFixed(2)),
+          subtotal: parseFloat(subtotal.toFixed(2)),
+          impuestos: parseFloat(iva.toFixed(2)),
+          total: parseFloat(newPrice.toFixed(2)),
+        },
+      };
+    }
+
+    // Preparar datos para el backend fuera del bloque DEBUG_MODE
+    const mappedData = {
+      fechaRecogida: editData.fechaRecogida || editData.fecha_recogida,
+      fechaDevolucion: editData.fechaDevolucion || editData.fecha_devolucion,
+      lugarRecogida_id: editData.lugarRecogida_id || editData.lugar_recogida_id,
+      lugarDevolucion_id:
+        editData.lugarDevolucion_id || editData.lugar_devolucion_id,
+      extras: editData.extras || [],
+    };
+
+    const response = await axios.post(
+      `${API_URL}/reservas/reservas/${reservaId}/calcular_precio_edicion/`,
+      mappedData,
+      getAuthHeaders(),
+    );
+
+    logInfo(
+      `Precio de edición calculado para reserva ${reservaId}:`,
+      response.data,
+    );
+    return response.data;
+  } catch (error) {
+    logError('Error calculating edit reservation price:', error);
+
+    // Preparar datos para debug (en caso de error)
+    const debugData = {
+      fechaRecogida: editData.fechaRecogida || editData.fecha_recogida,
+      fechaDevolucion: editData.fechaDevolucion || editData.fecha_devolucion,
+      lugarRecogida_id: editData.lugarRecogida_id || editData.lugar_recogida_id,
+      lugarDevolucion_id:
+        editData.lugarDevolucion_id || editData.lugar_devolucion_id,
+      extras: editData.extras || [],
+    };
+
+    // Debug detallado del error
+    if (DEBUG_MODE) {
+      logger.error('API Error:', {
+        error,
+        endpoint: `/reservas/reservas/${reservaId}/calcular-precio-edicion/`,
+        data: debugData,
+        context: 'price-calculation',
+      });
+    }
+
+    const errorMessage =
+      error.response?.data?.detail ||
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      'Error al calcular el precio de edición.';
+
+    throw new Error(
+      typeof errorMessage === 'string'
+        ? errorMessage
+        : 'Error al calcular el precio de edición.',
     );
   }
 };
@@ -400,28 +625,50 @@ export const calculateReservationPrice = async (data) => {
  */
 export const editReservation = async (reservaId, data) => {
   try {
+    logger.info('🔄 Editando reserva', { reservaId, data });
+
+    // Validar y limpiar todos los datos antes de procesar
+    const validatedData = validateAndCleanReservationData(data);
+
+    logger.info('🔧 Datos validados:', validatedData);
+
     if (DEBUG_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const updated = editarReservaPrueba(reservaId, data);
+      const updated = editarReservaPrueba(reservaId, validatedData);
       if (!updated) throw new Error('Reserva no encontrada para editar');
       return updated;
     }
+
     // Producción: llamada real a la API
-    const mappedData = await mapReservationToBackend(data);
+    const mappedData = await mapReservationToBackend(validatedData);
+
+    logger.info('📤 Enviando datos mapeados:', mappedData);
+
     const response = await axios.put(
       `${API_URL}/reservas/reservas/${reservaId}/`,
       mappedData,
       getAuthHeaders(),
     );
+
+    logger.info('✅ Reserva editada exitosamente');
     return response.data;
   } catch (error) {
-    logger.error('Error editing reservation:', error);
+    logger.error('❌ Error editing reservation:', error);
+
+    // Logging detallado del error para debugging
+    if (error.response) {
+      logger.error('📋 Response data:', error.response.data);
+      logger.error('📋 Response status:', error.response.status);
+      logger.error('📋 Response headers:', error.response.headers);
+    }
+
     const errorMessage =
       error.response?.data?.detail ||
       error.response?.data?.message ||
       error.response?.data ||
       error.message ||
       'Error al editar la reserva.';
+
     throw new Error(
       typeof errorMessage === 'string'
         ? errorMessage
@@ -494,11 +741,25 @@ export const deleteReservation = async (reservaId) => {
       {},
       getAuthHeaders(),
     );
+
+    logInfo(`Reserva ${reservaId} cancelada exitosamente`);
   } catch (error) {
-    logger.error('Error canceling reservation:', error);
+    logError('Error canceling reservation:', error);
+
+    // Debug detallado del error
+    if (DEBUG_MODE) {
+      logError('[DEBUG] API Error:', {
+        error,
+        endpoint: `/reservas/reservas/${reservaId}/cancel/`,
+        data: {},
+        context: 'cancelation',
+      });
+    }
+
     const errorMessage =
       error.response?.data?.detail ||
       error.response?.data?.message ||
+      error.response?.data?.error ||
       error.response?.data ||
       error.message ||
       'Error al cancelar la reserva.';
@@ -545,7 +806,7 @@ export const deleteReservation = async (reservaId) => {
  * - Convertir IDs de extras a objetos completos en storage service
  *
  * 🔄 DISPONIBILIDAD: Funciona tanto en DEBUG_MODE como en producción
- * ⚡ FALLBACK: Retorna datos de prueba realistas en modo DEBUG_MODE
+ * ⚡ FALLBACK: Retorna datos de prueba realistas en modo DEBUG_MODE para desarrollo
  * 🛡️ ERROR HANDLING: Manejo robusto de diferentes formatos de respuesta API
  *
  * @returns {Promise<Array>} - Lista completa de extras disponibles con información detallada
@@ -553,43 +814,11 @@ export const deleteReservation = async (reservaId) => {
  */
 export const getExtrasDisponibles = async () => {
   try {
-    if (DEBUG_MODE) {
-      // Simular delay y devolver datos de prueba
+    if (shouldUseTestingData(false)) {
+      // Simular delay y devolver datos de prueba centralizados
       await new Promise((resolve) => setTimeout(resolve, 300));
-      return [
-        {
-          id: 1,
-          nombre: 'Asiento infantil',
-          descripcion: 'Para niños de 9-18kg (1-4 años)',
-          precio: 7.5,
-          disponible: true,
-          categoria: 'seguridad',
-        },
-        {
-          id: 2,
-          nombre: 'GPS',
-          descripcion: 'Navegador con mapas actualizados',
-          precio: 8.95,
-          disponible: true,
-          categoria: 'navegacion',
-        },
-        {
-          id: 3,
-          nombre: 'Conductor adicional',
-          descripcion: 'Añade un conductor adicional a tu reserva',
-          precio: 5.0,
-          disponible: true,
-          categoria: 'conductor',
-        },
-        {
-          id: 4,
-          nombre: 'Wi-Fi portátil',
-          descripcion: 'Conexión 4G en todo el vehículo',
-          precio: 6.95,
-          disponible: true,
-          categoria: 'conectividad',
-        },
-      ];
+      logInfo('🧪 DEBUG: Usando datos de extras de prueba centralizados');
+      return extrasDisponiblesPrueba;
     }
 
     // Producción: llamada real a la API
@@ -759,7 +988,7 @@ export const getExtrasPorPrecio = async (orden = 'asc') => {
     return response.data;
   } catch (error) {
     logger.error('Error fetching extras by price:', error);
-    // Fallback a la función principal y ordenar localmente
+    // Fallback a la función principal and ordenar localmente
     const extras = await getExtrasDisponibles();
     return extras.sort((a, b) =>
       orden === 'asc' ? a.precio - b.precio : b.precio - a.precio,
@@ -767,217 +996,11 @@ export const getExtrasPorPrecio = async (orden = 'asc') => {
   }
 };
 
-// Datos de prueba actualizados según esquema (usar el mismo que ya se usa en DetallesReserva)
-export const datosReservaPrueba = {
-  id: 'R12345678',
-  estado: 'confirmada',
-  fechaRecogida: '2025-05-14T12:30:00',
-  fechaDevolucion: '2025-05-18T08:30:00',
-
-  vehiculo: {
-    id: 7,
-    categoria_id: 2,
-    grupo_id: 3,
-    combustible: 'Diésel',
-    marca: 'BMW',
-    modelo: '320i',
-    matricula: 'ABC1234',
-    anio: 2023,
-    color: 'Negro',
-    num_puertas: 5,
-    num_pasajeros: 5,
-    capacidad_maletero: 480,
-    disponible: 1,
-    activo: 1,
-    fianza: 0,
-    kilometraje: 10500,
-    categoria: {
-      id: 2,
-      nombre: 'Berlina Premium',
-    },
-    grupo: {
-      id: 3,
-      nombre: 'Segmento D',
-      edad_minima: 21,
-    },
-    imagenPrincipal: bmwImage,
-    imagenes: [{ id: 1, vehiculo_id: 7, url: bmwImage, portada: 1 }],
-  },
-
-  lugarRecogida: {
-    id: 1,
-    nombre: 'Aeropuerto de Málaga (AGP)',
-    direccion_id: 5,
-    telefono: '+34 951 23 45 67',
-    email: 'malaga@mobility4you.com',
-    icono_url: 'faPlane',
-    direccion: {
-      id: 5,
-      calle: 'Av. Comandante García Morato, s/n',
-      ciudad: 'málaga',
-      provincia: 'málaga',
-      pais: 'españa',
-      codigo_postal: '29004',
-    },
-  },
-  lugarDevolucion: {
-    id: 1,
-    nombre: 'Aeropuerto de Málaga (AGP)',
-    direccion_id: 5,
-    telefono: '+34 951 23 45 67',
-    email: 'malaga@mobility4you.com',
-    icono_url: 'faPlane',
-    direccion: {
-      id: 5,
-      calle: 'Av. Comandante García Morato, s/n',
-      ciudad: 'málaga',
-      provincia: 'málaga',
-      pais: 'españa',
-      codigo_postal: '29004',
-    },
-  },
-
-  politicaPago: {
-    id: 1,
-    titulo: 'All Inclusive',
-    deductible: 0,
-    descripcion:
-      'Cobertura completa sin franquicia y con kilometraje ilimitado',
-    items: [
-      {
-        politica_id: 1,
-        item: 'Cobertura a todo riesgo sin franquicia',
-        incluye: 1,
-      },
-      { politica_id: 1, item: 'Kilometraje ilimitado', incluye: 1 },
-      { politica_id: 1, item: 'Asistencia en carretera 24/7', incluye: 1 },
-      { politica_id: 1, item: 'Conductor adicional gratuito', incluye: 1 },
-      {
-        politica_id: 1,
-        item: 'Cancelación gratuita hasta 24h antes',
-        incluye: 1,
-      },
-      {
-        politica_id: 1,
-        item: 'Daños bajo efectos del alcohol o drogas',
-        incluye: 0,
-      },
-    ],
-    penalizaciones: [
-      {
-        politica_pago_id: 1,
-        tipo_penalizacion_id: 1,
-        horas_previas: 24,
-        tipo_penalizacion: {
-          id: 1,
-          nombre: 'cancelación',
-          tipo_tarifa: 'porcentaje',
-          valor_tarifa: 50.0,
-          descripcion:
-            'Cancelación con menos de 24h: cargo del 50% del valor total',
-        },
-      },
-    ],
-  },
-
-  extras: [
-    { id: 1, nombre: 'Asiento infantil (Grupo 1)', precio: 25.0 },
-    { id: 2, nombre: 'GPS navegador', precio: 15.0 },
-  ],
-
-  conductores: [
-    {
-      reserva_id: 'R12345678',
-      conductor_id: 123,
-      rol: 'principal',
-      conductor: {
-        id: 123,
-        nombre: 'Juan',
-        apellido: 'Pérez García',
-        email: 'juan.perez@example.com',
-        fecha_nacimiento: '1985-06-15',
-        sexo: 'masculino',
-        nacionalidad: 'española',
-        tipo_documento: 'dni',
-        numero_documento: '12345678A',
-        telefono: '+34 600 123 456',
-        direccion_id: 10,
-        rol: 'cliente',
-        idioma: 'es',
-        activo: 1,
-        registrado: 1,
-        verificado: 1,
-        direccion: {
-          id: 10,
-          calle: 'Calle Principal 123',
-          ciudad: 'madrid',
-          provincia: 'madrid',
-          pais: 'españa',
-          codigo_postal: '28001',
-        },
-      },
-    },
-    {
-      reserva_id: 'R12345678',
-      conductor_id: 124,
-      rol: 'secundario',
-      conductor: {
-        id: 124,
-        nombre: 'María',
-        apellido: 'López Sánchez',
-        email: 'maria.lopez@example.com',
-        fecha_nacimiento: '1987-04-22',
-        sexo: 'femenino',
-        nacionalidad: 'española',
-        tipo_documento: 'dni',
-        numero_documento: '87654321B',
-        telefono: '+34 600 789 012',
-        direccion_id: 11,
-        rol: 'cliente',
-        idioma: 'es',
-        activo: 1,
-        registrado: 1,
-        verificado: 1,
-        direccion: {
-          id: 11,
-          calle: 'Calle Secundaria 456',
-          ciudad: 'madrid',
-          provincia: 'madrid',
-          pais: 'españa',
-          codigo_postal: '28002',
-        },
-      },
-    },
-  ],
-
-  promocion: {
-    id: 5,
-    nombre: 'Descuento Mayo 2025',
-    descuento_pct: 10.0,
-    fecha_inicio: '2025-05-01',
-    fecha_fin: '2025-05-31',
-    activo: 1,
-  },
-
-  penalizaciones: [],
-
-  precio_dia: 79.0,
-  precioBase: 316.0,
-  precioExtras: 40.0,
-  precioImpuestos: 74.76,
-  descuentoPromocion: 35.6,
-  precioTotal: 395.16,
-  diferenciaPendiente: 0,
-  metodoPagoDiferencia: null,
-  diferenciaPagada: null,
-
-  // NUEVOS CAMPOS DE CONTROL DE PAGOS
-  metodo_pago: 'tarjeta', // o 'efectivo'
-  importe_pagado_inicial: 395.16, // Si es tarjeta, todo pagado; si es efectivo, 0
-  importe_pendiente_inicial: 0.0, // Si es tarjeta, 0; si es efectivo, todo el total
-  importe_pagado_extra: 0.0, // Importe pagado posteriormente (extras/diferencias)
-  importe_pendiente_extra: 0.0, // Importe pendiente de extras/diferencias
-};
+// ⚠️ DATOS DE PRUEBA - SOLO PARA DEBUG Y TESTING
+// IMPORTANTE: Estos datos NO deben usarse en producción
+// Solo están disponibles cuando DEBUG_MODE=true Y hay fallo del backend
+// Export test data for backward compatibility - only available in DEBUG mode
+export { datosReservaPrueba };
 
 /**
  * 💳 PROCESAR PAGO DE RESERVA CON STRIPE
@@ -1060,9 +1083,10 @@ export const datosReservaPrueba = {
  */
 export const processPayment = async (reservaId, paymentData) => {
   try {
-    logInfo('Procesando pago de reserva con Stripe', {
+    logger.info('🔄 Procesando pago de reserva', {
       reservaId,
-      paymentData,
+      importe: paymentData.amount,
+      metodo: paymentData.metodo_pago,
     });
 
     if (DEBUG_MODE) {
@@ -1103,8 +1127,74 @@ export const processPayment = async (reservaId, paymentData) => {
   }
 };
 
-// Array de reservas de prueba para simular flujo completo en DEBUG_MODE
-let reservasPrueba = [{ ...datosReservaPrueba }];
+/**
+ * 💳 PROCESAR PAGO DE DIFERENCIA
+ *
+ * Función específica para procesar pagos de diferencias en reservas editadas.
+ * Maneja tanto pagos con tarjeta como en efectivo, con validación robusta
+ * de campos numéricos y formateo correcto de decimales.
+ *
+ * @param {string} reservaId - ID de la reserva
+ * @param {Object} paymentData - Datos del pago
+ * @returns {Promise<Object>} - Resultado del procesamiento de pago
+ */
+export const processDifferencePayment = async (reservaId, paymentData) => {
+  try {
+    logger.info('🔄 Procesando pago de diferencia', {
+      reservaId,
+      importe: paymentData.importe,
+      metodo: paymentData.metodo_pago,
+    });
+
+    // Validar y limpiar datos numéricos
+    const cleanPaymentData = {
+      ...paymentData,
+      // Asegurar que los importes sean números válidos con 2 decimales
+      importe: Number(parseFloat(paymentData.importe || 0).toFixed(2)),
+    };
+
+    if (DEBUG_MODE) {
+      // Simular procesamiento de pago en desarrollo
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      logger.info('✅ Pago simulado exitosamente');
+
+      return {
+        success: true,
+        message: 'Pago procesado correctamente (simulado)',
+        transaction_id: `SIM-${Date.now()}`,
+        amount: cleanPaymentData.importe,
+        method: cleanPaymentData.metodo_pago,
+      };
+    }
+
+    // Producción: procesar pago real
+    const response = await axios.post(
+      `${API_URL}/payments/process-payment/`,
+      {
+        reservation_id: reservaId,
+        ...cleanPaymentData,
+      },
+      getAuthHeaders(),
+    );
+
+    return response.data;
+  } catch (error) {
+    logger.error('❌ Error procesando pago:', error);
+    const errorMessage =
+      error.response?.data?.detail ||
+      error.response?.data?.message ||
+      error.message ||
+      'Error al procesar el pago';
+
+    throw new Error(errorMessage);
+  }
+};
+
+// ⚠️ ARRAY DE PRUEBA - SOLO DEBUG MODE
+// IMPORTANTE: Solo se inicializa si DEBUG_MODE está activo Y hay datos de prueba
+let reservasPrueba =
+  DEBUG_MODE && datosReservaPrueba ? [{ ...datosReservaPrueba }] : [];
 
 /**
  * 🔍 BUSCAR RESERVA EN ARRAY DE PRUEBA (DEBUG MODE)
@@ -1746,6 +1836,74 @@ const mapPaymentOptionToId = (paymentOption) => {
 };
 
 /**
+ * 🔧 VALIDAR DATOS DE RESERVA
+ *
+ * Función auxiliar para validar y limpiar datos de reserva antes del envío al backend.
+ * Asegura que todos los campos numéricos estén correctamente formateados.
+ *
+ * @param {Object} data - Datos de la reserva a validar
+ * @returns {Object} - Datos validados y limpiados
+ */
+const validateAndCleanReservationData = (data) => {
+  logger.info('🔍 Validando datos de reserva:', data);
+
+  const cleanedData = { ...data };
+
+  // Lista de campos numéricos que requieren limpieza
+  const numericFields = [
+    'precio_total',
+    'precio_base',
+    'precio_extras',
+    'precio_impuestos',
+    'precio_dia',
+    'importe_pagado_inicial',
+    'importe_pendiente_inicial',
+    'importe_pagado_extra',
+    'importe_pendiente_extra',
+    'tasa_impuesto',
+  ];
+
+  // Limpiar campos numéricos
+  numericFields.forEach((field) => {
+    if (data[field] !== undefined && data[field] !== null) {
+      const value = data[field];
+
+      if (typeof value === 'string') {
+        // Limpiar string de caracteres no numéricos excepto punto y guión
+        const cleaned = value.replace(/[^\d.-]/g, '');
+        cleanedData[field] = Number(parseFloat(cleaned || 0).toFixed(2));
+      } else if (typeof value === 'number') {
+        // Asegurar 2 decimales
+        cleanedData[field] = Number(parseFloat(value).toFixed(2));
+      }
+    }
+  });
+
+  // Validar IDs requeridos
+  const requiredIds = ['vehiculo', 'lugar_recogida', 'lugar_devolucion'];
+  requiredIds.forEach((field) => {
+    if (!cleanedData[field] && !cleanedData[`${field}_id`]) {
+      logger.warn(`⚠️ Campo requerido faltante: ${field}`);
+    }
+  });
+
+  // Validar fechas
+  if (cleanedData.fecha_recogida && cleanedData.fecha_devolucion) {
+    const pickup = new Date(cleanedData.fecha_recogida);
+    const dropoff = new Date(cleanedData.fecha_devolucion);
+
+    if (pickup >= dropoff) {
+      throw new Error(
+        'La fecha de devolución debe ser posterior a la fecha de recogida',
+      );
+    }
+  }
+
+  logger.info('✅ Datos validados y limpiados:', cleanedData);
+  return cleanedData;
+};
+
+/**
  * ✨ ENHANCED RESERVATION DATA MAPPER ✨
  * Mapeo inteligente de datos de reserva usando el nuevo servicio mejorado
  * @param {Object} data - Datos de la reserva desde el frontend
@@ -2124,56 +2282,65 @@ export const fetchPoliticasPago = async () => {
       }
 
       // Filtrar solo políticas activas
-      const activePolicies = dataArray.filter(policy => policy.activo !== false);
+      const activePolicies = dataArray.filter(
+        (policy) => policy.activo !== false,
+      );
 
       // Usar el mapper universal para normalizar datos y transformar al formato del componente
       const mappedData = await universalMapper.mapPolicies(activePolicies);
 
       // Transformar los datos mapeados al formato específico requerido por FichaCoche
-      const transformedForComponent = mappedData.map(politica => ({
+      const transformedForComponent = mappedData.map((politica) => ({
         id: `politica-${politica.id}`,
         title: politica.titulo,
         deductible: politica.deductible,
         descripcion: politica.descripcion,
-        incluye: politica.incluye.map(item => item.titulo),
-        noIncluye: politica.no_incluye.map(item => item.titulo),
-        originalData: politica // Guardar datos originales para la reserva
+        incluye: politica.incluye.map((item) => item.titulo),
+        noIncluye: politica.no_incluye.map((item) => item.titulo),
+        originalData: politica, // Guardar datos originales para la reserva
       }));
 
-      logger.info('Políticas de pago cargadas y transformadas desde API de Django', { 
-        count: transformedForComponent.length,
-        policies: transformedForComponent.map(p => ({ 
-          id: p.id, 
-          title: p.title, 
-          deductible: p.deductible,
-          incluye_count: p.incluye.length,
-          noIncluye_count: p.noIncluye.length
-        }))
-      });
+      logger.info(
+        'Políticas de pago cargadas y transformadas desde API de Django',
+        {
+          count: transformedForComponent.length,
+          policies: transformedForComponent.map((p) => ({
+            id: p.id,
+            title: p.title,
+            deductible: p.deductible,
+            incluye_count: p.incluye.length,
+            noIncluye_count: p.noIncluye.length,
+          })),
+        },
+      );
 
       return transformedForComponent;
-
     } catch (error) {
-      logger.error('Error al consultar políticas de pago desde API de Django', error);
+      logger.error(
+        'Error al consultar políticas de pago desde API de Django',
+        error,
+      );
 
       // FALLBACK: Solo si DEBUG_MODE está activo Y la API falló
       if (shouldUseTestingData(true)) {
         logger.info('Fallback: usando datos de testing para políticas de pago');
-        
+
         const { testingPaymentOptions } = await import(
           '../assets/testingData/testingData.js'
         );
 
         // Las opciones de testing ya vienen en el formato correcto
-        logger.info('Políticas de pago cargadas desde datos de testing', { 
-          count: testingPaymentOptions.length 
+        logger.info('Políticas de pago cargadas desde datos de testing', {
+          count: testingPaymentOptions.length,
         });
 
         return testingPaymentOptions;
       }
 
       // EN PRODUCCIÓN: Error sin fallback
-      logger.error('Error en producción - no hay datos de políticas disponibles');
+      logger.error(
+        'Error en producción - no hay datos de políticas disponibles',
+      );
       throw new Error(
         'Error al cargar políticas de pago. Por favor, intente nuevamente.',
       );

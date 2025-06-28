@@ -33,13 +33,15 @@ import { useNavigate } from 'react-router-dom';
 import autoGear from '../assets/img/icons/automatic-gear.svg';
 import carDoorLeft from '../assets/img/icons/car-door-left.svg';
 
+import { createServiceLogger } from '../config/appConfig';
 import '../css/FichaCoche.css';
+import { calculateDisplayTaxAmount, formatTaxRate } from '../services/func';
 import { fetchPoliticasPago } from '../services/reservationServices';
 import { getStoredSearchParams } from '../services/searchServices';
-import {
-  calculateTaxAmount,
-  roundToDecimals,
-} from '../services/universalDataMapper';
+import { roundToDecimals } from '../services/universalDataMapper';
+
+// Crear logger para el componente
+const logger = createServiceLogger('FICHA_COCHE');
 
 const FichaCoche = ({ car, onClose }) => {
   const navigate = useNavigate();
@@ -65,7 +67,7 @@ const FichaCoche = ({ car, onClose }) => {
           throw new Error('No se encontraron políticas activas disponibles');
         }
       } catch (error) {
-        console.error('❌ Error cargando políticas desde servicio:', error);
+        logger.error('❌ Error cargando políticas desde servicio:', error);
 
         // Fallback mínimo en caso de error completo del servicio
         setPaymentOptions([
@@ -106,7 +108,7 @@ const FichaCoche = ({ car, onClose }) => {
       try {
         storedData = JSON.parse(storedReservaData);
       } catch (error) {
-        console.error('Error parsing stored reservation data:', error);
+        logger.error('Error parsing stored reservation data:', error);
       }
     }
 
@@ -133,7 +135,7 @@ const FichaCoche = ({ car, onClose }) => {
       aeropuertoMalaga;
 
     // Debug: Verificar que se están usando las fechas correctas
-    console.log('🔍 [FichaCoche] Fechas de búsqueda originales:', {
+    logger.info('🔍 [FichaCoche] Fechas de búsqueda originales:', {
       pickupDate: storedSearchParams?.pickupDate,
       dropoffDate: storedSearchParams?.dropoffDate,
       pickupTime: storedSearchParams?.pickupTime,
@@ -151,7 +153,6 @@ const FichaCoche = ({ car, onClose }) => {
       paymentOption: selectedPayment,
       fechas: {
         pickupLocation,
-        // CORREGIDO: Usar fechas originales de la búsqueda en lugar de valores hardcodeados
         pickupDate: storedSearchParams?.pickupDate || new Date(),
         pickupTime: storedSearchParams?.pickupTime || '12:00',
         dropoffLocation,
@@ -519,9 +520,13 @@ const FichaCoche = ({ car, onClose }) => {
                 <span>{car.precio_dia}€</span>
               </div>{' '}
               <div className="d-flex justify-content-between mb-2 price-item">
-                <span>IVA (21%):</span>
+                <span>IVA {formatTaxRate(car.tasaImpuesto)}:</span>
                 <span>
-                  {calculateTaxAmount(Number(car.precio_dia) || 0).toFixed(2)}€
+                  {calculateDisplayTaxAmount(
+                    Number(car.precio_dia) || 0,
+                    car.tasaImpuesto,
+                  ).toFixed(2)}
+                  €
                 </span>
               </div>
               <hr />
@@ -530,7 +535,10 @@ const FichaCoche = ({ car, onClose }) => {
                 <span>
                   {roundToDecimals(
                     (Number(car.precio_dia) || 0) +
-                      calculateTaxAmount(Number(car.precio_dia) || 0),
+                      calculateDisplayTaxAmount(
+                        Number(car.precio_dia) || 0,
+                        car.tasaImpuesto,
+                      ),
                   ).toFixed(2)}
                   €
                 </span>

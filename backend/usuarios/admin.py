@@ -177,7 +177,7 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
     """Administrador avanzado para el modelo Usuario"""    # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
+            "all": (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
         }
         js = (get_versioned_asset("js_usuarios", "admin/js/usuarios_admin_vc5b6f7e1.js"),)
 

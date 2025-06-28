@@ -1,5 +1,9 @@
 // src/context/AppContext.js
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createServiceLogger } from '../config/appConfig';
+
+// Crear logger para el contexto
+const logger = createServiceLogger('APP_CONTEXT');
 
 // Crear el contexto
 const AppContext = createContext(null);
@@ -80,7 +84,7 @@ const AppProvider = ({ children }) => {
       try {
         setUser(JSON.parse(savedUser));
       } catch (e) {
-        console.error('Error parsing saved user session', e);
+        logger.error('Error parsing saved user session', e);
         localStorage.removeItem('userSession');
       }
     }
@@ -95,7 +99,7 @@ const AppProvider = ({ children }) => {
           document.documentElement.classList.add('dark-mode');
         }
       } catch (e) {
-        console.error('Error parsing dark mode preference', e);
+        logger.error('Error parsing dark mode preference', e);
       }
     } else {
       // Detectar preferencia del sistema si no hay guardada

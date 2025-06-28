@@ -20,6 +20,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
+import { createServiceLogger } from '../config/appConfig';
 import { useAlertContext } from '../context/AlertContext'; // Importar el contexto de alertas
 import {
   availableTimes,
@@ -64,7 +65,7 @@ const carGroups = [
  * @example
  * <FormBusqueda
  *   collapsible={true}
- *   onSearch={(params) => console.log(params)}
+ *   onSearch={(params) => logger.info(params)}
  *   initialValues={{
  *     pickupLocation: "Madrid",
  *     dropoffLocation: "Barcelona",
@@ -84,6 +85,10 @@ const carGroups = [
  * - Diseño plegable para optimizar el espacio en pantalla.
  * - Funcionalidad para detectar el scroll y fijar el formulario en la parte superior.
  */
+
+// Crear logger para el componente
+const logger = createServiceLogger('FORM_BUSQUEDA');
+
 const FormBusqueda = ({
   collapsible = false,
   onSearch,
@@ -210,7 +215,7 @@ const FormBusqueda = ({
 
       return null;
     } catch (error) {
-      console.error(
+      logger.error(
         '❌ [FormBusqueda] Error recuperando datos almacenados:',
         error,
       );
@@ -221,13 +226,13 @@ const FormBusqueda = ({
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        console.log('🔍 [FormBusqueda] Cargando ubicaciones...');
+        logger.info('🔍 [FormBusqueda] Cargando ubicaciones...');
 
         // OPTIMIZACIÓN: Usar ubicaciones pasadas como prop si están disponibles
         let locationsData = [];
 
         if (locations && locations.length > 0) {
-          console.log(
+          logger.info(
             '✅ [FormBusqueda] Usando ubicaciones desde props:',
             locations.length,
           );
@@ -235,9 +240,9 @@ const FormBusqueda = ({
           setAvailableLocations(locationsData);
         } else {
           // Solo hacer la llamada a la API si no se pasaron ubicaciones como prop
-          console.log('🌐 [FormBusqueda] Cargando ubicaciones desde API...');
+          logger.info('🌐 [FormBusqueda] Cargando ubicaciones desde API...');
           locationsData = await fetchLocations();
-          console.log(
+          logger.info(
             '✅ [FormBusqueda] Ubicaciones disponibles:',
             locationsData,
           );
@@ -246,7 +251,7 @@ const FormBusqueda = ({
 
         // Verificar si no hay ubicaciones disponibles
         if (locationsData.length === 0) {
-          console.warn(
+          logger.warn(
             '⚠️ [FormBusqueda] No hay ubicaciones disponibles en el sistema',
           );
           showWarning(
@@ -261,7 +266,7 @@ const FormBusqueda = ({
         // Verificar si hay datos guardados en sessionStorage (con formato mejorado)
         const storedData = getStoredDataWithLocations();
         if (storedData) {
-          console.log(
+          logger.info(
             '� [FormBusqueda] Recuperando datos almacenados:',
             storedData,
           );
@@ -312,13 +317,13 @@ const FormBusqueda = ({
           setShowDropoffLocation(storedData.showDropoffLocation);
           setSameLocation(!storedData.showDropoffLocation);
           setPickupDate(storedData.pickupDate || addDays(new Date(), 1));
-          setDropoffDate(storedData.dropoffDate || addDays(new Date(), 8));;
+          setDropoffDate(storedData.dropoffDate || addDays(new Date(), 8));
           setPickupTime(storedData.pickupTime || availableTimes[0]);
           setDropoffTime(storedData.dropoffTime || availableTimes[0]);
           setMayor21(storedData.mayor21 || false);
         }
       } catch (error) {
-        console.error('❌ [FormBusqueda] Error cargando ubicaciones:', error);
+        logger.error('❌ [FormBusqueda] Error cargando ubicaciones:', error);
         showWarning(
           'No se pudieron cargar todas las ubicaciones. Por favor, intenta más tarde.',
           {
@@ -408,14 +413,14 @@ const FormBusqueda = ({
     setSuggestions,
   ) => {
     // Debug: Verificar la estructura de datos
-    console.log(
+    logger.info(
       '🔍 [FormBusqueda] renderSuggestions - datos recibidos:',
       suggestions,
     );
 
     // Verificar que suggestions sea un array válido
     if (!Array.isArray(suggestions)) {
-      console.error(
+      logger.error(
         '❌ [FormBusqueda] suggestions no es un array:',
         suggestions,
       );
@@ -425,14 +430,14 @@ const FormBusqueda = ({
     return suggestions
       .map((location, index) => {
         // Debug: Verificar cada objeto de ubicación
-        console.log(
+        logger.info(
           `🔍 [FormBusqueda] Procesando ubicación ${index}:`,
           location,
         );
 
         // Validar que location sea un objeto válido
         if (!location || typeof location !== 'object') {
-          console.error(
+          logger.error(
             '❌ [FormBusqueda] Ubicación inválida en índice',
             index,
             ':',
@@ -647,7 +652,7 @@ const FormBusqueda = ({
   // Efecto para sincronizar estado cuando cambien los initialValues
   useEffect(() => {
     if (initialValues && Object.keys(initialValues).length > 0) {
-      console.log(
+      logger.info(
         '🔄 [FormBusqueda] Sincronizando con initialValues:',
         initialValues,
       );

@@ -1,6 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Container, Card, Button, Alert, Badge } from 'react-bootstrap';
+import { useEffect, useState } from 'react';
+import { Alert, Badge, Button, Card, Container } from 'react-bootstrap';
+import { createServiceLogger } from '../config/appConfig';
 import { getReservationStorageService } from '../services/reservationStorageService';
+
+// Crear logger para el componente
+const logger = createServiceLogger('RESERVATION_DEBUG_PAGE');
 
 const ReservationDebugPage = () => {
   const [storageState, setStorageState] = useState(null);
@@ -16,13 +20,13 @@ const ReservationDebugPage = () => {
         script.src = '/src/tests/reservationFlowTest.js';
         script.type = 'module';
         document.head.appendChild(script);
-        
+
         // Hacer el servicio disponible globalmente para las pruebas
         window.getReservationStorageService = getReservationStorageService;
-        
-        console.log('✅ Scripts de prueba cargados');
+
+        logger.info('✅ Scripts de prueba cargados');
       } catch (error) {
-        console.error('❌ Error cargando scripts de prueba:', error);
+        logger.error('❌ Error cargando scripts de prueba:', error);
       }
     };
 
@@ -41,21 +45,26 @@ const ReservationDebugPage = () => {
         currentStep: storageService.getCurrentStep(),
         completeData: completeData,
         remainingTime: storageService.getRemainingTime(),
-        sessionStorageKeys: Object.keys(sessionStorage).filter(key => key.startsWith('reserva'))
+        sessionStorageKeys: Object.keys(sessionStorage).filter((key) =>
+          key.startsWith('reserva'),
+        ),
       };
       setStorageState(state);
     } catch (error) {
-      console.error('Error updating storage state:', error);
+      logger.error('Error updating storage state:', error);
       setStorageState({ error: error.message });
     }
   };
 
   // Cargar estado inicial
   useEffect(() => {
-    updateStorageState().catch(console.error);
-    
+    updateStorageState().catch(logger.error);
+
     // Actualizar cada 5 segundos
-    const interval = setInterval(() => updateStorageState().catch(console.error), 5000);
+    const interval = setInterval(
+      () => updateStorageState().catch(logger.error),
+      5000,
+    );
     return () => clearInterval(interval);
   }, []);
 
@@ -64,13 +73,13 @@ const ReservationDebugPage = () => {
     try {
       if (window.testReservationFlow) {
         const result = window.testReservationFlow.step1_SimulateCarSelection();
-        setTestResults(prev => ({ ...prev, step1: result }));
-        setTimeout(() => updateStorageState().catch(console.error), 1000);
+        setTestResults((prev) => ({ ...prev, step1: result }));
+        setTimeout(() => updateStorageState().catch(logger.error), 1000);
       } else {
         alert('Scripts de prueba no cargados aún');
       }
     } catch (error) {
-      console.error('Error en step1:', error);
+      logger.error('Error en step1:', error);
     }
   };
 
@@ -78,12 +87,13 @@ const ReservationDebugPage = () => {
   const runStep2 = async () => {
     try {
       if (window.testReservationFlow) {
-        const result = await window.testReservationFlow.step2_VerifyExtrasPage();
-        setTestResults(prev => ({ ...prev, step2: result }));
-        setTimeout(() => updateStorageState().catch(console.error), 1000);
+        const result =
+          await window.testReservationFlow.step2_VerifyExtrasPage();
+        setTestResults((prev) => ({ ...prev, step2: result }));
+        setTimeout(() => updateStorageState().catch(logger.error), 1000);
       }
     } catch (error) {
-      console.error('Error en step2:', error);
+      logger.error('Error en step2:', error);
     }
   };
 
@@ -91,12 +101,13 @@ const ReservationDebugPage = () => {
   const runStep3 = () => {
     try {
       if (window.testReservationFlow) {
-        const result = window.testReservationFlow.step3_SimulateExtrasSelection();
-        setTestResults(prev => ({ ...prev, step3: result }));
-        setTimeout(() => updateStorageState().catch(console.error), 1000);
+        const result =
+          window.testReservationFlow.step3_SimulateExtrasSelection();
+        setTestResults((prev) => ({ ...prev, step3: result }));
+        setTimeout(() => updateStorageState().catch(logger.error), 1000);
       }
     } catch (error) {
-      console.error('Error en step3:', error);
+      logger.error('Error en step3:', error);
     }
   };
 
@@ -104,12 +115,13 @@ const ReservationDebugPage = () => {
   const runStep4 = async () => {
     try {
       if (window.testReservationFlow) {
-        const result = await window.testReservationFlow.step4_VerifyConductorPage();
-        setTestResults(prev => ({ ...prev, step4: result }));
-        setTimeout(() => updateStorageState().catch(console.error), 1000);
+        const result =
+          await window.testReservationFlow.step4_VerifyConductorPage();
+        setTestResults((prev) => ({ ...prev, step4: result }));
+        setTimeout(() => updateStorageState().catch(logger.error), 1000);
       }
     } catch (error) {
-      console.error('Error en step4:', error);
+      logger.error('Error en step4:', error);
     }
   };
 
@@ -117,12 +129,13 @@ const ReservationDebugPage = () => {
   const runStep5 = async () => {
     try {
       if (window.testReservationFlow) {
-        const result = await window.testReservationFlow.step5_SimulateConductorData();
-        setTestResults(prev => ({ ...prev, step5: result }));
-        setTimeout(() => updateStorageState().catch(console.error), 1000);
+        const result =
+          await window.testReservationFlow.step5_SimulateConductorData();
+        setTestResults((prev) => ({ ...prev, step5: result }));
+        setTimeout(() => updateStorageState().catch(logger.error), 1000);
       }
     } catch (error) {
-      console.error('Error en step5:', error);
+      logger.error('Error en step5:', error);
     }
   };
 
@@ -134,16 +147,16 @@ const ReservationDebugPage = () => {
       }
       storageService.clearAllReservationData();
       setTestResults({});
-      setTimeout(() => updateStorageState().catch(console.error), 1000);
+      setTimeout(() => updateStorageState().catch(logger.error), 1000);
     } catch (error) {
-      console.error('Error en cleanup:', error);
+      logger.error('Error en cleanup:', error);
     }
   };
 
   return (
     <Container className="my-4">
       <h2>🔧 Página de Depuración - Storage de Reservas</h2>
-      
+
       {/* Controles de prueba */}
       <Card className="mb-4">
         <Card.Header>
@@ -169,19 +182,22 @@ const ReservationDebugPage = () => {
             <Button variant="warning" onClick={cleanup}>
               🧹 Limpiar
             </Button>
-            <Button variant="info" onClick={() => updateStorageState().catch(console.error)}>
+            <Button
+              variant="info"
+              onClick={() => updateStorageState().catch(logger.error)}
+            >
               🔄 Actualizar
             </Button>
           </div>
-          
+
           {/* Resultados de pruebas */}
           {Object.keys(testResults).length > 0 && (
             <div className="mt-3">
               <h6>Resultados de Pruebas:</h6>
               {Object.entries(testResults).map(([step, result]) => (
-                <Badge 
-                  key={step} 
-                  bg={result ? 'success' : 'danger'} 
+                <Badge
+                  key={step}
+                  bg={result ? 'success' : 'danger'}
                   className="me-2"
                 >
                   {step}: {result ? '✅' : '❌'}
@@ -200,14 +216,19 @@ const ReservationDebugPage = () => {
         <Card.Body>
           {storageState ? (
             storageState.error ? (
-              <Alert variant="danger">
-                Error: {storageState.error}
-              </Alert>
+              <Alert variant="danger">Error: {storageState.error}</Alert>
             ) : (
               <div>
                 <div className="mb-3">
-                  <Badge bg={storageState.hasActiveReservation ? 'success' : 'secondary'}>
-                    Reserva Activa: {storageState.hasActiveReservation ? 'Sí' : 'No'}
+                  <Badge
+                    bg={
+                      storageState.hasActiveReservation
+                        ? 'success'
+                        : 'secondary'
+                    }
+                  >
+                    Reserva Activa:{' '}
+                    {storageState.hasActiveReservation ? 'Sí' : 'No'}
                   </Badge>
                   <Badge bg="info" className="ms-2">
                     Paso: {storageState.currentStep || 'N/A'}
@@ -218,33 +239,63 @@ const ReservationDebugPage = () => {
                     </Badge>
                   )}
                 </div>
-                
+
                 <details className="mb-3">
-                  <summary><strong>Datos de Reserva Base</strong></summary>
-                  <pre className="mt-2" style={{ fontSize: '12px', maxHeight: '200px', overflow: 'auto' }}>
+                  <summary>
+                    <strong>Datos de Reserva Base</strong>
+                  </summary>
+                  <pre
+                    className="mt-2"
+                    style={{
+                      fontSize: '12px',
+                      maxHeight: '200px',
+                      overflow: 'auto',
+                    }}
+                  >
                     {JSON.stringify(storageState.reservationData, null, 2)}
                   </pre>
                 </details>
-                
+
                 <details className="mb-3">
-                  <summary><strong>Extras ({storageState.extras?.length || 0})</strong></summary>
+                  <summary>
+                    <strong>Extras ({storageState.extras?.length || 0})</strong>
+                  </summary>
                   <pre className="mt-2" style={{ fontSize: '12px' }}>
                     {JSON.stringify(storageState.extras, null, 2)}
                   </pre>
                 </details>
-                
+
                 <details className="mb-3">
-                  <summary><strong>Datos del Conductor</strong></summary>
-                  <pre className="mt-2" style={{ fontSize: '12px', maxHeight: '200px', overflow: 'auto' }}>
+                  <summary>
+                    <strong>Datos del Conductor</strong>
+                  </summary>
+                  <pre
+                    className="mt-2"
+                    style={{
+                      fontSize: '12px',
+                      maxHeight: '200px',
+                      overflow: 'auto',
+                    }}
+                  >
                     {JSON.stringify(storageState.conductorData, null, 2)}
                   </pre>
                 </details>
-                
+
                 <details className="mb-3">
-                  <summary><strong>SessionStorage Keys ({storageState.sessionStorageKeys?.length || 0})</strong></summary>
+                  <summary>
+                    <strong>
+                      SessionStorage Keys (
+                      {storageState.sessionStorageKeys?.length || 0})
+                    </strong>
+                  </summary>
                   <div className="mt-2">
-                    {storageState.sessionStorageKeys?.map(key => (
-                      <Badge key={key} bg="light" text="dark" className="me-1 mb-1">
+                    {storageState.sessionStorageKeys?.map((key) => (
+                      <Badge
+                        key={key}
+                        bg="light"
+                        text="dark"
+                        className="me-1 mb-1"
+                      >
                         {key}
                       </Badge>
                     ))}
@@ -268,13 +319,25 @@ const ReservationDebugPage = () => {
             <Button variant="outline-primary" href="/coches" size="sm">
               Selección de Coches
             </Button>
-            <Button variant="outline-secondary" href="/reservation-confirmation" size="sm">
+            <Button
+              variant="outline-secondary"
+              href="/reservation-confirmation"
+              size="sm"
+            >
               Extras
             </Button>
-            <Button variant="outline-secondary" href="/reservation-confirmation/datos" size="sm">
+            <Button
+              variant="outline-secondary"
+              href="/reservation-confirmation/datos"
+              size="sm"
+            >
               Datos Conductor
             </Button>
-            <Button variant="outline-secondary" href="/reservation-confirmation/pago" size="sm">
+            <Button
+              variant="outline-secondary"
+              href="/reservation-confirmation/pago"
+              size="sm"
+            >
               Pago
             </Button>
           </div>

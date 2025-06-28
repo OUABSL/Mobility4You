@@ -23,6 +23,7 @@ import {
 import '../css/Home.css';
 
 import logoHome from '../assets/img/general/logo_home_horizontal.png';
+import { createServiceLogger } from '../config/appConfig';
 
 import {
   fetchCaracteristicas,
@@ -33,6 +34,8 @@ import {
 } from '../services/homeServices';
 import ContactUs from './ContactUs';
 import FormBusqueda from './FormBusqueda';
+
+const logger = createServiceLogger('Home');
 
 const Home = ({ isMobile = false }) => {
   // States for data
@@ -70,34 +73,34 @@ const Home = ({ isMobile = false }) => {
       // Estadísticas
       if (statsResult.status === 'fulfilled') {
         setEstadisticas(statsResult.value);
-        console.log('✅ Stats loaded:', statsResult.value?.length);
+        logger.info('✅ Stats loaded:', statsResult.value?.length);
       } else {
-        console.error('❌ Error loading stats:', statsResult.reason);
+        logger.error('❌ Error loading stats:', statsResult.reason);
         setEstadisticas([]); // Valor por defecto
       }
 
       // Características
       if (featuresResult.status === 'fulfilled') {
         setCaracteristicas(featuresResult.value);
-        console.log('✅ Features loaded:', featuresResult.value?.length);
+        logger.info('✅ Features loaded:', featuresResult.value?.length);
       } else {
-        console.error('❌ Error loading features:', featuresResult.reason);
+        logger.error('❌ Error loading features:', featuresResult.reason);
         setCaracteristicas([]); // Valor por defecto
       }
 
       // Testimonios
       if (testimonialsResult.status === 'fulfilled') {
         setTestimoniosData(testimonialsResult.value);
-        console.log(
+        logger.info(
           '✅ Testimonials loaded:',
           testimonialsResult.value?.length,
           testimonialsResult.value,
         );
-        console.log(
+        logger.info(
           '🔄 [TESTIMONIOS 2025 : ]' + (testimonialsResult.value?.length || 0),
         );
       } else {
-        console.error(
+        logger.error(
           '❌ Error loading testimonials:',
           testimonialsResult.reason,
         );
@@ -107,12 +110,12 @@ const Home = ({ isMobile = false }) => {
       // Destinos
       if (destinationsResult.status === 'fulfilled') {
         setDestinos(destinationsResult.value);
-        console.log(
+        logger.info(
           '✅ Destinations loaded:',
           destinationsResult.value?.length,
         );
       } else {
-        console.error(
+        logger.error(
           '❌ Error loading destinations:',
           destinationsResult.reason,
         );
@@ -122,9 +125,9 @@ const Home = ({ isMobile = false }) => {
       // Ubicaciones
       if (locationsResult.status === 'fulfilled') {
         setLocations(locationsResult.value);
-        console.log('✅ Locations loaded:', locationsResult.value?.length);
+        logger.info('✅ Locations loaded:', locationsResult.value?.length);
       } else {
-        console.error('❌ Error loading locations:', locationsResult.reason);
+        logger.error('❌ Error loading locations:', locationsResult.reason);
         setLocations([]); // Valor por defecto
       }
 
@@ -133,7 +136,7 @@ const Home = ({ isMobile = false }) => {
         (r) => r.status === 'fulfilled',
       ).length;
       const failCount = results.filter((r) => r.status === 'rejected').length;
-      console.log(
+      logger.info(
         `🔄 [Home] Data loading completed: ${successCount} successful, ${failCount} failed`,
       );
     };

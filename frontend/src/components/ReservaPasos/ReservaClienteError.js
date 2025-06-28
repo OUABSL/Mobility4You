@@ -10,8 +10,12 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Row } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { createServiceLogger } from '../../config/appConfig';
 import '../../css/ReservaClienteError.css';
 import { getReservationStorageService } from '../../services/reservationStorageService';
+
+// Crear logger para el componente
+const logger = createServiceLogger('RESERVA_CLIENTE_ERROR');
 
 /**
  * Componente para mostrar errores en el proceso de reserva
@@ -51,12 +55,12 @@ const ReservaClienteError = () => {
           try {
             storageService.clearAllReservationData();
           } catch (err) {
-            console.warn('Error al limpiar storage en página de error:', err);
+            logger.warn('Error al limpiar storage en página de error:', err);
           }
         }, 500);
       }
     } catch (err) {
-      console.error('Error al procesar datos de error:', err);
+      logger.error('Error al procesar datos de error:', err);
       setErrorData({
         errorType: 'general',
         errorMessage:

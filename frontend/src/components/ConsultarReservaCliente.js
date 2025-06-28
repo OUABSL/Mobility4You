@@ -22,8 +22,12 @@ import {
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DEBUG_MODE } from '../assets/testingData/testingData';
+import { createServiceLogger } from '../config/appConfig';
 import '../css/ConsultarReservaCliente.css';
 import { findReservation } from '../services/reservationServices';
+
+// Crear logger para el componente
+const logger = createServiceLogger('CONSULTAR_RESERVA_CLIENTE');
 
 /**
  * Componente para consultar una reserva existente mediante ID y email
@@ -105,7 +109,7 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
         });
       }, 1200);
     } catch (err) {
-      console.error('Error al buscar reserva:', err);
+      logger.error('Error al buscar reserva:', err);
       setError(
         err.message ||
           'No se encontró ninguna reserva con esos datos. Por favor, verifique y vuelva a intentar.',

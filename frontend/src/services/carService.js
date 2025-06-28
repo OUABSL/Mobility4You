@@ -1,5 +1,9 @@
-import testingCars from '../assets/testingData/testingData';
-import { API_URL, createServiceLogger, shouldUseTestingData } from '../config/appConfig';
+import { testingCarsData as testingCars } from '../assets/testingData/testingData';
+import {
+  API_URL,
+  createServiceLogger,
+  shouldUseTestingData,
+} from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import { withCache } from './cacheService';
 import { withTimeout } from './func';
@@ -11,8 +15,6 @@ import universalMapper from './universalDataMapper';
 
 // Crear logger para el servicio de carros
 const logger = createServiceLogger('CAR_SERVICE');
-
-
 
 /**
  * Busca vehículos disponibles según criterios (usa servicio unificado)

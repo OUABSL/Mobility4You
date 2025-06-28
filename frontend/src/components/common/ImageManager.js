@@ -18,14 +18,19 @@ const ImageManager = ({
   style = {},
   fallbackSrc = null,
   placeholder = 'default',
+  placeholderType,
+  showPlaceholder,
   onError = null,
   onLoad = null,
   lazy = true,
-  ...props
+  ...restProps
 }) => {
   const [imageSrc, setImageSrc] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Filtrar props que no son válidas para DOM elements - ya extraídas arriba
+  const validDOMProps = restProps;
 
   // Placeholders por defecto
   const getPlaceholder = (type = 'default') => {
@@ -168,7 +173,7 @@ const ImageManager = ({
           alt={alt}
           style={imageStyle}
           loading={lazy ? 'lazy' : 'eager'}
-          {...props}
+          {...validDOMProps}
         />
       )}
 

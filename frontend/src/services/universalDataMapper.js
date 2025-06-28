@@ -179,10 +179,16 @@ const roundToDecimals = (value, decimals = 2) => {
 /**
  * Función específica para calcular impuestos redondeados
  * @param {number|string} baseAmount - El monto base
- * @param {number} taxRate - La tasa de impuesto (por defecto 0.21 = 21%)
+ * @param {number} taxRate - La tasa de impuesto (debe venir del backend, sin valor por defecto)
  * @returns {number} - Los impuestos calculados y redondeados
  */
-const calculateTaxAmount = (baseAmount, taxRate = 0.21) => {
+const calculateTaxAmount = (baseAmount, taxRate) => {
+  if (taxRate === undefined || taxRate === null) {
+    throw new Error(
+      'La tasa de impuesto debe ser proporcionada desde el backend',
+    );
+  }
+
   const base = safeNumberTransformer(baseAmount, 0);
   const tax = base * taxRate;
   return roundToDecimals(tax, 2);
@@ -191,10 +197,16 @@ const calculateTaxAmount = (baseAmount, taxRate = 0.21) => {
 /**
  * Función para calcular el precio total con impuestos
  * @param {number|string} baseAmount - El monto base
- * @param {number} taxRate - La tasa de impuesto (por defecto 0.21 = 21%)
+ * @param {number} taxRate - La tasa de impuesto (debe venir del backend, sin valor por defecto)
  * @returns {object} - Objeto con base, impuestos y total redondeados
  */
-const calculatePriceWithTax = (baseAmount, taxRate = 0.21) => {
+const calculatePriceWithTax = (baseAmount, taxRate) => {
+  if (taxRate === undefined || taxRate === null) {
+    throw new Error(
+      'La tasa de impuesto debe ser proporcionada desde el backend',
+    );
+  }
+
   const base = roundToDecimals(baseAmount, 2);
   const tax = calculateTaxAmount(base, taxRate);
   const total = roundToDecimals(base + tax, 2);
@@ -461,6 +473,7 @@ const MAPPING_SCHEMAS = {
           'lugarRecogida.id',
           'lugar_recogida_id',
           'pickupLocation.id',
+          'lugar_recogida',
         ],
         required: true,
         validator: positiveNumberValidator,
@@ -473,6 +486,7 @@ const MAPPING_SCHEMAS = {
           'lugarDevolucion.id',
           'lugar_devolucion_id',
           'dropoffLocation.id',
+          'lugar_devolucion',
         ],
         required: true,
         validator: positiveNumberValidator,
@@ -591,6 +605,7 @@ const MAPPING_SCHEMAS = {
           'detallesReserva.precioCocheBase',
           'precioBase',
           'precio_base',
+          'precio_dia', // Agregar precio_dia como fuente para precio base
         ],
         default: 0,
         validator: nonNegativeNumberValidator,
@@ -615,6 +630,12 @@ const MAPPING_SCHEMAS = {
           'precio_impuestos',
         ],
         default: 0,
+        validator: nonNegativeNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
+      tasa_impuesto: {
+        sources: ['tasaImpuesto', 'tasa_impuesto'],
+        default: 0, // No default hardcodeado - debe venir del backend
         validator: nonNegativeNumberValidator,
         transformer: (item, value) => safeNumberTransformer(value, 0),
       },
@@ -684,12 +705,33 @@ const MAPPING_SCHEMAS = {
         },
       },
       vehiculo: {
-        sources: ['vehiculo_detail', 'vehiculo'],
+        sources: ['vehiculo_detail', 'vehiculo', 'vehiculo_id'],
         transformer: (item, value) => {
+          // Si value es solo un número (ID), crear un objeto básico
+          if (typeof value === 'number') {
+            return {
+              id: value,
+              marca: item.vehiculo_marca || '',
+              modelo: item.vehiculo_modelo || '',
+              matricula: item.vehiculo_matricula || '',
+              imagenPrincipal: ImageUtils.prepareImageData(
+                item.vehiculo_imagen_principal,
+                'vehicle',
+              ),
+              precio_dia: safeNumberTransformer(item.vehiculo_precio_dia, 0),
+              categoria: { nombre: item.vehiculo_categoria || '' },
+              grupo: { nombre: item.vehiculo_grupo || '' },
+              combustible: item.vehiculo_combustible || '',
+              numPasajeros: item.vehiculo_num_pasajeros || 0,
+              numPuertas: item.vehiculo_num_puertas || 0,
+              imagenes: [],
+            };
+          }
+
           if (!value) {
             // Crear objeto básico desde campos planos
             return {
-              id: item.vehiculo,
+              id: item.vehiculo || item.vehiculo_id,
               marca: item.vehiculo_marca || '',
               modelo: item.vehiculo_modelo || '',
               matricula: item.vehiculo_matricula || '',
@@ -708,7 +750,7 @@ const MAPPING_SCHEMAS = {
           }
 
           // Si tenemos el objeto completo del vehículo
-          return {
+          const mappedVehicle = {
             id: value.id,
             marca: value.marca || '',
             modelo: value.modelo || '',
@@ -740,6 +782,27 @@ const MAPPING_SCHEMAS = {
                 }))
               : [],
           };
+
+          // Logging para debug de mapeo de vehículo
+          logger.info('🚗 Vehicle mapped:', {
+            original: value,
+            mapped: mappedVehicle,
+            id: mappedVehicle.id,
+          });
+
+          return mappedVehicle;
+        },
+      },
+      // Nuevo campo para acceso directo al ID del vehículo
+      vehiculo_id: {
+        sources: ['vehiculo.id', 'vehiculo_id', 'vehiculo'],
+        transformer: (item, value) => {
+          // Extraer ID del vehículo de diferentes fuentes
+          if (typeof value === 'number') return value;
+          if (typeof value === 'object' && value?.id) return value.id;
+          if (item.vehiculo_detail?.id) return item.vehiculo_detail.id;
+          if (item.vehiculo?.id) return item.vehiculo.id;
+          return item.vehiculo_id || null;
         },
       },
       lugarRecogida: {
@@ -834,23 +897,40 @@ const MAPPING_SCHEMAS = {
           if (!value || !Array.isArray(value)) return [];
 
           return value.map((conductorRelacion) => {
-            // El backend solo nos da información básica del conductor
-            // Crear un objeto conductor con la información disponible
+            // El backend devuelve información completa del conductor en conductorRelacion.conductor
+            const conductorData = conductorRelacion.conductor || {};
+
             const conductor = {
-              id: conductorRelacion.id || Date.now() + Math.random(),
-              email: conductorRelacion.conductor_email || '',
-              nombre: 'Conductor', // Información no disponible en esta respuesta
-              apellido: '', // Información no disponible en esta respuesta
-              documento: '', // Información no disponible en esta respuesta
-              telefono: '', // Información no disponible en esta respuesta
-              nacionalidad: '', // Información no disponible en esta respuesta
-              // Agregar más campos por defecto si es necesario
+              id:
+                conductorData.id ||
+                conductorRelacion.id ||
+                Date.now() + Math.random(),
+              email: conductorData.email || '',
+              nombre: conductorData.nombre || 'Conductor',
+              apellido: conductorData.apellido || conductorData.apellidos || '',
+              apellidos:
+                conductorData.apellidos || conductorData.apellido || '',
+              documento:
+                conductorData.documento || conductorData.numero_documento || '',
+              numero_documento:
+                conductorData.numero_documento || conductorData.documento || '',
+              telefono: conductorData.telefono || '',
+              nacionalidad: conductorData.nacionalidad || '',
+              tipo_documento: conductorData.tipo_documento || '',
+              fecha_nacimiento: conductorData.fecha_nacimiento || '',
+              sexo: conductorData.sexo || '',
+              rol_usuario: conductorData.rol_usuario || 'cliente',
+              direccion: conductorData.direccion || null,
             };
 
             return {
               id: conductorRelacion.id,
               rol: conductorRelacion.rol || 'principal',
               conductor: conductor,
+              // Para compatibilidad, también exponemos los campos directamente
+              email: conductor.email,
+              nombre: conductor.nombre,
+              apellido: conductor.apellido,
             };
           });
         },
@@ -859,13 +939,36 @@ const MAPPING_SCHEMAS = {
         sources: ['precio_total'],
         transformer: (item, value) => safeNumberTransformer(value, 0),
       },
+      precioBase: {
+        sources: ['precio_dia', 'precio_base'],
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
       precioImpuestos: {
         sources: ['precio_impuestos'],
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
+      tasaImpuesto: {
+        sources: ['tasa_impuesto'],
         transformer: (item, value) => safeNumberTransformer(value, 0),
       },
       metodoPago: {
         sources: ['metodo_pago'],
         default: 'tarjeta',
+      },
+      vehiculo_id: {
+        sources: ['vehiculo', 'vehiculo_id'],
+        transformer: (item, value) => {
+          // Si tenemos un objeto vehiculo, extraer su ID
+          if (typeof value === 'object' && value?.id) {
+            return value.id;
+          }
+          // Si es directamente un número, devolverlo
+          if (typeof value === 'number') {
+            return value;
+          }
+          // Fallback a buscar en vehiculo_id
+          return item.vehiculo_id || null;
+        },
       },
     },
   },
@@ -1996,14 +2099,37 @@ class UniversalDataMapper {
     mappedData.fecha_pago = originalData.fecha_pago || null;
     mappedData.estado_pago = originalData.estado_pago || 'pendiente';
 
-    // Importes adicionales
-    mappedData.importe_pagado_inicial =
-      originalData.importe_pagado_inicial || 0;
-    mappedData.importe_pendiente_inicial =
-      originalData.importe_pendiente_inicial || 0;
-    mappedData.importe_pagado_extra = originalData.importe_pagado_extra || 0;
-    mappedData.importe_pendiente_extra =
-      originalData.importe_pendiente_extra || 0;
+    // Función auxiliar para limpiar y formatear importes
+    const cleanAmount = (value) => {
+      if (value === null || value === undefined || value === '') return 0;
+
+      // Si es string, limpiar caracteres no numéricos excepto punto y guión
+      if (typeof value === 'string') {
+        const cleaned = value.replace(/[^\d.-]/g, '');
+        return Number(parseFloat(cleaned || 0).toFixed(2));
+      }
+
+      // Si es número, formatear a 2 decimales
+      if (typeof value === 'number') {
+        return Number(parseFloat(value).toFixed(2));
+      }
+
+      return 0;
+    };
+
+    // Importes adicionales con limpieza
+    mappedData.importe_pagado_inicial = cleanAmount(
+      originalData.importe_pagado_inicial,
+    );
+    mappedData.importe_pendiente_inicial = cleanAmount(
+      originalData.importe_pendiente_inicial,
+    );
+    mappedData.importe_pagado_extra = cleanAmount(
+      originalData.importe_pagado_extra,
+    );
+    mappedData.importe_pendiente_extra = cleanAmount(
+      originalData.importe_pendiente_extra,
+    );
 
     // Datos de pago adicionales
     mappedData.datos_pago = originalData.datos_pago || null;
@@ -2011,6 +2137,14 @@ class UniversalDataMapper {
     // Notas internas
     mappedData.notas_internas =
       originalData.notas_internas || originalData.notas || '';
+
+    // Log para debugging
+    logger.info('💰 Campos de pago procesados:', {
+      importe_pagado_inicial: mappedData.importe_pagado_inicial,
+      importe_pendiente_inicial: mappedData.importe_pendiente_inicial,
+      importe_pagado_extra: mappedData.importe_pagado_extra,
+      importe_pendiente_extra: mappedData.importe_pendiente_extra,
+    });
   }
   /**
    * Valida datos de reservación mapeados

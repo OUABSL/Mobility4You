@@ -1,34 +1,37 @@
 // src/components/ContactUs.js
-import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Row, 
-  Col, 
-  Form, 
-  Button, 
-  Alert, 
-  Card, 
-  Spinner, 
-  Toast 
-} from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faEnvelope, 
-  faUser, 
-  faTag, 
-  faComment, 
-  faPaperPlane, 
-  faCheckCircle, 
+import {
+  faBuildingUser,
+  faCheckCircle,
+  faComment,
+  faEnvelope,
   faExclamationTriangle,
   faMapMarkerAlt,
+  faPaperPlane,
   faPhone,
-  faBuildingUser
+  faTag,
+  faUser,
 } from '@fortawesome/free-solid-svg-icons';
-import contactService from '../services/contactService';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useState } from 'react';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Container,
+  Form,
+  Row,
+  Spinner,
+  Toast,
+} from 'react-bootstrap';
+import { createServiceLogger } from '../config/appConfig';
 import '../css/ContactUs.css';
+import contactService from '../services/contactService';
 
 // Para código de producción/desarrollo
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && false;
+
+const logger = createServiceLogger('ContactUs');
 
 const ContactUs = () => {
   // Estados para el formulario
@@ -36,13 +39,13 @@ const ContactUs = () => {
     name: '',
     email: '',
     subject: '',
-    message: ''
+    message: '',
   });
-  
+
   // Estados para la validación
   const [validated, setValidated] = useState(false);
   const [errors, setErrors] = useState({});
-  
+
   // Estados para el proceso de envío
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -50,65 +53,66 @@ const ContactUs = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastVariant, setToastVariant] = useState('success');
-  
+
   // Métodos de utilidad
   const validateEmail = (email) => {
-    const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    const re =
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(String(email).toLowerCase());
   };
-  
+
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Validar nombre
     if (!formData.name.trim()) {
-      newErrors.name = "Por favor, introduce tu nombre";
+      newErrors.name = 'Por favor, introduce tu nombre';
     } else if (formData.name.trim().length < 2) {
-      newErrors.name = "El nombre debe tener al menos 2 caracteres";
+      newErrors.name = 'El nombre debe tener al menos 2 caracteres';
     }
-    
+
     // Validar email
     if (!formData.email.trim()) {
-      newErrors.email = "Por favor, introduce tu email";
+      newErrors.email = 'Por favor, introduce tu email';
     } else if (!validateEmail(formData.email)) {
-      newErrors.email = "Por favor, introduce un email válido";
+      newErrors.email = 'Por favor, introduce un email válido';
     }
-    
+
     // Validar asunto
     if (!formData.subject.trim()) {
-      newErrors.subject = "Por favor, introduce un asunto";
+      newErrors.subject = 'Por favor, introduce un asunto';
     } else if (formData.subject.trim().length < 3) {
-      newErrors.subject = "El asunto debe tener al menos 3 caracteres";
+      newErrors.subject = 'El asunto debe tener al menos 3 caracteres';
     }
-    
+
     // Validar mensaje
     if (!formData.message.trim()) {
-      newErrors.message = "Por favor, escribe tu mensaje";
+      newErrors.message = 'Por favor, escribe tu mensaje';
     } else if (formData.message.trim().length < 10) {
-      newErrors.message = "El mensaje debe tener al menos 10 caracteres";
+      newErrors.message = 'El mensaje debe tener al menos 10 caracteres';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  
+
   // Manejo de cambios en el formulario
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prevState => ({
+    setFormData((prevState) => ({
       ...prevState,
-      [name]: value
+      [name]: value,
     }));
-    
+
     // Si ya se había validado, validar en tiempo real
     if (validated) {
       if (!value.trim()) {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          [name]: `Por favor, completa este campo`
+          [name]: `Por favor, completa este campo`,
         }));
       } else {
-        setErrors(prev => {
+        setErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors[name];
           return newErrors;
@@ -116,82 +120,91 @@ const ContactUs = () => {
       }
     }
   };
-    // Función para enviar el formulario al backend usando el servicio
+  // Función para enviar el formulario al backend usando el servicio
   const sendContactForm = async (data) => {
     if (DEBUG_MODE) {
       // En modo desarrollo, simular respuesta exitosa
-      console.log('Datos de contacto enviados (modo DEBUG):', data);
-      return new Promise(resolve => {
+      logger.info('Datos de contacto enviados (modo DEBUG):', data);
+      return new Promise((resolve) => {
         setTimeout(() => {
           resolve({
-            success: true, 
+            success: true,
             message: 'Mensaje enviado correctamente (Simulado)',
-            id: 'debug-' + Date.now()
+            id: 'debug-' + Date.now(),
           });
         }, 1000);
       });
     }
-    
+
     try {
       // Usar el servicio de contacto con reintento automático
       return await contactService.sendContactFormWithRetry(data, 2);
     } catch (error) {
-      console.error('Error enviando el formulario:', error);
+      logger.error('Error enviando el formulario:', error);
       return {
         success: false,
         message: 'Error enviando el mensaje',
-        userMessage: 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.',
-        originalError: error
+        userMessage:
+          'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.',
+        originalError: error,
       };
     }
   };
-  
+
   // Manejo del envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validar formulario
     setValidated(true);
     const isValid = validateForm();
-    
+
     if (!isValid) {
       setToastMessage('Por favor, corrige los errores en el formulario.');
       setToastVariant('danger');
       setShowToast(true);
       return;
     }
-    
+
     // Iniciar proceso de envío
     setLoading(true);
     setSuccess('');
     setError('');
-    
+
     try {
       const response = await sendContactForm(formData);
-      
+
       // Comprobar respuesta
       if (response.status === 200 && response.data.success) {
         // Éxito
-        setSuccess('¡Mensaje enviado correctamente! Te responderemos lo antes posible.');
+        setSuccess(
+          '¡Mensaje enviado correctamente! Te responderemos lo antes posible.',
+        );
         setToastMessage('Mensaje enviado con éxito');
         setToastVariant('success');
         setShowToast(true);
-        
+
         // Limpiar formulario
         setFormData({
           name: '',
           email: '',
           subject: '',
-          message: ''
+          message: '',
         });
         setValidated(false);
       } else {
         // Error en la respuesta
-        throw new Error(response.data.message || 'Ocurrió un error al enviar el mensaje.');
+        throw new Error(
+          response.data.message || 'Ocurrió un error al enviar el mensaje.',
+        );
       }
     } catch (err) {
-      console.error('Error completo:', err);
-      setError(err.response?.data?.message || err.message || 'Error al enviar el mensaje. Inténtalo más tarde.');
+      logger.error('Error completo:', err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          'Error al enviar el mensaje. Inténtalo más tarde.',
+      );
       setToastMessage('Error al enviar el mensaje');
       setToastVariant('danger');
       setShowToast(true);
@@ -199,7 +212,7 @@ const ContactUs = () => {
       setLoading(false);
     }
   };
-  
+
   // Renderizado
   return (
     <div className="contact-page-wrapper py-5">
@@ -212,12 +225,15 @@ const ContactUs = () => {
                   {/* Columna izquierda - Información de contacto */}
                   <Col lg={5} className="contact-info-column">
                     <div className="contact-info-content">
-                      <h2 className="contact-info-title mb-4">Contacta con nosotros</h2>
+                      <h2 className="contact-info-title mb-4">
+                        Contacta con nosotros
+                      </h2>
                       <p className="contact-info-text mb-4">
-                        Estamos aquí para ayudarte. Rellena el formulario y te responderemos 
-                        lo antes posible, normalmente en menos de 24 horas.
+                        Estamos aquí para ayudarte. Rellena el formulario y te
+                        responderemos lo antes posible, normalmente en menos de
+                        24 horas.
                       </p>
-                      
+
                       <div className="contact-details">
                         <div className="contact-detail-item">
                           <div className="contact-icon">
@@ -225,10 +241,14 @@ const ContactUs = () => {
                           </div>
                           <div className="contact-detail-content">
                             <h5>Dirección</h5>
-                            <p>Av. Comandante García Morato, s/n<br />29004 Málaga, España</p>
+                            <p>
+                              Av. Comandante García Morato, s/n
+                              <br />
+                              29004 Málaga, España
+                            </p>
                           </div>
                         </div>
-                        
+
                         <div className="contact-detail-item">
                           <div className="contact-icon">
                             <FontAwesomeIcon icon={faPhone} />
@@ -238,7 +258,7 @@ const ContactUs = () => {
                             <p>+34 951 23 45 67</p>
                           </div>
                         </div>
-                        
+
                         <div className="contact-detail-item">
                           <div className="contact-icon">
                             <FontAwesomeIcon icon={faEnvelope} />
@@ -248,40 +268,54 @@ const ContactUs = () => {
                             <p>info@mobility4you.com</p>
                           </div>
                         </div>
-                        
+
                         <div className="contact-detail-item">
                           <div className="contact-icon">
                             <FontAwesomeIcon icon={faBuildingUser} />
                           </div>
                           <div className="contact-detail-content">
                             <h5>Horario</h5>
-                            <p>Lun-Vie: 9:00 - 18:00<br />Sáb: 10:00 - 14:00</p>
+                            <p>
+                              Lun-Vie: 9:00 - 18:00
+                              <br />
+                              Sáb: 10:00 - 14:00
+                            </p>
                           </div>
                         </div>
                       </div>
                     </div>
                   </Col>
-                  
+
                   {/* Columna derecha - Formulario */}
                   <Col lg={7} className="contact-form-column">
                     <div className="contact-form-container">
                       <h3 className="form-title mb-4">Envíanos un mensaje</h3>
-                      
+
                       {success && (
                         <Alert variant="success" className="mb-4">
-                          <FontAwesomeIcon icon={faCheckCircle} className="me-2" />
+                          <FontAwesomeIcon
+                            icon={faCheckCircle}
+                            className="me-2"
+                          />
                           {success}
                         </Alert>
                       )}
-                      
+
                       {error && (
                         <Alert variant="danger" className="mb-4">
-                          <FontAwesomeIcon icon={faExclamationTriangle} className="me-2" />
+                          <FontAwesomeIcon
+                            icon={faExclamationTriangle}
+                            className="me-2"
+                          />
                           {error}
                         </Alert>
                       )}
-                      
-                      <Form noValidate validated={validated} onSubmit={handleSubmit}>
+
+                      <Form
+                        noValidate
+                        validated={validated}
+                        onSubmit={handleSubmit}
+                      >
                         <Form.Group className="form-group mb-3">
                           <Form.Label className="input-label">
                             <FontAwesomeIcon icon={faUser} className="me-2" />
@@ -297,12 +331,19 @@ const ContactUs = () => {
                             placeholder="Tu nombre"
                             disabled={loading}
                           />
-                          {errors.name && <Form.Control.Feedback type="invalid">{errors.name}</Form.Control.Feedback>}
+                          {errors.name && (
+                            <Form.Control.Feedback type="invalid">
+                              {errors.name}
+                            </Form.Control.Feedback>
+                          )}
                         </Form.Group>
-                        
+
                         <Form.Group className="form-group mb-3">
                           <Form.Label className="input-label">
-                            <FontAwesomeIcon icon={faEnvelope} className="me-2" />
+                            <FontAwesomeIcon
+                              icon={faEnvelope}
+                              className="me-2"
+                            />
                             Email
                           </Form.Label>
                           <Form.Control
@@ -315,9 +356,13 @@ const ContactUs = () => {
                             placeholder="Tu correo electrónico"
                             disabled={loading}
                           />
-                          {errors.email && <Form.Control.Feedback type="invalid">{errors.email}</Form.Control.Feedback>}
+                          {errors.email && (
+                            <Form.Control.Feedback type="invalid">
+                              {errors.email}
+                            </Form.Control.Feedback>
+                          )}
                         </Form.Group>
-                        
+
                         <Form.Group className="form-group mb-3">
                           <Form.Label className="input-label">
                             <FontAwesomeIcon icon={faTag} className="me-2" />
@@ -333,12 +378,19 @@ const ContactUs = () => {
                             placeholder="Asunto del mensaje"
                             disabled={loading}
                           />
-                          {errors.subject && <Form.Control.Feedback type="invalid">{errors.subject}</Form.Control.Feedback>}
+                          {errors.subject && (
+                            <Form.Control.Feedback type="invalid">
+                              {errors.subject}
+                            </Form.Control.Feedback>
+                          )}
                         </Form.Group>
-                        
+
                         <Form.Group className="form-group mb-4">
                           <Form.Label className="input-label">
-                            <FontAwesomeIcon icon={faComment} className="me-2" />
+                            <FontAwesomeIcon
+                              icon={faComment}
+                              className="me-2"
+                            />
                             Mensaje
                           </Form.Label>
                           <Form.Control
@@ -347,14 +399,20 @@ const ContactUs = () => {
                             name="message"
                             value={formData.message}
                             onChange={handleInputChange}
-                            className={`message-textarea ${errors.message ? 'is-invalid' : ''}`}
+                            className={`message-textarea ${
+                              errors.message ? 'is-invalid' : ''
+                            }`}
                             placeholder="Escribe tu mensaje aquí..."
                             rows={5}
                             disabled={loading}
                           />
-                          {errors.message && <Form.Control.Feedback type="invalid">{errors.message}</Form.Control.Feedback>}
+                          {errors.message && (
+                            <Form.Control.Feedback type="invalid">
+                              {errors.message}
+                            </Form.Control.Feedback>
+                          )}
                         </Form.Group>
-                        
+
                         <div className="text-end">
                           <Button
                             type="submit"
@@ -363,12 +421,22 @@ const ContactUs = () => {
                           >
                             {loading ? (
                               <>
-                                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                                <Spinner
+                                  as="span"
+                                  animation="border"
+                                  size="sm"
+                                  role="status"
+                                  aria-hidden="true"
+                                  className="me-2"
+                                />
                                 Enviando...
                               </>
                             ) : (
                               <>
-                                <FontAwesomeIcon icon={faPaperPlane} className="me-2" />
+                                <FontAwesomeIcon
+                                  icon={faPaperPlane}
+                                  className="me-2"
+                                />
                                 Enviar Mensaje
                               </>
                             )}
@@ -383,12 +451,12 @@ const ContactUs = () => {
           </Col>
         </Row>
       </Container>
-      
+
       {/* Toast para notificaciones */}
-      <Toast 
-        show={showToast} 
-        onClose={() => setShowToast(false)} 
-        delay={5000} 
+      <Toast
+        show={showToast}
+        onClose={() => setShowToast(false)}
+        delay={5000}
         autohide
         className={`position-fixed toast-notification bg-${toastVariant}`}
       >

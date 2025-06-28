@@ -1,6 +1,6 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
-module.exports = function(app) {
+module.exports = function (app) {
   const proxyOptions = {
     target: 'http://localhost:80',
     changeOrigin: true,
@@ -8,17 +8,17 @@ module.exports = function(app) {
     proxyTimeout: 10000,
     secure: false,
     headers: {
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
     },
-    onError: function(err, req, res) {
-      console.error('Proxy error:', err.message);
+    onError: function (err, req, res) {
+      logger.error('Proxy error:', err.message);
       res.writeHead(500, {
-        'Content-Type': 'text/plain'
+        'Content-Type': 'text/plain',
       });
       res.end('Proxy error: ' + err.message);
     },
-    onProxyReq: function(proxyReq, req, res) {
-      console.log('Proxying request:', req.method, req.url);
+    onProxyReq: function (proxyReq, req, res) {
+      logger.info('Proxying request:', req.method, req.url);
       // Asegurar que las cookies se pasen correctamente
       if (req.headers.cookie) {
         proxyReq.setHeader('Cookie', req.headers.cookie);
@@ -28,12 +28,12 @@ module.exports = function(app) {
         proxyReq.setHeader('X-CSRFToken', req.headers['x-csrftoken']);
       }
     },
-    onProxyRes: function(proxyRes, req, res) {
+    onProxyRes: function (proxyRes, req, res) {
       // Asegurar que las cookies se pasen de vuelta
       if (proxyRes.headers['set-cookie']) {
         res.setHeader('Set-Cookie', proxyRes.headers['set-cookie']);
       }
-    }
+    },
   };
 
   // Proxy para API requests
@@ -41,8 +41,8 @@ module.exports = function(app) {
     '/api',
     createProxyMiddleware({
       ...proxyOptions,
-      logLevel: 'debug'
-    })
+      logLevel: 'debug',
+    }),
   );
 
   // Proxy para admin
@@ -50,8 +50,8 @@ module.exports = function(app) {
     '/admin',
     createProxyMiddleware({
       ...proxyOptions,
-      logLevel: 'debug'
-    })
+      logLevel: 'debug',
+    }),
   );
 
   // Proxy para archivos de media
@@ -59,8 +59,8 @@ module.exports = function(app) {
     '/media',
     createProxyMiddleware({
       ...proxyOptions,
-      logLevel: 'debug'
-    })
+      logLevel: 'debug',
+    }),
   );
 
   // Proxy para archivos estáticos de Django
@@ -68,8 +68,8 @@ module.exports = function(app) {
     '/django-static',
     createProxyMiddleware({
       ...proxyOptions,
-      logLevel: 'debug'
-    })
+      logLevel: 'debug',
+    }),
   );
 
   // WebSocket proxy para desarrollo (si se necesita)
@@ -79,7 +79,7 @@ module.exports = function(app) {
       target: 'ws://localhost:80',
       ws: true,
       changeOrigin: true,
-      logLevel: 'debug'
-    })
+      logLevel: 'debug',
+    }),
   );
 };

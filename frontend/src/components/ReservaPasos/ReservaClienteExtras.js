@@ -23,17 +23,20 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { createServiceLogger } from '../../config/appConfig';
 import '../../css/ReservaClienteExtras.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
+import {
+  calculateDisplayTaxAmount,
+  formatTaxRate,
+  getImageForExtra,
+} from '../../services/func';
 import { getExtrasDisponibles } from '../../services/reservationServices';
 import {
   autoRecoverReservation,
   getReservationStorageService,
 } from '../../services/reservationStorageService';
-import {
-  calculateTaxAmount,
-  roundToDecimals,
-} from '../../services/universalDataMapper';
+import { roundToDecimals } from '../../services/universalDataMapper';
 import ReservationTimerIndicator from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
 
@@ -42,8 +45,8 @@ import gpsLogo from '../../assets/img/extras/gps.png';
 import conductorLogo from '../../assets/img/extras/secondary-driver.png';
 import wifiLogo from '../../assets/img/extras/wifi.png';
 
-// URL base de la API para imágenes
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// Crear logger para el componente
+const logger = createServiceLogger('RESERVA_CLIENTE_EXTRAS');
 
 // Mapeo de imágenes locales por categoría o nombre para fallback
 const imageMap = {
@@ -60,57 +63,6 @@ const imageMap = {
   wifi: wifiLogo,
   conectividad: wifiLogo,
   internet: wifiLogo,
-};
-
-// Función helper para obtener imagen: prioriza imagen del backend, luego fallback local
-const getImageForExtra = (extra) => {
-  // 1. Si el extra tiene imagen_url del serializer optimizado
-  if (
-    extra.imagen_url &&
-    typeof extra.imagen_url === 'string' &&
-    extra.imagen_url.trim() !== ''
-  ) {
-    return extra.imagen_url;
-  }
-
-  // 2. Si el extra tiene estructura de imagen del universal mapper
-  if (extra.imagen && typeof extra.imagen === 'object') {
-    return extra.imagen.original || extra.imagen.placeholder;
-  }
-
-  // 3. Si el extra tiene imagen directa del Django admin, usarla
-  if (
-    extra.imagen &&
-    typeof extra.imagen === 'string' &&
-    extra.imagen.trim() !== ''
-  ) {
-    // Si la imagen ya es una URL completa, usarla directamente
-    if (extra.imagen.startsWith('http')) {
-      return extra.imagen;
-    }
-    // Si es una ruta relativa, construir la URL completa
-    const baseUrl =
-      process.env.REACT_APP_BACKEND_URL ||
-      process.env.REACT_APP_API_URL?.replace('/api', '') ||
-      window.location.origin;
-    return `${baseUrl}${extra.imagen.startsWith('/') ? '' : '/media/extras/'}${
-      extra.imagen
-    }`;
-  }
-
-  // 4. Fallback a imagen local basada en palabras clave
-  const nombre = extra.nombre?.toLowerCase() || '';
-  const categoria = extra.categoria?.toLowerCase() || '';
-
-  // Buscar por palabras clave en el nombre o categoría
-  for (const [key, image] of Object.entries(imageMap)) {
-    if (nombre.includes(key) || categoria.includes(key)) {
-      return image;
-    }
-  }
-
-  // 5. Imagen por defecto si no se encuentra ninguna coincidencia
-  return wifiLogo;
 };
 
 const ReservaClienteExtras = ({ isMobile = false }) => {
@@ -152,21 +104,21 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
   useEffect(() => {
     const loadReservationData = async () => {
       try {
-        console.log('[ReservaClienteExtras] Cargando datos de reserva');
+        logger.info('[ReservaClienteExtras] Cargando datos de reserva');
 
         // Intentar obtener datos del storage service primero
         let storedData = await storageService.getCompleteReservationData(); // Si no hay datos en el storage service, verificar sessionStorage legacy
         if (!storedData) {
           const legacyData = sessionStorage.getItem('reservaData');
           if (legacyData) {
-            console.log(
+            logger.info(
               '[ReservaClienteExtras] Migrando datos legacy a nuevo storage',
             );
             try {
               const parsedData = JSON.parse(legacyData);
 
               // Debug: mostrar estructura de datos legacy
-              console.log('[ReservaClienteExtras] Datos legacy a migrar:', {
+              logger.info('[ReservaClienteExtras] Datos legacy a migrar:', {
                 hasCar: !!(parsedData.car || parsedData.vehiculo),
                 hasFechas: !!parsedData.fechas,
                 hasPickupLocation: !!(
@@ -184,24 +136,24 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
               // Inicializar timer si no está activo
               if (!timerActive) {
                 const timerStarted = startTimer(parsedData);
-                console.log(
+                logger.info(
                   '[ReservaClienteExtras] Timer iniciado para datos legacy:',
                   timerStarted,
                 );
               }
 
-              console.log(
+              logger.info(
                 '[ReservaClienteExtras] Migración legacy completada exitosamente',
               );
             } catch (migrationError) {
-              console.error(
+              logger.error(
                 '[ReservaClienteExtras] Error en migración legacy:',
                 migrationError,
               );
 
               // Intentar recuperación automática si es un error de validación
               if (migrationError.message.includes('ubicación')) {
-                console.log(
+                logger.info(
                   '[ReservaClienteExtras] Intentando recuperación con datos de ubicación mínimos',
                 );
                 try {
@@ -225,11 +177,11 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                   storedData =
                     await storageService.getCompleteReservationData();
 
-                  console.log(
+                  logger.info(
                     '[ReservaClienteExtras] Recuperación automática exitosa',
                   );
                 } catch (recoveryError) {
-                  console.error(
+                  logger.error(
                     '[ReservaClienteExtras] Error en recuperación automática:',
                     recoveryError,
                   );
@@ -257,7 +209,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
         const existingExtras = storedData.extras || [];
         setExtrasSeleccionados(existingExtras);
 
-        console.log(
+        logger.info(
           '[ReservaClienteExtras] Datos de reserva cargados correctamente',
           {
             hasTimer: timerActive,
@@ -266,7 +218,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
           },
         );
       } catch (err) {
-        console.error(
+        logger.error(
           '[ReservaClienteExtras] Error al cargar datos de reserva:',
           err,
         );
@@ -288,11 +240,11 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
         // Agregar imagen a cada extra usando la función helper
         const extrasConImagen = extras.map((extra) => ({
           ...extra,
-          imagen: getImageForExtra(extra),
+          imagen: getImageForExtra(extra, imageMap, wifiLogo),
         }));
         setExtrasDisponibles(extrasConImagen);
       } catch (err) {
-        console.error('Error al cargar extras:', err);
+        logger.error('Error al cargar extras:', err);
         setError(`Error al cargar extras: ${err.message}`);
       } finally {
         setLoadingExtras(false);
@@ -329,7 +281,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
           })
           .filter((extra) => extra); // Filtrar valores nulos/undefined
 
-        console.log(
+        logger.info(
           '[ReservaClienteExtras] Convirtiendo extras de IDs a objetos:',
           {
             before: extrasSeleccionados.map((e) =>
@@ -394,7 +346,10 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     const precioCocheBase = roundToDecimals(
       Number(reservaData.car.precio_dia) * diasAlquiler,
     );
-    const iva = calculateTaxAmount(precioCocheBase);
+    const iva = calculateDisplayTaxAmount(
+      precioCocheBase,
+      reservaData.car?.tasaImpuesto,
+    );
     const detalles = {
       precioCocheBase,
       iva,
@@ -440,14 +395,14 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       // Navegar de vuelta a la búsqueda de coches
       navigate('/coches', { replace: true });
     } catch (error) {
-      console.error('Error al cancelar reserva:', error);
+      logger.error('Error al cancelar reserva:', error);
       // Incluso si hay error al limpiar, navegar de vuelta
       navigate('/coches', { replace: true });
     }
   };
   // Manejador para continuar con la reserva
   const handleContinuar = async () => {
-    console.log('[ReservaClienteExtras] Continuando con la reserva');
+    logger.info('[ReservaClienteExtras] Continuando con la reserva');
     setLoading(true);
     setError(null);
 
@@ -460,7 +415,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       if (!reservaData.fechas || !reservaData.car) {
         throw new Error('Datos de reserva incompletos.');
       } // Intentar actualizar extras con manejo mejorado de errores
-      console.log('[ReservaClienteExtras] Guardando extras en storage:', {
+      logger.info('[ReservaClienteExtras] Guardando extras en storage:', {
         extrasCount: extrasSeleccionados.length,
         extrasTypes: extrasSeleccionados.map((e) =>
           typeof e === 'object' ? `${e.id}(obj:${e.nombre})` : `${e}(id)`,
@@ -472,7 +427,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       try {
         await storageService.updateExtras(extrasSeleccionados, detallesReserva);
       } catch (updateError) {
-        console.error(
+        logger.error(
           '[ReservaClienteExtras] Error al actualizar extras:',
           updateError,
         );
@@ -482,7 +437,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
           updateError.message.includes('No hay reserva activa') ||
           updateError.message.includes('No hay datos de reserva')
         ) {
-          console.log(
+          logger.info(
             '[ReservaClienteExtras] Intentando reinicializar reserva para extras',
           );
 
@@ -493,11 +448,11 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
               extrasSeleccionados,
               detallesReserva,
             );
-            console.log(
+            logger.info(
               '[ReservaClienteExtras] Reserva reinicializada y extras actualizados exitosamente',
             );
           } catch (retryError) {
-            console.error(
+            logger.error(
               '[ReservaClienteExtras] Error en reintento:',
               retryError,
             );
@@ -510,7 +465,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                   extrasSeleccionados,
                   detallesReserva,
                 );
-                console.log(
+                logger.info(
                   '[ReservaClienteExtras] Extras actualizados tras recuperación automática',
                 );
               } else {
@@ -519,7 +474,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                 );
               }
             } catch (finalError) {
-              console.error('[ReservaClienteExtras] Error final:', finalError);
+              logger.error('[ReservaClienteExtras] Error final:', finalError);
               throw new Error(
                 'Error al guardar extras. Por favor, inténtelo de nuevo.',
               );
@@ -536,7 +491,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
         window.pageYOffset.toString(),
       );
 
-      console.log('[ReservaClienteExtras] Navegando a datos del conductor', {
+      logger.info('[ReservaClienteExtras] Navegando a datos del conductor', {
         extrasCount: extrasSeleccionados.length,
         totalExtras,
       });
@@ -544,7 +499,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       // Navegar al siguiente paso
       navigate('/reservation-confirmation/datos');
     } catch (err) {
-      console.error('[ReservaClienteExtras] Error al continuar:', err);
+      logger.error('[ReservaClienteExtras] Error al continuar:', err);
       setError(err.message || 'Error al continuar con la reserva.');
     } finally {
       setLoading(false);
@@ -730,7 +685,9 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                         </span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
-                        <span>IVA (21%):</span>
+                        <span>
+                          IVA{formatTaxRate(detallesReserva.tasaImpuesto)}:
+                        </span>
                         <span>
                           {(Number(detallesReserva.iva) || 0).toFixed(2)}€
                         </span>
@@ -784,7 +741,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                         <div className="extra-card-inner">
                           <div className="extra-img-container">
                             <img
-                              src={getImageForExtra(extra)}
+                              src={getImageForExtra(extra, imageMap, wifiLogo)}
                               alt={extra.nombre}
                               className="extra-img"
                               onError={(e) => {

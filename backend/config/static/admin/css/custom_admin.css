@@ -156,7 +156,7 @@ div.breadcrumbs a:hover {
 
 #content-main .module table caption a {
   color: var(--mobility-light);
-} 
+}
 
 #content-main .module table a:hover {
   color: var(--mobility-info);
@@ -297,9 +297,6 @@ div.breadcrumbs a:hover {
 /* ===== FORMULARIOS ===== */
 .form-row {
   margin-bottom: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
 .form-row label {

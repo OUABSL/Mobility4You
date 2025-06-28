@@ -42,7 +42,9 @@ import carDoorLeft from '../assets/img/icons/car-door-left.svg';
 
 import '../css/ReservationModals.css';
 
+import { createServiceLogger, DEBUG_MODE } from '../config/appConfig';
 import { useAlertContext } from '../context/AlertContext';
+import { formatTaxRate } from '../services/func';
 import {
   deleteReservation,
   editReservation,
@@ -96,6 +98,9 @@ const contenidosPrueba = {
   ],
 };
 
+// Crear logger para el componente
+const logger = createServiceLogger('DETALLES_RESERVA');
+
 const DetallesReserva = ({ isMobile = false }) => {
   // Hooks para obtener parámetros y navegación
   const { reservaId } = useParams();
@@ -108,7 +113,7 @@ const DetallesReserva = ({ isMobile = false }) => {
   const [datos, setDatos] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [contenidos, setContenidos] = useState({});
+  const [contenidos, setContenidos] = useState(contenidosPrueba);
 
   // Funciones para manejar la edición y eliminación de reservas
   const [showEditModal, setShowEditModal] = useState(false);
@@ -123,6 +128,10 @@ const DetallesReserva = ({ isMobile = false }) => {
 
   // Función para manejar la edición de la reserva
   const handleEditReservation = (reservaData) => {
+    // Guardar el email en sessionStorage para uso posterior
+    if (email) {
+      sessionStorage.setItem('reservaEmail', email);
+    }
     setShowEditModal(true);
   };
 
@@ -257,9 +266,18 @@ const DetallesReserva = ({ isMobile = false }) => {
           reservaData,
         );
 
+        // Debug del mapeo
+        if (DEBUG_MODE) {
+          logger.debug('Universal mapper output:', {
+            mappedData,
+            originalData: reservaData,
+            context: 'detalles-reserva',
+          });
+        }
+
         setDatos(mappedData);
       } catch (err) {
-        console.error('Error cargando reserva:', err);
+        logger.error('Error cargando reserva:', err);
         setError('No se pudo cargar la reserva.');
       } finally {
         setLoading(false);
@@ -496,8 +514,7 @@ const DetallesReserva = ({ isMobile = false }) => {
                           datos.vehiculo?.modelo || ''
                         }`}
                         className="img-fluid car-img rounded"
-                        placeholderType="vehiculo"
-                        showPlaceholder={true}
+                        placeholder="vehicle"
                       />
                     </Col>
                     <Col md={8}>
@@ -925,7 +942,9 @@ const DetallesReserva = ({ isMobile = false }) => {
                   )}
 
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span>Impuestos (IVA 21%):</span>
+                    <span>
+                      Impuestos (IVA{formatTaxRate(datos.tasaImpuesto)}):
+                    </span>
                     <span>{formatCurrency(datos.precioImpuestos)}</span>
                   </div>
 
@@ -1242,7 +1261,7 @@ const DetallesReserva = ({ isMobile = false }) => {
           </Row>
 
           <Row className="mb-2">
-            <Col xs={8}>IVA (21%)</Col>
+            <Col xs={8}>IVA{formatTaxRate(datos.tasaImpuesto)}</Col>
             <Col xs={4} className="text-end">
               {formatCurrency(datos.precioImpuestos)}
             </Col>
@@ -1347,8 +1366,13 @@ const DetallesReserva = ({ isMobile = false }) => {
                   Documento:
                 </Col>
                 <Col xs={8}>
-                  {selectedDriver.tipo_documento.toUpperCase()}:{' '}
-                  {selectedDriver.documento}
+                  {selectedDriver.tipo_documento
+                    ? selectedDriver.tipo_documento.toUpperCase()
+                    : 'N/A'}
+                  :{' '}
+                  {selectedDriver.documento ||
+                    selectedDriver.numero_documento ||
+                    'No disponible'}
                 </Col>
               </Row>
 
@@ -1439,7 +1463,9 @@ const DetallesReserva = ({ isMobile = false }) => {
           show={showDeleteModal}
           onHide={() => setShowDeleteModal(false)}
           reservationId={datos.id}
-          onConfirm={() => handleDeleteReservationCentral(datos.id)}
+          onConfirm={handleDeleteReservationCentral}
+          loading={isProcessing}
+          error={error}
         />
       )}
     </Container>

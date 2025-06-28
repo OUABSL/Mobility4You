@@ -22,8 +22,12 @@ import {
   Table,
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { createServiceLogger } from '../../config/appConfig';
 import '../../css/ReservaClienteExito.css';
 import { getReservationStorageService } from '../../services/reservationStorageService';
+
+// Crear logger para el componente
+const logger = createServiceLogger('RESERVA_CLIENTE_EXITO');
 
 const ReservaClienteExito = () => {
   const navigate = useNavigate();
@@ -35,7 +39,7 @@ const ReservaClienteExito = () => {
   const [debugMode, setDebugMode] = useState(false);
   useEffect(() => {
     try {
-      console.log('[ReservaClienteExito] Cargando datos de reserva completada');
+      logger.info('[ReservaClienteExito] Cargando datos de reserva completada');
 
       // Primero intentar obtener datos del state de navegación
       let foundData = false;
@@ -50,7 +54,7 @@ const ReservaClienteExito = () => {
       }
 
       if (stateData) {
-        console.log(
+        logger.info(
           '[ReservaClienteExito] Datos recibidos desde navigation state:',
           stateData,
         );
@@ -78,7 +82,7 @@ const ReservaClienteExito = () => {
                 parsedData = parsedData.reserva;
               }
 
-              console.log(
+              logger.info(
                 `[ReservaClienteExito] Datos recibidos desde sessionStorage (${key}):`,
                 parsedData,
               );
@@ -88,7 +92,7 @@ const ReservaClienteExito = () => {
               foundData = true;
               break;
             } catch (parseErr) {
-              console.warn(
+              logger.warn(
                 `Error al parsear datos de sessionStorage (${key}):`,
                 parseErr,
               );
@@ -115,7 +119,7 @@ const ReservaClienteExito = () => {
               }
 
               if (completeData) {
-                console.log(
+                logger.info(
                   `[ReservaClienteExito] Datos recibidos desde storage service (${method}):`,
                   completeData,
                 );
@@ -130,7 +134,7 @@ const ReservaClienteExito = () => {
 
       // Si después de todos los intentos no hay datos, mostrar error
       if (!foundData) {
-        console.warn(
+        logger.warn(
           '[ReservaClienteExito] No se encontraron datos de reserva en ninguna fuente',
         );
         setError('No se encontraron datos de la reserva completada.');
@@ -152,7 +156,7 @@ const ReservaClienteExito = () => {
             for (const method of cleanupMethods) {
               if (typeof storageService[method] === 'function') {
                 storageService[method]();
-                console.log(
+                logger.info(
                   `[ReservaClienteExito] Storage limpiado usando ${method}`,
                 );
                 cleaned = true;
@@ -161,20 +165,17 @@ const ReservaClienteExito = () => {
             }
 
             if (!cleaned) {
-              console.warn(
+              logger.warn(
                 '[ReservaClienteExito] No se encontró un método para limpiar el storage',
               );
             }
           } catch (err) {
-            console.warn(
-              '[ReservaClienteExito] Error al limpiar storage:',
-              err,
-            );
+            logger.warn('[ReservaClienteExito] Error al limpiar storage:', err);
           }
         }, 1000);
       }
     } catch (err) {
-      console.error(
+      logger.error(
         '[ReservaClienteExito] Error al cargar los datos de la reserva:',
         err,
       );
@@ -271,7 +272,7 @@ const ReservaClienteExito = () => {
         }, 500);
       };
     } catch (err) {
-      console.error('Error al imprimir reserva:', err);
+      logger.error('Error al imprimir reserva:', err);
       setError('No se pudo imprimir la reserva. Inténtalo de nuevo.');
     }
   };
@@ -338,9 +339,9 @@ const ReservaClienteExito = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      console.log('Reserva descargada exitosamente');
+      logger.info('Reserva descargada exitosamente');
     } catch (err) {
-      console.error('Error al descargar reserva:', err);
+      logger.error('Error al descargar reserva:', err);
       setError('No se pudo descargar la reserva. Inténtalo de nuevo.');
     }
   };

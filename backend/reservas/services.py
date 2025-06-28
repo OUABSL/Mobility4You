@@ -20,10 +20,10 @@ class ReservaService:
         Args:
             data (dict): Datos de la reserva incluyendo:
                 - vehiculo_id: ID del vehículo
-                - fecha_inicio: Fecha de inicio
-                - fecha_fin: Fecha de fin
+                - fecha_recogida: Fecha de Recogida
+                - fecha_devolucion: Fecha de Devolución
                 - lugar_recogida_id: ID del lugar de recogida
-                - lugar_entrega_id: ID del lugar de entrega
+                - lugar_devolucion_id: ID del lugar de entrega
                 - extras: Lista de extras con cantidad
 
         Returns:
@@ -35,45 +35,53 @@ class ReservaService:
 
             from .models import Extras
 
+            # Mapear campos para compatibilidad
             vehiculo_id = data.get("vehiculo_id")
-            fecha_inicio = data.get("fecha_inicio")
-            fecha_fin = data.get("fecha_fin")
+            fecha_recogida = data.get("fecha_recogida") or data.get("fechaRecogida")
+            fecha_devolucion = data.get("fecha_devolucion") or data.get("fechaDevolucion")
             extras_data = data.get("extras", [])
 
-            if not all([vehiculo_id, fecha_inicio, fecha_fin]):
+            logger.info(f"Calculando precio - vehiculo: {vehiculo_id}, inicio: {fecha_recogida}, fin: {fecha_devolucion}")
+
+            if not all([vehiculo_id, fecha_recogida, fecha_devolucion]):
+                missing_fields = []
+                if not vehiculo_id:
+                    missing_fields.append("vehiculo_id")
+                if not fecha_recogida:
+                    missing_fields.append("fecha_recogida")
+                if not fecha_devolucion:
+                    missing_fields.append("fecha_devolucion")
+                    
                 return {
                     "success": False,
-                    "error": "Faltan datos requeridos para el cálculo",
+                    "error": f"Faltan datos requeridos: {', '.join(missing_fields)}",
                 }
 
             # Obtener vehículo y sus tarifas
             try:
                 vehiculo = Vehiculo.objects.get(id=vehiculo_id)
-                tarifas = TarifaVehiculo.objects.filter(vehiculo=vehiculo)
+                # Usar el precio por día del vehículo directamente si no hay tarifas específicas
+                precio_dia_base = vehiculo.precio_dia if hasattr(vehiculo, 'precio_dia') else Decimal("50.00")
+                logger.info(f"Vehículo encontrado: {vehiculo.marca} {vehiculo.modelo}, precio: {precio_dia_base}")
             except Vehiculo.DoesNotExist:
                 return {"success": False, "error": "Vehículo no encontrado"}
 
             # Calcular días de reserva
-            if isinstance(fecha_inicio, str):
-                fecha_inicio = datetime.fromisoformat(
-                    fecha_inicio.replace("Z", "+00:00")
+            if isinstance(fecha_recogida, str):
+                fecha_recogida = datetime.fromisoformat(
+                    fecha_recogida.replace("Z", "+00:00")
                 )
-            if isinstance(fecha_fin, str):
-                fecha_fin = datetime.fromisoformat(fecha_fin.replace("Z", "+00:00"))
+            if isinstance(fecha_devolucion, str):
+                fecha_devolucion = datetime.fromisoformat(fecha_devolucion.replace("Z", "+00:00"))
 
-            dias = (fecha_fin - fecha_inicio).days
+            dias = (fecha_devolucion - fecha_recogida).days
             if dias < 1:
                 dias = 1  # Mínimo 1 día
 
+            logger.info(f"Días de reserva: {dias}")
+
             # Calcular precio base del vehículo
-            precio_base = Decimal("0.00")
-            if tarifas.exists():
-                # Usar la primera tarifa disponible (se puede mejorar con lógica más compleja)
-                tarifa = tarifas.first()
-                precio_base = tarifa.precio_por_dia * dias
-            else:
-                # Precio por defecto si no hay tarifas
-                precio_base = Decimal("50.00") * dias
+            precio_base = precio_dia_base * dias
 
             # Calcular precio de extras
             precio_extras = Decimal("0.00")
@@ -81,13 +89,25 @@ class ReservaService:
 
             for extra_data in extras_data:
                 try:
-                    extra = Extras.objects.get(id=extra_data.get("extra_id"))
-                    cantidad = int(extra_data.get("cantidad", 1))
+                    # Manejar diferentes formatos de extras
+                    if isinstance(extra_data, dict):
+                        extra_id = extra_data.get("extra_id") or extra_data.get("id")
+                        cantidad = int(extra_data.get("cantidad", 1))
+                    else:
+                        # Si es solo el ID del extra
+                        extra_id = extra_data
+                        cantidad = 1
+                        
+                    if not extra_id:
+                        continue
+                        
+                    extra = Extras.objects.get(id=extra_id)
                     precio_extra = extra.precio * cantidad * dias
                     precio_extras += precio_extra
 
                     extras_detalle.append(
                         {
+                            "id": extra.id,
                             "nombre": extra.nombre,
                             "precio_unitario": str(extra.precio),
                             "cantidad": cantidad,
@@ -95,31 +115,37 @@ class ReservaService:
                             "subtotal": str(precio_extra),
                         }
                     )
-                except (Extras.DoesNotExist, ValueError):
+                    logger.info(f"Extra agregado: {extra.nombre} x{cantidad} = {precio_extra}")
+                except (Extras.DoesNotExist, ValueError, TypeError) as e:
+                    logger.warning(f"Error procesando extra {extra_data}: {str(e)}")
                     continue
 
             # Calcular total
-            precio_total = precio_base + precio_extras
+            subtotal = precio_base + precio_extras
 
-            # Aplicar impuestos si están configurados
+            # Aplicar impuestos si están configurados (redondeo a 2 decimales)
             tasa_impuesto = getattr(
                 settings, "TASA_IMPUESTO", Decimal("0.21")
             )  # 21% por defecto
-            impuestos = precio_total * tasa_impuesto
-            total_con_impuestos = precio_total + impuestos
+            impuestos = (subtotal * tasa_impuesto).quantize(Decimal('0.01'))
+            total_con_impuestos = (subtotal + impuestos).quantize(Decimal('0.01'))
 
-            logger.info(f"Precio calculado para reserva: {total_con_impuestos}")
+            logger.info(f"Precio calculado para reserva: {total_con_impuestos} "
+                       f"(base: {precio_base}, extras: {precio_extras}, "
+                       f"subtotal: {subtotal}, impuestos: {impuestos})")
 
             return {
                 "success": True,
                 "precio_total": float(total_con_impuestos),
+                "dias_alquiler": dias,
                 "desglose": {
                     "precio_base": float(precio_base),
                     "precio_extras": float(precio_extras),
-                    "subtotal": float(precio_total),
+                    "subtotal": float(subtotal),
                     "impuestos": float(impuestos),
                     "total": float(total_con_impuestos),
                     "dias": dias,
+                    "tasa_impuesto": float(tasa_impuesto),
                     "extras_detalle": extras_detalle,
                 },
             }
@@ -129,15 +155,15 @@ class ReservaService:
             return {"success": False, "error": f"Error en el cálculo: {str(e)}"}
 
     def validar_disponibilidad(
-        self, vehiculo_id, fecha_inicio, fecha_fin, reserva_id=None
+        self, vehiculo_id, fecha_recogida, fecha_devolucion, reserva_id=None
     ):
         """
         Valida si un vehículo está disponible en las fechas especificadas
 
         Args:
             vehiculo_id: ID del vehículo
-            fecha_inicio: Fecha de inicio
-            fecha_fin: Fecha de fin
+            fecha_recogida: Fecha de recogida
+            fecha_devolucion: Fecha de devolución
             reserva_id: ID de reserva a excluir (para ediciones)
 
         Returns:
@@ -163,8 +189,8 @@ class ReservaService:
                 vehiculo_id=vehiculo_id, estado__in=["confirmada", "en_progreso"]
             ).filter(
                 # Solapamiento de fechas
-                fecha_inicio__lt=fecha_fin,
-                fecha_fin__gt=fecha_inicio,
+                fecha_recogida__lt=fecha_devolucion,
+                fecha_devolucion__gt=fecha_recogida,
             )
 
             # Excluir la reserva actual si se está editando

@@ -127,7 +127,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
         Endpoint para calcular precio de reserva sin crearla.
         Permite al frontend validar y mostrar precios antes de confirmar.
         """
-        logger.info(f"Usuario {request.user.id} calculando precio de reserva")
+        logger.info("Calculando precio de reserva")
 
         try:
             # Usar el servicio de reservas para calcular precio
@@ -152,36 +152,70 @@ class ReservaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def cancelar(self, request, pk=None):
         """Cancelar una reserva"""
-        reserva = self.get_object()
-
-        if reserva.estado in ["cancelada", "completada"]:
-            return Response(
-                {
-                    "success": False,
-                    "error": "No se puede cancelar una reserva que ya está cancelada o completada",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+        logger.info(f"Iniciando cancelación de reserva {pk}")
+        
         try:
+            reserva = self.get_object()
+            logger.info(f"Reserva encontrada - Estado actual: {reserva.estado}")
+            
+            # Verificar usuario autenticado o permitir cancelación pública
+            if request.user.is_authenticated:
+                # Usuario autenticado - verificar permisos
+                if not (reserva.usuario == request.user or request.user.is_staff):
+                    logger.warning(f"Usuario {request.user.id} intentó cancelar reserva de otro usuario")
+                    return Response(
+                        {
+                            "success": False,
+                            "error": "No tienes permisos para cancelar esta reserva",
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+            
+            # Verificar estado actual
+            if reserva.estado in ["cancelada", "completada"]:
+                logger.warning(f"Intento de cancelar reserva en estado: {reserva.estado}")
+                return Response(
+                    {
+                        "success": False,
+                        "error": "No se puede cancelar una reserva que ya está cancelada o completada",
+                        "current_state": reserva.estado,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             with transaction.atomic():
                 reserva.estado = "cancelada"
                 reserva.save()
 
-                logger.info(
-                    f"Reserva {reserva.id} cancelada por usuario {request.user.id}"
-                )
+                logger.info(f"Reserva {reserva.id} cancelada exitosamente")
 
                 return Response(
-                    {"success": True, "message": "Reserva cancelada exitosamente"}
+                    {
+                        "success": True, 
+                        "message": "Reserva cancelada exitosamente",
+                        "reserva_id": reserva.id,
+                        "nuevo_estado": reserva.estado,
+                    },
+                    status=status.HTTP_200_OK,
                 )
 
+        except Reserva.DoesNotExist:
+            logger.error(f"Reserva {pk} no encontrada")
+            return Response(
+                {"success": False, "error": "Reserva no encontrada"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         except Exception as e:
             logger.error(f"Error cancelando reserva {pk}: {str(e)}")
             return Response(
-                {"success": False, "error": "Error cancelando reserva"},
+                {"success": False, "error": "Error interno del servidor"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+    
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Alias para cancelar (compatibilidad frontend)"""
+        return self.cancelar(request, pk)
 
     @action(detail=True, methods=["post"])
     def confirmar(self, request, pk=None):
@@ -330,11 +364,17 @@ class ReservaViewSet(viewsets.ModelViewSet):
             logger.info(f"Buscando reserva {reserva_id} para email {email}")
             
             # Buscar la reserva por ID y verificar que el email coincida
+            # Optimizar consulta con select_related y prefetch_related
             try:
                 reserva = Reserva.objects.select_related(
-                    "usuario", "vehiculo", "lugar_recogida", "lugar_devolucion", "politica_pago"
+                    "usuario", "vehiculo", "vehiculo__categoria", "vehiculo__grupo",
+                    "lugar_recogida", "lugar_devolucion", 
+                    "politica_pago", "promocion"
                 ).prefetch_related(
-                    "extras", "conductores", "penalizaciones"
+                    "extras__extra",
+                    "conductores__conductor",
+                    "penalizaciones__tipo_penalizacion",
+                    "vehiculo__imagenes"  # Añadir las imágenes del vehículo
                 ).get(id=reserva_id)
                 
                 # Verificar que el email del usuario coincida
@@ -378,3 +418,215 @@ class ReservaViewSet(viewsets.ModelViewSet):
         Alias para el método create para mantener compatibilidad con URLs legacy.
         """
         return self.create(request)
+
+    def _normalizar_fecha(self, fecha):
+        """
+        Normalizar fecha al formato YYYY-MM-DD para comparaciones
+        """
+        from datetime import date, datetime
+        
+        if fecha is None:
+            return None
+            
+        # Si ya es un objeto date o datetime
+        if isinstance(fecha, (date, datetime)):
+            return fecha.strftime('%Y-%m-%d')
+        
+        # Si es string, intentar parsearlo y normalizarlo
+        if isinstance(fecha, str):
+            fecha = fecha.strip()
+            
+            # Formatos comunes que pueden venir del frontend
+            formatos = [
+                '%Y-%m-%d',      # 2024-01-15
+                '%d/%m/%Y',      # 15/01/2024
+                '%m/%d/%Y',      # 01/15/2024
+                '%d-%m-%Y',      # 15-01-2024
+                '%Y/%m/%d',      # 2024/01/15
+                '%Y-%m-%dT%H:%M:%S.%fZ',  # ISO format con timezone
+                '%Y-%m-%dT%H:%M:%SZ',     # ISO format sin microseconds
+                '%Y-%m-%dT%H:%M:%S',      # ISO format sin timezone
+            ]
+            
+            for formato in formatos:
+                try:
+                    parsed_date = datetime.strptime(fecha, formato)
+                    return parsed_date.strftime('%Y-%m-%d')
+                except ValueError:
+                    continue
+        
+        # Si no se pudo parsear, devolver string tal como está
+        logger.warning(f"No se pudo normalizar la fecha: {fecha}")
+        return str(fecha)
+
+    @action(detail=True, methods=["post"])
+    def calcular_precio_edicion(self, request, pk=None):
+        """
+        Calcular el precio de una reserva editada y la diferencia con el precio original
+        """
+        logger.info(f"Calculando precio de edición para reserva {pk}")
+        logger.info(f"Datos recibidos: {request.data}")
+        
+        try:
+            reserva = self.get_object()
+            
+            # Extraer el vehiculo_id - priorizar el del request pero usar el de la reserva como fallback
+            vehiculo_id_nuevo = (
+                request.data.get("vehiculo_id") or 
+                request.data.get("vehiculo") or 
+                reserva.vehiculo.id
+            )
+            
+            logger.info(f"ID de vehículo para cálculo: {vehiculo_id_nuevo}")
+            
+            # Preparar datos para cálculo incluyendo los nuevos valores
+            data_calculo = {
+                "vehiculo_id": vehiculo_id_nuevo,
+                "fecha_recogida": request.data.get("fechaRecogida") or request.data.get("fecha_recogida"),
+                "fecha_devolucion": request.data.get("fechaDevolucion") or request.data.get("fecha_devolucion"),
+                "lugar_recogida_id": request.data.get("lugarRecogida_id") or request.data.get("lugar_recogida_id"),
+                "lugar_devolucion_id": request.data.get("lugarDevolucion_id") or request.data.get("lugar_devolucion_id"),
+                "extras": request.data.get("extras", [])
+            }
+            
+            logger.info(f"Datos para cálculo preparados: {data_calculo}")
+            
+            # Normalizar fechas para comparación consistente
+            fecha_recogida_bd = self._normalizar_fecha(reserva.fecha_recogida)
+            fecha_devolucion_bd = self._normalizar_fecha(reserva.fecha_devolucion)
+            fecha_recogida_nueva = self._normalizar_fecha(data_calculo["fecha_recogida"])
+            fecha_devolucion_nueva = self._normalizar_fecha(data_calculo["fecha_devolucion"])
+            
+            logger.info(f"Fechas normalizadas - BD: recogida={fecha_recogida_bd}, devolucion={fecha_devolucion_bd}")
+            logger.info(f"Fechas normalizadas - Nuevas: recogida={fecha_recogida_nueva}, devolucion={fecha_devolucion_nueva}")
+            
+            # Verificar si no hay cambios reales en la reserva
+            fechas_cambiadas = (
+                fecha_recogida_bd != fecha_recogida_nueva or
+                fecha_devolucion_bd != fecha_devolucion_nueva
+            )
+            
+            # Obtener extras actuales de la reserva
+            extras_actuales = set(reserva.extras.values_list('extra_id', flat=True))
+            extras_nuevos = set(extra.get('extra_id') if isinstance(extra, dict) else extra 
+                              for extra in data_calculo["extras"])
+            extras_cambiados = extras_actuales != extras_nuevos
+            
+            vehiculo_cambiado = reserva.vehiculo.id != vehiculo_id_nuevo
+            
+            logger.info(f"Análisis de cambios - Fechas: {fechas_cambiadas}, "
+                       f"Extras: {extras_cambiados}, Vehículo: {vehiculo_cambiado}")
+            logger.info(f"Extras actuales: {extras_actuales}, Extras nuevos: {extras_nuevos}")
+            
+            # Si no hay cambios reales, la diferencia debe ser 0
+            if not (fechas_cambiadas or extras_cambiados or vehiculo_cambiado):
+                precio_original = float(reserva.precio_total)
+                logger.info(f"No hay cambios detectados - manteniendo precio original: {precio_original}")
+                
+                response_data = {
+                    "success": True,
+                    "originalPrice": precio_original,
+                    "newPrice": precio_original,
+                    "difference": 0.0,
+                    "breakdown": {
+                        "precio_base": precio_original,
+                        "precio_extras": 0.0,
+                        "subtotal": precio_original,
+                        "impuestos": 0.0,
+                        "total": precio_original,
+                    },
+                    "dias_alquiler": (reserva.fecha_devolucion - reserva.fecha_recogida).days,
+                    "message": "No se detectaron cambios en la reserva"
+                }
+                
+                return Response(response_data, status=status.HTTP_200_OK)
+            
+            # Calcular nuevo precio
+            resultado_nuevo = self.reserva_service.calcular_precio_reserva(data_calculo)
+            
+            if not resultado_nuevo.get("success", False):
+                logger.warning(f"Error en cálculo de precio: {resultado_nuevo}")
+                return Response(resultado_nuevo, status=status.HTTP_400_BAD_REQUEST)
+            
+            nuevo_precio = resultado_nuevo.get("precio_total", 0)
+            precio_original = float(reserva.precio_total)
+            diferencia = nuevo_precio - precio_original
+            
+            # Preparar respuesta con formato esperado por el frontend
+            response_data = {
+                "success": True,
+                "originalPrice": precio_original,
+                "newPrice": nuevo_precio,
+                "difference": diferencia,
+                "breakdown": resultado_nuevo.get("desglose", {}),
+                "desglose": resultado_nuevo.get("desglose", {}),  # Compatibilidad
+                "dias_alquiler": resultado_nuevo.get("dias_alquiler", 1),
+            }
+            
+            logger.info(f"Cálculo de edición exitoso - Original: {precio_original}, "
+                       f"Nuevo: {nuevo_precio}, Diferencia: {diferencia}")
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error calculando precio de edición para reserva {pk}: {str(e)}")
+            return Response(
+                {"success": False, "error": f"Error calculando precio de edición: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def update(self, request, *args, **kwargs):
+        """Actualizar una reserva existente con validación optimizada"""
+        logger.info(f"Actualizando reserva {kwargs.get('pk')}")
+        
+        try:
+            with transaction.atomic():
+                # Obtener la reserva actual
+                instance = self.get_object()
+                
+                # Verificar que la reserva se puede editar
+                if instance.estado not in ["pendiente", "confirmada"]:
+                    return Response(
+                        {"success": False, "error": "No se puede editar una reserva cancelada o completada"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                
+                # Usar el serializer de actualización
+                serializer = self.get_serializer(instance, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                
+                # Guardar la reserva actualizada
+                reserva_actualizada = serializer.save()
+                
+                logger.info(f"Reserva {reserva_actualizada.id} actualizada exitosamente")
+                
+                # Devolver respuesta con datos completos
+                response_serializer = ReservaDetailSerializer(
+                    reserva_actualizada, context={"request": request}
+                )
+                
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Reserva actualizada exitosamente",
+                        "reserva": response_serializer.data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+                
+        except ValidationError as e:
+            logger.warning(f"Error de validación actualizando reserva: {str(e)}")
+            return Response(
+                {
+                    "success": False,
+                    "error": "Datos de reserva inválidos",
+                    "details": str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            logger.error(f"Error actualizando reserva: {str(e)}")
+            return Response(
+                {"success": False, "error": "Error interno del servidor"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

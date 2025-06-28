@@ -98,7 +98,7 @@ class ContratoAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
         }
 
     list_display = (
@@ -425,7 +425,7 @@ class FacturaAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
         }
 
     list_display = (

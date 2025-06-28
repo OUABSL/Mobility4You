@@ -27,8 +27,10 @@ import {
 } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import CardLogo from '../../assets/img/general/logo_visa_mastercard.png';
+import { createServiceLogger } from '../../config/appConfig';
 import '../../css/ReservaClienteConfirmar.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
+import { formatTaxRate } from '../../services/func';
 import {
   createReservation,
   editReservation,
@@ -42,9 +44,15 @@ import {
 import { ReservationTimerBadge } from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
 
+// Crear logger para el componente
+const logger = createServiceLogger('RESERVA_CLIENTE_CONFIRMAR');
+
 const ReservaClienteConfirmar = () => {
   const navigate = useNavigate();
   const storageService = getReservationStorageService();
+
+  // Logger
+  const logger = createServiceLogger('ReservaClienteConfirmar');
 
   // Hook del timer de reserva
   const {
@@ -115,7 +123,7 @@ const ReservaClienteConfirmar = () => {
           }));
         }
       } catch (err) {
-        console.error('Error al cargar datos de reserva:', err);
+        logger.error('Error al cargar datos de reserva:', err);
         setError(
           'Error al cargar datos de reserva. Por favor, inténtalo de nuevo.',
         );
@@ -165,7 +173,7 @@ const ReservaClienteConfirmar = () => {
         updateConductorDataIntermediate(updatedFormData);
       } else if (reservaData) {
         // Intentar reinicializar la reserva con los datos actuales
-        console.log(
+        logger.info(
           '[ReservaClienteConfirmar] Reinicializando reserva para guardar datos del conductor',
         );
         storageService.saveReservationData(reservaData);
@@ -176,13 +184,13 @@ const ReservaClienteConfirmar = () => {
         if (recovered) {
           updateConductorDataIntermediate(updatedFormData);
         } else {
-          console.warn(
+          logger.warn(
             '[ReservaClienteConfirmar] No se puede guardar datos del conductor: sin reserva activa',
           );
         }
       }
     } catch (err) {
-      console.error('Error al guardar datos del conductor:', err);
+      logger.error('Error al guardar datos del conductor:', err);
       // No mostrar error al usuario para evitar interrumpir la experiencia de escritura
     }
   };
@@ -204,7 +212,7 @@ const ReservaClienteConfirmar = () => {
       // Navegar de vuelta a la búsqueda de coches
       navigate('/coches', { replace: true });
     } catch (error) {
-      console.error('Error al cancelar reserva:', error);
+      logger.error('Error al cancelar reserva:', error);
       // Incluso si hay error al limpiar, navegar de vuelta
       navigate('/coches', { replace: true });
     }
@@ -261,7 +269,7 @@ const ReservaClienteConfirmar = () => {
       try {
         // Intentar actualizar datos del conductor en el storage service
         if (!storageService.hasActiveReservation() && reservaData) {
-          console.log(
+          logger.info(
             '[ReservaClienteConfirmar] Reinicializando reserva antes de guardar conductor',
           );
           storageService.saveReservationData(reservaData);
@@ -269,11 +277,11 @@ const ReservaClienteConfirmar = () => {
 
         // Usar validación completa para el envío final
         updateConductorData(formData);
-        console.log(
+        logger.info(
           '[ReservaClienteConfirmar] Datos del conductor guardados exitosamente',
         );
       } catch (storageError) {
-        console.error(
+        logger.error(
           '[ReservaClienteConfirmar] Error al guardar conductor:',
           storageError,
         );
@@ -365,7 +373,7 @@ const ReservaClienteConfirmar = () => {
           storageService.saveReservationData(updatedReservaForPayment);
           storageService.updateConductorData(formData);
         } catch (storageError) {
-          console.error(
+          logger.error(
             '[ReservaClienteConfirmar] Error al actualizar storage antes del pago:',
             storageError,
           );
@@ -375,7 +383,7 @@ const ReservaClienteConfirmar = () => {
         navigate('/reservation-confirmation/pago');
       }
     } catch (err) {
-      console.error('Error al confirmar la reserva:', err);
+      logger.error('Error al confirmar la reserva:', err);
       setError(err.message || 'Error al confirmar la reserva.');
     } finally {
       setLoading(false);
@@ -423,9 +431,9 @@ const ReservaClienteConfirmar = () => {
 
   const { car, fechas, paymentOption, extras, detallesReserva } = reservaData;
 
-  console.log(`[ReservaClienteConfirmar] EXTRAS: ${JSON.stringify(extras)}`);
+  logger.info(`[ReservaClienteConfirmar] EXTRAS: ${JSON.stringify(extras)}`);
 
-  console.log(
+  logger.info(
     `[ReservaClienteConfirmar] Datos de reserva cargados: ${JSON.stringify(
       reservaData,
     )}`,
@@ -1069,7 +1077,9 @@ const ReservaClienteConfirmar = () => {
                           </span>
                         </div>
                         <div className="d-flex justify-content-between mb-2">
-                          <span>IVA (21%):</span>
+                          <span>
+                            IVA{formatTaxRate(detallesReserva.tasaImpuesto)}:
+                          </span>
                           <span>
                             {typeof detallesReserva.iva === 'number'
                               ? detallesReserva.iva.toFixed(2)

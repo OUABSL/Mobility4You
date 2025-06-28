@@ -15,8 +15,13 @@ urlpatterns = [
     # URLs específicas para acciones personalizadas
     path(
         "reservas/<int:pk>/cancel/",
-        ReservaViewSet.as_view({"post": "cancelar"}),
+        ReservaViewSet.as_view({"post": "cancel"}),
         name="cancel-reserva",
+    ),
+    path(
+        "reservas/<int:pk>/cancelar/",
+        ReservaViewSet.as_view({"post": "cancelar"}),
+        name="cancelar-reserva",
     ),
     path(
         "reservas/<int:pk>/confirm/",
@@ -34,9 +39,19 @@ urlpatterns = [
         name="find-reserva",
     ),
     path(
+        "reservas/calcular-precio/",
+        ReservaViewSet.as_view({"post": "calcular_precio"}),
+        name="calcular-precio-reserva",
+    ),
+    path(
         "reservas/calculate-price/",
         ReservaViewSet.as_view({"post": "calcular_precio"}),
         name="calculate-reservation-price",
+    ),
+    path(
+        "reservas/<int:pk>/calcular-precio-edicion/",
+        ReservaViewSet.as_view({"post": "calcular_precio_edicion"}),
+        name="calcular-precio-edicion",
     ),
     path(
         "reservas/create-new/",

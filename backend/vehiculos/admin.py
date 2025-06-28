@@ -53,11 +53,17 @@ class DisponibilidadFilter(SimpleListFilter):
 
 class ImagenVehiculoInline(admin.TabularInline):
     model = ImagenVehiculo
-    extra = 1
+    extra = 0  # No automatic empty rows
     fields = ["imagen", "imagen_preview", "portada", "ancho", "alto"]
     readonly_fields = ["imagen_preview", "ancho", "alto"]
     verbose_name = "Imagen"
     verbose_name_plural = "Imágenes"
+    
+    class Media:
+        css = {
+            'all': ('admin/css/custom_admin.css',)
+        }
+        js = ('admin/js/tabular_inline_fix.js',)
 
     def imagen_preview(self, obj):
         """Mostrar una vista previa de la imagen en el admin"""
@@ -77,20 +83,32 @@ class ImagenVehiculoInline(admin.TabularInline):
 
 class TarifaVehiculoInline(admin.TabularInline):
     model = TarifaVehiculo
-    extra = 1
+    extra = 0  # No automatic empty rows
     fields = ["fecha_inicio", "fecha_fin", "precio_dia"]
     verbose_name = "Tarifa"
     verbose_name_plural = "Tarifas"
+    
+    class Media:
+        css = {
+            'all': ('admin/css/custom_admin.css',)
+        }
+        js = ('admin/js/tabular_inline_fix.js',)
 
 
 class MantenimientoInline(admin.TabularInline):
     model = Mantenimiento
-    extra = 0
+    extra = 0  # No automatic empty rows
     fields = ["fecha", "tipo_servicio", "coste", "notas"]
     readonly_fields = ["fecha"]
     verbose_name = "Mantenimiento"
     verbose_name_plural = "Mantenimientos"
     ordering = ["-fecha"]
+    
+    class Media:
+        css = {
+            'all': ('admin/css/custom_admin.css',)
+        }
+        js = ('admin/js/tabular_inline_fix.js',)
 
 
 @admin.register(Categoria)
@@ -608,7 +626,7 @@ class VehiculoAdmin(admin.ModelAdmin):
     class Media:
         js = (get_versioned_asset("js_vehiculos", "admin/js/vehiculos_admin_vfd3d29f9.js"),)
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
+            "all": (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
         }
 
 

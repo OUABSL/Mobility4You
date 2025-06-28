@@ -8,31 +8,18 @@ import {
 } from '../assets/testingData/testingData';
 import axios from '../config/axiosConfig';
 import { withCache } from './cacheService';
-import { withTimeout } from './func';
+import { logError, logInfo, withTimeout } from './func';
 import universalMapper from './universalDataMapper';
 
 // ========================================
 // CONFIGURACIÓN Y CONSTANTES
 // ========================================
-import { API_URLS, createServiceLogger, DEBUG_MODE } from '../config/appConfig';
+import { API_URLS, createServiceLogger } from '../config/appConfig';
 
 const API_URL = API_URLS.BASE;
 
 // Crear logger para el servicio
 const logger = createServiceLogger('HOME_SERVICE');
-
-// Helper functions para logging condicional
-const logInfo = (message, data = null) => {
-  if (DEBUG_MODE) {
-    logger.info(message, data);
-  }
-};
-
-const logError = (message, error = null) => {
-  if (DEBUG_MODE) {
-    logger.error(message, error);
-  }
-};
 
 // ========================================
 // FUNCIONES DE DATOS - MIGRADAS A MAPPER UNIVERSAL
@@ -48,7 +35,7 @@ const fetchLocations = async () => {
   return await withCache('locations', async () => {
     try {
       // PRIMERA PRIORIDAD: Consultar base de datos
-      logInfo('Consultando ubicaciones desde BD');
+      logInfo('Consultando ubicaciones desde BD', logger);
       const response = await withTimeout(
         axios.get(`${API_URL}/lugares/lugares/`, {
           params: { activo: true },
@@ -73,10 +60,10 @@ const fetchLocations = async () => {
         dataArray.filter((item) => item && item.activo !== false),
       );
 
-      logInfo('Ubicaciones cargadas desde BD', { count: mappedData.length });
+      logInfo('Ubicaciones cargadas desde BD', { count: mappedData.length }, logger);
       return mappedData;
     } catch (error) {
-      logError('Error al consultar ubicaciones desde BD', error);
+      logError('Error al consultar ubicaciones desde BD', error, logger);
 
       // FALLBACK: Solo si DEBUG_MODE está activo Y el backend falló
       if (shouldUseTestingData(true)) {
@@ -105,7 +92,7 @@ const fetchEstadisticas = async () => {
   return await withCache('stats', async () => {
     try {
       // PRIMERA PRIORIDAD: Consultar base de datos
-      logInfo('Consultando estadísticas desde BD');
+      logInfo('Consultando estadísticas desde BD', logger);
       const response = await withTimeout(
         axios.get(`${API_URL}/comunicacion/estadisticas/`, {
           params: { activo: true },
@@ -130,10 +117,10 @@ const fetchEstadisticas = async () => {
         dataArray.filter((item) => item && item.activo),
       );
 
-      logInfo('Estadísticas cargadas desde BD', { count: mappedData.length });
+      logInfo('Estadísticas cargadas desde BD', { count: mappedData.length }, logger);
       return mappedData;
     } catch (error) {
-      logError('Error al consultar estadísticas desde BD', error);
+      logError('Error al consultar estadísticas desde BD', error, logger);
 
       // FALLBACK: Solo si DEBUG_MODE está activo Y el backend falló
       if (shouldUseTestingData(true)) {
@@ -164,7 +151,7 @@ const fetchCaracteristicas = async () => {
   return await withCache('features', async () => {
     try {
       // PRIMERA PRIORIDAD: Consultar base de datos
-      logInfo('Consultando características desde BD');
+      logInfo('Consultando características desde BD', logger);
       const response = await withTimeout(
         axios.get(`${API_URL}/comunicacion/caracteristicas/`, {
           params: { activo: true },
@@ -194,7 +181,7 @@ const fetchCaracteristicas = async () => {
       });
       return mappedData;
     } catch (error) {
-      logError('Error al consultar características desde BD', error);
+      logError('Error al consultar características desde BD', error, logger);
 
       // FALLBACK: Solo si DEBUG_MODE está activo Y el backend falló
       if (shouldUseTestingData(true)) {
@@ -222,11 +209,11 @@ const fetchCaracteristicas = async () => {
  * @returns {Promise<Array>} - Lista de testimonios
  */
 const fetchTestimonios = async () => {
-  logInfo('Iniciando fetchTestimonios con mapper universal');
+  logInfo('Iniciando fetchTestimonios con mapper universal', logger);
   return await withCache('testimonials', async () => {
     try {
       // CONFIGURACIÓN TEMPORAL: Siempre usar datos de testing para testimonios
-      logInfo('Usando testimonios de testing data (configuración temporal)');
+      logInfo('Usando testimonios de testing data (configuración temporal)', logger);
 
       // Usar el mapper universal para mapear testimonios
       const mappedTestimonios = await universalMapper.mapTestimonials(
@@ -239,7 +226,7 @@ const fetchTestimonios = async () => {
 
       return mappedTestimonios;
     } catch (error) {
-      logError('Error al procesar testimonios', error);
+      logError('Error al procesar testimonios', error, logger);
 
       // Fallback básico
       return [
@@ -266,7 +253,7 @@ const fetchDestinos = async () => {
   return await withCache('destinations', async () => {
     try {
       // PRIMERA PRIORIDAD: Consultar base de datos
-      logInfo('Consultando destinos populares desde BD');
+      logInfo('Consultando destinos populares desde BD', logger);
       const response = await withTimeout(
         axios.get(`${API_URL}/lugares/lugares/`, {
           params: { popular: true, activo: true },
@@ -294,11 +281,11 @@ const fetchDestinos = async () => {
       });
       return mappedData;
     } catch (error) {
-      logError('Error al consultar destinos desde BD', error);
+      logError('Error al consultar destinos desde BD', error, logger);
 
       // FALLBACK: Solo si DEBUG_MODE está activo Y el backend falló
       if (shouldUseTestingData(true)) {
-        logInfo('DEBUG_MODE activo - usando destinos de testing como fallback');
+        logInfo('DEBUG_MODE activo - usando destinos de testing como fallback', logger);
         return await universalMapper.mapDestinations(testingDestinos);
       }
 

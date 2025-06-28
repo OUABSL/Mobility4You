@@ -47,27 +47,45 @@ class EstadoReservaFilter(SimpleListFilter):
 
 class ReservaConductorInline(admin.TabularInline):
     model = ReservaConductor
-    extra = 1
+    extra = 0 
     fields = ["conductor", "rol"]
     verbose_name = "Conductor"
     verbose_name_plural = "Conductores"
+    
+    class Media:
+        css = {
+            'all': ('admin/css/custom_admin.css',)
+        }
+        js = ('admin/js/tabular_inline_fix.js',)
 
 
 class PenalizacionInline(admin.TabularInline):
     model = Penalizacion
-    extra = 0
+    extra = 0 
     fields = ["tipo_penalizacion", "importe", "fecha", "descripcion"]
     readonly_fields = ["fecha"]
     verbose_name = "Penalización"
     verbose_name_plural = "Penalizaciones"
+    
+    class Media:
+        css = {
+            'all': ('admin/css/custom_admin.css',)
+        }
+        js = ('admin/js/tabular_inline_fix.js',)
 
 
 class ReservaExtraInline(admin.TabularInline):
     model = ReservaExtra
-    extra = 1
+    extra = 0 
     fields = ["extra", "cantidad"]
     verbose_name = "Extra"
     verbose_name_plural = "Extras"
+    
+    class Media:
+        css = {
+            'all': ('admin/css/custom_admin.css',)
+        }
+        js = ('admin/js/tabular_inline_fix.js',)
 
 
 @admin.register(Reserva)
@@ -505,7 +523,7 @@ class ReservaAdmin(admin.ModelAdmin):
     class Media:
         js = (get_versioned_asset("js_reservas", "admin/js/reservas_admin_v74440271.js"),)
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin_v78b65000.css"),)
+            "all": (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
         }
 
 

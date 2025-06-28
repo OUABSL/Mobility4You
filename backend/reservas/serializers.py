@@ -1,4 +1,6 @@
 # reservas/serializers.py
+import logging
+
 from lugares.models import Direccion
 from lugares.serializers import LugarSerializer
 from politicas.serializers import PoliticaPagoSerializer, PromocionSerializer
@@ -9,11 +11,14 @@ from vehiculos.serializers import VehiculoDetailSerializer
 from .models import (Extras, Penalizacion, Reserva, ReservaConductor,
                      ReservaExtra)
 
+logger = logging.getLogger(__name__)
+
 
 class ReservaConductorSerializer(serializers.ModelSerializer):
     conductor_id = serializers.IntegerField(write_only=True)
-    conductor_nombre = serializers.CharField(source="conductor.nombre", read_only=True)
-    conductor_email = serializers.EmailField(source="conductor.email", read_only=True)
+    
+    # Datos completos del conductor para el frontend
+    conductor = serializers.SerializerMethodField()
 
     class Meta:
         model = ReservaConductor
@@ -21,10 +26,38 @@ class ReservaConductorSerializer(serializers.ModelSerializer):
             "id",
             "reserva",
             "conductor_id",
-            "conductor_nombre",
-            "conductor_email",
+            "conductor",
             "rol",
         ]
+    
+    def get_conductor(self, obj):
+        """Obtener datos completos del conductor desde el usuario relacionado"""
+        if not obj.conductor:
+            return None
+            
+        conductor = obj.conductor
+        return {
+            "id": conductor.id,
+            "nombre": conductor.first_name,
+            "apellido": conductor.last_name,
+            "apellidos": conductor.last_name,  # Compatibilidad con frontend
+            "email": conductor.email,
+            "telefono": conductor.telefono or "",
+            "fecha_nacimiento": conductor.fecha_nacimiento,
+            "sexo": conductor.sexo,
+            "nacionalidad": conductor.nacionalidad or "",
+            "tipo_documento": conductor.tipo_documento,
+            "numero_documento": conductor.numero_documento or "",
+            "documento": conductor.numero_documento or "",  # Compatibilidad con frontend
+            "rol_usuario": conductor.rol,
+            "direccion": {
+                "calle": conductor.direccion.calle if conductor.direccion else "",
+                "ciudad": conductor.direccion.ciudad if conductor.direccion else "",
+                "provincia": conductor.direccion.provincia if conductor.direccion else "",
+                "codigo_postal": conductor.direccion.codigo_postal if conductor.direccion else "",
+                "pais": conductor.direccion.pais if conductor.direccion else "España"
+            } if conductor.direccion else None
+        }
 
 
 class PenalizacionSerializer(serializers.ModelSerializer):
@@ -147,45 +180,46 @@ class ReservaSerializer(serializers.ModelSerializer):
 
 
 class ReservaDetailSerializer(ReservaSerializer):
-    # Serializers anidados completos para detalles
+    # Serializers anidados completos para detalles principales
     vehiculo_detail = VehiculoDetailSerializer(source="vehiculo", read_only=True)
     lugar_recogida_detail = LugarSerializer(source="lugar_recogida", read_only=True)
     lugar_devolucion_detail = LugarSerializer(source="lugar_devolucion", read_only=True)
     politica_pago_detail = PoliticaPagoSerializer(source="politica_pago", read_only=True)
     promocion_detail = PromocionSerializer(source="promocion", read_only=True)
     
-    # Campos básicos de relaciones para compatibilidad con frontend existente
+    # Solo campos esenciales para compatibilidad con frontend
     vehiculo_marca = serializers.CharField(source="vehiculo.marca", read_only=True)
     vehiculo_modelo = serializers.CharField(source="vehiculo.modelo", read_only=True)
     vehiculo_matricula = serializers.CharField(source="vehiculo.matricula", read_only=True)
-    vehiculo_imagen_principal = serializers.CharField(source="vehiculo.imagen_principal", read_only=True)
-    vehiculo_precio_dia = serializers.DecimalField(source="vehiculo.precio_dia", max_digits=10, decimal_places=2, read_only=True)
-
+    vehiculo_imagen_principal = serializers.SerializerMethodField()
+    
     lugar_recogida_nombre = serializers.CharField(source="lugar_recogida.nombre", read_only=True)
     lugar_devolucion_nombre = serializers.CharField(source="lugar_devolucion.nombre", read_only=True)
-
+    
     politica_pago_titulo = serializers.CharField(source="politica_pago.titulo", read_only=True)
     promocion_nombre = serializers.CharField(source="promocion.nombre", read_only=True)
+    
+    # Datos del usuario principal
     usuario_nombre = serializers.CharField(source="usuario.first_name", read_only=True)
     usuario_email = serializers.EmailField(source="usuario.email", read_only=True)
 
-    # Extras con imágenes
-    extras_detail = serializers.SerializerMethodField()
-
-    def get_extras_detail(self, obj):
-        """Obtener extras con información completa incluyendo imágenes"""
-        extras_data = []
-        for reserva_extra in obj.extras.all():
-            extra = reserva_extra.extra
-            extras_data.append({
-                'id': extra.id,
-                'nombre': extra.nombre,
-                'descripcion': extra.descripcion,
-                'precio': extra.precio,
-                'imagen': extra.imagen.url if extra.imagen else None,
-                'cantidad': reserva_extra.cantidad
-            })
-        return extras_data
+    def get_vehiculo_imagen_principal(self, obj):
+        """Obtener URL absoluta de la imagen principal del vehículo"""
+        if obj.vehiculo:
+            # Buscar la imagen principal (portada=True) del vehículo
+            imagen_principal = obj.vehiculo.imagenes.filter(portada=True).first()
+            
+            if imagen_principal and imagen_principal.imagen:
+                from django.conf import settings
+                
+                request = self.context.get("request")
+                if request:
+                    return request.build_absolute_uri(imagen_principal.imagen.url)
+                else:
+                    # Fallback cuando no hay request
+                    base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
+                    return f"{base_url}{imagen_principal.imagen.url}"
+        return None
 
     class Meta(ReservaSerializer.Meta):
         fields = ReservaSerializer.Meta.fields + [
@@ -198,14 +232,12 @@ class ReservaDetailSerializer(ReservaSerializer):
             "vehiculo_modelo", 
             "vehiculo_matricula",
             "vehiculo_imagen_principal",
-            "vehiculo_precio_dia",
             "lugar_recogida_nombre",
             "lugar_devolucion_nombre",
             "politica_pago_titulo",
             "promocion_nombre",
             "usuario_nombre",
             "usuario_email",
-            "extras_detail",
         ]
 
 

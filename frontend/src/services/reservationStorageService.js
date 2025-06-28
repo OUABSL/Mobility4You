@@ -6,6 +6,7 @@
  */
 
 import { createServiceLogger, DEBUG_MODE } from '../config/appConfig';
+import { logError, logInfo } from './func';
 import { roundToDecimals } from './universalDataMapper';
 
 // Constantes de configuración
@@ -24,21 +25,6 @@ const WARNING_TIME = 5 * 60 * 1000; // Avisar 5 minutos antes
 
 // Crear logger para el servicio de almacenamiento
 const logger = createServiceLogger('RESERVATION_STORAGE');
-
-/**
- * Helper para logging condicional usando la configuración centralizada
- */
-const logInfo = (message, data = null) => {
-  if (DEBUG_MODE) {
-    logger.info(`${message}`, data || '');
-  }
-};
-
-const logError = (message, error = null) => {
-  if (DEBUG_MODE) {
-    logger.error(`${message}`, error || '');
-  }
-};
 
 /**
  * Clase principal del servicio de almacenamiento de reservas
@@ -624,9 +610,7 @@ class ReservationStorageService {
     // Si no hay datos de reserva, no hay reserva activa
     if (!data) {
       if (DEBUG_MODE) {
-        logInfo(
-          'hasActiveReservation = false: No reservation data',
-        );
+        logInfo('hasActiveReservation = false: No reservation data');
       }
       return false;
     }
@@ -634,9 +618,7 @@ class ReservationStorageService {
     // Si la reserva está marcada como completada, está activa pero no necesita timer
     if (step === 'completed') {
       if (DEBUG_MODE) {
-        logInfo(
-          'hasActiveReservation = true: Reservation completed',
-        );
+        logInfo('hasActiveReservation = true: Reservation completed');
       }
       return true;
     }
@@ -644,9 +626,7 @@ class ReservationStorageService {
     // Si no hay timer start, la reserva no está activa (se requiere timer para validez)
     if (!timerStart) {
       if (DEBUG_MODE) {
-        logInfo(
-          'hasActiveReservation = false: No timer start found',
-        );
+        logInfo('hasActiveReservation = false: No timer start found');
       }
       return false;
     }
@@ -666,9 +646,7 @@ class ReservationStorageService {
     // Si ha expirado, limpiar datos automáticamente
     if (!isActive) {
       if (DEBUG_MODE) {
-        logInfo(
-          'Reservation expired, cleaning up data',
-        );
+        logInfo('Reservation expired, cleaning up data');
       }
       this.clearAllReservationData();
     }

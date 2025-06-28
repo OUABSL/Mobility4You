@@ -4,28 +4,19 @@ import {
   faTimesCircle,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useState } from 'react';
 import { Alert, Button, Modal, Spinner } from 'react-bootstrap';
-import { deleteReservation } from '../../services/reservationServices';
 
-const DeleteReservationModal = ({ show, onHide, reservationId, onConfirm }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const handleConfirm = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      await deleteReservation(reservationId);
-      onConfirm();
-    } catch (err) {
-      setError(
-        'Error al cancelar la reserva: ' +
-          (err.message || 'Intente nuevamente'),
-      );
-    } finally {
-      setLoading(false);
+const DeleteReservationModal = ({
+  show,
+  onHide,
+  reservationId,
+  onConfirm,
+  loading = false,
+  error = null,
+}) => {
+  const handleConfirm = () => {
+    if (onConfirm) {
+      onConfirm(reservationId);
     }
   };
 

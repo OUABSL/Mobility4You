@@ -10,7 +10,11 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Modal, ProgressBar } from 'react-bootstrap';
+import { createServiceLogger } from '../../config/appConfig';
 import '../../css/ReservationTimerModal.css';
+
+// Crear logger para el componente
+const logger = createServiceLogger('RESERVATION_TIMER_MODAL');
 
 /**
  * Modal para manejar advertencias de expiración y acciones del timer
@@ -77,7 +81,7 @@ const ReservationTimerModal = ({
         await onExtend();
       }
     } catch (error) {
-      console.error('Error al extender timer:', error);
+      logger.error('Error al extender timer:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -93,7 +97,7 @@ const ReservationTimerModal = ({
         await onContinue();
       }
     } catch (error) {
-      console.error('Error al continuar:', error);
+      logger.error('Error al continuar:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -109,7 +113,7 @@ const ReservationTimerModal = ({
         await onCancel();
       }
     } catch (error) {
-      console.error('Error al cancelar:', error);
+      logger.error('Error al cancelar:', error);
     } finally {
       setIsProcessing(false);
     }

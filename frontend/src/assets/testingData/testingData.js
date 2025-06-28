@@ -892,206 +892,309 @@ const testingReservationData = {
 };
 
 // ========================================
-// DATOS DE MAPEO DE PAGOS DE TESTING
+// DATOS DE RESERVA DE TESTING
 // ========================================
-// Para tests de mapeo de políticas de pago
-const testingPaymentMappingData = [
+// SOLO se usan cuando DEBUG_MODE = TRUE y la consulta a la DB falla
+
+export const datosReservaPrueba = {
+  id: 'R12345678',
+  estado: 'confirmada',
+  fechaRecogida: '2025-05-14T12:30:00',
+  fechaDevolucion: '2025-05-18T08:30:00',
+
+  vehiculo: {
+    id: 7,
+    categoria_id: 2,
+    grupo_id: 3,
+    combustible: 'Diésel',
+    marca: 'BMW',
+    modelo: '320i',
+    matricula: 'ABC1234',
+    anio: 2023,
+    color: 'Negro',
+    num_puertas: 5,
+    num_pasajeros: 5,
+    capacidad_maletero: 480,
+    disponible: 1,
+    activo: 1,
+    fianza: 0,
+    kilometraje: 10500,
+    categoria: {
+      id: 2,
+      nombre: 'Berlina Premium',
+    },
+    grupo: {
+      id: 3,
+      nombre: 'Segmento D',
+      edad_minima: 21,
+    },
+    imagenPrincipal: bmwImage,
+    imagenes: [{ id: 1, vehiculo_id: 7, url: bmwImage, portada: 1 }],
+  },
+
+  lugarRecogida: {
+    id: 1,
+    nombre: 'Aeropuerto de Málaga (AGP)',
+    direccion_id: 5,
+    telefono: '+34 951 23 45 67',
+    email: 'malaga@mobility4you.com',
+    icono_url: 'faPlane',
+    direccion: {
+      id: 5,
+      calle: 'Av. Comandante García Morato, s/n',
+      ciudad: 'málaga',
+      provincia: 'málaga',
+      pais: 'españa',
+      codigo_postal: '29004',
+    },
+  },
+  lugarDevolucion: {
+    id: 1,
+    nombre: 'Aeropuerto de Málaga (AGP)',
+    direccion_id: 5,
+    telefono: '+34 951 23 45 67',
+    email: 'malaga@mobility4you.com',
+    icono_url: 'faPlane',
+    direccion: {
+      id: 5,
+      calle: 'Av. Comandante García Morato, s/n',
+      ciudad: 'málaga',
+      provincia: 'málaga',
+      pais: 'españa',
+      codigo_postal: '29004',
+    },
+  },
+
+  politicaPago: {
+    id: 1,
+    titulo: 'All Inclusive',
+    deductible: 0,
+    descripcion:
+      'Cobertura completa sin franquicia y con kilometraje ilimitado',
+    items: [
+      {
+        politica_id: 1,
+        item: 'Cobertura a todo riesgo sin franquicia',
+        incluye: 1,
+      },
+      { politica_id: 1, item: 'Kilometraje ilimitado', incluye: 1 },
+      { politica_id: 1, item: 'Asistencia en carretera 24/7', incluye: 1 },
+      { politica_id: 1, item: 'Conductor adicional gratuito', incluye: 1 },
+      {
+        politica_id: 1,
+        item: 'Cancelación gratuita hasta 24h antes',
+        incluye: 1,
+      },
+      {
+        politica_id: 1,
+        item: 'Daños bajo efectos del alcohol o drogas',
+        incluye: 0,
+      },
+    ],
+    penalizaciones: [
+      {
+        politica_pago_id: 1,
+        tipo_penalizacion_id: 1,
+        horas_previas: 24,
+        tipo_penalizacion: {
+          id: 1,
+          nombre: 'cancelación',
+          tipo_tarifa: 'porcentaje',
+          valor_tarifa: 50.0,
+          descripcion:
+            'Cancelación con menos de 24h: cargo del 50% del valor total',
+        },
+      },
+    ],
+  },
+
+  extras: [
+    { id: 1, nombre: 'Asiento infantil (Grupo 1)', precio: 25.0 },
+    { id: 2, nombre: 'GPS navegador', precio: 15.0 },
+  ],
+
+  conductores: [
+    {
+      reserva_id: 'R12345678',
+      conductor_id: 123,
+      rol: 'principal',
+      conductor: {
+        id: 123,
+        nombre: 'Juan',
+        apellido: 'Pérez García',
+        email: 'juan.perez@example.com',
+        fecha_nacimiento: '1985-06-15',
+        sexo: 'masculino',
+        nacionalidad: 'española',
+        tipo_documento: 'dni',
+        numero_documento: '12345678A',
+        telefono: '+34 600 123 456',
+        direccion_id: 10,
+        rol: 'cliente',
+        idioma: 'es',
+        activo: 1,
+        registrado: 1,
+        verificado: 1,
+        direccion: {
+          id: 10,
+          calle: 'Calle Principal 123',
+          ciudad: 'madrid',
+          provincia: 'madrid',
+          pais: 'españa',
+          codigo_postal: '28001',
+        },
+      },
+    },
+    {
+      reserva_id: 'R12345678',
+      conductor_id: 124,
+      rol: 'secundario',
+      conductor: {
+        id: 124,
+        nombre: 'María',
+        apellido: 'López Sánchez',
+        email: 'maria.lopez@example.com',
+        fecha_nacimiento: '1987-04-22',
+        sexo: 'femenino',
+        nacionalidad: 'española',
+        tipo_documento: 'dni',
+        numero_documento: '87654321B',
+        telefono: '+34 600 789 012',
+        direccion_id: 11,
+        rol: 'cliente',
+        idioma: 'es',
+        activo: 1,
+        registrado: 1,
+        verificado: 1,
+        direccion: {
+          id: 11,
+          calle: 'Calle Secundaria 456',
+          ciudad: 'madrid',
+          provincia: 'madrid',
+          pais: 'españa',
+          codigo_postal: '28002',
+        },
+      },
+    },
+  ],
+
+  promocion: {
+    id: 5,
+    nombre: 'Descuento Mayo 2025',
+    descuento_pct: 10.0,
+    fecha_inicio: '2025-05-01',
+    fecha_fin: '2025-05-31',
+    activo: 1,
+  },
+
+  penalizaciones: [],
+
+  precio_dia: 79.0,
+  precioBase: 316.0,
+  precioExtras: 40.0,
+  precioImpuestos: 74.76,
+  descuentoPromocion: 35.6,
+  precioTotal: 395.16,
+  diferenciaPendiente: 0,
+  metodoPagoDiferencia: null,
+  diferenciaPagada: null,
+  metodo_pago: 'tarjeta',
+  importe_pagado_inicial: 395.16,
+  importe_pendiente_inicial: 0.0,
+  importe_pagado_extra: 0.0,
+  importe_pendiente_extra: 0.0,
+};
+
+// ========================================
+// DATOS DE EXTRAS DE TESTING
+// ========================================
+// SOLO se usan cuando DEBUG_MODE = TRUE y la consulta a la DB falla
+
+export const extrasDisponiblesPrueba = [
   {
-    car: { id: 1 },
-    lugar_recogida_id: 1,
-    lugar_devolucion_id: 2,
-    fecha_recogida: '2024-01-15T10:00:00Z',
-    fecha_devolucion: '2024-01-20T10:00:00Z',
-    paymentOption: 'all-inclusive',
+    id: 1,
+    nombre: 'Asiento infantil (Grupo 1)',
+    descripcion:
+      'Asiento de seguridad para niños de 9-18 kg (aprox. 9 meses a 4 años)',
+    categoria: 'seguridad',
+    precio: 25.0,
+    unidad: 'por día',
+    disponible: true,
+    activo: true,
+    imagen_url: null,
   },
   {
-    car: { id: 1 },
-    lugar_recogida_id: 1,
-    lugar_devolucion_id: 2,
-    fecha_recogida: '2024-01-15T10:00:00Z',
-    fecha_devolucion: '2024-01-20T10:00:00Z',
-    paymentOption: 'economy',
+    id: 2,
+    nombre: 'GPS navegador',
+    descripcion: 'Sistema de navegación GPS con mapas actualizados de Europa',
+    categoria: 'navegacion',
+    precio: 15.0,
+    unidad: 'por día',
+    disponible: true,
+    activo: true,
+    imagen_url: null,
   },
   {
-    car: { id: 1 },
-    lugar_recogida_id: 1,
-    lugar_devolucion_id: 2,
-    fecha_recogida: '2024-01-15T10:00:00Z',
-    fecha_devolucion: '2024-01-20T10:00:00Z',
-    politica_pago: 'premium',
+    id: 3,
+    nombre: 'Conductor adicional',
+    descripcion:
+      'Autorización para conductor adicional con cobertura de seguro',
+    categoria: 'conductor',
+    precio: 8.0,
+    unidad: 'por día',
+    disponible: true,
+    activo: true,
+    imagen_url: null,
+  },
+  {
+    id: 4,
+    nombre: 'WiFi portátil',
+    descripcion: 'Dispositivo WiFi portátil con datos ilimitados',
+    categoria: 'conectividad',
+    precio: 12.0,
+    unidad: 'por día',
+    disponible: true,
+    activo: true,
+    imagen_url: null,
   },
 ];
 
-// ========================================
-// DATOS SIMPLES DE RESERVA DE TESTING
-// ========================================
-// Para tests de storage service
-const testingSimpleReservationData = {
-  car: {
-    id: 1,
-    marca: 'Toyota',
-    modelo: 'Corolla',
-    matricula: 'ABC1234',
-    imagen: 'https://example.com/corolla.jpg',
-  },
-  fechas: {
-    pickupLocation: 'Aeropuerto de Málaga',
-    pickupDate: new Date(),
-    pickupTime: '12:00',
-    dropoffLocation: 'Aeropuerto de Málaga',
-    dropoffDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-    dropoffTime: '12:00',
-  },
-  paymentOption: {
-    id: 'all-inclusive',
-    nombre: 'All Inclusive',
-  },
-  detallesReserva: {
-    precioBase: 100,
-    iva: 21,
-    total: 121,
-  },
-};
-
-// ========================================
-// CONFIGURACIÓN DE DEBUG MODE
-// ========================================
-/**
- * ⚠️ IMPORTANTE: Este archivo contiene SOLO datos de testing
- * 
- * - Los datos aquí definidos NO deben usarse jamás en producción
- * - Solo se acceden cuando DEBUG_MODE está activo Y el backend falla
- * - La configuración de DEBUG_MODE se encuentra en src/config/appConfig.js
- * 
- * @see src/config/appConfig.js para la configuración de DEBUG_MODE
- */
-
-/**
- * Re-exportar funciones de configuración para compatibilidad
- * @deprecated Usar directamente desde src/config/appConfig.js
- */
-export { DEBUG_MODE, shouldUseTestingData } from '../../config/appConfig';
-
-// ========================================
-// EXPORTACIONES PARA FALLBACK DE TESTING
-// ========================================
-export {
-  testingCaracteristicas,
-  testingDestinos,
-  testingEstadisticas,
-  testingLocationsData,
-  testingPaymentMappingData,
-  testingPaymentOptions,
-  testingPoliticas,
-  testingReservationData,
-  testingSimpleReservationData,
-  testingStripeMocks,
-  testingTestimonios,
-};
-export default testingCars;
-
-// ========================================
-// DATOS DE STRIPE MOCK PARA TESTING
-// ========================================
-// SOLO se usan cuando DEBUG_MODE = TRUE en el servicio de pagos
-
-/**
- * Función para generar un Payment Intent mock dinámicamente
- * @param {string} tipoPago - Tipo de pago
- * @param {Object} reservaData - Datos de la reserva
- * @returns {Object} - Payment Intent mock
- */
-const generateMockPaymentIntent = (tipoPago, reservaData) => ({
-  success: true,
-  payment_intent_id: `pi_mock_${Date.now()}`,
-  client_secret: `pi_mock_${Date.now()}_secret_mock`,
-  numero_pedido: `M4Y-${tipoPago?.slice(0, 3) || 'TEST'}-${
-    reservaData?.id || 'NEW'
-  }-${Date.now()}`,
-  importe: reservaData?.precio_total || reservaData?.diferencia || 100,
+// Funciones mock para Stripe (solo para testing)
+const generateMockPaymentIntent = (amount) => ({
+  id: `pi_test_${Date.now()}`,
+  amount: amount * 100,
   currency: 'eur',
-  pago_id: Math.floor(Math.random() * 1000),
-  publishable_key: 'pk_test_mock',
+  status: 'requires_payment_method',
 });
 
-/**
- * Función para generar un resultado de confirmación mock
- * @param {string} clientSecret - Client secret del payment intent
- * @returns {Object} - Resultado de confirmación mock
- */
-const generateMockConfirmResult = (clientSecret) => ({
-  success: true,
+const generateMockConfirmResult = () => ({
+  paymentIntent: {
+    id: `pi_test_${Date.now()}`,
+    status: 'succeeded',
+  },
+});
+
+const generateMockPaymentStatus = () => ({
+  status: 'paid',
+  payment_method: 'card',
+});
+
+const generateMockRefund = (amount) => ({
+  id: `re_test_${Date.now()}`,
+  amount: amount * 100,
+  currency: 'eur',
   status: 'succeeded',
-  payment_intent_id:
-    clientSecret?.split('_secret_')[0] || `pi_mock_${Date.now()}`,
-  charge_id: `ch_mock_${Date.now()}`,
-  numero_pedido: `M4Y-MOCK-${Date.now()}`,
 });
 
-/**
- * Función para generar un estado de pago mock
- * @param {string} paymentIntentId - ID del payment intent
- * @returns {Object} - Estado de pago mock compatible
- */
-const generateMockPaymentStatus = (paymentIntentId) => ({
-  success: true,
-  estado: 'COMPLETADO',
-  importe: 316.5,
-  fecha_creacion: new Date().toISOString(),
-  fecha_confirmacion: new Date().toISOString(),
-  metodo_pago: 'card',
-  ultimos_4_digitos: '4242',
-  marca_tarjeta: 'visa',
-  puede_reembolsar: true,
-  importe_reembolsado: 0,
-  payment_intent_id: paymentIntentId || `pi_mock_${Date.now()}`,
-});
-
-/**
- * Función para generar un reembolso mock
- * @param {string} chargeId - ID del cargo
- * @param {number} amount - Cantidad a reembolsar
- * @returns {Object} - Reembolso mock compatible
- */
-const generateMockRefund = (chargeId, amount) => ({
-  success: true,
-  refund_id: `re_mock_${Date.now()}`,
-  importe_reembolsado: amount || 316.5,
-  estado_reembolso: 'succeeded',
-  reembolso_local_id: Math.floor(Math.random() * 1000),
-});
-
-/**
- * Función para generar un historial de pagos mock
- * @param {number} count - Número de pagos en el historial
- * @returns {Object} - Historial de pagos mock con formato compatible
- */
-const generateMockPaymentHistory = (count = 3) => ({
-  success: true,
-  count: count,
-  total: count,
-  page: 1,
-  page_size: 20,
-  results: Array.from({ length: count }, (_, index) => ({
-    id: index + 1,
-    numero_pedido: `M4Y-${index === 0 ? 'INI' : 'DIF'}-${123 + index}-${
-      1234567890 + index
-    }`,
-    importe: index === 0 ? 316.5 : 50.0,
-    moneda: 'EUR',
-    estado: 'COMPLETADO',
-    tipo_pago: index === 0 ? 'INICIAL' : 'DIFERENCIA',
-    metodo_pago: 'card',
-    ultimos_4_digitos: '4242',
-    marca_tarjeta: 'visa',
-    fecha_creacion: new Date(Date.now() - (index + 1) * 86400000).toISOString(),
-    fecha_confirmacion: new Date(
-      Date.now() - (index + 1) * 86400000,
-    ).toISOString(),
-    es_exitoso: true,
-    vehiculo_info: index === 0 ? 'BMW 320i' : 'Audi A3',
-  })),
-});
+const generateMockPaymentHistory = () => [
+  {
+    id: `pi_test_${Date.now()}`,
+    amount: 25000,
+    currency: 'eur',
+    status: 'succeeded',
+    created: Date.now(),
+  },
+];
 
 // Exportar las funciones mock de Stripe
 const testingStripeMocks = {
@@ -1100,4 +1203,35 @@ const testingStripeMocks = {
   generateMockPaymentStatus,
   generateMockRefund,
   generateMockPaymentHistory,
+};
+
+// ========================================
+// EXPORTACIONES PRINCIPALES
+// ========================================
+
+export {
+  testingCaracteristicas,
+  testingCars as testingCarsData,
+  testingDestinos as testingDestinationsData,
+  testingDestinos,
+  testingEstadisticas,
+  testingCaracteristicas as testingFeaturesData,
+  testingLocationsData,
+  testingReservationData,
+  testingReservationData as testingSimpleReservationData,
+  testingEstadisticas as testingStatisticsData,
+  testingStripeMocks,
+  testingTestimonios as testingTestimonialsData,
+  testingTestimonios,
+  testingCars as testingVehiclesData,
+};
+
+// Flag de control para debugging
+export const DEBUG_MODE =
+  process.env.NODE_ENV === 'development' &&
+  process.env.REACT_APP_DEBUG_MODE === 'true';
+
+// Helper function para verificar si debemos usar datos de testing
+export const shouldUseTestingData = (apiCallFailed = false) => {
+  return DEBUG_MODE && apiCallFailed;
 };

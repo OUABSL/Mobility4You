@@ -179,3 +179,5 @@ settings/local.py
 /backend/api_old
 /backend/config/__pycache__
 /backend/config/__pycache__
+/frontend/build
+/frontend/build

@@ -1,5 +1,9 @@
 // frontend/src/config/axiosConfig.js
 import axios from 'axios';
+import { createServiceLogger } from './appConfig';
+
+// Crear logger para el config de axios
+const logger = createServiceLogger('AXIOS_CONFIG');
 
 // Función para obtener el token CSRF desde las cookies
 const getCSRFToken = () => {
@@ -18,7 +22,7 @@ const getCSRFToken = () => {
 
   // Log para debug
   if (process.env.NODE_ENV === 'development') {
-    console.log('CSRF Token from cookie:', cookieValue);
+    logger.info('CSRF Token from cookie:', cookieValue);
   }
   return cookieValue;
 };
@@ -40,7 +44,7 @@ const ensureCSRFToken = async () => {
     });
     return getCSRFToken();
   } catch (error) {
-    console.warn('Failed to obtain CSRF token:', error);
+    logger.warn('Failed to obtain CSRF token:', error);
     return null;
   }
 };
@@ -73,7 +77,7 @@ axios.interceptors.request.use(
 
     // Log para debugging
     if (process.env.NODE_ENV === 'development') {
-      console.log('Axios request config:', {
+      logger.info('Axios request config:', {
         url: config.url,
         method: config.method,
         headers: config.headers,
@@ -96,7 +100,7 @@ axios.interceptors.response.use(
   },
   async (error) => {
     if (process.env.NODE_ENV === 'development') {
-      console.error('Axios response error:', {
+      logger.error('Axios response error:', {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
@@ -113,7 +117,7 @@ axios.interceptors.response.use(
         error.response?.data?.error?.includes('CSRF') ||
         String(error.response?.data).includes('CSRF'))
     ) {
-      console.warn('CSRF token error detected. Attempting to refresh token...');
+      logger.warn('CSRF token error detected. Attempting to refresh token...');
 
       // Intentar obtener un nuevo token
       const newToken = await ensureCSRFToken();
@@ -132,7 +136,7 @@ axios.interceptors.response.use(
 if (typeof window !== 'undefined') {
   // Intentar obtener el token al cargar la página
   setTimeout(() => {
-    ensureCSRFToken().catch(console.warn);
+    ensureCSRFToken().catch(logger.warn);
   }, 100);
 }
 

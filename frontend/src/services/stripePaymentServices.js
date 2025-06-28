@@ -1,9 +1,13 @@
 // frontend/src/services/stripePaymentServices.js
 import { loadStripe } from '@stripe/stripe-js';
 import { testingStripeMocks } from '../assets/testingData/testingData';
-import { API_URL, createServiceLogger, DEBUG_MODE, shouldUseTestingData } from '../config/appConfig';
+import {
+  API_URL,
+  createServiceLogger,
+  shouldUseTestingData,
+} from '../config/appConfig';
 import axios from '../config/axiosConfig';
-import { withTimeout } from './func';
+import { logError, logInfo, withTimeout } from './func';
 import universalMapper from './universalDataMapper';
 
 // Configuración de Stripe
@@ -11,19 +15,6 @@ let stripePromise = null;
 
 // Crear logger para el servicio de Stripe
 const logger = createServiceLogger('STRIPE_SERVICE');
-
-// Helper functions para logging condicional usando la configuración centralizada
-const logInfo = (message, data = null) => {
-  if (DEBUG_MODE) {
-    logger.info(`[STRIPE SERVICE] ${message}`, data);
-  }
-};
-
-const logError = (message, error = null) => {
-  if (DEBUG_MODE) {
-    logger.error(`[STRIPE SERVICE ERROR] ${message}`, error);
-  }
-};
 
 // Helper function para obtener headers de autenticación
 const getAuthHeaders = () => {

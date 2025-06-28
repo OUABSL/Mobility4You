@@ -26,6 +26,7 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { createServiceLogger } from '../config/appConfig';
 import '../css/listadoCoches.css';
 
 // Componentes
@@ -41,6 +42,8 @@ import {
   searchAvailableVehicles,
   validateSearchForm,
 } from '../services/searchServices';
+
+const logger = createServiceLogger('ListadoCoches');
 
 const ListadoCoches = ({ isMobile = false }) => {
   // Estados principales
@@ -84,22 +87,19 @@ const ListadoCoches = ({ isMobile = false }) => {
       // Solo cargar ubicaciones si no las tenemos y las necesitamos
       if (locations.length === 0) {
         try {
-          console.log('🔍 [ListadoCoches] Cargando ubicaciones...');
+          logger.info('🔍 [ListadoCoches] Cargando ubicaciones...');
           const locationsData = await fetchLocations();
           setLocations(locationsData);
-          console.log(
+          logger.info(
             '✅ [ListadoCoches] Ubicaciones cargadas:',
             locationsData.length,
           );
         } catch (error) {
-          console.error(
-            '❌ [ListadoCoches] Error cargando ubicaciones:',
-            error,
-          );
+          logger.error('❌ [ListadoCoches] Error cargando ubicaciones:', error);
           // No mostrar error ya que el FormBusqueda puede funcionar sin las ubicaciones precargadas
         }
       } else {
-        console.log(
+        logger.info(
           '✅ [ListadoCoches] Usando ubicaciones ya disponibles:',
           locations.length,
         );
@@ -127,7 +127,7 @@ const ListadoCoches = ({ isMobile = false }) => {
             setHasBusquedaData(false);
           }
         } catch (err) {
-          console.error('Error parsing reservaData:', err);
+          logger.error('Error parsing reservaData:', err);
           setHasBusquedaData(false);
         }
       } else {
@@ -176,7 +176,7 @@ const ListadoCoches = ({ isMobile = false }) => {
             };
           }
         } catch (parseError) {
-          console.error('Error parsing reservaData:', parseError);
+          logger.error('Error parsing reservaData:', parseError);
         }
       }
 
@@ -256,7 +256,7 @@ const ListadoCoches = ({ isMobile = false }) => {
         }
       }
     } catch (error) {
-      console.error('Error al cargar los coches:', error);
+      logger.error('Error al cargar los coches:', error);
       setError(
         error.message ||
           'No se pudieron cargar los vehículos. Por favor, inténtalo de nuevo más tarde.',
