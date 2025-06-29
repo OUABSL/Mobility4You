@@ -67,33 +67,50 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
     return vehiculoId;
   };
 
-  // Función mejorada para extraer extras seleccionados
+  // Función para extraer extras seleccionados
   const getSelectedExtras = () => {
-    if (!reservationData.extras) {
-      logger.info('📦 No hay extras en reservationData');
+    if (!reservationData?.extras || !Array.isArray(reservationData.extras)) {
+      logger.info('📦 No hay extras en reservationData o no es un array');
       return [];
     }
 
     logger.info('📦 Procesando extras de reserva:', reservationData.extras);
 
-    // Extraer IDs de extras de diferentes formatos posibles
     const extractedIds = reservationData.extras
       .map((extra) => {
-        // Formato del universal mapper: {id: X, nombre: "...", precio: Y, cantidad: Z}
-        if (extra.id) {
-          return extra.id;
-        }
-        // Formato original: {id: X, extra: {id: Y}} o {extra_id: Y}
-        else if (extra.extra && extra.extra.id) {
-          return extra.extra.id;
-        } else if (extra.extra_id) {
+        // PRIORIDAD 1: extra_id - ID de la tabla Extras (correcto)
+        if (extra.extra_id) {
+          logger.info(
+            '✅ Extra ID encontrado en extra_id:',
+            extra.extra_id,
+            'Nombre:',
+            extra.nombre,
+          );
           return extra.extra_id;
         }
+
+        // PRIORIDAD 2: Formato anidado del universal mapper
+        if (extra.extra && extra.extra.id) {
+          logger.info(
+            '✅ Extra ID encontrado en extra.extra.id:',
+            extra.extra.id,
+          );
+          return extra.extra.id;
+        }
+
+        // PRIORIDAD 3: Si es un número directo
+        if (typeof extra === 'number') {
+          logger.info('✅ Extra es un número directo:', extra);
+          return extra;
+        }
+
+        // ⚠️ ADVERTENCIA: No usar extra.id para mapeo
+        logger.warn('⚠️ No se pudo extraer ID válido del extra:', extra);
         return null;
       })
       .filter(Boolean);
 
-    logger.info('📦 IDs de extras extraídos:', extractedIds);
+    logger.info('📦 IDs de extras extraídos (tabla Extras):', extractedIds);
     return extractedIds;
   };
 
@@ -218,6 +235,17 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
           'reservationData.extras.length': reservationData.extras?.length || 0,
         });
 
+        // Debug específico para estructura de extras del backend
+        if (reservationData.extras && reservationData.extras.length > 0) {
+          logger.info('🔍 Estructura de extras desde backend:', {
+            ejemplo_extra: reservationData.extras[0],
+            campos_disponibles: Object.keys(reservationData.extras[0] || {}),
+            esperado_extra_id: reservationData.extras[0]?.extra_id,
+            advertencia_id:
+              'El campo "id" es de ReservaExtra, usar "extra_id" para mapear',
+          });
+        }
+
         // Cargar datos en paralelo desde las APIs reales
         const [locationsData, policiesData, extrasData] = await Promise.all([
           fetchLocations(),
@@ -309,6 +337,37 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
       fetchData();
     }
   }, [show, reservationData]);
+
+  // Verificar extras seleccionados cuando se cargan los disponibles
+  useEffect(() => {
+    if (availableExtras.length > 0 && formData.extras.length > 0) {
+      logger.info('🔍 Verificando extras seleccionados contra disponibles:');
+
+      const selectedExtrasDetails = availableExtras.filter((extra) =>
+        formData.extras.includes(extra.id),
+      );
+
+      logger.info(
+        '✅ Extras que deberían estar marcados:',
+        selectedExtrasDetails,
+      );
+
+      // Verificar en el DOM si están marcados
+      setTimeout(() => {
+        formData.extras.forEach((extraId) => {
+          const checkbox = document.getElementById(`extra-${extraId}`);
+          if (checkbox) {
+            logger.info(
+              `📋 Checkbox extra-${extraId} está marcado:`,
+              checkbox.checked,
+            );
+          } else {
+            logger.warn(`⚠️ No se encontró checkbox para extra-${extraId}`);
+          }
+        });
+      }, 100); // Pequeño delay para asegurar que el DOM esté renderizado
+    }
+  }, [availableExtras, formData.extras]);
 
   // Manejar cambios en el formulario
   const handleChange = (e) => {

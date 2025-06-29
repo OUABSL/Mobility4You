@@ -358,7 +358,7 @@ const ReservaClienteExito = () => {
   // Ir a gestión de reservas
   const handleGestionReservas = () => {
     try {
-      navigate('/mis-reservas');
+      navigate('/reservations');
     } catch (err) {
       setError('No se pudo acceder a la gestión de reservas.');
     }

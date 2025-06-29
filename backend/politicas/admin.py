@@ -94,7 +94,6 @@ class PoliticaIncluyeInline(admin.TabularInline):
         css = {
             'all': ('admin/css/custom_admin.css',)
         }
-        js = ('admin/js/tabular_inline_fix.js',)
 
     def get_formset(self, request, obj=None, **kwargs):
         """Personaliza el formset para mejor UX"""
@@ -114,7 +113,6 @@ class PoliticaPenalizacionInline(admin.TabularInline):
         css = {
             'all': ('admin/css/custom_admin.css',)
         }
-        js = ('admin/js/tabular_inline_fix.js',)
 
     def get_formset(self, request, obj=None, **kwargs):
         """Personaliza el formset"""
@@ -134,7 +132,7 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
         }
         js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
 
@@ -520,7 +518,7 @@ class TipoPenalizacionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
         }
         js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
 
@@ -708,7 +706,7 @@ class PromocionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
         }
         js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
 

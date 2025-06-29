@@ -56,7 +56,6 @@ class ReservaConductorInline(admin.TabularInline):
         css = {
             'all': ('admin/css/custom_admin.css',)
         }
-        js = ('admin/js/tabular_inline_fix.js',)
 
 
 class PenalizacionInline(admin.TabularInline):
@@ -71,7 +70,6 @@ class PenalizacionInline(admin.TabularInline):
         css = {
             'all': ('admin/css/custom_admin.css',)
         }
-        js = ('admin/js/tabular_inline_fix.js',)
 
 
 class ReservaExtraInline(admin.TabularInline):
@@ -85,7 +83,6 @@ class ReservaExtraInline(admin.TabularInline):
         css = {
             'all': ('admin/css/custom_admin.css',)
         }
-        js = ('admin/js/tabular_inline_fix.js',)
 
 
 @admin.register(Reserva)
@@ -523,7 +520,7 @@ class ReservaAdmin(admin.ModelAdmin):
     class Media:
         js = (get_versioned_asset("js_reservas", "admin/js/reservas_admin_v74440271.js"),)
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
+            "all": (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
         }
 
 

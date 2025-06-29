@@ -63,7 +63,6 @@ class ImagenVehiculoInline(admin.TabularInline):
         css = {
             'all': ('admin/css/custom_admin.css',)
         }
-        js = ('admin/js/tabular_inline_fix.js',)
 
     def imagen_preview(self, obj):
         """Mostrar una vista previa de la imagen en el admin"""
@@ -92,7 +91,6 @@ class TarifaVehiculoInline(admin.TabularInline):
         css = {
             'all': ('admin/css/custom_admin.css',)
         }
-        js = ('admin/js/tabular_inline_fix.js',)
 
 
 class MantenimientoInline(admin.TabularInline):
@@ -108,7 +106,6 @@ class MantenimientoInline(admin.TabularInline):
         css = {
             'all': ('admin/css/custom_admin.css',)
         }
-        js = ('admin/js/tabular_inline_fix.js',)
 
 
 @admin.register(Categoria)
@@ -626,7 +623,7 @@ class VehiculoAdmin(admin.ModelAdmin):
     class Media:
         js = (get_versioned_asset("js_vehiculos", "admin/js/vehiculos_admin_vfd3d29f9.js"),)
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
+            "all": (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
         }
 
 

@@ -128,6 +128,8 @@ const DetallesReserva = ({ isMobile = false }) => {
 
   // Función para manejar la edición de la reserva
   const handleEditReservation = (reservaData) => {
+    console.log('Datos de reserva para editar:', reservaData);
+
     // Guardar el email en sessionStorage para uso posterior
     if (email) {
       sessionStorage.setItem('reservaEmail', email);
@@ -248,15 +250,33 @@ const DetallesReserva = ({ isMobile = false }) => {
 
   // Cargar datos de la reserva
   useEffect(() => {
+    // Verificar si ya tenemos datos válidos
+    if (datos && datos.id === parseInt(reservaId)) {
+      logger.info('Datos de reserva ya cargados, evitando fetch duplicado');
+      return;
+    }
+
     const fetchReserva = async () => {
       setLoading(true);
       setError(null);
+
       try {
+        // Cancelación de timer anterior si existe
+        if (retryTimerRef.current) {
+          clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = null;
+        }
+
         // Obtener datos de la reserva
+        logger.info(`🔍 Consultando reserva ${reservaId} para email ${email}`);
         const responseData = await findReservation(reservaId, email);
 
         // Verificar si hay datos de reserva en la respuesta
         const reservaData = responseData.reserva || responseData;
+
+        if (!reservaData) {
+          throw new Error('No se encontraron datos de la reserva');
+        }
 
         // Mapear datos usando el universal mapper
         const { default: universalMapper } = await import(
@@ -277,19 +297,56 @@ const DetallesReserva = ({ isMobile = false }) => {
 
         setDatos(mappedData);
       } catch (err) {
-        logger.error('Error cargando reserva:', err);
-        setError('No se pudo cargar la reserva.');
+        logger.error('❌ Error al cargar reserva:', err);
+        setError(
+          err.message ||
+            'No se pudo cargar la información de la reserva. Por favor, inténtalo de nuevo.',
+        );
       } finally {
         setLoading(false);
       }
     };
 
-    if (reservaId && email) {
+    // Solo fetch si tenemos email válido
+    if (reservaId && email && email.includes('@')) {
       fetchReserva();
+    } else if (reservaId && !email) {
+      logger.warn('⚠️ Email no disponible, esperando datos de navegación');
+      setError('Email requerido para consultar la reserva');
+      setLoading(false);
     }
-  }, [reservaId, email]);
 
-  // Función para manejar la edición de la reserva (centralizada)
+    // Cleanup function
+    return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
+  }, [reservaId]); // Solo depender de reservaId, no de email
+
+  // useEffect separado para manejar cambios de email
+  useEffect(() => {
+    // Si el email cambia después de la carga inicial, y no tenemos datos o hay mismatch
+    if (
+      email &&
+      email.includes('@') &&
+      (!datos || datos.id !== parseInt(reservaId))
+    ) {
+      logger.info('📧 Email actualizado, recargando datos de reserva');
+
+      // Pequeño delay para evitar llamadas muy rápidas
+      const timeoutId = setTimeout(() => {
+        // Trigger del fetch principal limpiando datos
+        setDatos(null);
+        setLoading(true);
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [email, reservaId]); // Solo para cambios de email después de la carga inicial
+
+  // Función para manejar la edición de la reserva
   const handleEditReservationCentral = async (updatedData) => {
     setIsProcessing(true);
     setError(null);

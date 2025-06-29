@@ -392,7 +392,7 @@ const PagoDiferenciaReserva = () => {
               <h3 className="success-title">¡Pago realizado con éxito!</h3>{' '}
               <p className="success-message">
                 La diferencia de {(Number(diferencia) || 0).toFixed(2)}€ ha sido
-                abonada correctamente.
+                registrada correctamente.
                 {paymentMethod === 'efectivo' &&
                   ' Recuerda realizar el pago en efectivo cuando llegues a nuestras oficinas.'}
               </p>
@@ -433,8 +433,8 @@ const PagoDiferenciaReserva = () => {
                 (() => {
                   const vehiculo = getVehiculoInfo(reservaData);
                   return vehiculo ? (
-                    <div className="text-muted small mt-1">
-                      {vehiculo.marca} {vehiculo.modelo} - {vehiculo.matricula}
+                    <div className="text-muted small mt-1 ms-auto">
+                      {vehiculo.marca} {vehiculo.modelo} - O similar
                     </div>
                   ) : null;
                 })()}

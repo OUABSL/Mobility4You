@@ -1,11 +1,11 @@
 # Mapeo automático de archivos estáticos versionados
 # Generado automáticamente - NO EDITAR MANUALMENTE
-# Última actualización: 2025-06-28 22:31:42.461251
+# Última actualización: 2025-06-30 00:40:32.008799
 
 from datetime import datetime
 
 VERSIONED_ASSETS = {
-    "css": "admin/css/custom_admin_v78b65000.css",
+    "css": "admin/css/custom_admin_veeb3cfb9.css",
     "js_vehiculos": "admin/js/vehiculos_admin_vfd3d29f9.js",
     "js_politicas": "admin/js/politicas_admin_v0d04259b.js",
     "js_usuarios": "admin/js/usuarios_admin_vc5b6f7e1.js",
@@ -21,4 +21,4 @@ def get_versioned_asset(asset_key, fallback=None):
     return VERSIONED_ASSETS.get(asset_key, fallback or asset_key)
 
 # Timestamp de generación
-GENERATED_AT = '2025-06-28T22:31:42.461275'
+GENERATED_AT = '2025-06-30T00:40:32.008828'

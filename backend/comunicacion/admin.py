@@ -87,7 +87,7 @@ class ContenidoAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
         }
         js = (
             get_versioned_asset("js_comunicacion", "admin/js/comunicacion_admin_v9f784c33.js"),
@@ -442,7 +442,7 @@ class ContactoAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
         }
         js = (
             get_versioned_asset("js_comunicacion", "admin/js/comunicacion_admin_v9f784c33.js"),

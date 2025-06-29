@@ -127,7 +127,7 @@ class PagoStripeAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_vdbcfd5cc.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
         }
         js = (get_versioned_asset("js_payments", "admin/js/payments_admin_v74cfa735.js"),)
 
@@ -864,7 +864,7 @@ class ReembolsoStripeAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': ("admin/css/custom_admin_vdbcfd5cc.css",)
+            'all': ("admin/css/custom_admin_veeb3cfb9.css",)
         }
         js = ('admin/js/payments_admin.js',)
 
@@ -1198,7 +1198,7 @@ class WebhookStripeAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': ("admin/css/custom_admin_vdbcfd5cc.css",)
+            'all': ("admin/css/custom_admin_veeb3cfb9.css",)
         }
         js = ('admin/js/payments_admin.js',)
 

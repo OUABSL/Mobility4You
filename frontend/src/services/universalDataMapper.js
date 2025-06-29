@@ -35,12 +35,7 @@
  */
 
 import { testingLocationsData } from '../assets/testingData/testingData';
-import {
-  API_URL,
-  createServiceLogger,
-  DEBUG_MODE,
-  shouldUseTestingData,
-} from '../config/appConfig';
+import { API_URL, DEBUG_MODE, shouldUseTestingData } from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import { getCachedData, invalidateCache, setCachedData } from './cacheService';
 import { withTimeout } from './func';
@@ -68,64 +63,42 @@ const CONFIG = {
 };
 
 // ========================================
-// LOGGING CENTRALIZADO
+// CACHE ESPECÍFICO PARA MAPEOS
 // ========================================
-const appLogger = createServiceLogger('UNIVERSAL_MAPPER');
+const mappingCache = new Map();
+const MAPPING_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
-const logger = {
-  info: (message, data = null) => {
-    if (CONFIG.DEBUG_MODE) {
-      appLogger.info(`🚀 [UNIVERSAL_MAPPER] ${message}`, data || '');
-    }
-  },
-  warn: (message, data = null) => {
-    if (CONFIG.DEBUG_MODE) {
-      appLogger.warn(`⚠️ [UNIVERSAL_MAPPER] ${message}`, data || '');
-    }
-  },
-  error: (message, error = null, data = null) => {
-    if (CONFIG.DEBUG_MODE) {
-      appLogger.error(
-        `❌ [UNIVERSAL_MAPPER] ${message}`,
-        error || '',
-        data || '',
-      );
-    }
-  },
+/**
+ * Obtener mapeo cacheado
+ * @param {string} cacheKey - Clave del cache
+ * @returns {any|null} - Datos mapeados o null si no existe/expiró
+ */
+const getCachedMapping = (cacheKey) => {
+  const cached = mappingCache.get(cacheKey);
+  if (!cached) return null;
+
+  const now = Date.now();
+  if (now > cached.expiry) {
+    mappingCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.data;
 };
 
-// ========================================
-// CLASES DE ERROR CUSTOMIZADAS
-// ========================================
-class UniversalMappingError extends Error {
-  constructor(message, code = 'MAPPING_ERROR', context = {}) {
-    super(message);
-    this.name = 'UniversalMappingError';
-    this.code = code;
-    this.context = context;
-    this.timestamp = new Date().toISOString();
-  }
-}
-
-class ValidationError extends UniversalMappingError {
-  constructor(message, field = null, value = null) {
-    super(message, 'VALIDATION_ERROR', { field, value });
-    this.field = field;
-    this.value = value;
-  }
-}
-
-class LocationResolutionError extends UniversalMappingError {
-  constructor(message, locationName = null, locationType = null) {
-    super(message, 'LOCATION_RESOLUTION_ERROR', { locationName, locationType });
-    this.locationName = locationName;
-    this.locationType = locationType;
-  }
-}
-
-// ========================================
-// HELPERS Y TRANSFORMADORES REUTILIZABLES
-// ========================================
+/**
+ * Guardar mapeo en cache
+ * @param {string} cacheKey - Clave del cache
+ * @param {any} data - Datos mapeados
+ */
+const setCachedMapping = (cacheKey, data) => {
+  const expiry = Date.now() + MAPPING_CACHE_TTL;
+  mappingCache.set(cacheKey, {
+    data,
+    expiry,
+    timestamp: Date.now(),
+  });
+};
 
 /**
  * Transformador seguro para valores numéricos
@@ -535,6 +508,7 @@ const MAPPING_SCHEMAS = {
         },
         error: 'Fecha de devolución inválida',
       },
+
       politica_pago: {
         sources: [
           'politicaPago.id',
@@ -857,6 +831,7 @@ const MAPPING_SCHEMAS = {
 
           return value.map((extra) => ({
             id: extra.id,
+            extra_id: extra.extra_id,
             nombre: extra.nombre || extra.extra_nombre || 'Extra',
             precio: safeNumberTransformer(
               extra.precio || extra.extra_precio,
@@ -1738,6 +1713,16 @@ class UniversalDataMapper {
         );
       }
 
+      // Verificar cache de mapeo específico
+      const cacheKey = `mapping_${dataType}_${direction}_${JSON.stringify(
+        data,
+      )}`;
+      const cachedResult = getCachedMapping(cacheKey);
+      if (cachedResult) {
+        logger.info('Usando resultado de mapeo cacheado');
+        return cachedResult;
+      }
+
       if (Array.isArray(data)) {
         const results = [];
         for (const item of data) {
@@ -1975,6 +1960,12 @@ class UniversalDataMapper {
         precioTotal: result.precio_total,
       });
 
+      // Guardar en cache el resultado de mapeo
+      const cacheKey = `mapping_reservations_toBackend_${JSON.stringify(
+        frontendData,
+      )}`;
+      setCachedMapping(cacheKey, result);
+
       return result;
     } catch (error) {
       logger.error('Error en mapeo de reservación:', error, frontendData);
@@ -2001,6 +1992,22 @@ class UniversalDataMapper {
    * Mapear reserva desde formato backend a frontend
    */
   async mapReservationFromBackend(backendData) {
+    // Cache basado en ID y timestamp de datos
+    const reservationId = backendData?.id || backendData?.reserva?.id;
+    const cacheKey = `reservation_mapping_${reservationId}_${
+      JSON.stringify(backendData).length
+    }`;
+
+    // Verificar cache primero
+    const cachedResult = getCachedMapping(cacheKey);
+    if (cachedResult) {
+      logger.info(
+        '📦 [RESERVATION MAPPING] Usando resultado cacheado para reserva',
+        reservationId,
+      );
+      return cachedResult;
+    }
+
     logger.info(
       '🔄 [RESERVATION MAPPING] Mapeando desde backend...',
       backendData,
@@ -2012,6 +2019,9 @@ class UniversalDataMapper {
         'reservations',
         'fromBackend',
       );
+
+      // Guardar resultado en cache
+      setCachedMapping(cacheKey, result);
 
       logger.info(
         '✅ [RESERVATION MAPPING] Mapeo completado exitosamente',

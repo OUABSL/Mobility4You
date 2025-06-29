@@ -86,6 +86,12 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
       return;
     }
 
+    // Prevenir múltiples envíos
+    if (loading) {
+      logger.warn('⚠️ Envío ya en progreso, ignorando nuevo intento');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -98,16 +104,15 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
       setLoading(false);
       setSuccess('Reserva encontrada. Redirigiendo...');
 
-      // Redirigir a la página de detalles
-      setTimeout(() => {
-        navigate(`/reservations/${reservaId}`, {
-          state: {
-            email,
-            // Pasamos a la página de detalles que venimos de la consulta
-            source: 'consulta',
-          },
-        });
-      }, 1200);
+      // Redirigir inmediatamente para evitar múltiples consultas
+      navigate(`/reservations/${reservaId}`, {
+        state: {
+          email,
+          source: 'consulta',
+          timestamp: Date.now(), // Añadir timestamp para evitar cache
+        },
+        replace: true, // Reemplazar en lugar de push para evitar back
+      });
     } catch (err) {
       logger.error('Error al buscar reserva:', err);
       setError(

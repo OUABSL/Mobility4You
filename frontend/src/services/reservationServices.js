@@ -29,6 +29,11 @@ const API_URL = API_URLS.BASE;
 // Logger específico para este servicio
 const logger = createServiceLogger('RESERVATIONS');
 
+// ========================================
+// CONTROL DE REQUESTS DUPLICADOS
+// ========================================
+let currentFindRequest = null;
+
 // Helper function para obtener headers de autenticación
 const getAuthHeaders = () => {
   const config = {
@@ -228,6 +233,19 @@ export const createReservation = async (data) => {
  */
 export const findReservation = async (reservaId, email) => {
   try {
+    // ✅ Cancelar request anterior si existe
+    if (currentFindRequest) {
+      currentFindRequest.abort();
+      currentFindRequest = null;
+      logger.info('🚫 Request anterior cancelado por nuevo request');
+    }
+
+    // ✅ Crear AbortController para este request
+    const controller = new AbortController();
+    currentFindRequest = controller;
+
+    logger.info(`🔍 Buscando reserva ${reservaId} para email ${email}`);
+
     if (DEBUG_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       const reserva = buscarReservaPrueba(reservaId);
@@ -238,26 +256,59 @@ export const findReservation = async (reservaId, email) => {
         return reserva;
       }
       throw new Error('Reserva no encontrada con los datos proporcionados');
-    } // En modo producción, usar la URL específica definida en backend/api/urls.py
+    }
+
+    // En modo producción, usar la URL específica con signal para cancelación
     const response = await axios.post(
       `${API_URL}/reservas/reservas/${reservaId}/buscar/`,
       { reserva_id: reservaId, email },
-      getAuthHeaders(),
+      {
+        ...getAuthHeaders(),
+        signal: controller.signal, // ✅ Añadir signal para cancelación
+      },
     );
-    return response.data;
+
+    currentFindRequest = null; // ✅ Limpiar referencia
+
+    if (response.data && response.data.success) {
+      logger.info('✅ Reserva encontrada exitosamente');
+      return response.data;
+    } else {
+      throw new Error(
+        response.data?.message || 'Formato de respuesta inesperado',
+      );
+    }
   } catch (error) {
-    logger.error('Error finding reservation:', error);
-    const errorMessage =
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
-      error.response?.data ||
-      error.message ||
-      'Error al buscar la reserva.';
-    throw new Error(
-      typeof errorMessage === 'string'
-        ? errorMessage
-        : 'Error al buscar la reserva.',
-    );
+    currentFindRequest = null; // ✅ Limpiar referencia en error
+
+    // ✅ No loggear errores de cancelación
+    if (error.name === 'AbortError') {
+      logger.info('🚫 Request cancelado por nuevo request');
+      return;
+    }
+
+    logger.error('❌ Error en findReservation:', error.message);
+
+    if (error.response) {
+      const status = error.response.status;
+      if (status === 404) {
+        throw new Error('Reserva no encontrada con los datos proporcionados');
+      } else if (status >= 500) {
+        throw new Error(
+          'Error temporal del servidor. Intenta nuevamente en unos momentos.',
+        );
+      }
+    }
+
+    const friendlyMessage =
+      error.message.includes('404') || error.message.includes('no encontrada')
+        ? 'No se encontró ninguna reserva con esos datos. Verifica el ID y el email e inténtalo de nuevo.'
+        : error.message.includes('500') || error.message.includes('servidor')
+        ? 'Error temporal del servidor. Por favor, inténtalo nuevamente en unos momentos.'
+        : error.message ||
+          'Error inesperado al buscar la reserva. Verifica los datos e inténtalo de nuevo.';
+
+    throw new Error(friendlyMessage);
   }
 };
 

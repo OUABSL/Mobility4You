@@ -100,7 +100,7 @@ class ExtrasSerializer(serializers.ModelSerializer):
 
 
 class ReservaExtraSerializer(serializers.ModelSerializer):
-    extra_id = serializers.IntegerField(write_only=True)
+    extra_id = serializers.IntegerField(source="extra.id", read_only=True)
     extra_nombre = serializers.CharField(source="extra.nombre", read_only=True)
     extra_precio = serializers.DecimalField(
         source="extra.precio", max_digits=10, decimal_places=2, read_only=True
