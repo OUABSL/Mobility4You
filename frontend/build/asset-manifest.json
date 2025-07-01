@@ -1,27 +1,24 @@
 {
   "files": {
-    "main.css": "/static/css/main.24490be3.css",
-    "main.js": "/static/js/main.7d19e962.js",
-    "static/js/453.d855a71b.chunk.js": "/static/js/453.d855a71b.chunk.js",
-    "static/media/gps.png": "/static/media/gps.ba702c909300b932a87c.png",
-    "static/media/BMW-320i-M-Sport.jpg": "/static/media/BMW-320i-M-Sport.11a60d044b4aba3563d2.jpg",
-    "static/media/secondary-driver.png": "/static/media/secondary-driver.499d1df780e532d6bffc.png",
-    "static/media/child-seat.png": "/static/media/child-seat.15fae42913060173481b.png",
-    "static/media/logo_visa_mastercard.png": "/static/media/logo_visa_mastercard.b156c3dc7b3a42399464.png",
-    "static/media/audi_wallpaper.png": "/static/media/audi_wallpaper.984d5c6a1facd5a69711.png",
-    "static/media/audi-a3-2020-660x375.jpg": "/static/media/audi-a3-2020-660x375.067744c96f1509a83992.jpg",
-    "static/media/malaga_sunset.jpg": "/static/media/malaga_sunset.e44780a16624f7f3dd37.jpg",
-    "static/media/logo_home_horizontal.png": "/static/media/logo_home_horizontal.673a3e2d0664baa9acd1.png",
-    "static/media/wifi.png": "/static/media/wifi.a1c9e711d93b3db28cd7.png",
-    "static/media/automatic-gear.svg": "/static/media/automatic-gear.dc70d94fdbd40f6efa0debb0f95f4abe.svg",
-    "index.html": "/index.html",
-    "static/media/car-door-left.svg": "/static/media/car-door-left.a2e43805f19de18d6d3938d05a338727.svg",
-    "main.24490be3.css.map": "/static/css/main.24490be3.css.map",
-    "main.7d19e962.js.map": "/static/js/main.7d19e962.js.map",
-    "453.d855a71b.chunk.js.map": "/static/js/453.d855a71b.chunk.js.map"
+    "main.css": "./static/css/main.9d284424.css",
+    "main.js": "./static/js/main.37264b65.js",
+    "static/js/206.4eb6da3a.chunk.js": "./static/js/206.4eb6da3a.chunk.js",
+    "static/media/gps.png": "./static/media/gps.ba702c909300b932a87c.png",
+    "static/media/BMW-320i-M-Sport.jpg": "./static/media/BMW-320i-M-Sport.11a60d044b4aba3563d2.jpg",
+    "static/media/secondary-driver.png": "./static/media/secondary-driver.499d1df780e532d6bffc.png",
+    "static/media/child-seat.png": "./static/media/child-seat.15fae42913060173481b.png",
+    "static/media/logo_visa_mastercard.png": "./static/media/logo_visa_mastercard.b156c3dc7b3a42399464.png",
+    "static/media/audi_wallpaper.png": "./static/media/audi_wallpaper.984d5c6a1facd5a69711.png",
+    "static/media/audi-a3-2020-660x375.jpg": "./static/media/audi-a3-2020-660x375.067744c96f1509a83992.jpg",
+    "static/media/malaga_sunset.jpg": "./static/media/malaga_sunset.e44780a16624f7f3dd37.jpg",
+    "static/media/logo_home_horizontal.png": "./static/media/logo_home_horizontal.673a3e2d0664baa9acd1.png",
+    "static/media/wifi.png": "./static/media/wifi.a1c9e711d93b3db28cd7.png",
+    "static/media/automatic-gear.svg": "./static/media/automatic-gear.dc70d94fdbd40f6efa0debb0f95f4abe.svg",
+    "index.html": "./index.html",
+    "static/media/car-door-left.svg": "./static/media/car-door-left.a2e43805f19de18d6d3938d05a338727.svg"
   },
   "entrypoints": [
-    "static/css/main.24490be3.css",
-    "static/js/main.7d19e962.js"
+    "static/css/main.9d284424.css",
+    "static/js/main.37264b65.js"
   ]
 }

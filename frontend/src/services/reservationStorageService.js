@@ -5,9 +5,8 @@
  * con limpieza automática y manejo de expiración
  */
 
-import { createServiceLogger, DEBUG_MODE } from '../config/appConfig';
-import { logError, logInfo } from './func';
-import { roundToDecimals } from './universalDataMapper';
+import { DEBUG_MODE } from '../config/appConfig';
+import { logError, logInfo, roundToDecimals } from '../utils';
 
 // Constantes de configuración
 const STORAGE_KEYS = {
@@ -22,9 +21,6 @@ const STORAGE_KEYS = {
 
 const TIMER_DURATION = 30 * 60 * 1000; // 30 minutos en millisegundos
 const WARNING_TIME = 5 * 60 * 1000; // Avisar 5 minutos antes
-
-// Crear logger para el servicio de almacenamiento
-const logger = createServiceLogger('RESERVATION_STORAGE');
 
 /**
  * Clase principal del servicio de almacenamiento de reservas

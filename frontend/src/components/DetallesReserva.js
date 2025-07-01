@@ -44,12 +44,12 @@ import '../css/ReservationModals.css';
 
 import { createServiceLogger, DEBUG_MODE } from '../config/appConfig';
 import { useAlertContext } from '../context/AlertContext';
-import { formatTaxRate } from '../services/func';
 import {
   deleteReservation,
   editReservation,
   findReservation,
 } from '../services/reservationServices';
+import { formatTaxRate } from '../utils/financialUtils';
 
 import DeleteReservationModal from './Modals/DeleteReservationModal';
 import EditReservationModal from './Modals/EditReservationModal';
@@ -125,10 +125,14 @@ const DetallesReserva = ({ isMobile = false }) => {
 
   // referencia para el timer
   const retryTimerRef = React.useRef(null);
+  // referencia para evitar fetches duplicados
+  const fetchInProgressRef = React.useRef(false);
+  // referencia para último fetch realizado
+  const lastFetchRef = React.useRef(null);
 
   // Función para manejar la edición de la reserva
   const handleEditReservation = (reservaData) => {
-    console.log('Datos de reserva para editar:', reservaData);
+    logger.info('Datos de reserva para editar:', reservaData);
 
     // Guardar el email en sessionStorage para uso posterior
     if (email) {
@@ -248,15 +252,41 @@ const DetallesReserva = ({ isMobile = false }) => {
     };
   };
 
-  // Cargar datos de la reserva
+  // ========================================
+  // EFECTO PRINCIPAL CONSOLIDADO
+  // ========================================
   useEffect(() => {
-    // Verificar si ya tenemos datos válidos
-    if (datos && datos.id === parseInt(reservaId)) {
-      logger.info('Datos de reserva ya cargados, evitando fetch duplicado');
-      return;
-    }
-
+    // Función principal para obtener datos de reserva
     const fetchReserva = async () => {
+      // Prevenir múltiples fetches simultáneos
+      if (fetchInProgressRef.current) {
+        logger.info('⚠️ Fetch ya en progreso, evitando duplicado');
+        return;
+      }
+
+      // Generar clave única para este fetch
+      const currentFetchKey = `${reservaId}_${email}_${Date.now()}`;
+
+      // Si es el mismo fetch que ya se realizó recientemente, evitarlo
+      if (lastFetchRef.current === `${reservaId}_${email}`) {
+        logger.info('⚠️ Fetch duplicado evitado - datos ya cargados');
+        return;
+      }
+
+      // Verificar si ya tenemos datos válidos para esta reserva y email
+      if (
+        datos &&
+        datos.id === parseInt(reservaId) &&
+        datos.conductores?.some((c) => c.conductor?.email === email)
+      ) {
+        logger.info(
+          '✅ Datos de reserva ya cargados y válidos, evitando fetch duplicado',
+        );
+        setLoading(false);
+        return;
+      }
+
+      fetchInProgressRef.current = true;
       setLoading(true);
       setError(null);
 
@@ -267,9 +297,16 @@ const DetallesReserva = ({ isMobile = false }) => {
           retryTimerRef.current = null;
         }
 
-        // Obtener datos de la reserva
         logger.info(`🔍 Consultando reserva ${reservaId} para email ${email}`);
+
+        // Obtener datos de la reserva (usa cache automáticamente)
         const responseData = await findReservation(reservaId, email);
+
+        // Verificar si el fetch fue cancelado o reemplazado
+        if (!fetchInProgressRef.current) {
+          logger.info('🚫 Fetch cancelado - nuevo fetch en progreso');
+          return;
+        }
 
         // Verificar si hay datos de reserva en la respuesta
         const reservaData = responseData.reserva || responseData;
@@ -286,6 +323,14 @@ const DetallesReserva = ({ isMobile = false }) => {
           reservaData,
         );
 
+        // Verificar nuevamente si el fetch sigue siendo válido
+        if (!fetchInProgressRef.current) {
+          logger.info(
+            '🚫 Fetch cancelado durante mapeo - nuevo fetch en progreso',
+          );
+          return;
+        }
+
         // Debug del mapeo
         if (DEBUG_MODE) {
           logger.debug('Universal mapper output:', {
@@ -295,24 +340,46 @@ const DetallesReserva = ({ isMobile = false }) => {
           });
         }
 
+        // Actualizar estado solo si el fetch sigue siendo el actual
         setDatos(mappedData);
+        lastFetchRef.current = `${reservaId}_${email}`;
+        logger.info('✅ Datos de reserva cargados exitosamente');
       } catch (err) {
-        logger.error('❌ Error al cargar reserva:', err);
-        setError(
-          err.message ||
-            'No se pudo cargar la información de la reserva. Por favor, inténtalo de nuevo.',
-        );
+        // Solo mostrar error si el fetch sigue siendo válido
+        if (fetchInProgressRef.current) {
+          logger.error('❌ Error al cargar reserva:', err);
+          setError(
+            err.message ||
+              'No se pudo cargar la información de la reserva. Por favor, inténtalo de nuevo.',
+          );
+        }
       } finally {
+        // Limpiar el flag de fetch en progreso
+        fetchInProgressRef.current = false;
         setLoading(false);
       }
     };
 
-    // Solo fetch si tenemos email válido
-    if (reservaId && email && email.includes('@')) {
-      fetchReserva();
+    // Condiciones para ejecutar el fetch
+    const shouldFetch =
+      reservaId && email && email.includes('@') && !fetchInProgressRef.current;
+
+    if (shouldFetch) {
+      // Pequeño delay para evitar fetches muy rápidos en navegación
+      const timeoutId = setTimeout(fetchReserva, 50);
+
+      return () => {
+        clearTimeout(timeoutId);
+        // Cancelar fetch en progreso si el componente se desmonta o cambian las dependencias
+        fetchInProgressRef.current = false;
+      };
     } else if (reservaId && !email) {
       logger.warn('⚠️ Email no disponible, esperando datos de navegación');
       setError('Email requerido para consultar la reserva');
+      setLoading(false);
+    } else if (!reservaId) {
+      logger.warn('⚠️ ID de reserva no disponible');
+      setError('ID de reserva requerido');
       setLoading(false);
     }
 
@@ -322,29 +389,14 @@ const DetallesReserva = ({ isMobile = false }) => {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
+      // Cancelar cualquier fetch en progreso
+      fetchInProgressRef.current = false;
     };
-  }, [reservaId]); // Solo depender de reservaId, no de email
+  }, [reservaId, email, datos]); // Dependencias optimizadas incluyendo datos
 
-  // useEffect separado para manejar cambios de email
-  useEffect(() => {
-    // Si el email cambia después de la carga inicial, y no tenemos datos o hay mismatch
-    if (
-      email &&
-      email.includes('@') &&
-      (!datos || datos.id !== parseInt(reservaId))
-    ) {
-      logger.info('📧 Email actualizado, recargando datos de reserva');
-
-      // Pequeño delay para evitar llamadas muy rápidas
-      const timeoutId = setTimeout(() => {
-        // Trigger del fetch principal limpiando datos
-        setDatos(null);
-        setLoading(true);
-      }, 100);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [email, reservaId]); // Solo para cambios de email después de la carga inicial
+  // ========================================
+  // EFECTOS ADICIONALES ESPECÍFICOS
+  // ========================================
 
   // Función para manejar la edición de la reserva
   const handleEditReservationCentral = async (updatedData) => {

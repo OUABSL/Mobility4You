@@ -12,7 +12,6 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { createServiceLogger, DEBUG_MODE } from '../../config/appConfig';
-import { debugBackendData, debugSessionStorage } from '../../services/func';
 import {
   calculateReservationPrice,
   editReservation,
@@ -20,6 +19,7 @@ import {
   getExtrasDisponibles,
 } from '../../services/reservationServices';
 import { fetchLocations } from '../../services/searchServices';
+import { debugBackendData, debugSessionStorage } from '../../utils';
 import ModalCalendario from '../ModalCalendario';
 // Crear logger para el componente
 const logger = createServiceLogger('EDIT_RESERVATION_MODAL');

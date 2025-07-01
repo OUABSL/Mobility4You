@@ -28,15 +28,15 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { createServiceLogger, DEBUG_MODE } from '../../config/appConfig';
 import '../../css/PagoDiferenciaReserva.css';
 import {
-  debugBackendData,
-  debugSessionStorage,
-  formatTaxRate,
-} from '../../services/func';
-import {
   editReservation,
   findReservation,
   processPayment,
 } from '../../services/reservationServices';
+import {
+  debugBackendData,
+  debugSessionStorage,
+  formatTaxRate,
+} from '../../utils';
 import ReservaClientePago from './ReservaClientePago';
 
 // Crear logger para el componente

@@ -5,8 +5,8 @@ import {
   shouldUseTestingData,
 } from '../config/appConfig';
 import axios from '../config/axiosConfig';
+import { withTimeout } from '../utils';
 import { withCache } from './cacheService';
-import { withTimeout } from './func';
 import {
   extractFilterOptions,
   searchAvailableVehicles,

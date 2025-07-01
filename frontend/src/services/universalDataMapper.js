@@ -35,14 +35,69 @@
  */
 
 import { testingLocationsData } from '../assets/testingData/testingData';
-import { API_URL, DEBUG_MODE, shouldUseTestingData } from '../config/appConfig';
+import {
+  API_URL,
+  createServiceLogger,
+  DEBUG_MODE,
+  shouldUseTestingData,
+} from '../config/appConfig';
 import axios from '../config/axiosConfig';
+import {
+  calculateTaxAmount,
+  extractByPath,
+  extractFromJsonField,
+  getPlaceholder,
+  prepareImageData,
+  processImageUrl,
+  roundToDecimals,
+  formatCurrency as utilsFormatCurrency,
+  withTimeout,
+} from '../utils';
 import { getCachedData, invalidateCache, setCachedData } from './cacheService';
-import { withTimeout } from './func';
+
+// ========================================
+// CLASES DE ERROR PERSONALIZADAS
+// ========================================
+
+/**
+ * Error base para el mapeo universal
+ */
+class UniversalMappingError extends Error {
+  constructor(message, code = 'MAPPING_ERROR', context = null) {
+    super(message);
+    this.name = 'UniversalMappingError';
+    this.code = code;
+    this.context = context;
+  }
+}
+
+/**
+ * Error específico para resolución de ubicaciones
+ */
+class LocationResolutionError extends UniversalMappingError {
+  constructor(message, locationData = null) {
+    super(message, 'LOCATION_RESOLUTION_ERROR', locationData);
+    this.name = 'LocationResolutionError';
+  }
+}
+
+/**
+ * Error de validación de datos
+ */
+class ValidationError extends UniversalMappingError {
+  constructor(message, validationErrors = {}) {
+    super(message, 'VALIDATION_ERROR', validationErrors);
+    this.name = 'ValidationError';
+    this.validationErrors = validationErrors;
+  }
+}
 
 // ========================================
 // CONFIGURACIÓN GLOBAL
 // ========================================
+
+// Crear logger para el servicio
+const logger = createServiceLogger('UNIVERSAL_MAPPER');
 
 const CONFIG = {
   CACHE: {
@@ -139,8 +194,9 @@ const positiveNumberValidator = (v) => typeof v === 'number' && v > 0;
  * @param {number|string} value - El valor a redondear
  * @param {number} decimals - Número de decimales (por defecto 2)
  * @returns {number} - El valor redondeado
+ * @deprecated Usar roundToDecimals desde utils en su lugar
  */
-const roundToDecimals = (value, decimals = 2) => {
+const roundToDecimalsLegacy = (value, decimals = 2) => {
   const numValue = safeNumberTransformer(value, 0);
   if (numValue === 0) return 0;
 
@@ -154,8 +210,9 @@ const roundToDecimals = (value, decimals = 2) => {
  * @param {number|string} baseAmount - El monto base
  * @param {number} taxRate - La tasa de impuesto (debe venir del backend, sin valor por defecto)
  * @returns {number} - Los impuestos calculados y redondeados
+ * @deprecated Usar calculateTaxAmount desde utils en su lugar
  */
-const calculateTaxAmount = (baseAmount, taxRate) => {
+const calculateTaxAmountLegacy = (baseAmount, taxRate) => {
   if (taxRate === undefined || taxRate === null) {
     throw new Error(
       'La tasa de impuesto debe ser proporcionada desde el backend',
@@ -172,8 +229,9 @@ const calculateTaxAmount = (baseAmount, taxRate) => {
  * @param {number|string} baseAmount - El monto base
  * @param {number} taxRate - La tasa de impuesto (debe venir del backend, sin valor por defecto)
  * @returns {object} - Objeto con base, impuestos y total redondeados
+ * @deprecated Usar calculatePriceWithTax desde utils en su lugar
  */
-const calculatePriceWithTax = (baseAmount, taxRate) => {
+const calculatePriceWithTaxLegacy = (baseAmount, taxRate) => {
   if (taxRate === undefined || taxRate === null) {
     throw new Error(
       'La tasa de impuesto debe ser proporcionada desde el backend',
@@ -1183,163 +1241,28 @@ const MAPPING_SCHEMAS = {
 };
 
 // ========================================
-// UTILIDADES DE GESTIÓN DE IMÁGENES
+// UTILIDADES DE GESTIÓN DE IMÁGENES (MIGRADAS A UTILS)
 // ========================================
 
+// La clase ImageUtils ha sido migrada a ../utils/imageUtils para mejor organización
+// Se mantiene aquí solo un alias para compatibilidad hacia atrás
+
 const ImageUtils = {
-  /**
-   * Procesar URL de imagen del backend
-   */
-  processImageUrl(url, baseUrl = null) {
-    if (!url) return null;
-
-    // Si es una URL completa, devolverla tal cual
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-
-    // Obtener base URL del backend
-    // En desarrollo con nginx, las imágenes se sirven desde la misma URL base
-    const backendUrl =
-      baseUrl ||
-      process.env.REACT_APP_BACKEND_URL ||
-      process.env.REACT_APP_API_URL?.replace('/api', '') ||
-      window.location.origin;
-
-    // Si es una ruta relativa del backend que ya empieza con /media/
-    if (url.startsWith('/media/')) {
-      return `${backendUrl}${url}`;
-    }
-
-    // Si es una ruta que empieza con media/ (sin barra inicial)
-    if (url.startsWith('media/')) {
-      return `${backendUrl}/${url}`;
-    }
-
-    // Si es solo el nombre del archivo, detectar el tipo basado en el contexto
-    if (!url.startsWith('/') && !url.includes('/')) {
-      // Detectar tipo de imagen por patrones en el nombre
-      if (url.match(/\d+_\d+\./)) {
-        // Patrón de imagen de vehículo: vehiculoId_imagenId.extensión
-        return `${backendUrl}/media/vehiculos/${url}`;
-      } else {
-        // Por defecto, asumir que es un extra
-        return `${backendUrl}/media/extras/${url}`;
-      }
-    }
-
-    // Para cualquier otra ruta relativa
-    if (!url.startsWith('/')) {
-      return `${backendUrl}/media/${url}`;
-    }
-
-    return `${backendUrl}${url}`;
-  },
-
-  /**
-   * Obtener placeholder por tipo
-   */
-  getPlaceholder(type = 'default', width = 300, height = 200) {
-    const placeholders = {
-      default: `https://via.placeholder.com/${width}x${height}/f0f0f0/666666.png?text=Sin+Imagen`,
-      vehicle: `https://via.placeholder.com/${width}x${height}/e3f2fd/1976d2.png?text=Vehículo`,
-      extra: `https://via.placeholder.com/${width}x${height}/f3e5f5/7b1fa2.png?text=Extra`,
-      user: `https://via.placeholder.com/${width}x${height}/e8f5e8/388e3c.png?text=Usuario`,
-      location: `https://via.placeholder.com/${width}x${height}/fff3e0/f57c00.png?text=Ubicación`,
-    };
-
-    return placeholders[type] || placeholders.default;
-  },
-
-  /**
-   * Preparar datos de imagen con fallbacks
-   */
-  prepareImageData(imageUrl, type = 'default', dimensions = {}) {
-    const { width = 300, height = 200 } = dimensions;
-
-    return {
-      original: this.processImageUrl(imageUrl),
-      placeholder: this.getPlaceholder(type, width, height),
-      hasImage: !!imageUrl,
-      type,
-    };
-  },
+  processImageUrl: processImageUrl,
+  getPlaceholder: getPlaceholder,
+  prepareImageData: prepareImageData,
 };
 
 // ========================================
-// FUNCIONES AUXILIARES
+// FUNCIONES AUXILIARES (MIGRADAS A UTILS)
 // ========================================
 
-/**
- * Extrae valor de campo JSON de forma segura
- * @param {string|object} jsonField - Campo JSON a procesar
- * @param {string} key - Clave a extraer
- * @param {*} defaultValue - Valor por defecto
- * @returns {*} Valor extraído o valor por defecto
- */
-function extractFromJsonField(jsonField, key, defaultValue = null) {
-  try {
-    let data = jsonField;
-    if (typeof jsonField === 'string') {
-      data = JSON.parse(jsonField);
-    }
-    return data?.[key] ?? defaultValue;
-  } catch (error) {
-    logger.warn(`Error extrayendo ${key} de campo JSON:`, error);
-    return defaultValue;
-  }
-}
+// Las siguientes funciones han sido migradas a ../utils/ para mejor organización
+// Se mantienen aquí solo alias para compatibilidad hacia atrás
 
-/**
- * Extrae valor usando notación de puntos
- * @param {object} obj - Objeto fuente
- * @param {string} path - Ruta con notación de puntos
- * @returns {*} Valor extraído o undefined
- */
-function extractByPath(obj, path) {
-  if (!obj || typeof obj !== 'object') {
-    return undefined;
-  }
-
-  if (!path || typeof path !== 'string') {
-    return undefined;
-  }
-
-  // Logica mejorada para extraer valor con notación de puntos
-  try {
-    const result = path.split('.').reduce((current, key) => {
-      if (current === null || current === undefined) {
-        return undefined;
-      }
-      return current[key];
-    }, obj);
-
-    if (CONFIG.DEBUG_MODE) {
-      appLogger.info(`[EXTRACT_PATH] ${path} from object -> ${result}`);
-    }
-
-    return result;
-  } catch (error) {
-    if (CONFIG.DEBUG_MODE) {
-      appLogger.warn(`[EXTRACT_PATH] Error extracting ${path}:`, error);
-    }
-    return undefined;
-  }
-}
-
-/**
- * Valida que una fecha sea futura
- * @param {string|Date} dateValue - Valor de fecha
- * @returns {boolean} True si la fecha es válida y futura
- */
-function isValidFutureDate(dateValue) {
-  try {
-    const date = new Date(dateValue);
-    return !isNaN(date.getTime()) && date > new Date();
-  } catch {
-    return false;
-  }
-}
+// extractFromJsonField - disponible en utils/dataExtractors
+// extractByPath - disponible en utils/dataExtractors
+// isValidFutureDate - disponible en utils/dateValidators
 
 // ========================================
 // RESOLVEDOR DE UBICACIONES
@@ -2049,51 +1972,48 @@ class UniversalDataMapper {
    * @returns {Promise<object>} Datos de reservación mapeados con logs detallados
    */
   async debugReservationMapping(frontendData) {
-    appLogger.info('🔍 [DEBUG RESERVATION MAPPING] Iniciando debug...');
-    appLogger.info(
-      '📋 Datos de entrada:',
-      JSON.stringify(frontendData, null, 2),
-    );
+    logger.info('🔍 [DEBUG RESERVATION MAPPING] Iniciando debug...');
+    logger.info('📋 Datos de entrada:', JSON.stringify(frontendData, null, 2));
 
     // Verificar campos específicos que están causando problemas
-    appLogger.info('🎯 Verificando campos específicos:');
-    appLogger.info('- car.id:', extractByPath(frontendData, 'car.id'));
-    appLogger.info(
+    logger.info('🎯 Verificando campos específicos:');
+    logger.info('- car.id:', extractByPath(frontendData, 'car.id'));
+    logger.info(
       '- fechas.pickupLocation.id:',
       extractByPath(frontendData, 'fechas.pickupLocation.id'),
     );
-    appLogger.info(
+    logger.info(
       '- fechas.dropoffLocation.id:',
       extractByPath(frontendData, 'fechas.dropoffLocation.id'),
     );
-    appLogger.info(
+    logger.info(
       '- fechas.pickupDate:',
       extractByPath(frontendData, 'fechas.pickupDate'),
     );
-    appLogger.info(
+    logger.info(
       '- fechas.dropoffDate:',
       extractByPath(frontendData, 'fechas.dropoffDate'),
     );
-    appLogger.info(
+    logger.info(
       '- paymentOption:',
       extractByPath(frontendData, 'paymentOption'),
     );
-    appLogger.info(
+    logger.info(
       '- detallesReserva.total:',
       extractByPath(frontendData, 'detallesReserva.total'),
     );
-    appLogger.info(
+    logger.info(
       '- detallesReserva.precioCocheBase:',
       extractByPath(frontendData, 'detallesReserva.precioCocheBase'),
     );
 
-    appLogger.info('🔧 Procediendo con mapeo normal...');
+    logger.info('🔧 Procediendo con mapeo normal...');
     try {
       const result = await this.mapReservationToBackend(frontendData);
-      appLogger.info('✅ Mapeo exitoso:', JSON.stringify(result, null, 2));
+      logger.info('✅ Mapeo exitoso:', JSON.stringify(result, null, 2));
       return result;
     } catch (error) {
-      appLogger.error('❌ Error en mapeo:', error);
+      logger.error('❌ Error en mapeo:', error);
       throw error;
     }
   }
@@ -2225,7 +2145,7 @@ class UniversalDataMapper {
   }
 
   // ========================================
-  // UTILIDADES DE FORMATEO DE PAGOS
+  // UTILIDADES DE FORMATEO DE PAGOS (MIGRADAS A UTILS)
   // ========================================
 
   /**
@@ -2233,17 +2153,10 @@ class UniversalDataMapper {
    * @param {number} amount - Cantidad a formatear
    * @param {string} currency - Moneda (EUR por defecto)
    * @returns {string} Cantidad formateada
+   * @deprecated Usar formatCurrency desde utils en su lugar
    */
   formatCurrency(amount, currency = 'EUR') {
-    try {
-      return new Intl.NumberFormat('es-ES', {
-        style: 'currency',
-        currency: currency,
-      }).format(amount);
-    } catch (error) {
-      logger.error('Error formateando moneda:', error);
-      return `${amount} ${currency}`;
-    }
+    return utilsFormatCurrency(amount, { currency });
   }
 
   /**
@@ -2319,8 +2232,12 @@ export const mapReservationFromBackend = (data) =>
 export const clearMappingCaches = () => universalMapper.clearAllCaches();
 export const getMappingStats = () => universalMapper.getStats();
 
-// Exports de funciones de redondeo y cálculo de impuestos
-export { calculatePriceWithTax, calculateTaxAmount, roundToDecimals };
+// Exports de funciones de redondeo y cálculo de impuestos (migradas a utils)
+export {
+  calculatePriceWithTax,
+  calculateTaxAmount,
+  roundToDecimals,
+} from '../utils';
 
 // Export de función principal genérica
 export const mapData = (data, dataType, direction) =>

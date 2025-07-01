@@ -30,14 +30,19 @@ export const DEBUG_MODE =
 /**
  * URLs de APIs principales
  */
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-export const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+export const API_URL =
+  process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+export const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 export const NGINX_URL = process.env.REACT_APP_NGINX_URL || 'http://localhost';
+export const FRONTEND_URL =
+  process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
 
 export const API_URLS = {
   BASE: API_URL,
   BACKEND: BACKEND_URL,
   NGINX: NGINX_URL,
+  FRONTEND: FRONTEND_URL,
 };
 
 /**
@@ -116,30 +121,41 @@ export const shouldUseTestingData = (backendFailed = false) => {
 };
 
 /**
- * Helper para logging condicional basado en DEBUG_MODE
+ * Helper para logging condicional optimizado
  * @param {string} service - Nombre del servicio que loggea
  * @param {string} level - Nivel de log (info, warn, error)
  * @param {string} message - Mensaje a loggear
  * @param {any} data - Datos adicionales (opcional)
  */
 export const conditionalLog = (service, level, message, data = null) => {
-  if (!DEBUG_MODE) return;
+  // Salida temprana si el logging está deshabilitado
+  const consoleLoggingEnabled =
+    process.env.REACT_APP_ENABLE_CONSOLE_LOGS === 'true' || DEBUG_MODE;
+  if (!DEBUG_MODE && !consoleLoggingEnabled) return;
 
+  // Optimización: Solo crear timestamp si realmente vamos a loggear
   const timestamp = new Date().toISOString();
   const prefix = `[${timestamp}] [${service.toUpperCase()}]`;
+  const fullMessage = `${prefix} ${message}`;
+
+  // Optimización: Usar nivel apropiado y evitar datos vacíos
+  const logData =
+    data !== null && data !== undefined && data !== '' ? data : undefined;
 
   switch (level.toLowerCase()) {
     case 'info':
-      console.log(`${prefix} ${message}`, data || '');
+      logData ? console.log(fullMessage, logData) : console.log(fullMessage);
       break;
     case 'warn':
-      console.warn(`${prefix} ${message}`, data || '');
+      logData ? console.warn(fullMessage, logData) : console.warn(fullMessage);
       break;
     case 'error':
-      console.error(`${prefix} ${message}`, data || '');
+      logData
+        ? console.error(fullMessage, logData)
+        : console.error(fullMessage);
       break;
     default:
-      console.log(`${prefix} ${message}`, data || '');
+      logData ? console.log(fullMessage, logData) : console.log(fullMessage);
   }
 };
 
@@ -168,11 +184,13 @@ export const ENV_CONFIG = {
 
   // Características habilitadas por entorno
   FEATURES: {
-    CONSOLE_LOGGING: DEBUG_MODE,
+    CONSOLE_LOGGING:
+      process.env.REACT_APP_ENABLE_CONSOLE_LOGS === 'true' || DEBUG_MODE,
     TESTING_DATA_FALLBACK: DEBUG_MODE,
     ERROR_BOUNDARIES: true,
-    PERFORMANCE_MONITORING: process.env.NODE_ENV === 'production',
-    ANALYTICS: process.env.NODE_ENV === 'production',
+    PERFORMANCE_MONITORING: process.env.REACT_APP_ENABLE_ANALYTICS === 'true',
+    ANALYTICS: process.env.REACT_APP_ENABLE_ANALYTICS === 'true',
+    STRIPE_PAYMENTS: process.env.REACT_APP_STRIPE_ENABLED === 'true',
   },
 };
 

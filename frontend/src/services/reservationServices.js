@@ -12,9 +12,9 @@ import {
   shouldUseTestingData,
   TIMEOUT_CONFIG,
 } from '../config/appConfig';
+import { logError, logInfo, logWarning, withTimeout } from '../utils';
 import { validateReservationData } from '../validations/reservationValidations'; // Importar validaciones
 import { withCache } from './cacheService';
-import { logError, logInfo, logWarning, withTimeout } from './func';
 import { fetchLocations } from './searchServices'; // Import para obtener ubicaciones
 
 // Import test data from centralized location
@@ -30,9 +30,67 @@ const API_URL = API_URLS.BASE;
 const logger = createServiceLogger('RESERVATIONS');
 
 // ========================================
-// CONTROL DE REQUESTS DUPLICADOS
+// CONTROL DE REQUESTS DUPLICADOS Y CACHE
 // ========================================
 let currentFindRequest = null;
+const reservationCache = new Map();
+const RESERVATION_CACHE_TTL = 2 * 60 * 1000; // 2 minutos para reservas
+
+/**
+ * Genera clave de cache para una consulta de reserva
+ * @param {string} reservaId - ID de la reserva
+ * @param {string} email - Email del usuario
+ * @returns {string} - Clave única para el cache
+ */
+const getReservationCacheKey = (reservaId, email) => {
+  return `reservation_${reservaId}_${email.toLowerCase()}`;
+};
+
+/**
+ * Obtiene una reserva del cache si está vigente
+ * @param {string} cacheKey - Clave del cache
+ * @returns {any|null} - Datos de la reserva o null si no existe/expiró
+ */
+const getCachedReservation = (cacheKey) => {
+  const cached = reservationCache.get(cacheKey);
+  if (!cached) return null;
+
+  const now = Date.now();
+  if (now > cached.expiry) {
+    reservationCache.delete(cacheKey);
+    return null;
+  }
+
+  logger.info(`📦 [CACHE HIT] Reserva encontrada en cache: ${cacheKey}`);
+  return cached.data;
+};
+
+/**
+ * Almacena una reserva en el cache
+ * @param {string} cacheKey - Clave del cache
+ * @param {any} data - Datos de la reserva
+ */
+const setCachedReservation = (cacheKey, data) => {
+  const expiry = Date.now() + RESERVATION_CACHE_TTL;
+  reservationCache.set(cacheKey, {
+    data,
+    expiry,
+    timestamp: Date.now(),
+  });
+  logger.info(`💾 [CACHE SET] Reserva guardada en cache: ${cacheKey}`);
+};
+
+/**
+ * Limpia el cache de reservas expiradas
+ */
+const cleanExpiredReservationCache = () => {
+  const now = Date.now();
+  for (const [key, value] of reservationCache.entries()) {
+    if (now > value.expiry) {
+      reservationCache.delete(key);
+    }
+  }
+};
 
 // Helper function para obtener headers de autenticación
 const getAuthHeaders = () => {
@@ -233,6 +291,15 @@ export const createReservation = async (data) => {
  */
 export const findReservation = async (reservaId, email) => {
   try {
+    // ✅ Generar clave de cache
+    const cacheKey = getReservationCacheKey(reservaId, email);
+
+    // ✅ Verificar cache primero
+    const cachedData = getCachedReservation(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
     // ✅ Cancelar request anterior si existe
     if (currentFindRequest) {
       currentFindRequest.abort();
@@ -253,6 +320,8 @@ export const findReservation = async (reservaId, email) => {
         reserva &&
         reserva.conductores.some((c) => c.conductor.email === email)
       ) {
+        // ✅ Guardar en cache los datos de prueba también
+        setCachedReservation(cacheKey, reserva);
         return reserva;
       }
       throw new Error('Reserva no encontrada con los datos proporcionados');
@@ -272,6 +341,10 @@ export const findReservation = async (reservaId, email) => {
 
     if (response.data && response.data.success) {
       logger.info('✅ Reserva encontrada exitosamente');
+
+      // ✅ Guardar en cache
+      setCachedReservation(cacheKey, response.data);
+
       return response.data;
     } else {
       throw new Error(
@@ -1469,7 +1542,7 @@ function editarReservaPrueba(reservaId, data) {
  *
  *   // Datos de pricing (opcionales con fallbacks)
  *   precioTotal?: 395.16,
- *   detallesReserva?: { base: 316, extras: 40, impuestos: 39.16 },
+ *   detallesReserva?: { base, extras, impuestos, total },
  *
  *   // Método de pago (determina lógica de importes)
  *   metodo_pago?: "tarjeta" | "efectivo", // Default: "tarjeta"
@@ -1656,7 +1729,7 @@ let locationsCache = null;
  * 🔄 DISPONIBILIDAD:
  * - **DEBUG_MODE**: Utiliza datos de `fetchLocations()` con fallback a testingData
  * - **Producción**: Carga real desde endpoint `/lugares/` con cache optimizado
- * - **Offline**: Array vacío para evitar errores, permite operación degradada
+ * - **Offline**: Array vacío como último recurso
  *
  * 🛡️ ERROR HANDLING:
  * - Logs detallados para debugging en desarrollo
@@ -2398,3 +2471,60 @@ export const fetchPoliticasPago = async () => {
     }
   });
 };
+
+// ========================================
+// FUNCIONES UTILITARIAS DE CACHE
+// ========================================
+
+/**
+ * Limpia todo el cache de reservas
+ */
+export const clearReservationCache = () => {
+  reservationCache.clear();
+  logger.info('🧹 Cache de reservas limpiado completamente');
+};
+
+/**
+ * Limpia reservas expiradas del cache
+ */
+export const cleanExpiredCache = () => {
+  cleanExpiredReservationCache();
+  logger.info('🧹 Cache de reservas expiradas limpiado');
+};
+
+/**
+ * Obtiene estadísticas del cache de reservas
+ * @returns {Object} - Estadísticas del cache
+ */
+export const getReservationCacheStats = () => {
+  const now = Date.now();
+  const stats = {
+    totalEntries: reservationCache.size,
+    expiredEntries: 0,
+    validEntries: 0,
+    entries: [],
+  };
+
+  for (const [key, value] of reservationCache.entries()) {
+    const isExpired = now > value.expiry;
+    if (isExpired) {
+      stats.expiredEntries++;
+    } else {
+      stats.validEntries++;
+    }
+
+    stats.entries.push({
+      key,
+      isExpired,
+      timestamp: new Date(value.timestamp),
+      expiry: new Date(value.expiry),
+    });
+  }
+
+  return stats;
+};
+
+// Limpiar cache expirado automáticamente cada 5 minutos
+if (typeof window !== 'undefined') {
+  setInterval(cleanExpiredReservationCache, 5 * 60 * 1000);
+}

@@ -26,17 +26,17 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { createServiceLogger } from '../../config/appConfig';
 import '../../css/ReservaClienteExtras.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
-import {
-  calculateDisplayTaxAmount,
-  formatTaxRate,
-  getImageForExtra,
-} from '../../services/func';
 import { getExtrasDisponibles } from '../../services/reservationServices';
 import {
   autoRecoverReservation,
   getReservationStorageService,
 } from '../../services/reservationStorageService';
-import { roundToDecimals } from '../../services/universalDataMapper';
+import {
+  calculateDisplayTaxAmount,
+  formatTaxRate,
+  getImageForExtra,
+  roundToDecimals,
+} from '../../utils';
 import ReservationTimerIndicator from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
 

@@ -30,7 +30,6 @@ import CardLogo from '../../assets/img/general/logo_visa_mastercard.png';
 import { createServiceLogger } from '../../config/appConfig';
 import '../../css/ReservaClienteConfirmar.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
-import { formatTaxRate } from '../../services/func';
 import {
   createReservation,
   editReservation,
@@ -41,6 +40,7 @@ import {
   updateConductorData,
   updateConductorDataIntermediate,
 } from '../../services/reservationStorageService';
+import { formatTaxRate } from '../../utils/financialUtils';
 import { ReservationTimerBadge } from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
 
@@ -50,9 +50,6 @@ const logger = createServiceLogger('RESERVA_CLIENTE_CONFIRMAR');
 const ReservaClienteConfirmar = () => {
   const navigate = useNavigate();
   const storageService = getReservationStorageService();
-
-  // Logger
-  const logger = createServiceLogger('ReservaClienteConfirmar');
 
   // Hook del timer de reserva
   const {

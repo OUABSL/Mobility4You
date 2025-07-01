@@ -1,14 +1,16 @@
 // src/services/searchServices.js
 import { testingLocationsData } from '../assets/testingData/testingData';
-import { API_URL, createServiceLogger, shouldUseTestingData } from '../config/appConfig';
+import {
+  API_URL,
+  createServiceLogger,
+  shouldUseTestingData,
+} from '../config/appConfig';
 import axios from '../config/axiosConfig';
+import { withTimeout } from '../utils';
 import { withCache } from './cacheService';
-import { withTimeout } from './func';
 
 // Crear logger para el servicio de búsqueda
 const logger = createServiceLogger('SEARCH_SERVICE');
-
-
 
 /**
  * Obtiene las ubicaciones disponibles para recogida/devolución
@@ -99,10 +101,7 @@ export const fetchLocations = async () => {
         // Para errores 500, intentar fallback
         else if (status >= 500) {
           shouldUseFallback = true;
-          logger.error(
-            '❌ [fetchLocations] Error del servidor:',
-            errorMessage,
-          );
+          logger.error('❌ [fetchLocations] Error del servidor:', errorMessage);
         } else if (status >= 400) {
           logger.warn('⚠️ [fetchLocations] Error del cliente:', errorMessage);
         }

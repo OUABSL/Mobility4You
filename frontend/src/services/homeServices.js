@@ -7,8 +7,8 @@ import {
   testingTestimonios,
 } from '../assets/testingData/testingData';
 import axios from '../config/axiosConfig';
+import { logError, logInfo, withTimeout } from '../utils';
 import { withCache } from './cacheService';
-import { logError, logInfo, withTimeout } from './func';
 import universalMapper from './universalDataMapper';
 
 // ========================================
@@ -60,7 +60,11 @@ const fetchLocations = async () => {
         dataArray.filter((item) => item && item.activo !== false),
       );
 
-      logInfo('Ubicaciones cargadas desde BD', { count: mappedData.length }, logger);
+      logInfo(
+        'Ubicaciones cargadas desde BD',
+        { count: mappedData.length },
+        logger,
+      );
       return mappedData;
     } catch (error) {
       logError('Error al consultar ubicaciones desde BD', error, logger);
@@ -117,7 +121,11 @@ const fetchEstadisticas = async () => {
         dataArray.filter((item) => item && item.activo),
       );
 
-      logInfo('Estadísticas cargadas desde BD', { count: mappedData.length }, logger);
+      logInfo(
+        'Estadísticas cargadas desde BD',
+        { count: mappedData.length },
+        logger,
+      );
       return mappedData;
     } catch (error) {
       logError('Error al consultar estadísticas desde BD', error, logger);
@@ -213,7 +221,10 @@ const fetchTestimonios = async () => {
   return await withCache('testimonials', async () => {
     try {
       // CONFIGURACIÓN TEMPORAL: Siempre usar datos de testing para testimonios
-      logInfo('Usando testimonios de testing data (configuración temporal)', logger);
+      logInfo(
+        'Usando testimonios de testing data (configuración temporal)',
+        logger,
+      );
 
       // Usar el mapper universal para mapear testimonios
       const mappedTestimonios = await universalMapper.mapTestimonials(
@@ -285,7 +296,10 @@ const fetchDestinos = async () => {
 
       // FALLBACK: Solo si DEBUG_MODE está activo Y el backend falló
       if (shouldUseTestingData(true)) {
-        logInfo('DEBUG_MODE activo - usando destinos de testing como fallback', logger);
+        logInfo(
+          'DEBUG_MODE activo - usando destinos de testing como fallback',
+          logger,
+        );
         return await universalMapper.mapDestinations(testingDestinos);
       }
 

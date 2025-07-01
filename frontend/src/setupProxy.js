@@ -1,5 +1,13 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
+// Simple console logger for proxy errors (no external dependencies needed)
+const logger = {
+  error: (message, data) =>
+    console.error(`[PROXY ERROR] ${message}`, data || ''),
+  info: (message, data) => console.log(`[PROXY INFO] ${message}`, data || ''),
+  warn: (message, data) => console.warn(`[PROXY WARN] ${message}`, data || ''),
+};
+
 module.exports = function (app) {
   const proxyOptions = {
     target: 'http://localhost:80',

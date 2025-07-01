@@ -35,10 +35,13 @@ import carDoorLeft from '../assets/img/icons/car-door-left.svg';
 
 import { createServiceLogger } from '../config/appConfig';
 import '../css/FichaCoche.css';
-import { calculateDisplayTaxAmount, formatTaxRate } from '../services/func';
 import { fetchPoliticasPago } from '../services/reservationServices';
 import { getStoredSearchParams } from '../services/searchServices';
-import { roundToDecimals } from '../services/universalDataMapper';
+import { roundToDecimals } from '../utils';
+import {
+  calculateDisplayTaxAmount,
+  formatTaxRate,
+} from '../utils/financialUtils';
 
 // Crear logger para el componente
 const logger = createServiceLogger('FICHA_COCHE');

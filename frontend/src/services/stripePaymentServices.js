@@ -7,7 +7,7 @@ import {
   shouldUseTestingData,
 } from '../config/appConfig';
 import axios from '../config/axiosConfig';
-import { logError, logInfo, withTimeout } from './func';
+import { logError, logInfo, withTimeout } from '../utils';
 import universalMapper from './universalDataMapper';
 
 // Configuración de Stripe

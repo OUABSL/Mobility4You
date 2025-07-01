@@ -29,12 +29,12 @@ import { useNavigate } from 'react-router-dom';
 import { createServiceLogger, DEBUG_MODE } from '../../config/appConfig';
 import '../../css/ReservaClientePago.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
-import { formatTaxRate, logError, logInfo } from '../../services/func';
 import {
   createReservation,
   editReservation,
 } from '../../services/reservationServices';
 import { getReservationStorageService } from '../../services/reservationStorageService';
+import { formatTaxRate, logError, logInfo } from '../../utils';
 import StripePaymentForm from '../StripePayment/StripePaymentForm';
 import { ReservationTimerBadge } from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
