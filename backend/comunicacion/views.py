@@ -10,6 +10,12 @@ from .models import Contacto, Contenido
 from .serializers import (ContactoListSerializer, ContactoRespuestaSerializer,
                           ContactoSerializer, ContenidoSerializer)
 
+# Importar servicio de email
+try:
+    from utils.email_service import get_email_service
+except ImportError:
+    get_email_service = None
+
 logger = logging.getLogger(__name__)
 
 # Lazy import de permisos para evitar dependencias
@@ -155,7 +161,8 @@ class ContactoViewSet(viewsets.ModelViewSet):
         # Guardar el mensaje
         contacto = serializer.save()
 
-        # TODO: Aquí se podría agregar envío de email de notificación
+        # Enviar emails de notificación y confirmación
+        self._send_contact_emails(contacto)
 
         return Response(
             {
@@ -165,6 +172,50 @@ class ContactoViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED,
         )
+
+    def _send_contact_emails(self, contacto):
+        """
+        Envía emails de notificación y confirmación para un nuevo contacto
+        """
+        if not get_email_service:
+            logger.warning("Servicio de email no disponible, omitiendo envío")
+            return
+
+        try:
+            # Preparar datos del contacto
+            contacto_data = {
+                'nombre': contacto.nombre,
+                'email': contacto.email,
+                'asunto': contacto.asunto,
+                'mensaje': contacto.mensaje,
+                'fecha_contacto': contacto.fecha_creacion,
+            }
+
+            email_service = get_email_service()
+
+            # Enviar notificación a los administradores
+            try:
+                result_notification = email_service.send_contact_notification(contacto_data)
+                if result_notification.get('success'):
+                    logger.info(f"Notificación de contacto enviada exitosamente para mensaje {contacto.id}")
+                else:
+                    logger.error(f"Error enviando notificación de contacto para mensaje {contacto.id}: {result_notification.get('error')}")
+            except Exception as e:
+                logger.error(f"Error inesperado enviando notificación de contacto para mensaje {contacto.id}: {str(e)}")
+
+            # Enviar confirmación al usuario
+            try:
+                result_confirmation = email_service.send_contact_confirmation(contacto_data)
+                if result_confirmation.get('success'):
+                    logger.info(f"Confirmación de contacto enviada exitosamente para mensaje {contacto.id}")
+                else:
+                    logger.error(f"Error enviando confirmación de contacto para mensaje {contacto.id}: {result_confirmation.get('error')}")
+            except Exception as e:
+                logger.error(f"Error inesperado enviando confirmación de contacto para mensaje {contacto.id}: {str(e)}")
+
+        except Exception as e:
+            # No queremos que un error en el email impida la creación del contacto
+            logger.error(f"Error general enviando emails para contacto {contacto.id}: {str(e)}")
 
     @action(detail=True, methods=["post"])
     def responder(self, request, pk=None):

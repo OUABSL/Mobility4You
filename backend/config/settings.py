@@ -648,6 +648,23 @@ elif DJANGO_ENV == "development":
 TIME_ZONE = "Europe/Madrid"
 USE_TZ = True
 
+# ========================================
+# CONFIGURACIÓN DE BREVO (EMAIL SERVICE)
+# ========================================
+
+# Configuración de Brevo para envío de emails transaccionales
+BREVO_API_KEY = env("BREVO_API_KEY", default=None)
+BREVO_EMAIL = env("BREVO_EMAIL", default=None)
+BREVO_SENDER_NAME = env("BREVO_SENDER_NAME", default="Mobility4You")
+ADMIN_EMAIL = env("ADMIN_EMAIL", default="ouael999@gmail.com")
+
+# Logging específico para el servicio de email
+EMAIL_SERVICE_LOGGING = {
+    'success_log_level': 'INFO',
+    'error_log_level': 'ERROR',
+    'debug_mode': DEBUG,
+}
+
 # Configuración para servir archivos de medios en desarrollo
 if DEBUG:
     from django.conf.urls.static import static

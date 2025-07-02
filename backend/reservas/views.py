@@ -37,6 +37,12 @@ except ImportError:
     class StripePaymentService:
         pass
 
+# Importar servicio de email
+try:
+    from utils.email_service import get_email_service
+except ImportError:
+    # Logger se inicializa después
+    get_email_service = None
 
 # Importar permisos locales
 from .permissions import PublicAccessPermission
@@ -302,6 +308,9 @@ class ReservaViewSet(viewsets.ModelViewSet):
 
                 logger.info(f"Reserva {reserva.id} creada exitosamente con usuario {reserva.usuario.id}")
 
+                # Enviar email de confirmación
+                self._send_reservation_confirmation_email(reserva)
+
                 # Devolver respuesta con la reserva creada
                 response_serializer = ReservaDetailSerializer(
                     reserva, context={"request": request}
@@ -333,6 +342,48 @@ class ReservaViewSet(viewsets.ModelViewSet):
                 {"success": False, "error": "Error interno del servidor"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    def _send_reservation_confirmation_email(self, reserva):
+        """
+        Envía emails de confirmación de reserva al usuario y notificación al administrador
+        """
+        if not get_email_service:
+            logger.warning("Servicio de email no disponible, omitiendo envío")
+            return
+
+        try:
+            # Preparar datos de la reserva para el email
+            reserva_data = {
+                'id': reserva.id,
+                'usuario_email': reserva.usuario.email,
+                'usuario_nombre': f"{reserva.usuario.nombre} {reserva.usuario.apellidos}".strip(),
+                'vehiculo_nombre': f"{reserva.vehiculo.marca} {reserva.vehiculo.modelo}",
+                'fecha_recogida': reserva.fecha_recogida,
+                'fecha_devolucion': reserva.fecha_devolucion,
+                'precio_total': float(reserva.precio_total),
+                'lugar_recogida': str(reserva.lugar_recogida),
+                'lugar_devolucion': str(reserva.lugar_devolucion),
+            }
+
+            email_service = get_email_service()
+            
+            # 1. Enviar confirmación al usuario
+            result_confirmation = email_service.send_reservation_confirmation(reserva_data)
+            if result_confirmation.get('success'):
+                logger.info(f"Email de confirmación enviado exitosamente al usuario para reserva {reserva.id}")
+            else:
+                logger.error(f"Error enviando email de confirmación al usuario para reserva {reserva.id}: {result_confirmation.get('error')}")
+
+            # 2. Enviar notificación al administrador
+            result_notification = email_service.send_reservation_notification(reserva_data)
+            if result_notification.get('success'):
+                logger.info(f"Email de notificación enviado exitosamente al administrador para reserva {reserva.id}")
+            else:
+                logger.error(f"Error enviando email de notificación al administrador para reserva {reserva.id}: {result_notification.get('error')}")
+
+        except Exception as e:
+            # No queremos que un error en el email impida la creación de la reserva
+            logger.error(f"Error inesperado enviando emails para reserva {reserva.id}: {str(e)}")
 
     @action(detail=True, methods=["post"])
     def buscar(self, request, pk=None):
