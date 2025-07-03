@@ -74,15 +74,18 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "config.middleware.RequestTrackingMiddleware",  # Tracking de requests con ID único
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",  # Agregado
+    "config.middleware.CORSMiddleware",  # CORS personalizado (reemplaza corsheaders)
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "vehiculos.middleware.RequestLoggingMiddleware",  # Logging de requests API
-    "vehiculos.middleware.GlobalExceptionMiddleware",  # Manejo global de excepciones
+    "config.middleware.SecurityHeadersMiddleware",  # Headers de seguridad
+    "config.middleware.RequestSizeMiddleware",  # Limitación de tamaño de requests
+    "config.middleware.HealthCheckMiddleware",  # Health checks rápidos
+    "config.middleware.GlobalExceptionMiddleware",  # Manejo global de excepciones
 ]
 
 
@@ -189,7 +192,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",  # ← OPCIONAL
     "PAGE_SIZE": 20,  # ← OPCIONAL
-    "EXCEPTION_HANDLER": "vehiculos.exceptions.custom_exception_handler",  # ← MANEJADOR PERSONALIZADO
+    "EXCEPTION_HANDLER": "config.middleware.custom_exception_handler",  # ← MANEJADOR PERSONALIZADO
 }
 
 # Internationalization
@@ -228,14 +231,24 @@ BASE_URL = env("BASE_URL", default="http://localhost:8000")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# CORS (Cross-Origin Resource Sharing) settings
-# Permitir solicitudes CORS desde el frontend
+# CORS (Cross-Origin Resource Sharing) settings - Manejado por middleware personalizado
+# La configuración CORS ahora se maneja en config.middleware.CORSMiddleware
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost",
     "http://127.0.0.1",
+    "http://localhost:80",
+    "http://127.0.0.1:80",
 ]
+
+# En producción, agregar dominios específicos
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS.extend([
+        "https://yourdomain.com",
+        "https://www.yourdomain.com",
+        # Agregar otros dominios de producción aquí
+    ])
 
 CORS_ALLOW_CREDENTIALS = True
 
