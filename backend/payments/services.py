@@ -11,32 +11,92 @@ from django.utils import timezone
 
 from .models import PagoStripe, ReembolsoStripe, WebhookStripe
 
-# Configurar Stripe
-stripe.api_key = settings.STRIPE_SECRET_KEY
-stripe.api_version = settings.STRIPE_CONFIG.get(
-    "api_version", "2023-10-16"
-)  # Usar get() con fallback
+# Configurar Stripe - Mejorado con manejo de errores
+try:
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    stripe.api_version = settings.STRIPE_CONFIG.get("api_version", "2023-10-16")
+    
+    # Validar configuración de Stripe
+    if not settings.STRIPE_SECRET_KEY or settings.STRIPE_SECRET_KEY == "sk_test_placeholder":
+        logger = logging.getLogger("stripe")
+        logger.warning("Stripe secret key no configurada correctamente")
+        
+except AttributeError as e:
+    logger = logging.getLogger("stripe")
+    logger.error(f"Error configurando Stripe: {e}")
+    stripe.api_key = None
 
 logger = logging.getLogger("stripe")
 
 
 class StripePaymentService:
     """
-    Servicio principal para gestionar pagos con Stripe
+    Servicio principal para gestionar pagos con Stripe - Mejorado
     """
 
     def __init__(self):
-        """Inicializa el servicio con configuraciones"""
+        """Inicializa el servicio con configuraciones y validaciones"""
+        # Validar que Stripe esté configurado
+        if not stripe.api_key or stripe.api_key == "sk_test_placeholder":
+            raise ValueError(
+                "Stripe no está configurado correctamente. "
+                "Verifica STRIPE_SECRET_KEY en las variables de entorno."
+            )
+        
         self.currency = settings.STRIPE_CONFIG["currency"]
         self.api_key = settings.STRIPE_SECRET_KEY
         self.webhook_secret = settings.STRIPE_WEBHOOK_SECRET
-        logger.info("StripePaymentService inicializado")
+        
+        # Timeout para requests de Stripe
+        self.timeout = getattr(settings, 'STRIPE_TIMEOUT', 30)
+        
+        logger.info("StripePaymentService inicializado correctamente")
+
+    def _validate_amount(self, amount):
+        """Valida que el importe esté dentro de los límites de Stripe"""
+        if not isinstance(amount, Decimal):
+            amount = Decimal(str(amount))
+        
+        if amount <= 0:
+            raise ValueError("El importe debe ser mayor a 0")
+        
+        # Convertir a centavos para validación
+        amount_cents = int(amount * 100)
+        min_amount = settings.STRIPE_MIN_AMOUNT.get(self.currency, 50)
+        max_amount = settings.STRIPE_MAX_AMOUNT.get(self.currency, 99999999)
+        
+        if amount_cents < min_amount:
+            min_eur = min_amount / 100
+            raise ValueError(f"El importe mínimo es {min_eur:.2f} EUR")
+        
+        if amount_cents > max_amount:
+            max_eur = max_amount / 100
+            raise ValueError(f"El importe máximo es {max_eur:.2f} EUR")
+        
+        return amount_cents
+
+    def _validate_reserva_data(self, reserva_data, tipo_pago):
+        """Valida los datos de la reserva según el tipo de pago"""
+        if not reserva_data:
+            raise ValueError("Los datos de la reserva son obligatorios")
+        
+        # Validar email del cliente
+        email = self._extraer_email_cliente(reserva_data)
+        if not email or "@" not in email:
+            raise ValueError("Se requiere un email válido del cliente")
+        
+        # Validar importe según tipo de pago
+        importe = self._extraer_importe(reserva_data, tipo_pago)
+        if importe <= 0:
+            raise ValueError(f"Importe inválido para tipo de pago {tipo_pago}: {importe}")
+        
+        return True
 
     def crear_payment_intent(
         self, reserva_data, tipo_pago="INICIAL", metadata_extra=None
     ):
         """
-        Crea un Payment Intent en Stripe
+        Crea un Payment Intent en Stripe - Versión mejorada
 
         Args:
             reserva_data: Dict con datos de la reserva
@@ -45,24 +105,27 @@ class StripePaymentService:
 
         Returns:
             Dict con información del pago creado
+
+        Raises:
+            ValueError: Si los datos son inválidos
+            stripe.error.StripeError: Si hay error en Stripe
         """
         logger.info(f"Creando Payment Intent para tipo: {tipo_pago}")
 
         try:
+            # Validar datos de entrada
+            self._validate_reserva_data(reserva_data, tipo_pago)
+
             # Extraer información básica
             importe = self._extraer_importe(reserva_data, tipo_pago)
             email_cliente = self._extraer_email_cliente(reserva_data)
             nombre_cliente = self._extraer_nombre_cliente(reserva_data)
 
-            # Validar importe
-            if not self._validar_importe(importe):
-                raise ValueError(f"Importe inválido: {importe}")
+            # Validar y convertir importe
+            importe_centavos = self._validate_amount(importe)
 
             # Generar número de pedido único
             numero_pedido = self._generar_numero_pedido(reserva_data, tipo_pago)
-
-            # Convertir importe a centavos para Stripe
-            importe_centavos = int(importe * 100)
 
             # Preparar metadatos
             metadata = self._preparar_metadata(reserva_data, tipo_pago, metadata_extra)
@@ -70,22 +133,27 @@ class StripePaymentService:
             # Generar clave de idempotencia
             idempotency_key = self._generar_idempotency_key(numero_pedido)
 
+            # Parámetros para Payment Intent
+            payment_intent_params = {
+                "amount": importe_centavos,
+                "currency": self.currency,
+                "payment_method_types": settings.STRIPE_CONFIG["payment_method_types"],
+                "capture_method": settings.STRIPE_CONFIG["capture_method"],
+                "confirmation_method": settings.STRIPE_CONFIG["confirmation_method"],
+                "automatic_payment_methods": settings.STRIPE_CONFIG["automatic_payment_methods"],
+                "description": self._generar_descripcion(reserva_data, tipo_pago),
+                "statement_descriptor": settings.STRIPE_CONFIG["statement_descriptor"],
+                "statement_descriptor_suffix": settings.STRIPE_CONFIG.get("statement_descriptor_suffix"),
+                "metadata": metadata,
+                "receipt_email": email_cliente,
+                "idempotency_key": idempotency_key,
+            }
+
+            # Remover valores None
+            payment_intent_params = {k: v for k, v in payment_intent_params.items() if v is not None}
+
             # Crear el Payment Intent en Stripe
-            payment_intent = stripe.PaymentIntent.create(
-                amount=importe_centavos,
-                currency=self.currency,
-                payment_method_types=settings.STRIPE_CONFIG["payment_method_types"],
-                capture_method=settings.STRIPE_CONFIG["capture_method"],
-                confirmation_method=settings.STRIPE_CONFIG["confirmation_method"],
-                automatic_payment_methods=settings.STRIPE_CONFIG[
-                    "automatic_payment_methods"
-                ],
-                description=self._generar_descripcion(reserva_data, tipo_pago),
-                statement_descriptor=settings.STRIPE_CONFIG["statement_descriptor"],
-                metadata=metadata,
-                receipt_email=email_cliente,
-                idempotency_key=idempotency_key,
-            )
+            payment_intent = stripe.PaymentIntent.create(**payment_intent_params)
 
             # Crear registro en base de datos
             pago_stripe = self._crear_registro_pago(
@@ -109,14 +177,57 @@ class StripePaymentService:
                 "currency": self.currency,
                 "pago_id": pago_stripe.id,
                 "publishable_key": settings.STRIPE_PUBLISHABLE_KEY,
+                "status": payment_intent.status,
             }
 
+        except ValueError as e:
+            logger.error(f"Error de validación creando Payment Intent: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+                "error_code": "validation_error",
+            }
+        except stripe.error.CardError as e:
+            logger.error(f"Error de tarjeta creando Payment Intent: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Error de tarjeta: {str(e)}",
+                "error_code": "card_error",
+            }
+        except stripe.error.RateLimitError as e:
+            logger.error(f"Rate limit excedido creando Payment Intent: {str(e)}")
+            return {
+                "success": False,
+                "error": "Demasiadas solicitudes. Intenta de nuevo en unos minutos.",
+                "error_code": "rate_limit_error",
+            }
+        except stripe.error.InvalidRequestError as e:
+            logger.error(f"Request inválido creando Payment Intent: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Error en la solicitud: {str(e)}",
+                "error_code": "invalid_request_error",
+            }
+        except stripe.error.AuthenticationError as e:
+            logger.error(f"Error de autenticación con Stripe: {str(e)}")
+            return {
+                "success": False,
+                "error": "Error de configuración del sistema de pagos",
+                "error_code": "authentication_error",
+            }
+        except stripe.error.APIConnectionError as e:
+            logger.error(f"Error de conexión con Stripe: {str(e)}")
+            return {
+                "success": False,
+                "error": "Error de conexión con el procesador de pagos",
+                "error_code": "api_connection_error",
+            }
         except stripe.error.StripeError as e:
-            logger.error(f"Error de Stripe al crear Payment Intent: {str(e)}")
+            logger.error(f"Error genérico de Stripe: {str(e)}")
             return {
                 "success": False,
                 "error": f"Error del procesador de pagos: {str(e)}",
-                "error_code": getattr(e, "code", "stripe_error"),
+                "error_code": "stripe_error",
             }
         except Exception as e:
             logger.error(f"Error interno al crear Payment Intent: {str(e)}")
@@ -417,11 +528,13 @@ class StripePaymentService:
         return f"{nombre} {apellidos}".strip()
 
     def _validar_importe(self, importe):
-        """Valida que el importe esté dentro de los límites de Stripe"""
-        importe_centavos = int(importe * 100)
-        min_amount = settings.STRIPE_MIN_AMOUNT.get(self.currency, 50)
-        max_amount = settings.STRIPE_MAX_AMOUNT.get(self.currency, 99999999)
-        return min_amount <= importe_centavos <= max_amount
+        """Valida que el importe esté dentro de los límites de Stripe - DEPRECATED"""
+        # Método mantenido por compatibilidad, usar _validate_amount en su lugar
+        try:
+            self._validate_amount(importe)
+            return True
+        except ValueError:
+            return False
 
     def _generar_numero_pedido(self, reserva_data, tipo_pago):
         """Genera un número de pedido único"""
@@ -774,3 +887,66 @@ class StripeWebhookService:
         except Exception as e:
             logger.error(f"Error procesando disputa: {str(e)}")
             return {"success": False, "error": "Error procesando disputa"}
+
+    def cancelar_payment_intent(self, payment_intent_id, motivo="Usuario canceló el pago"):
+        """
+        Cancela un Payment Intent
+
+        Args:
+            payment_intent_id: ID del Payment Intent a cancelar
+            motivo: Motivo de la cancelación
+
+        Returns:
+            Dict con resultado de la cancelación
+        """
+        logger.info(f"Cancelando Payment Intent: {payment_intent_id}")
+
+        try:
+            # Obtener el registro local
+            pago_stripe = PagoStripe.objects.get(
+                stripe_payment_intent_id=payment_intent_id
+            )
+
+            # Verificar que se puede cancelar
+            if pago_stripe.estado not in ["PENDIENTE", "PROCESANDO"]:
+                return {
+                    "success": False,
+                    "error": f"No se puede cancelar un pago en estado {pago_stripe.estado}",
+                    "error_code": "cannot_cancel",
+                }
+
+            # Cancelar en Stripe
+            payment_intent = stripe.PaymentIntent.cancel(payment_intent_id)
+
+            # Actualizar registro local
+            pago_stripe.cancelar_pago(motivo)
+
+            logger.info(f"Payment Intent cancelado exitosamente: {payment_intent_id}")
+            return {
+                "success": True,
+                "status": "canceled",
+                "payment_intent_id": payment_intent_id,
+                "numero_pedido": pago_stripe.numero_pedido,
+            }
+
+        except PagoStripe.DoesNotExist:
+            logger.error(f"No se encontró registro local para Payment Intent: {payment_intent_id}")
+            return {
+                "success": False,
+                "error": "Pago no encontrado en el sistema",
+                "error_code": "payment_not_found",
+            }
+        except stripe.error.StripeError as e:
+            logger.error(f"Error de Stripe al cancelar pago: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Error del procesador de pagos: {str(e)}",
+                "error_code": getattr(e, "code", "stripe_error"),
+            }
+        except Exception as e:
+            logger.error(f"Error interno al cancelar pago: {str(e)}")
+            return {
+                "success": False,
+                "error": "Error interno del servidor",
+                "error_code": "internal_error",
+            }

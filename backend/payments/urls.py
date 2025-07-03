@@ -1,19 +1,11 @@
 # backend/payments/urls.py
 from django.urls import path
 
-from .views import (
-    ConfirmPaymentIntentView,
-    CreatePaymentIntentView,
-    PaymentHistoryView,
-    PaymentStatusView,
-    RefundPaymentView,
-    StripeWebhookView,
-    check_payment_status_legacy,
-    process_payment_legacy,
-    stripe_config,
-    stripe_error,
-    stripe_success,
-)
+from .views import (CancelPaymentIntentView, ConfirmPaymentIntentView,
+                    CreatePaymentIntentView, PaymentHistoryView,
+                    PaymentStatusView, RefundPaymentView, StripeWebhookView,
+                    check_payment_status_legacy, process_payment_legacy,
+                    stripe_config, stripe_error, stripe_success)
 
 app_name = "payments"
 
@@ -28,6 +20,11 @@ urlpatterns = [
         "stripe/confirm-payment-intent/",
         ConfirmPaymentIntentView.as_view(),
         name="confirm_payment_intent",
+    ),
+    path(
+        "stripe/cancel-payment-intent/",
+        CancelPaymentIntentView.as_view(),
+        name="cancel_payment_intent",
     ),
     path(
         "stripe/payment-status/<str:numero_pedido>/",

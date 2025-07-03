@@ -88,7 +88,7 @@ export const getStripeConfig = async () => {
   try {
     logInfo('Obteniendo configuración de Stripe');
 
-    // CORREGIR: Intentar backend primero, luego fallback
+    // Intentar backend primero, luego fallback
     try {
       const response = await withTimeout(
         axios.get(`${API_URL}/payments/stripe/config/`, getAuthHeaders()),
@@ -100,7 +100,7 @@ export const getStripeConfig = async () => {
     } catch (error) {
       logInfo('Backend no disponible, usando configuración de entorno');
 
-      // CORREGIR: Validar que la clave existe antes de usarla
+      // Validar que la clave existe antes de usarla
       const publishableKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
 
       if (!publishableKey || publishableKey === 'pk_test_placeholder') {
@@ -610,6 +610,65 @@ export const mapStripeStatus = (stripeStatus) => {
   return universalMapper.mapStripeStatus(stripeStatus);
 };
 
+/**
+ * Cancela un Payment Intent
+ * @param {string} paymentIntentId - ID del Payment Intent a cancelar
+ * @param {string} motivo - Motivo de la cancelación
+ * @returns {Promise<Object>} Resultado de la cancelación
+ */
+export const cancelPaymentIntent = async (
+  paymentIntentId,
+  motivo = 'Usuario canceló el pago',
+) => {
+  try {
+    logInfo('Cancelando Payment Intent', { paymentIntentId, motivo });
+
+    if (shouldUseTestingData(false)) {
+      // Simular cancelación en modo debug
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const mockResult = {
+        success: true,
+        status: 'canceled',
+        payment_intent_id: paymentIntentId,
+        numero_pedido: `M4Y-MOCK-${Date.now()}`,
+      };
+
+      logInfo('Payment Intent simulado cancelado', mockResult);
+      return mockResult;
+    }
+
+    const response = await withTimeout(
+      axios.post(
+        `${API_URL}/payments/stripe/cancel-payment-intent/`,
+        {
+          payment_intent_id: paymentIntentId,
+          motivo: motivo,
+        },
+        getAuthHeaders(),
+      ),
+      10000,
+    );
+
+    if (response.data.success) {
+      logInfo('Payment Intent cancelado exitosamente', response.data);
+      return response.data;
+    } else {
+      throw new Error(response.data.error || 'Error cancelando Payment Intent');
+    }
+  } catch (error) {
+    logError('Error cancelando Payment Intent', error);
+
+    const errorMessage =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      'Error al cancelar el intento de pago';
+
+    throw new Error(errorMessage);
+  }
+};
+
 // Exportar todas las funciones
 const StripePaymentServices = {
   initializeStripe,
@@ -625,6 +684,7 @@ const StripePaymentServices = {
   formatCurrency,
   formatPaymentDate,
   mapStripeStatus,
+  cancelPaymentIntent,
 };
 
 export default StripePaymentServices;

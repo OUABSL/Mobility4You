@@ -503,10 +503,21 @@ if DEBUG:
     # LOGGING["loggers"]["django.db.backends"]["level"] = "DEBUG"
 
 
-# Configuración de Stripe
+# ========================================
+# CONFIGURACIÓN DE STRIPE - MEJORADA
+# ========================================
+
+# Configuración básica de Stripe
 STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="pk_test_placeholder")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="sk_test_placeholder")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="whsec_placeholder")
+
+# Validación de configuración en producción
+if DJANGO_ENV == "production":
+    if STRIPE_SECRET_KEY == "sk_test_placeholder":
+        raise ValueError("STRIPE_SECRET_KEY debe configurarse en producción")
+    if STRIPE_WEBHOOK_SECRET == "whsec_placeholder":
+        raise ValueError("STRIPE_WEBHOOK_SECRET debe configurarse en producción")
 
 # URLs para redirecciones de Stripe
 STRIPE_SUCCESS_URL = env(
@@ -516,21 +527,21 @@ STRIPE_CANCEL_URL = env(
     "STRIPE_CANCEL_URL", default=f"{FRONTEND_URL}/reservation-confirmation/error"
 )
 
-
-# Configuración específica de Stripe
+# Configuración específica de Stripe - Mejorada
 STRIPE_CONFIG = {
-    "api_version": "2023-10-16",  # Versión de API de Stripe
+    "api_version": "2024-06-20",  # Versión más reciente
     "automatic_payment_methods": {
         "enabled": True,
-        "allow_redirects": "never",  # Para mantener el flujo en la app
+        "allow_redirects": "never",  # Mantener flujo en la app
     },
     "capture_method": "automatic",  # Captura automática
-    "confirmation_method": "automatic",  # Confirmación automatic desde frontend
+    "confirmation_method": "automatic",  # Confirmación automática desde frontend
     "currency": "eur",
     "payment_method_types": ["card"],
     "statement_descriptor": "MOBILITY4YOU",  # Máximo 22 caracteres
-    "statement_descriptor_suffix": None,
+    "statement_descriptor_suffix": "RENTAL",  # Suffix descriptivo
     "application_fee_amount": None,  # Para pagos conectados si aplica
+    "setup_future_usage": None,  # No guardar métodos de pago por defecto
 }
 
 # Configuración para el modelo de usuario personalizado

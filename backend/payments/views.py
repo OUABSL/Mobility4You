@@ -5,13 +5,12 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from reservas.models import Reserva
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from reservas.models import Reserva
 
 from .models import PagoStripe
 from .serializers import PagoStripeSerializer
@@ -22,10 +21,10 @@ logger = logging.getLogger("stripe")
 
 class CreatePaymentIntentView(APIView):
     """
-    Vista para crear Payment Intents de Stripe
+    Vista para crear Payment Intents de Stripe - Mejorada
     """
 
-    permission_classes = [AllowAny]  # Cambiará a IsAuthenticated en producción
+    permission_classes = [AllowAny]  # TODO: Cambiar a IsAuthenticated en producción
 
     def post(self, request):
         """
@@ -49,7 +48,11 @@ class CreatePaymentIntentView(APIView):
             if not reserva_data:
                 logger.error("Datos de reserva faltantes")
                 return Response(
-                    {"error": "Se requieren datos de reserva"},
+                    {
+                        "success": False,
+                        "error": "Se requieren datos de reserva",
+                        "error_code": "missing_reserva_data"
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -59,7 +62,9 @@ class CreatePaymentIntentView(APIView):
                 logger.error(f"Tipo de pago inválido: {tipo_pago}")
                 return Response(
                     {
-                        "error": "Tipo de pago debe ser uno de: {0}".format(", ".join(tipos_validos))
+                        "success": False,
+                        "error": f"Tipo de pago debe ser uno de: {', '.join(tipos_validos)}",
+                        "error_code": "invalid_payment_type"
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
@@ -79,12 +84,30 @@ class CreatePaymentIntentView(APIView):
                 return Response(resultado, status=status.HTTP_201_CREATED)
             else:
                 logger.error(f"Error creando Payment Intent: {resultado['error']}")
-                return Response(resultado, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Determinar status code apropiado según el tipo de error
+                error_code = resultado.get("error_code", "unknown")
+                if error_code == "validation_error":
+                    status_code = status.HTTP_400_BAD_REQUEST
+                elif error_code in ["authentication_error", "invalid_request_error"]:
+                    status_code = status.HTTP_401_UNAUTHORIZED
+                elif error_code == "rate_limit_error":
+                    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+                elif error_code in ["api_connection_error", "stripe_error"]:
+                    status_code = status.HTTP_502_BAD_GATEWAY
+                else:
+                    status_code = status.HTTP_400_BAD_REQUEST
+                
+                return Response(resultado, status=status_code)
 
         except Exception as e:
             logger.error(f"Error interno en CreatePaymentIntentView: {str(e)}")
             return Response(
-                {"error": "Error interno del servidor"},
+                {
+                    "success": False,
+                    "error": "Error interno del servidor",
+                    "error_code": "internal_server_error"
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -521,3 +544,73 @@ def stripe_config(request):
             "statement_descriptor": settings.STRIPE_CONFIG["statement_descriptor"],
         }
     )
+
+
+class CancelPaymentIntentView(APIView):
+    """
+    Vista para cancelar Payment Intents
+    """
+
+    permission_classes = [AllowAny]  # TODO: Cambiar a IsAuthenticated en producción
+
+    def post(self, request):
+        """
+        Cancela un Payment Intent
+
+        Body esperado:
+        {
+            "payment_intent_id": "pi_xxx",
+            "motivo": "Usuario canceló el pago" // opcional
+        }
+        """
+        logger.info("=== INICIO CANCELACIÓN PAYMENT INTENT ===")
+
+        try:
+            payment_intent_id = request.data.get("payment_intent_id")
+            motivo = request.data.get("motivo", "Usuario canceló el pago")
+
+            if not payment_intent_id:
+                logger.error("Payment Intent ID faltante")
+                return Response(
+                    {
+                        "success": False,
+                        "error": "Se requiere payment_intent_id",
+                        "error_code": "missing_payment_intent_id"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Cancelar Payment Intent
+            service = StripePaymentService()
+            resultado = service.cancelar_payment_intent(
+                payment_intent_id=payment_intent_id, 
+                motivo=motivo
+            )
+
+            if resultado["success"]:
+                logger.info(f"Payment Intent cancelado exitosamente: {payment_intent_id}")
+                return Response(resultado, status=status.HTTP_200_OK)
+            else:
+                logger.error(f"Error cancelando Payment Intent: {resultado['error']}")
+                
+                # Determinar status code apropiado
+                error_code = resultado.get("error_code", "unknown")
+                if error_code == "payment_not_found":
+                    status_code = status.HTTP_404_NOT_FOUND
+                elif error_code == "cannot_cancel":
+                    status_code = status.HTTP_400_BAD_REQUEST
+                else:
+                    status_code = status.HTTP_400_BAD_REQUEST
+                
+                return Response(resultado, status=status_code)
+
+        except Exception as e:
+            logger.error(f"Error interno en CancelPaymentIntentView: {str(e)}")
+            return Response(
+                {
+                    "success": False,
+                    "error": "Error interno del servidor",
+                    "error_code": "internal_server_error"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

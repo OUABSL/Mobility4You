@@ -149,7 +149,7 @@ class PagoStripe(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        """Override save para validaciones adicionales"""
+        """Override save para validaciones adicionales y mejoras"""
         # Validar que el importe sea positivo
         if self.importe <= 0:
             raise ValueError("El importe debe ser mayor a 0")
@@ -161,6 +161,22 @@ class PagoStripe(models.Model):
         # Auto-generar nombre del cliente si falta
         if not self.nombre_cliente and self.email_cliente:
             self.nombre_cliente = self.email_cliente.split("@")[0]
+
+        # Validar que el numero_pedido sea único
+        if not self.numero_pedido:
+            raise ValueError("El número de pedido es obligatorio")
+
+        # Validar que el payment_intent_id tenga formato correcto
+        if self.stripe_payment_intent_id and not self.stripe_payment_intent_id.startswith("pi_"):
+            raise ValueError("El Payment Intent ID debe tener formato válido de Stripe")
+
+        # Validar moneda
+        valid_currencies = ["EUR", "USD", "GBP"]
+        if self.moneda.upper() not in valid_currencies:
+            raise ValueError(f"Moneda debe ser una de: {', '.join(valid_currencies)}")
+
+        # Auto-convertir moneda a mayúsculas
+        self.moneda = self.moneda.upper()
 
         super().save(*args, **kwargs)
 
@@ -223,6 +239,25 @@ class PagoStripe(models.Model):
             self.estado = "FALLIDO"
 
         self.save()
+
+    def cancelar_pago(self, motivo="Usuario canceló el pago"):
+        """Cancela el pago y actualiza el estado"""
+        if self.estado not in ["PENDIENTE", "PROCESANDO"]:
+            raise ValueError(f"No se puede cancelar un pago en estado {self.estado}")
+        
+        self.estado = "CANCELADO"
+        self.mensaje_error = motivo
+        self.save()
+        return True
+
+    def marcar_como_expirado(self):
+        """Marca el pago como expirado"""
+        if self.estado in ["PENDIENTE", "PROCESANDO"]:
+            self.estado = "CANCELADO"
+            self.mensaje_error = "Pago expirado por tiempo límite"
+            self.save()
+            return True
+        return False
 
 
 class ReembolsoStripe(models.Model):
