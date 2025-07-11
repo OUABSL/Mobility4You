@@ -13,9 +13,13 @@ pip install -r requirements.txt
 echo "🔄 Collecting static files..."
 python manage.py collectstatic --noinput --clear
 
-# Ejecutar migraciones
-echo "🔄 Running database migrations..."
-python manage.py migrate --noinput
+# Ejecutar migraciones solo si DATABASE_URL está configurada
+if [[ -n "$DATABASE_URL" ]]; then
+    echo "🔄 Running database migrations..."
+    python manage.py migrate --noinput
+else
+    echo "⚠️  DATABASE_URL not found, skipping migrations..."
+fi
 
 # Crear superusuario si no existe (solo si se proporciona)
 if [[ $CREATE_SUPERUSER ]]; then

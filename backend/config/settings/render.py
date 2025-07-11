@@ -6,8 +6,14 @@ Configuración optimizada para despliegue en Render
 import os
 
 import dj_database_url
+import environ
 
 from .base import *
+
+# Inicializar environ
+env = environ.Env(
+    DEBUG=(bool, False)
+)
 
 DEBUG = False
 
@@ -23,13 +29,24 @@ if "RENDER_EXTERNAL_HOSTNAME" in os.environ:
     ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
 
 # Database - PostgreSQL en Render
-DATABASES = {
-    "default": dj_database_url.parse(
-        env("DATABASE_URL"),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+else:
+    # Fallback para desarrollo o si no está configurada
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Configuración para Backblaze B2
 if os.environ.get('USE_S3') == 'TRUE':

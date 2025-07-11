@@ -1,0 +1,103 @@
+# docker-compose.postgresql.yml
+# Configuración Docker con PostgreSQL (migrado desde MySQL/MariaDB)
+
+version: "3.8"
+
+services:
+  # PostgreSQL Database (migrado desde MariaDB)
+  postgres:
+    image: postgres:15-alpine
+    container_name: mobility4you_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mobility4you}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-superseguro_postgres}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - mobility4you_network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mobility4you}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Django (actualizado para PostgreSQL)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mobility4you_backend
+    restart: always
+    environment:
+      - DJANGO_ENV=development
+      - POSTGRES_DB=${POSTGRES_DB:-mobility4you}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-superseguro_postgres}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - SECRET_KEY=${SECRET_KEY:-claveprivadatemporal}
+      - DEBUG=True
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mobility4you_network
+
+  # Frontend React (sin cambios)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mobility4you_frontend
+    restart: always
+    environment:
+      - REACT_APP_BACKEND_URL=http://localhost:8000
+      - REACT_APP_API_URL=http://localhost:8000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - mobility4you_network
+
+  # Redis (sin cambios)
+  redis:
+    image: redis:7-alpine
+    container_name: mobility4you_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - mobility4you_network
+
+volumes:
+  postgres_data:
+    driver: local
+  static_volume:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  mobility4you_network:
+    driver: bridge
