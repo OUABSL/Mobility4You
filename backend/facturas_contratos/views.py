@@ -208,8 +208,8 @@ class FacturaViewSet(viewsets.ModelViewSet):
             factura = Factura.objects.create(
                 reserva=reserva,
                 base_imponible=base_imponible,
-                importe_iva=importe_iva,
-                importe_total=importe_total,
+                iva=importe_iva,
+                total=importe_total,
                 estado="emitida",
             )
 
