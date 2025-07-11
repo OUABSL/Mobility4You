@@ -14,17 +14,43 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import path, include
+
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.http import JsonResponse
+from django.urls import include, path
+
+# Importar nuestro admin personalizado
+from .admin import mobility_admin_site
+# Importar placeholders
+from .placeholders import placeholder_urlpatterns
+
+
+# Simple health check view
+def health_check(request):
+    return JsonResponse({"status": "healthy", "service": "mobility4you-backend"})
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
-    path('api/payments/', include('payments.urls', namespace='payments')),
+    path("health/", health_check, name="health-check"),
+    path("admin/", mobility_admin_site.urls),  # Usar nuestro admin personalizado
+    # APIs modulares (sin namespace por ahora para evitar conflictos)
+    path("api/usuarios/", include("usuarios.urls")),
+    path("api/lugares/", include("lugares.urls")),
+    path("api/vehiculos/", include("vehiculos.urls")),
+    path("api/reservas/", include("reservas.urls")),
+    path("api/politicas/", include("politicas.urls")),
+    path("api/facturas-contratos/", include("facturas_contratos.urls")),
+    path("api/comunicacion/", include("comunicacion.urls")),
+    path("api/payments/", include("payments.urls", namespace="payments")),
+    # Placeholders dinámicos
+    *placeholder_urlpatterns,
+    # API monolítica original (DESACTIVADA - funcionalidad migrada)
+    # path('api/', include('api.urls')),  # ✅ Migrado a apps modulares
 ]
 
 # Serve media files during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Incluir URLs de placeholders

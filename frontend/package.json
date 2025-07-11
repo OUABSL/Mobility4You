@@ -1,7 +1,11 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
+  "name": "movility-for-you-frontend",
+  "version": "1.0.0",
   "private": true,
+  "description": "Frontend de la aplicación Movility for You - Sistema de alquiler de vehículos",
+  "author": "OUAEL BOUSSIALI",
+  "license": "MIT",
+  "homepage": "./",
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-brands-svg-icons": "^6.7.2",
@@ -30,8 +34,17 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:prod": "NODE_ENV=production react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test:ci": "CI=true react-scripts test --coverage --silent --watchAll=false",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "eject": "react-scripts eject",
+    "lint": "echo 'Linting would be here if ESLint was configured'",
+    "lint:fix": "echo 'Lint fixing would be here if ESLint was configured'",
+    "analyze": "npm run build && npx serve -s build",
+    "clean": "rm -rf build node_modules/.cache",
+    "preinstall": "echo 'Installing dependencies...'",
+    "postinstall": "echo 'Dependencies installed successfully'"
   },
   "eslintConfig": {
     "extends": [
@@ -53,5 +66,16 @@
   },
   "devDependencies": {
     "http-proxy-middleware": "^3.0.5"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "react",
+    "frontend",
+    "alquiler-vehiculos",
+    "movility-for-you",
+    "car-rental"
+  ]
 }

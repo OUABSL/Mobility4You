@@ -1,0 +1,94 @@
+# docker-compose.dev-simple.yml
+# Configuración simplificada para desarrollo (sin nginx)
+# Para usar: docker-compose -f docker-compose.dev-simple.yml up
+
+version: "3.8"
+
+services:
+  # Base de datos MariaDB
+  db:
+    image: mariadb:10.6
+    container_name: mobility4you_db_dev
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data_dev:/var/lib/mysql
+      - ./docker/mariadb-init.sh:/docker-entrypoint-initdb.d/mariadb-init.sh:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      timeout: 20s
+      retries: 10
+      interval: 10s
+    networks:
+      - mobility4you_network
+
+  # Backend Django
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mobility4you_backend_dev
+    environment:
+      - DJANGO_ENV=development
+      - DB_HOST=db
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USER=${MYSQL_USER}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - static_volume_dev:/app/staticfiles
+      - ./backend/logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mobility4you_network
+
+  # Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mobility4you_frontend_dev
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_BACKEND_URL=http://localhost:8000
+      - REACT_APP_API_URL=http://localhost:8000/api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - mobility4you_network
+
+  # Redis para cache (opcional)
+  redis:
+    image: redis:6.2-alpine
+    container_name: mobility4you_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - mobility4you_network
+
+volumes:
+  db_data_dev:
+  static_volume_dev:
+  redis_data_dev:
+
+networks:
+  mobility4you_network:
+    driver: bridge

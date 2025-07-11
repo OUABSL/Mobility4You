@@ -1,0 +1,91 @@
+# ========================================
+# MULTI-STAGE BUILD PARA PRODUCCIÓN
+# ========================================
+
+# Build stage
+FROM node:20-alpine as build
+
+# Metadatos
+LABEL stage="build"
+LABEL maintainer="OUAEL BOUSSIALI"
+
+# Instalar dependencias del sistema
+RUN apk add --no-cache python3 make g++
+
+WORKDIR /app
+
+# Copiar archivos de dependencias
+COPY package*.json ./
+
+# Instalar todas las dependencias (incluyendo dev para el build)
+RUN npm ci --legacy-peer-deps && \
+    npm cache clean --force
+
+# Copiar código fuente
+COPY . .
+
+# Build arguments para variables de entorno
+ARG REACT_APP_STRIPE_PUBLISHABLE_KEY
+ARG REACT_APP_API_URL
+ARG REACT_APP_BACKEND_URL
+ARG REACT_APP_FRONTEND_URL
+ARG REACT_APP_STRIPE_ENABLED=true
+ARG REACT_APP_ENABLE_ANALYTICS=true
+ARG REACT_APP_ENABLE_ERROR_REPORTING=true
+
+# Establecer variables de entorno para el build
+ENV NODE_ENV=production
+ENV REACT_APP_STRIPE_PUBLISHABLE_KEY=$REACT_APP_STRIPE_PUBLISHABLE_KEY
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
+ENV REACT_APP_FRONTEND_URL=$REACT_APP_FRONTEND_URL
+ENV REACT_APP_STRIPE_ENABLED=$REACT_APP_STRIPE_ENABLED
+ENV REACT_APP_ENABLE_ANALYTICS=$REACT_APP_ENABLE_ANALYTICS
+ENV REACT_APP_ENABLE_ERROR_REPORTING=$REACT_APP_ENABLE_ERROR_REPORTING
+ENV REACT_APP_DEBUG_MODE=false
+ENV GENERATE_SOURCEMAP=false
+
+# Construir la aplicación para producción
+RUN npm run build:prod
+
+# Production stage
+FROM nginx:1.25-alpine as production
+
+# Metadatos
+LABEL maintainer="OUAEL BOUSSIALI"
+LABEL version="1.0.0"
+LABEL description="Movility for You - Frontend Production"
+
+# Instalar curl para health checks
+RUN apk add --no-cache curl
+
+# Crear usuario nginx no-root
+RUN addgroup -g 101 -S nginx && \
+    adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
+
+# Copiar archivos construidos desde la etapa de build
+COPY --from=build --chown=nginx:nginx /app/build /usr/share/nginx/html
+
+# Nota: La configuración nginx está centralizada en docker/nginx/
+# No copiar configuración local ya que se maneja desde docker-compose
+
+# Establecer permisos correctos
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d && \
+    touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
+
+# Cambiar al usuario nginx
+USER nginx
+
+# Exponer puerto 80
+EXPOSE 80
+
+# Health check optimizado
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Comando para iniciar nginx
+CMD ["nginx", "-g", "daemon off;"]

@@ -12,11 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 import os
 from pathlib import Path
-import environ
 
-from pathlib import Path
-import os
-import sys
 import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -24,17 +20,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Detectar entorno y cargar el archivo .env adecuado
 env = environ.Env()
-DJANGO_ENV = os.environ.get('DJANGO_ENV', 'development')
-if DJANGO_ENV == 'production':
-    env_file = os.path.join(BASE_DIR, '.env.prod')
+DJANGO_ENV = os.environ.get("DJANGO_ENV", "development")
+if DJANGO_ENV == "production":
+    env_file = os.path.join(BASE_DIR, ".env.prod")
 else:
-    env_file = os.path.join(BASE_DIR, '.env')
+    env_file = os.path.join(BASE_DIR, ".env")
 environ.Env.read_env(env_file)
 
 # Secret key y debug desde el entorno
-SECRET_KEY = env('SECRET_KEY', default='claveprivadatemporal')
-DEBUG = env.bool('DEBUG', default=(DJANGO_ENV != 'production'))
-ALLOWED_HOSTS = env.list('ALLOWED_HOST', default=['localhost', '127.0.0.1'])
+SECRET_KEY = env("SECRET_KEY", default="claveprivadatemporal")
+DEBUG = env.bool("DEBUG", default=(DJANGO_ENV != "production"))
+ALLOWED_HOSTS = env.list("ALLOWED_HOST", default=["localhost", "127.0.0.1"])
 
 
 # Quick-start development settings - unsuitable for production
@@ -46,72 +42,89 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOST', default=['localhost', '127.0.0.1'])
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 
-#Cambiar ALLOWED_HOSTS para permitir conexiones locales:
+# Cambiar ALLOWED_HOSTS para permitir conexiones locales:
 # ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'rest_framework', # Agregado
-    'corsheaders', # Agregado
-    'api', # Agregado
-    'payments', # Agregado por Ouael el 18-05
-    'django_filters', # Agregado por Ouael el 22-05
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",  # Agregado
+    "corsheaders",  # Agregado
+    "django_filters",  # Agregado por Ouael el 22-05    # Aplicaciones modulares
+    "config",  # Para servir archivos estáticos personalizados del admin
+    "usuarios",
+    "lugares",  # Nueva app para lugares y direcciones
+    "vehiculos",
+    "reservas",
+    "politicas",
+    "facturas_contratos",
+    "comunicacion",
+    "payments",  # Aplicación de pagos existente
+    "utils",  # Utilidades del sistema incluye comandos de gestión
+    # Aplicación original (DESACTIVADA - migración completada)
+    # 'api',       # ✅ Funcionalidad migrada a apps modulares
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Agregado
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "config.middleware.RequestTrackingMiddleware",  # Tracking de requests con ID único
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "config.middleware.CORSMiddleware",  # CORS personalizado (reemplaza corsheaders)
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "config.middleware.SecurityHeadersMiddleware",  # Headers de seguridad
+    "config.middleware.RequestSizeMiddleware",  # Limitación de tamaño de requests
+    "config.middleware.HealthCheckMiddleware",  # Health checks rápidos
+    "config.middleware.GlobalExceptionMiddleware",  # Manejo global de excepciones
 ]
 
 
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [os.path.join(BASE_DIR, "templates")],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
+WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': env('MYSQL_DATABASE', default='mobility4you'),
-        'USER': env('MYSQL_USER', default='mobility'),
-        'PASSWORD': env('MYSQL_PASSWORD', default='miclave'),
-        'HOST': env('DB_HOST', default='db'),  # 'db' para Docker Compose, 'localhost' para local
-        'PORT': env('DB_PORT', default='3306'),
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": env("MYSQL_DATABASE", default="mobility4you"),
+        "USER": env("MYSQL_USER", default="mobility"),
+        "PASSWORD": env("MYSQL_PASSWORD", default="miclave"),
+        "HOST": env(
+            "DB_HOST", default="db"
+        ),  # 'db' para Docker Compose, 'localhost' para local
+        "PORT": env("DB_PORT", default="3306"),
+        "OPTIONS": {
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
     }
 }
@@ -131,27 +144,26 @@ DATABASES = {
 # }
 
 
-
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
 
-#Agregado
+# Agregado
 # REST_FRAMEWORK = {
 #     'DEFAULT_PERMISSION_CLASSES': [
 #         'rest_framework.permissions.AllowAny',  # Permite acceso público (ajústalo según necesidad)
@@ -163,31 +175,32 @@ AUTH_PASSWORD_VALIDATORS = [
 # }
 
 
-#NUEVO 
+
 # También agregar la configuración de filtros en REST_FRAMEWORK
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",
     ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
     ],
-    'DEFAULT_FILTER_BACKENDS': [  # ← AGREGAR ESTAS LÍNEAS
-        'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
+    "DEFAULT_FILTER_BACKENDS": [  # ← AGREGAR ESTAS LÍNEAS
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # ← OPCIONAL
-    'PAGE_SIZE': 20  # ← OPCIONAL
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",  # ← OPCIONAL
+    "PAGE_SIZE": 20,  # ← OPCIONAL
+    "EXCEPTION_HANDLER": "config.middleware.custom_exception_handler",  # ← MANEJADOR PERSONALIZADO
 }
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -197,27 +210,45 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = '/django-static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_URL = "/django-static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
-# Media files (uploaded files)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# Additional locations of static files - DEPRECATED: All files now in staticfiles/
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, "static"),  # Moved to staticfiles/
+# ]
+
+# Media files (uploaded files) - NOW UNIFIED IN STATICFILES but with separate URL
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
+
+# Base URL para construcción de URLs absolutas cuando no hay request disponible
+BASE_URL = env("BASE_URL", default="http://localhost:8000")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# CORS (Cross-Origin Resource Sharing) settings
-# Permitir solicitudes CORS desde el frontend
+# CORS (Cross-Origin Resource Sharing) settings - Manejado por middleware personalizado
+# La configuración CORS ahora se maneja en config.middleware.CORSMiddleware
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost",
     "http://127.0.0.1",
+    "http://localhost:80",
+    "http://127.0.0.1:80",
 ]
+
+# En producción, agregar dominios específicos
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS.extend([
+        "https://yourdomain.com",
+        "https://www.yourdomain.com",
+        # Agregar otros dominios de producción aquí
+    ])
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -235,130 +266,299 @@ CSRF_TRUSTED_ORIGINS = [
 # Configuración adicional de CSRF para proxy
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = False  # True en producción con HTTPS
-CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
-CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
+CSRF_COOKIE_NAME = "csrftoken"
 
 # Permitir requests desde el proxy nginx
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # URL del frontend para redirecciones
-FRONTEND_URL = env('FRONTEND_URL', default='http://localhost')
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost")
 
 # Configuración de Email
-EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = env.int('EMAIL_PORT', default=587)
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@mobilityfor-you.com')
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@mobilityfor-you.com")
 
 # Email específico para mensajes de contacto
-CONTACT_EMAIL = env('CONTACT_EMAIL', default='info@mobilityfor-you.com')
+CONTACT_EMAIL = env("CONTACT_EMAIL", default="info@mobilityfor-you.com")
 
 # Configuración de plantillas
-TEMPLATES[0]['DIRS'].append(os.path.join(BASE_DIR, 'templates'))
+TEMPLATES[0]["DIRS"].append(os.path.join(BASE_DIR, "templates"))
 
-# Configuración de logging para emails y admin
+# Configuración de logging mejorada
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)
+
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "detailed": {
+            "format": "[{asctime}] {levelname:<8} | {name:<20} | {module:<15} | {funcName:<15} | Line {lineno:<4} | {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
+        "simple": {
+            "format": "[{asctime}] {levelname:<8} | {name} | {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
-        'admin_formatter': {
-            'format': '[{asctime}] {levelname} - {name} - {message}',
-            'style': '{',
+        "console": {
+            "format": "{levelname:<8} | {name:<20} | {message}",
+            "style": "{",
         },
-    },
-    'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'help.log'),
-            'formatter': 'verbose',
-        },
-        'admin_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'admin_operations.log'),
-            'formatter': 'admin_formatter',
-        },
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+        "api_formatter": {
+            "format": "[{asctime}] {levelname} | {method} {path} | User: {user} | Status: {status_code} | {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
-    'loggers': {
-        'emails': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': True,
+    "handlers": {
+        # Handler principal para todos los logs de Django
+        "django_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "django.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 5,
+            "formatter": "detailed",
+            "encoding": "utf-8",
         },
-        'admin_operations': {
-            'handlers': ['admin_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
+        # Handler para errores críticos
+        "error_file": {
+            "level": "ERROR",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "errors.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 10,
+            "formatter": "detailed",
+            "encoding": "utf-8",
         },
-        'django': {
-            'handlers': ['file'],
-            'level': 'INFO',
-            'propagate': True,
+        # Handler para requests de API
+        "api_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "api_requests.log"),
+            "maxBytes": 20 * 1024 * 1024,  # 20MB
+            "backupCount": 7,
+            "formatter": "detailed",
+            "encoding": "utf-8",
+        },
+        # Handler para base de datos
+        "database_file": {
+            "level": "WARNING",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "database.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 5,
+            "formatter": "detailed",
+            "encoding": "utf-8",
+        },
+        # Handler para pagos y Stripe
+        "payments_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "payments.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10MB
+            "backupCount": 10,
+            "formatter": "detailed",
+            "encoding": "utf-8",
+        },
+        # Handler para emails
+        "email_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "emails.log"),
+            "maxBytes": 5 * 1024 * 1024,  # 5MB
+            "backupCount": 3,
+            "formatter": "detailed",
+            "encoding": "utf-8",
+        },
+        # Handler para administración
+        "admin_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "admin_operations.log"),
+            "maxBytes": 5 * 1024 * 1024,  # 5MB
+            "backupCount": 5,
+            "formatter": "detailed",
+            "encoding": "utf-8",
+        },
+        # Handler para aplicaciones modulares
+        "modular_apps_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "modular_apps.log"),
+            "maxBytes": 15 * 1024 * 1024,  # 15MB
+            "backupCount": 7,
+            "formatter": "detailed",
+            "encoding": "utf-8",
+        },
+        # Handler para consola (desarrollo)
+        "console": {
+            "level": "INFO" if not DEBUG else "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "console",
+        },
+        # Handler para debug (solo desarrollo)
+        "debug_file": {
+            "level": "DEBUG",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "debug.log"),
+            "maxBytes": 50 * 1024 * 1024,  # 50MB
+            "backupCount": 3,
+            "formatter": "detailed",
+            "encoding": "utf-8",
+        },
+    },
+    "loggers": {
+        # Logger raíz de Django
+        "django": {
+            "handlers": ["django_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Logger para requests Django
+        "django.request": {
+            "handlers": ["api_file", "error_file", "console"] if DEBUG else ["api_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Logger para base de datos
+        "django.db.backends": {
+            "handlers": ["database_file"],
+            "level": "WARNING",  # Solo errores y warnings de DB
+            "propagate": False,
+        },
+        # Logger para emails
+        "emails": {
+            "handlers": ["email_file", "console"] if DEBUG else ["email_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Logger para administración
+        "admin_operations": {
+            "handlers": ["admin_file", "console"] if DEBUG else ["admin_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Loggers para aplicaciones modulares
+        "vehiculos": {
+            "handlers": ["modular_apps_file", "console"] if DEBUG else ["modular_apps_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "usuarios": {
+            "handlers": ["modular_apps_file", "console"] if DEBUG else ["modular_apps_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "reservas": {
+            "handlers": ["modular_apps_file", "console"] if DEBUG else ["modular_apps_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "comunicacion": {
+            "handlers": ["email_file", "modular_apps_file", "console"] if DEBUG else ["email_file", "modular_apps_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "politicas": {
+            "handlers": ["modular_apps_file", "console"] if DEBUG else ["modular_apps_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "facturas_contratos": {
+            "handlers": ["modular_apps_file", "console"] if DEBUG else ["modular_apps_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "payments": {
+            "handlers": ["payments_file", "console"] if DEBUG else ["payments_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Logger para Stripe
+        "stripe": {
+            "handlers": ["payments_file", "console"] if DEBUG else ["payments_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Logger para middleware de requests
+        "api.requests": {
+            "handlers": ["api_file", "console"] if DEBUG else ["api_file"],
+            "level": "INFO",
+            "propagate": False,
         },
     },
 }
 
+# Agregar handler de debug solo en desarrollo
+if DEBUG:
+    LOGGING["loggers"]["debug"] = {
+        "handlers": ["debug_file", "console"],
+        "level": "DEBUG",
+        "propagate": False,
+    }
+    # Habilitar logging de queries SQL en desarrollo (solo para debugging específico)
+    # LOGGING["loggers"]["django.db.backends"]["level"] = "DEBUG"
 
 
-# Configuración de Stripe
-STRIPE_PUBLISHABLE_KEY = env('STRIPE_PUBLISHABLE_KEY', default='pk_test_placeholder')
-STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='sk_test_placeholder')
-STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='whsec_placeholder')
+# ========================================
+# CONFIGURACIÓN DE STRIPE - MEJORADA
+# ========================================
+
+# Configuración básica de Stripe
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="pk_test_placeholder")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="sk_test_placeholder")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="whsec_placeholder")
+
+# Validación de configuración en producción
+if DJANGO_ENV == "production":
+    if STRIPE_SECRET_KEY == "sk_test_placeholder":
+        raise ValueError("STRIPE_SECRET_KEY debe configurarse en producción")
+    if STRIPE_WEBHOOK_SECRET == "whsec_placeholder":
+        raise ValueError("STRIPE_WEBHOOK_SECRET debe configurarse en producción")
 
 # URLs para redirecciones de Stripe
-STRIPE_SUCCESS_URL = env('STRIPE_SUCCESS_URL', default=f'{FRONTEND_URL}/reservation-confirmation/exito')
-STRIPE_CANCEL_URL = env('STRIPE_CANCEL_URL', default=f'{FRONTEND_URL}/reservation-confirmation/error')
+STRIPE_SUCCESS_URL = env(
+    "STRIPE_SUCCESS_URL", default=f"{FRONTEND_URL}/reservation-confirmation/exito"
+)
+STRIPE_CANCEL_URL = env(
+    "STRIPE_CANCEL_URL", default=f"{FRONTEND_URL}/reservation-confirmation/error"
+)
 
-
-# Configuración específica de Stripe
+# Configuración específica de Stripe - Mejorada
 STRIPE_CONFIG = {
-    'api_version': '2023-10-16',  # Versión de API de Stripe
-    'automatic_payment_methods': {
-        'enabled': True,
-        'allow_redirects': 'never'  # Para mantener el flujo en la app
+    "api_version": "2024-06-20",  # Versión más reciente
+    "automatic_payment_methods": {
+        "enabled": True,
+        "allow_redirects": "never",  # Mantener flujo en la app
     },
-    'capture_method': 'automatic',  # Captura automática
-    'confirmation_method': 'automatic',  # Confirmación automatic desde frontend
-    'currency': 'eur',
-    'payment_method_types': ['card'],
-    'statement_descriptor': 'MOBILITY4YOU',  # Máximo 22 caracteres
-    'statement_descriptor_suffix': None,
-    'application_fee_amount': None,  # Para pagos conectados si aplica
+    "capture_method": "automatic",  # Captura automática
+    "confirmation_method": "automatic",  # Confirmación automática desde frontend
+    "currency": "eur",
+    "payment_method_types": ["card"],
+    "statement_descriptor": "MOBILITY4YOU",  # Máximo 22 caracteres
+    "statement_descriptor_suffix": "RENTAL",  # Suffix descriptivo
+    "application_fee_amount": None,  # Para pagos conectados si aplica
+    "setup_future_usage": None,  # No guardar métodos de pago por defecto
 }
 
-# Configuración faltante para AUTH_USER_MODEL
-AUTH_USER_MODEL = 'api.Usuario'  # Usar el modelo Usuario personalizado
-
-
-
-# Configuración de logging para Stripe
-LOGGING['loggers']['stripe'] = {
-    'handlers': ['file', 'console'] if DEBUG else ['file'],
-    'level': 'INFO',
-    'propagate': False,
-}
+# Configuración para el modelo de usuario personalizado
+AUTH_USER_MODEL = "usuarios.Usuario"  # Cambiar a la nueva aplicación usuarios
 
 # Configuración de timeouts para requests HTTP
 STRIPE_TIMEOUT = 30  # segundos
@@ -368,113 +568,129 @@ STRIPE_WEBHOOK_TOLERANCE = 300  # 5 minutos de tolerancia para webhooks
 
 # Metadatos por defecto para todos los pagos
 STRIPE_DEFAULT_METADATA = {
-    'platform': 'mobility4you',
-    'version': '1.0',
-    'environment': DJANGO_ENV,
+    "platform": "mobility4you",
+    "version": "1.0",
+    "environment": DJANGO_ENV,
 }
 
 # Configuración para diferentes tipos de pago
 STRIPE_PAYMENT_CONFIG = {
-    'INICIAL': {
-        'description': 'Pago inicial de reserva de vehículo',
-        'metadata_prefix': 'reserva_inicial',
+    "INICIAL": {
+        "description": "Pago inicial de reserva de vehículo",
+        "metadata_prefix": "reserva_inicial",
     },
-    'DIFERENCIA': {
-        'description': 'Pago de diferencia por modificación de reserva',
-        'metadata_prefix': 'reserva_diferencia',
+    "DIFERENCIA": {
+        "description": "Pago de diferencia por modificación de reserva",
+        "metadata_prefix": "reserva_diferencia",
     },
-    'EXTRA': {
-        'description': 'Pago adicional de extras',
-        'metadata_prefix': 'reserva_extra',
+    "EXTRA": {
+        "description": "Pago adicional de extras",
+        "metadata_prefix": "reserva_extra",
     },
-    'PENALIZACION': {
-        'description': 'Pago de penalización',
-        'metadata_prefix': 'reserva_penalizacion',
-    }
+    "PENALIZACION": {
+        "description": "Pago de penalización",
+        "metadata_prefix": "reserva_penalizacion",
+    },
 }
 
 # Reembolsos - Configuración
 STRIPE_REFUND_CONFIG = {
-    'reason_mapping': {
-        'CANCELACION_CLIENTE': 'requested_by_customer',
-        'CANCELACION_EMPRESA': 'requested_by_customer',  # Stripe no tiene opción empresa
-        'MODIFICACION_RESERVA': 'requested_by_customer',
-        'ERROR_PAGO': 'duplicate',
-        'FRAUDE': 'fraudulent',
-        'OTRO': 'requested_by_customer',
+    "reason_mapping": {
+        "CANCELACION_CLIENTE": "requested_by_customer",
+        "CANCELACION_EMPRESA": "requested_by_customer",  # Stripe no tiene opción empresa
+        "MODIFICACION_RESERVA": "requested_by_customer",
+        "ERROR_PAGO": "duplicate",
+        "FRAUDE": "fraudulent",
+        "OTRO": "requested_by_customer",
     }
 }
 
 # Configuración de retry para webhooks fallidos
 STRIPE_WEBHOOK_RETRY_CONFIG = {
-    'max_retries': 3,
-    'retry_delay': 60,  # segundos
-    'backoff_factor': 2,  # multiplicador para delay exponencial
+    "max_retries": 3,
+    "retry_delay": 60,  # segundos
+    "backoff_factor": 2,  # multiplicador para delay exponencial
 }
 
 # Configuración de monedas soportadas
-STRIPE_SUPPORTED_CURRENCIES = ['eur', 'usd', 'gbp']
-STRIPE_DEFAULT_CURRENCY = 'eur'
+STRIPE_SUPPORTED_CURRENCIES = ["eur", "usd", "gbp"]
+STRIPE_DEFAULT_CURRENCY = "eur"
 
 # Configuración de límites
 STRIPE_MIN_AMOUNT = {
-    'eur': 50,  # 0.50 EUR en centavos
-    'usd': 50,  # 0.50 USD en centavos
-    'gbp': 30,  # 0.30 GBP en centavos
+    "eur": 50,  # 0.50 EUR en centavos
+    "usd": 50,  # 0.50 USD en centavos
+    "gbp": 30,  # 0.30 GBP en centavos
 }
 
 STRIPE_MAX_AMOUNT = {
-    'eur': 99999999,  # 999,999.99 EUR en centavos
-    'usd': 99999999,  # 999,999.99 USD en centavos
-    'gbp': 99999999,  # 999,999.99 GBP en centavos
+    "eur": 99999999,  # 999,999.99 EUR en centavos
+    "usd": 99999999,  # 999,999.99 USD en centavos
+    "gbp": 99999999,  # 999,999.99 GBP en centavos
 }
 
 # Headers adicionales para requests a Stripe
 STRIPE_EXTRA_HEADERS = {
-    'Stripe-Version': STRIPE_CONFIG['api_version'],
-    'User-Agent': f'Mobility4You/{DJANGO_ENV}',
+    "Stripe-Version": STRIPE_CONFIG["api_version"],
+    "User-Agent": f"Mobility4You/{DJANGO_ENV}",
 }
 
 # Configuración para manejo de duplicados
-STRIPE_IDEMPOTENCY_KEY_PREFIX = 'mobility4you'
+STRIPE_IDEMPOTENCY_KEY_PREFIX = "mobility4you"
 
 # Webhooks que queremos procesar
 STRIPE_WEBHOOK_EVENTS = [
-    'payment_intent.succeeded',
-    'payment_intent.payment_failed',
-    'payment_intent.canceled',
-    'charge.dispute.created',
-    'refund.created',
-    'refund.updated',
-    'invoice.payment_succeeded',  # Para futuras suscripciones
-    'customer.subscription.deleted',  # Para futuras suscripciones
+    "payment_intent.succeeded",
+    "payment_intent.payment_failed",
+    "payment_intent.canceled",
+    "charge.dispute.created",
+    "refund.created",
+    "refund.updated",
+    "invoice.payment_succeeded",  # Para futuras suscripciones
+    "customer.subscription.deleted",  # Para futuras suscripciones
 ]
 
 # Rate limiting para API de Stripe (requests por segundo)
 STRIPE_RATE_LIMIT = {
-    'requests_per_second': 25,
-    'burst_limit': 100,
+    "requests_per_second": 25,
+    "burst_limit": 100,
 }
 
 # Configuración específica para el entorno
-if DJANGO_ENV == 'production':
+if DJANGO_ENV == "production":
     # Configuraciones adicionales para producción
-    STRIPE_CONFIG['capture_method'] = 'automatic'
+    STRIPE_CONFIG["capture_method"] = "automatic"
     STRIPE_WEBHOOK_TOLERANCE = 300
-    
-    # Configuración más estricta de logging en producción
-    LOGGING['loggers']['stripe']['level'] = 'WARNING'
-    
-elif DJANGO_ENV == 'development':
+
+elif DJANGO_ENV == "development":
     # Configuraciones para desarrollo
-    STRIPE_CONFIG['capture_method'] = 'automatic'
+    STRIPE_CONFIG["capture_method"] = "automatic"
     STRIPE_WEBHOOK_TOLERANCE = 600  # Más tolerancia en desarrollo
-    
-    # Logging más verboso en desarrollo
-    LOGGING['loggers']['stripe']['level'] = 'DEBUG'
-    
 
 
 # AGREGAR configuración de zona horaria para España
-TIME_ZONE = 'Europe/Madrid'
+TIME_ZONE = "Europe/Madrid"
 USE_TZ = True
+
+# ========================================
+# CONFIGURACIÓN DE BREVO (EMAIL SERVICE)
+# ========================================
+
+# Configuración de Brevo para envío de emails transaccionales
+BREVO_API_KEY = env("BREVO_API_KEY", default=None)
+BREVO_EMAIL = env("BREVO_EMAIL", default=None)
+BREVO_SENDER_NAME = env("BREVO_SENDER_NAME", default="Mobility4You")
+ADMIN_EMAIL = env("ADMIN_EMAIL", default="ouael999@gmail.com")
+
+# Logging específico para el servicio de email
+EMAIL_SERVICE_LOGGING = {
+    'success_log_level': 'INFO',
+    'error_log_level': 'ERROR',
+    'debug_mode': DEBUG,
+}
+
+# Configuración para servir archivos de medios en desarrollo
+if DEBUG:
+    from django.conf.urls.static import static
+
+    # Estas líneas se añadirán automáticamente al final del archivo urls.py

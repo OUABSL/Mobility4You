@@ -1,0 +1,40 @@
+# Prometheus configuration for Mobility4You monitoring
+# ================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Backend application monitoring
+  - job_name: "mobility4you-backend"
+    static_configs:
+      - targets: ["backend:8000"]
+    metrics_path: "/metrics"
+    scrape_interval: 30s
+
+  # Nginx monitoring (if metrics are exposed)
+  - job_name: "nginx"
+    static_configs:
+      - targets: ["nginx:80"]
+    metrics_path: "/metrics"
+    scrape_interval: 30s
+
+  # Redis monitoring (if redis_exporter is added)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis:6379']
+
+  # Database monitoring (if mysqld_exporter is added)
+  # - job_name: 'mariadb'
+  #   static_configs:
+  #     - targets: ['db:3306']

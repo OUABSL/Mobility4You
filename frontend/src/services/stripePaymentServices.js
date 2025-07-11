@@ -1,41 +1,35 @@
 // frontend/src/services/stripePaymentServices.js
-import axios from '../config/axiosConfig';
 import { loadStripe } from '@stripe/stripe-js';
-import { withTimeout } from './func';
-
-// URL base de la API
-const API_URL = process.env.REACT_APP_API_URL || '/api';
-
-// Constante para modo debug
-export const DEBUG_MODE = process.env.NODE_ENV === 'development';
+import { testingStripeMocks } from '../assets/testingData/testingData';
+import {
+  API_URL,
+  createServiceLogger,
+  shouldUseTestingData,
+} from '../config/appConfig';
+import axios from '../config/axiosConfig';
+import { logError, logInfo, withTimeout } from '../utils';
+import universalMapper from './universalDataMapper';
 
 // Configuración de Stripe
 let stripePromise = null;
 
-// Helper function para logging condicional
-const logInfo = (message, data = null) => {
-  if (DEBUG_MODE) {
-    console.log(`[STRIPE SERVICE] ${message}`, data);
-  }
-};
-
-const logError = (message, error = null) => {
-  console.error(`[STRIPE SERVICE ERROR] ${message}`, error);
-};
+// Crear logger para el servicio de Stripe
+const logger = createServiceLogger('STRIPE_SERVICE');
 
 // Helper function para obtener headers de autenticación
 const getAuthHeaders = () => {
   const config = {
     headers: {
       'Content-Type': 'application/json',
-    }
+    },
   };
-  
-  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+
+  const token =
+    localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  
+
   return config;
 };
 
@@ -47,31 +41,36 @@ export const initializeStripe = async () => {
   try {
     if (!stripePromise) {
       logInfo('Inicializando Stripe...');
-      
+
       let publishable_key;
-      
+
       try {
         // Intentar obtener configuración de Stripe del backend
         const response = await withTimeout(
           axios.get(`${API_URL}/payments/stripe/config/`, getAuthHeaders()),
-          10000
+          10000,
         );
-        
+
         publishable_key = response.data.publishable_key;
       } catch (error) {
-        logInfo('Backend no disponible, usando clave de entorno', error.message);
+        logInfo(
+          'Backend no disponible, usando clave de entorno',
+          error.message,
+        );
         // Fallback a variable de entorno si el backend no está disponible
         publishable_key = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
       }
-      
+
       if (!publishable_key) {
-        throw new Error('Clave pública de Stripe no disponible ni en backend ni en variables de entorno');
+        throw new Error(
+          'Clave pública de Stripe no disponible ni en backend ni en variables de entorno',
+        );
       }
-      
+
       stripePromise = loadStripe(publishable_key);
       logInfo('Stripe inicializado correctamente');
     }
-    
+
     return await stripePromise;
   } catch (error) {
     logError('Error inicializando Stripe', error);
@@ -88,40 +87,44 @@ export const initializeStripe = async () => {
 export const getStripeConfig = async () => {
   try {
     logInfo('Obteniendo configuración de Stripe');
-    
-    // CORREGIR: Intentar backend primero, luego fallback
+
+    // Intentar backend primero, luego fallback
     try {
       const response = await withTimeout(
         axios.get(`${API_URL}/payments/stripe/config/`, getAuthHeaders()),
-        5000
+        5000,
       );
-      
+
       logInfo('Configuración de Stripe obtenida del backend', response.data);
       return response.data;
     } catch (error) {
       logInfo('Backend no disponible, usando configuración de entorno');
-      
-      // CORREGIR: Validar que la clave existe antes de usarla
+
+      // Validar que la clave existe antes de usarla
       const publishableKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
-      
+
       if (!publishableKey || publishableKey === 'pk_test_placeholder') {
-        throw new Error('Clave pública de Stripe no configurada. Configura REACT_APP_STRIPE_PUBLISHABLE_KEY en tu archivo .env');
+        throw new Error(
+          'Clave pública de Stripe no configurada. Configura REACT_APP_STRIPE_PUBLISHABLE_KEY en tu archivo .env',
+        );
       }
-      
+
       const fallbackConfig = {
         publishable_key: publishableKey,
         currency: 'eur',
         country: 'ES',
         supported_payment_methods: ['card'],
-        statement_descriptor: 'MOBILITY4YOU'
+        statement_descriptor: 'MOBILITY4YOU',
       };
-      
+
       logInfo('Configuración de Stripe desde entorno', fallbackConfig);
       return fallbackConfig;
     }
   } catch (error) {
     logError('Error obteniendo configuración de Stripe', error);
-    throw new Error(error.message || 'No se pudo obtener la configuración de pagos');
+    throw new Error(
+      error.message || 'No se pudo obtener la configuración de pagos',
+    );
   }
 };
 
@@ -132,54 +135,56 @@ export const getStripeConfig = async () => {
  * @param {Object} metadataExtra - Metadatos adicionales
  * @returns {Promise<Object>} Datos del Payment Intent creado
  */
-export const createPaymentIntent = async (reservaData, tipoPago = 'INICIAL', metadataExtra = {}) => {
+export const createPaymentIntent = async (
+  reservaData,
+  tipoPago = 'INICIAL',
+  metadataExtra = {},
+) => {
   try {
     logInfo('Creando Payment Intent', { tipoPago, reservaData });
-    
-    if (DEBUG_MODE) {
+
+    if (shouldUseTestingData(false)) {
       // Simular creación de Payment Intent en modo debug
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockPaymentIntent = {
-        success: true,
-        payment_intent_id: `pi_mock_${Date.now()}`,
-        client_secret: `pi_mock_${Date.now()}_secret_mock`,
-        numero_pedido: `M4Y-${tipoPago.slice(0,3)}-${reservaData.id || 'NEW'}-${Date.now()}`,
-        importe: reservaData.precio_total || reservaData.diferencia || 100,
-        currency: 'eur',
-        pago_id: Math.floor(Math.random() * 1000),
-        publishable_key: 'pk_test_mock'
-      };
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const mockPaymentIntent = testingStripeMocks.generateMockPaymentIntent(
+        tipoPago,
+        reservaData,
+      );
+
       logInfo('Payment Intent simulado creado', mockPaymentIntent);
       return mockPaymentIntent;
     }
-    
+
     // Crear Payment Intent real
     const response = await withTimeout(
-      axios.post(`${API_URL}/payments/stripe/create-payment-intent/`, {
-        reserva_data: reservaData,
-        tipo_pago: tipoPago,
-        metadata_extra: metadataExtra
-      }, getAuthHeaders()),
-      15000
+      axios.post(
+        `${API_URL}/payments/stripe/create-payment-intent/`,
+        {
+          reserva_data: reservaData,
+          tipo_pago: tipoPago,
+          metadata_extra: metadataExtra,
+        },
+        getAuthHeaders(),
+      ),
+      15000,
     );
-    
+
     if (response.data.success) {
       logInfo('Payment Intent creado exitosamente', response.data);
       return response.data;
     } else {
       throw new Error(response.data.error || 'Error creando Payment Intent');
     }
-    
   } catch (error) {
     logError('Error creando Payment Intent', error);
-    
-    const errorMessage = error.response?.data?.error || 
-                        error.response?.data?.message || 
-                        error.message || 
-                        'Error al crear el intento de pago';
-    
+
+    const errorMessage =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      'Error al crear el intento de pago';
+
     throw new Error(errorMessage);
   }
 };
@@ -192,80 +197,86 @@ export const createPaymentIntent = async (reservaData, tipoPago = 'INICIAL', met
  * @param {Object} paymentData - Datos adicionales del pago
  * @returns {Promise<Object>} Resultado de la confirmación
  */
-export const confirmPaymentIntent = async (stripe, elements, clientSecret, paymentData = {}) => {
+export const confirmPaymentIntent = async (
+  stripe,
+  elements,
+  clientSecret,
+  paymentData = {},
+) => {
   try {
     logInfo('Confirmando Payment Intent', { clientSecret, paymentData });
-    
-    if (DEBUG_MODE) {
+
+    if (shouldUseTestingData(false)) {
       // Simular confirmación exitosa en modo debug
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const mockResult = {
-        success: true,
-        status: 'succeeded',
-        payment_intent_id: clientSecret.split('_secret_')[0],
-        charge_id: `ch_mock_${Date.now()}`,
-        numero_pedido: `M4Y-MOCK-${Date.now()}`
-      };
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const mockResult =
+        testingStripeMocks.generateMockConfirmResult(clientSecret);
+
       logInfo('Payment Intent simulado confirmado', mockResult);
       return mockResult;
     }
-    
+
     if (!stripe || !elements) {
       throw new Error('Stripe no está correctamente inicializado');
     }
-    
+
     // Obtener el elemento de tarjeta
     const cardElement = elements.getElement('card');
-    
+
     if (!cardElement) {
       throw new Error('Elemento de tarjeta no encontrado');
     }
-    
+
     // Confirmar el pago con Stripe
-    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: cardElement,
-        billing_details: {
-          name: paymentData.name || '',
-          email: paymentData.email || '',
-          phone: paymentData.phone || '',
-          address: paymentData.address || {}
-        }
-      }
-    });
-    
+    const { error, paymentIntent } = await stripe.confirmCardPayment(
+      clientSecret,
+      {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: paymentData.name || '',
+            email: paymentData.email || '',
+            phone: paymentData.phone || '',
+            address: paymentData.address || {},
+          },
+        },
+      },
+    );
+
     if (error) {
       logError('Error confirmando Payment Intent con Stripe', error);
       throw new Error(error.message || 'Error procesando el pago');
     }
-    
+
     if (paymentIntent.status === 'succeeded') {
       logInfo('Payment Intent confirmado exitosamente', paymentIntent);
-      
+
       // Notificar al backend sobre el pago exitoso
       try {
-        await axios.post(`${API_URL}/payments/stripe/confirm-payment-intent/`, {
-          payment_intent_id: paymentIntent.id
-        }, getAuthHeaders());
+        await axios.post(
+          `${API_URL}/payments/stripe/confirm-payment-intent/`,
+          {
+            payment_intent_id: paymentIntent.id,
+          },
+          getAuthHeaders(),
+        );
       } catch (backendError) {
         logError('Error notificando pago exitoso al backend', backendError);
         // No lanzar error aquí ya que el pago fue exitoso en Stripe
       }
-      
+
       return {
         success: true,
         status: paymentIntent.status,
         payment_intent_id: paymentIntent.id,
         charge_id: paymentIntent.charges?.data?.[0]?.id,
-        numero_pedido: paymentIntent.metadata?.numero_pedido
+        numero_pedido: paymentIntent.metadata?.numero_pedido,
       };
     } else {
       logError('Payment Intent en estado inesperado', paymentIntent);
       throw new Error(`Pago en estado inesperado: ${paymentIntent.status}`);
     }
-    
   } catch (error) {
     logError('Error confirmando Payment Intent', error);
     throw error;
@@ -279,32 +290,40 @@ export const confirmPaymentIntent = async (stripe, elements, clientSecret, payme
  * @param {string} tipoPago - Tipo de pago
  * @returns {Promise<Object>} Resultado del pago
  */
-export const processPayment = async (reservaData, paymentFormData, tipoPago = 'INICIAL') => {
+export const processPayment = async (
+  reservaData,
+  paymentFormData,
+  tipoPago = 'INICIAL',
+) => {
   try {
-    logInfo('Iniciando procesamiento de pago completo', { reservaData, tipoPago });
-    
+    logInfo('Iniciando procesamiento de pago completo', {
+      reservaData,
+      tipoPago,
+    });
+
     // 1. Inicializar Stripe
     const stripe = await initializeStripe();
-    
+
     // 2. Crear Payment Intent
     const paymentIntent = await createPaymentIntent(reservaData, tipoPago);
-    
+
     if (!paymentIntent.success) {
-      throw new Error(paymentIntent.error || 'Error creando el intento de pago');
+      throw new Error(
+        paymentIntent.error || 'Error creando el intento de pago',
+      );
     }
-    
+
     // 3. Crear elementos de Stripe (esto se haría en el componente)
     // Por ahora retornamos la información necesaria para el frontend
-    
+
     logInfo('Payment Intent listo para confirmación', paymentIntent);
-    
+
     return {
       success: true,
       paymentIntent: paymentIntent,
       stripe: stripe,
-      nextStep: 'confirm_payment'
+      nextStep: 'confirm_payment',
     };
-    
   } catch (error) {
     logError('Error en procesamiento de pago completo', error);
     throw error;
@@ -319,44 +338,37 @@ export const processPayment = async (reservaData, paymentFormData, tipoPago = 'I
 export const getPaymentStatus = async (numeroPedido) => {
   try {
     logInfo('Obteniendo estado del pago', { numeroPedido });
-    
-    if (DEBUG_MODE) {
+
+    if (shouldUseTestingData(false)) {
       // Simular estado de pago en modo debug
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const mockStatus = {
-        success: true,
-        estado: 'COMPLETADO',
-        importe: 316.50,
-        fecha_creacion: new Date().toISOString(),
-        fecha_confirmacion: new Date().toISOString(),
-        metodo_pago: 'card',
-        ultimos_4_digitos: '4242',
-        marca_tarjeta: 'visa',
-        puede_reembolsar: true,
-        importe_reembolsado: 0,
-        payment_intent_id: `pi_mock_${numeroPedido}`
-      };
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const mockStatus = testingStripeMocks.generateMockPaymentStatus(
+        `pi_mock_${numeroPedido}`,
+      );
+
       logInfo('Estado de pago simulado', mockStatus);
       return mockStatus;
     }
-    
+
     const response = await withTimeout(
-      axios.get(`${API_URL}/payments/stripe/payment-status/${numeroPedido}/`, getAuthHeaders()),
-      10000
+      axios.get(
+        `${API_URL}/payments/stripe/payment-status/${numeroPedido}/`,
+        getAuthHeaders(),
+      ),
+      10000,
     );
-    
+
     logInfo('Estado de pago obtenido', response.data);
     return response.data;
-    
   } catch (error) {
     logError('Error obteniendo estado del pago', error);
-    
-    const errorMessage = error.response?.data?.error || 
-                        error.message || 
-                        'Error al obtener el estado del pago';
-    
+
+    const errorMessage =
+      error.response?.data?.error ||
+      error.message ||
+      'Error al obtener el estado del pago';
+
     throw new Error(errorMessage);
   }
 };
@@ -369,45 +381,51 @@ export const getPaymentStatus = async (numeroPedido) => {
  * @param {string} descripcion - Descripción del reembolso
  * @returns {Promise<Object>} Resultado del reembolso
  */
-export const processRefund = async (pagoId, importeReembolso = null, motivo = 'CANCELACION_CLIENTE', descripcion = '') => {
+export const processRefund = async (
+  pagoId,
+  importeReembolso = null,
+  motivo = 'CANCELACION_CLIENTE',
+  descripcion = '',
+) => {
   try {
     logInfo('Procesando reembolso', { pagoId, importeReembolso, motivo });
-    
-    if (DEBUG_MODE) {
+
+    if (shouldUseTestingData(false)) {
       // Simular reembolso en modo debug
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const mockRefund = {
-        success: true,
-        refund_id: `re_mock_${Date.now()}`,
-        importe_reembolsado: importeReembolso || 316.50,
-        estado_reembolso: 'succeeded',
-        reembolso_local_id: Math.floor(Math.random() * 1000)
-      };
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const mockRefund = testingStripeMocks.generateMockRefund(
+        `ch_mock_${pagoId}`,
+        importeReembolso || 316.5,
+      );
+
       logInfo('Reembolso simulado procesado', mockRefund);
       return mockRefund;
     }
-    
+
     const response = await withTimeout(
-      axios.post(`${API_URL}/payments/stripe/refund/${pagoId}/`, {
-        importe_reembolso: importeReembolso,
-        motivo: motivo,
-        descripcion: descripcion
-      }, getAuthHeaders()),
-      15000
+      axios.post(
+        `${API_URL}/payments/stripe/refund/${pagoId}/`,
+        {
+          importe_reembolso: importeReembolso,
+          motivo: motivo,
+          descripcion: descripcion,
+        },
+        getAuthHeaders(),
+      ),
+      15000,
     );
-    
+
     logInfo('Reembolso procesado exitosamente', response.data);
     return response.data;
-    
   } catch (error) {
     logError('Error procesando reembolso', error);
-    
-    const errorMessage = error.response?.data?.error || 
-                        error.message || 
-                        'Error al procesar el reembolso';
-    
+
+    const errorMessage =
+      error.response?.data?.error ||
+      error.message ||
+      'Error al procesar el reembolso';
+
     throw new Error(errorMessage);
   }
 };
@@ -420,78 +438,43 @@ export const processRefund = async (pagoId, importeReembolso = null, motivo = 'C
 export const getPaymentHistory = async (filters = {}) => {
   try {
     logInfo('Obteniendo historial de pagos', filters);
-    
-    if (DEBUG_MODE) {
+
+    if (shouldUseTestingData(false)) {
       // Simular historial de pagos en modo debug
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const mockHistory = {
-        success: true,
-        count: 3,
-        total: 3,
-        page: 1,
-        page_size: 20,
-        results: [
-          {
-            id: 1,
-            numero_pedido: 'M4Y-INI-123-1234567890',
-            importe: 316.50,
-            moneda: 'EUR',
-            estado: 'COMPLETADO',
-            tipo_pago: 'INICIAL',
-            metodo_pago: 'card',
-            ultimos_4_digitos: '4242',
-            marca_tarjeta: 'visa',
-            fecha_creacion: new Date(Date.now() - 86400000).toISOString(),
-            fecha_confirmacion: new Date(Date.now() - 86400000).toISOString(),
-            es_exitoso: true,
-            vehiculo_info: 'BMW 320i'
-          },
-          {
-            id: 2,
-            numero_pedido: 'M4Y-DIF-124-1234567891',
-            importe: 50.00,
-            moneda: 'EUR',
-            estado: 'COMPLETADO',
-            tipo_pago: 'DIFERENCIA',
-            metodo_pago: 'card',
-            ultimos_4_digitos: '4242',
-            marca_tarjeta: 'visa',
-            fecha_creacion: new Date(Date.now() - 172800000).toISOString(),
-            fecha_confirmacion: new Date(Date.now() - 172800000).toISOString(),
-            es_exitoso: true,
-            vehiculo_info: 'Audi A3'
-          }
-        ]
-      };
-      
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      const mockHistory = testingStripeMocks.generateMockPaymentHistory(3);
+
       logInfo('Historial de pagos simulado', mockHistory);
       return mockHistory;
     }
-    
+
     // Construir parámetros de consulta
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key] !== null && filters[key] !== undefined) {
         params.append(key, filters[key]);
       }
     });
-    
+
     const response = await withTimeout(
-      axios.get(`${API_URL}/payments/stripe/payment-history/?${params.toString()}`, getAuthHeaders()),
-      10000
+      axios.get(
+        `${API_URL}/payments/stripe/payment-history/?${params.toString()}`,
+        getAuthHeaders(),
+      ),
+      10000,
     );
-    
+
     logInfo('Historial de pagos obtenido', response.data);
     return response.data;
-    
   } catch (error) {
     logError('Error obteniendo historial de pagos', error);
-    
-    const errorMessage = error.response?.data?.error || 
-                        error.message || 
-                        'Error al obtener el historial de pagos';
-    
+
+    const errorMessage =
+      error.response?.data?.error ||
+      error.message ||
+      'Error al obtener el historial de pagos';
+
     throw new Error(errorMessage);
   }
 };
@@ -506,11 +489,11 @@ export const getPaymentHistory = async (filters = {}) => {
 export const processPaymentLegacy = async (reservaId, paymentData) => {
   try {
     logInfo('Procesando pago (modo legacy)', { reservaId, paymentData });
-    
-    if (DEBUG_MODE) {
+
+    if (shouldUseTestingData(false)) {
       // Usar el procesamiento simulado
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       return {
         success: true,
         message: 'Pago procesado correctamente (simulado)',
@@ -518,30 +501,34 @@ export const processPaymentLegacy = async (reservaId, paymentData) => {
         client_secret: `pi_mock_${Date.now()}_secret_mock`,
         publishable_key: 'pk_test_mock',
         numero_pedido: `M4Y-LEG-${reservaId}-${Date.now()}`,
-        importe: paymentData.importe || 316.50,
-        transaction_id: `M4Y-LEG-${reservaId}-${Date.now()}`
+        importe: paymentData.importe || 316.5,
+        transaction_id: `M4Y-LEG-${reservaId}-${Date.now()}`,
       };
     }
-    
+
     const response = await withTimeout(
-      axios.post(`${API_URL}/payments/process-payment/`, {
-        reserva_id: reservaId,
-        payment_data: paymentData,
-        diferencia: paymentData.diferencia
-      }, getAuthHeaders()),
-      15000
+      axios.post(
+        `${API_URL}/payments/process-payment/`,
+        {
+          reserva_id: reservaId,
+          payment_data: paymentData,
+          diferencia: paymentData.diferencia,
+        },
+        getAuthHeaders(),
+      ),
+      15000,
     );
-    
+
     logInfo('Pago legacy procesado', response.data);
     return response.data;
-    
   } catch (error) {
     logError('Error en pago legacy', error);
-    
-    const errorMessage = error.response?.data?.error || 
-                        error.message || 
-                        'Error al procesar el pago';
-    
+
+    const errorMessage =
+      error.response?.data?.error ||
+      error.message ||
+      'Error al procesar el pago';
+
     throw new Error(errorMessage);
   }
 };
@@ -555,84 +542,131 @@ export const processPaymentLegacy = async (reservaId, paymentData) => {
 export const validateCardData = async (stripe, elements) => {
   try {
     logInfo('Validando datos de tarjeta');
-    
+
     if (!stripe || !elements) {
       throw new Error('Stripe no está correctamente inicializado');
     }
-    
+
     const cardElement = elements.getElement('card');
-    
+
     if (!cardElement) {
       throw new Error('Elemento de tarjeta no encontrado');
     }
-    
+
     // Crear Payment Method para validar la tarjeta
     const { error, paymentMethod } = await stripe.createPaymentMethod({
       type: 'card',
-      card: cardElement
+      card: cardElement,
     });
-    
+
     if (error) {
       logError('Error validando tarjeta', error);
       return {
         valid: false,
-        error: error.message
+        error: error.message,
       };
     }
-    
+
     logInfo('Tarjeta validada correctamente', paymentMethod);
     return {
       valid: true,
-      paymentMethod: paymentMethod
+      paymentMethod: paymentMethod,
     };
-    
   } catch (error) {
     logError('Error en validación de tarjeta', error);
     return {
       valid: false,
-      error: error.message
+      error: error.message,
     };
   }
 };
 
 /**
- * Utilidades para formateo de moneda
+ * Utilidades para formateo - MIGRADO AL MAPPER UNIVERSAL
+ * @deprecated Usar universalMapper.formatCurrency y universalMapper.formatPaymentDate
  */
 export const formatCurrency = (amount, currency = 'EUR') => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: currency
-  }).format(amount);
+  logger.warn('[DEPRECATED] Usar universalMapper.formatCurrency en su lugar');
+  return universalMapper.formatCurrency(amount, currency);
 };
 
 /**
- * Utilidades para formateo de fecha
+ * Utilidades para formateo de fecha - MIGRADO AL MAPPER UNIVERSAL
+ * @deprecated Usar universalMapper.formatPaymentDate
  */
 export const formatPaymentDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('es-ES', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  logger.warn(
+    '[DEPRECATED] Usar universalMapper.formatPaymentDate en su lugar',
+  );
+  return universalMapper.formatPaymentDate(dateString);
 };
 
 /**
- * Mapea estados de Stripe a estados locales
+ * Mapea estados de Stripe a estados locales - MIGRADO AL MAPPER UNIVERSAL
+ * @deprecated Usar universalMapper.mapStripeStatus
  */
 export const mapStripeStatus = (stripeStatus) => {
-  const statusMap = {
-    'succeeded': 'COMPLETADO',
-    'processing': 'PROCESANDO',
-    'requires_payment_method': 'PENDIENTE',
-    'requires_confirmation': 'PENDIENTE',
-    'requires_action': 'PENDIENTE',
-    'canceled': 'CANCELADO',
-    'failed': 'FALLIDO'
-  };
-  
-  return statusMap[stripeStatus] || 'DESCONOCIDO';
+  logger.warn('[DEPRECATED] Usar universalMapper.mapStripeStatus en su lugar');
+  return universalMapper.mapStripeStatus(stripeStatus);
+};
+
+/**
+ * Cancela un Payment Intent
+ * @param {string} paymentIntentId - ID del Payment Intent a cancelar
+ * @param {string} motivo - Motivo de la cancelación
+ * @returns {Promise<Object>} Resultado de la cancelación
+ */
+export const cancelPaymentIntent = async (
+  paymentIntentId,
+  motivo = 'Usuario canceló el pago',
+) => {
+  try {
+    logInfo('Cancelando Payment Intent', { paymentIntentId, motivo });
+
+    if (shouldUseTestingData(false)) {
+      // Simular cancelación en modo debug
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const mockResult = {
+        success: true,
+        status: 'canceled',
+        payment_intent_id: paymentIntentId,
+        numero_pedido: `M4Y-MOCK-${Date.now()}`,
+      };
+
+      logInfo('Payment Intent simulado cancelado', mockResult);
+      return mockResult;
+    }
+
+    const response = await withTimeout(
+      axios.post(
+        `${API_URL}/payments/stripe/cancel-payment-intent/`,
+        {
+          payment_intent_id: paymentIntentId,
+          motivo: motivo,
+        },
+        getAuthHeaders(),
+      ),
+      10000,
+    );
+
+    if (response.data.success) {
+      logInfo('Payment Intent cancelado exitosamente', response.data);
+      return response.data;
+    } else {
+      throw new Error(response.data.error || 'Error cancelando Payment Intent');
+    }
+  } catch (error) {
+    logError('Error cancelando Payment Intent', error);
+
+    const errorMessage =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      'Error al cancelar el intento de pago';
+
+    throw new Error(errorMessage);
+  }
 };
 
 // Exportar todas las funciones
@@ -650,7 +684,7 @@ const StripePaymentServices = {
   formatCurrency,
   formatPaymentDate,
   mapStripeStatus,
-  DEBUG_MODE
+  cancelPaymentIntent,
 };
 
 export default StripePaymentServices;

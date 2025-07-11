@@ -1,11 +1,11 @@
 # config/settings/production.py
-from .base import *
 import os
+
+import environ
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
-import environ
 
-
+from .base import *
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -16,21 +16,23 @@ DEBUG = True
 
 # Hosts permitidos
 ALLOWED_HOSTS = [
-    os.environ.get('ALLOWED_HOST', 'mobility4you.com'),
-    'www.mobility4you.com',
+    os.environ.get("ALLOWED_HOST", "mobility4you.com"),
+    "www.mobility4you.com",
 ]
 
 # Database - MySQL/MariaDB
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': env('MYSQL_DATABASE', default='mobility4you'),
-        'USER': env('MYSQL_USER', default='mobility'),
-        'PASSWORD': env('MYSQL_PASSWORD', default='miclave'),
-        'HOST': env('DB_HOST', default='db'),  # 'db' para Docker Compose, 'localhost' para local
-        'PORT': env('DB_PORT', default='3306'),
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": env("MYSQL_DATABASE", default="mobility4you"),
+        "USER": env("MYSQL_USER", default="mobility"),
+        "PASSWORD": env("MYSQL_PASSWORD", default="miclave"),
+        "HOST": env(
+            "DB_HOST", default="db"
+        ),  # 'db' para Docker Compose, 'localhost' para local
+        "PORT": env("DB_PORT", default="3306"),
+        "OPTIONS": {
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
     }
 }
@@ -42,87 +44,87 @@ SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 31536000  # 1 año
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Archivos estáticos y media
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Cache
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://redis:6379/1'),
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.environ.get("REDIS_URL", "redis://redis:6379/1"),
     }
 }
 
 # Email
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.environ.get('EMAIL_HOST')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.environ.get("EMAIL_HOST")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'info@mobility4you.com')
-CONTACT_EMAIL = os.environ.get('CONTACT_EMAIL', 'contacto@mobility4you.com')
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "info@mobility4you.com")
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "contacto@mobility4you.com")
 
 # Logging
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
         },
     },
-    'handlers': {
-        'file': {
-            'level': 'WARNING',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs/django.log'),
-            'formatter': 'verbose',
+    "handlers": {
+        "file": {
+            "level": "WARNING",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "logs/django.log"),
+            "formatter": "verbose",
         },
     },
-    'loggers': {
-        'django': {
-            'handlers': ['file'],
-            'level': 'WARNING',
-            'propagate': True,
+    "loggers": {
+        "django": {
+            "handlers": ["file"],
+            "level": "WARNING",
+            "propagate": True,
         },
-        'api': {
-            'handlers': ['file'],
-            'level': 'WARNING',
-            'propagate': True,
+        "api": {
+            "handlers": ["file"],
+            "level": "WARNING",
+            "propagate": True,
         },
-        'redsys': {
-            'handlers': ['file'],
-            'level': 'INFO',
-            'propagate': True,
+        "redsys": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
         },
-        'emails': {
-            'handlers': ['file'],
-            'level': 'INFO',
-            'propagate': True,
+        "emails": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
         },
     },
 }
 
 # Sentry para monitoreo de errores
 sentry_sdk.init(
-    dsn=os.environ.get('SENTRY_DSN'),
+    dsn=os.environ.get("SENTRY_DSN"),
     integrations=[DjangoIntegration()],
     traces_sample_rate=0.2,
-    send_default_pii=True
+    send_default_pii=True,
 )
 
 # REST Framework
 REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
     ]
 }
 
 
 # URL frontend
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://mobility4you.com')
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://mobility4you.com")

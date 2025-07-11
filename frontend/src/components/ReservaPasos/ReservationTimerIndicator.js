@@ -1,14 +1,13 @@
 // Componente indicador visual del timer de reserva
 
-import React from 'react';
-import { Badge, ProgressBar, Tooltip, OverlayTrigger } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faClock, 
+import {
+  faCheckCircle,
+  faClock,
   faExclamationTriangle,
   faInfoCircle,
-  faCheckCircle
 } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Badge, OverlayTrigger, ProgressBar, Tooltip } from 'react-bootstrap';
 import '../../css/ReservationTimerIndicator.css';
 
 /**
@@ -22,9 +21,8 @@ const ReservationTimerIndicator = ({
   size = 'normal', // 'small' | 'normal' | 'large'
   position = 'inline', // 'inline' | 'fixed' | 'sticky'
   onExtendRequest = null,
-  className = ''
+  className = '',
 }) => {
-  
   /**
    * Calcula el porcentaje de tiempo restante
    */
@@ -48,7 +46,7 @@ const ReservationTimerIndicator = ({
    */
   const getIcon = () => {
     if (!isActive) return faCheckCircle;
-    
+
     const percentage = getTimePercentage();
     if (percentage > 25) return faClock;
     return faExclamationTriangle;
@@ -59,12 +57,12 @@ const ReservationTimerIndicator = ({
    */
   const getTooltipContent = () => {
     if (!isActive) {
-      return "No hay reserva activa";
+      return 'No hay reserva activa';
     }
-    
+
     const percentage = getTimePercentage();
     const minutes = Math.floor(remainingTime / 60000);
-    
+
     if (percentage > 50) {
       return `Tu reserva expira en ${formattedTime}. Tiempo suficiente para completar el proceso.`;
     } else if (percentage > 25) {
@@ -100,31 +98,39 @@ const ReservationTimerIndicator = ({
     `variant-${variant}`,
     isClickable ? 'clickable' : '',
     !isActive ? 'inactive' : '',
-    className
-  ].filter(Boolean).join(' ');
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const content = (
-    <div className={indicatorClasses} onClick={isClickable ? handleClick : undefined}>
+    <div
+      className={indicatorClasses}
+      onClick={isClickable ? handleClick : undefined}
+    >
       <div className="timer-content">
         <div className="timer-icon-time">
-          <FontAwesomeIcon 
-            icon={icon} 
+          <FontAwesomeIcon
+            icon={icon}
             className={`timer-icon text-${variant}`}
           />
           <span className={`timer-text text-${variant}`}>
             {isActive ? formattedTime : '00:00'}
           </span>
         </div>
-        
+
         {showProgress && isActive && (
           <ProgressBar
             variant={variant}
             now={getTimePercentage()}
             className="timer-progress"
-            style={{ height: size === 'small' ? '4px' : size === 'large' ? '8px' : '6px' }}
+            style={{
+              height:
+                size === 'small' ? '4px' : size === 'large' ? '8px' : '6px',
+            }}
           />
         )}
-        
+
         {size !== 'small' && (
           <div className="timer-label">
             <small className={`text-${variant}`}>
@@ -133,7 +139,7 @@ const ReservationTimerIndicator = ({
           </div>
         )}
       </div>
-      
+
       {isClickable && (
         <div className="extend-hint">
           <small className="text-muted">
@@ -151,11 +157,7 @@ const ReservationTimerIndicator = ({
       <OverlayTrigger
         placement="bottom"
         delay={{ show: 250, hide: 400 }}
-        overlay={
-          <Tooltip id="timer-tooltip">
-            {getTooltipContent()}
-          </Tooltip>
-        }
+        overlay={<Tooltip id="timer-tooltip">{getTooltipContent()}</Tooltip>}
       >
         {content}
       </OverlayTrigger>
@@ -172,31 +174,36 @@ export const ReservationTimerBadge = ({
   isActive,
   remainingTime,
   formattedTime,
-  onExtendRequest
+  onExtendRequest,
 }) => {
   if (!isActive) return null;
 
   const totalTime = 30 * 60 * 1000;
-  const percentage = Math.max(0, Math.min(100, (remainingTime / totalTime) * 100));
-  const variant = percentage > 50 ? 'success' : percentage > 25 ? 'warning' : 'danger';
+  const percentage = Math.max(
+    0,
+    Math.min(100, (remainingTime / totalTime) * 100),
+  );
+  const variant =
+    percentage > 50 ? 'success' : percentage > 25 ? 'warning' : 'danger';
   const icon = percentage > 25 ? faClock : faExclamationTriangle;
 
   const tooltip = (
     <Tooltip id="timer-badge-tooltip">
-      {percentage > 25 
+      {percentage > 25
         ? `Tu reserva expira en ${formattedTime}`
-        : `¡Urgente! Reserva expira en ${formattedTime}`
-      }
+        : `¡Urgente! Reserva expira en ${formattedTime}`}
     </Tooltip>
   );
 
   return (
     <OverlayTrigger placement="bottom" overlay={tooltip}>
-      <Badge 
-        bg={variant} 
+      <Badge
+        bg={variant}
         className="reservation-timer-badge d-flex align-items-center"
         style={{ cursor: percentage <= 25 ? 'pointer' : 'default' }}
-        onClick={percentage <= 25 && onExtendRequest ? onExtendRequest : undefined}
+        onClick={
+          percentage <= 25 && onExtendRequest ? onExtendRequest : undefined
+        }
       >
         <FontAwesomeIcon icon={icon} className="me-1" />
         {formattedTime}
@@ -213,17 +220,25 @@ export const ReservationTimerFloating = ({
   remainingTime,
   formattedTime,
   onExtendRequest,
-  position = 'top-right' // 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+  position = 'top-right', // 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
 }) => {
   if (!isActive) return null;
 
   const totalTime = 30 * 60 * 1000;
-  const percentage = Math.max(0, Math.min(100, (remainingTime / totalTime) * 100));
-  const variant = percentage > 50 ? 'success' : percentage > 25 ? 'warning' : 'danger';
+  const percentage = Math.max(
+    0,
+    Math.min(100, (remainingTime / totalTime) * 100),
+  );
+  const variant =
+    percentage > 50 ? 'success' : percentage > 25 ? 'warning' : 'danger';
   const isUrgent = percentage <= 25;
 
   return (
-    <div className={`reservation-timer-floating ${position} ${isUrgent ? 'urgent' : ''}`}>
+    <div
+      className={`reservation-timer-floating ${position} ${
+        isUrgent ? 'urgent' : ''
+      }`}
+    >
       <div className={`floating-content bg-${variant} text-white`}>
         <div className="d-flex align-items-center">
           <FontAwesomeIcon icon={faClock} className="me-2" />
@@ -232,9 +247,9 @@ export const ReservationTimerFloating = ({
             <small>Tiempo restante</small>
           </div>
         </div>
-        
+
         {isUrgent && onExtendRequest && (
-          <button 
+          <button
             className="btn btn-light btn-sm mt-2 w-100"
             onClick={onExtendRequest}
           >

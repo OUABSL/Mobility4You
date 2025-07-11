@@ -1,21 +1,45 @@
-# Usa una imagen oficial de Node.js como base
-FROM node:18-slim
+# ========================================
+# DOCKERFILE PARA DESARROLLO - FRONTEND
+# ========================================
 
-# Establece el directorio de trabajo en el contenedor
+# Usa una imagen oficial de Node.js LTS más reciente y segura
+FROM node:20-alpine
+
+# Metadatos
+LABEL maintainer="OUAEL BOUSSIALI"
+LABEL version="1.0.0"
+LABEL description="Movility for You - Frontend Development Environment"
+
+# Instalar dependencias del sistema necesarias para node-gyp
+RUN apk add --no-cache python3 make g++
+
+# Establecer directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos de dependencias de React y los instala
-COPY package*.json /app/
-RUN npm install --legacy-peer-deps
+# Copiar archivos de dependencias primero (para aprovechar cache de Docker)
+COPY package*.json ./
 
-# Copia todo el código fuente
-COPY . /app/
+# Instalar dependencias con cache optimizado
+RUN npm ci --only=production --legacy-peer-deps && \
+    npm cache clean --force
 
-# Compila el proyecto de React para producción
-RUN npm run build
+# Copiar código fuente
+COPY . .
 
-# Expone el puerto 3000 para el servidor de React
+# Crear usuario no-root para seguridad
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Cambiar permisos
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Exponer puerto
 EXPOSE 3000
 
-# Comando para iniciar el servidor cuando se ejecute el contenedor
+# Variables de entorno para desarrollo
+ENV NODE_ENV=development
+ENV CHOKIDAR_USEPOLLING=true
+
+# Comando para desarrollo
 CMD ["npm", "start"]

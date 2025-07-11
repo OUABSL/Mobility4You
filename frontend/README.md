@@ -1,53 +1,312 @@
-# Getting Started with Create React App
+# 🚗 Movility for You - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Sistema de alquiler de vehículos con interfaz de usuario moderna y optimizada.
 
-## Available Scripts
+![React](https://img.shields.io/badge/React-19.1.0-blue)
+![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.3-purple)
+![Node](https://img.shields.io/badge/Node-≥18.0.0-green)
+![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)
 
-In the project directory, you can run:
+## 📋 Tabla de Contenidos
 
-### `npm start`
+- [🚀 Características](#-características)
+- [🏗️ Arquitectura](#️-arquitectura)
+- [⚙️ Instalación](#️-instalación)
+- [🛠️ Scripts Disponibles](#️-scripts-disponibles)
+- [🔧 Configuración](#-configuración)
+- [🎨 Estructura del Proyecto](#-estructura-del-proyecto)
+- [📚 Documentación](#-documentación)
+- [🚀 Despliegue](#-despliegue)
+- [🔒 Seguridad](#-seguridad)
+- [🎯 Performance](#-performance)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## 🚀 Características
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### Características Principales
 
-### `npm test`
+- ✅ **Búsqueda de vehículos** con filtros avanzados
+- ✅ **Sistema de reservas** completo con timer automático
+- ✅ **Integración con Stripe** para pagos seguros
+- ✅ **Gestión de extras** y conductores adicionales
+- ✅ **Consulta de reservas** existentes
+- ✅ **Responsive design** optimizado para móviles
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Características Técnicas
 
-### `npm run build`
+- ✅ **Lazy loading** para optimización de rendimiento
+- ✅ **Cache inteligente** con TTL configurable
+- ✅ **Logging centralizado** con niveles configurables
+- ✅ **Validación robusta** de datos de entrada
+- ✅ **Error boundaries** para manejo de errores
+- ✅ **Configuración por entornos** (dev/prod)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 🏗️ Arquitectura
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Stack Tecnológico
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- **Frontend**: React 19.1.0 + React Router DOM
+- **UI Framework**: Bootstrap 5.3.3 + React Bootstrap
+- **HTTP Client**: Axios con interceptores personalizados
+- **Pagos**: Stripe React Components
+- **Iconos**: Font Awesome + React Icons
+- **Fechas**: date-fns + react-date-range
+- **Testing**: Jest + React Testing Library
 
-### `npm run eject`
+### Patrones de Diseño
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- **Separación de responsabilidades** con servicios especializados
+- **Configuración centralizada** en `src/config/`
+- **Utilidades modulares** en `src/utils/`
+- **Mapeo universal de datos** con cache inteligente
+- **Context API** para estado global
+- **Custom hooks** para lógica reutilizable
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## ⚙️ Instalación
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Prerrequisitos
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- Node.js ≥ 18.0.0
+- npm ≥ 8.0.0
 
-## Learn More
+### Instalación Local
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+# Clonar el repositorio
+git clone https://github.com/tu-usuario/movility-for-you.git
+cd movility-for-you/frontend
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+# Instalar dependencias
+npm install
 
-### Code Splitting
+# Configurar variables de entorno
+cp .env.example .env
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+# Iniciar en modo desarrollo
+npm start
+```
+
+### Instalación con Docker
+
+```bash
+# Construcción para desarrollo
+docker build -t movility-frontend:dev .
+
+# Construcción para producción
+docker build -f Dockerfile.prod -t movility-frontend:prod .
+
+# Ejecutar contenedor
+docker run -p 3000:3000 movility-frontend:dev
+```
+
+## 🛠️ Scripts Disponibles
+
+```bash
+# Desarrollo
+npm start                    # Servidor de desarrollo (puerto 3000)
+npm run build               # Build para producción
+npm run build:prod          # Build optimizado para producción
+
+# Testing
+npm test                    # Tests en modo watch
+npm run test:ci             # Tests para CI/CD
+npm run test:coverage       # Tests con coverage
+
+# Utilidades
+npm run analyze             # Analizar bundle size
+npm run clean               # Limpiar cache y build
+npm run lint                # Linting (cuando esté configurado)
+```
+
+## 🔧 Configuración
+
+### Variables de Entorno
+
+#### Desarrollo (`.env`)
+
+```env
+REACT_APP_BACKEND_URL=http://localhost/api
+REACT_APP_API_URL=http://localhost/api
+REACT_APP_FRONTEND_URL=http://localhost:3000
+REACT_APP_DEBUG_MODE=false
+REACT_APP_STRIPE_ENABLED=false
+```
+
+#### Producción (`.env.production`)
+
+```env
+REACT_APP_BACKEND_URL=https://api.movilityforyou.com/api
+REACT_APP_API_URL=https://api.movilityforyou.com/api
+REACT_APP_FRONTEND_URL=https://movilityforyou.com
+REACT_APP_DEBUG_MODE=false
+REACT_APP_STRIPE_ENABLED=true
+REACT_APP_ENABLE_ANALYTICS=true
+```
+
+### Configuración de Características
+
+- **Debug Mode**: Habilita logging detallado y datos de testing
+- **Stripe**: Integración de pagos (dev/prod)
+- **Analytics**: Google Analytics y métricas de rendimiento
+- **Error Reporting**: Seguimiento de errores en producción
+
+## 🎨 Estructura del Proyecto
+
+```
+src/
+├── components/           # Componentes React
+│   ├── common/          # Componentes reutilizables
+│   ├── Modals/          # Componentes modal
+│   ├── ReservaPasos/    # Flujo de reserva paso a paso
+│   └── StripePayment/   # Componentes de pago
+├── config/              # Configuración centralizada
+│   ├── appConfig.js     # Configuración principal
+│   ├── axiosConfig.js   # Configuración HTTP
+│   ├── lazyLoadingConfig.js # Lazy loading
+│   ├── optimizationConfig.js # Optimización
+│   └── securityConfig.js # Seguridad
+├── context/             # Context API providers
+├── hooks/               # Custom hooks
+├── services/            # Servicios de datos
+├── utils/               # Utilidades modulares
+├── validations/         # Validaciones
+└── assets/             # Recursos estáticos
+```
+
+## 📚 Documentación
+
+### Servicios Principales
+
+- **`reservationServices.js`**: Gestión completa de reservas
+- **`universalDataMapper.js`**: Mapeo bidireccional de datos
+- **`stripePaymentServices.js`**: Integración con Stripe
+- **`cacheService.js`**: Sistema de cache inteligente
+
+### Configuración
+
+- **`appConfig.js`**: Configuración central de la aplicación
+- **`securityConfig.js`**: Medidas de seguridad (CSP, validaciones)
+- **`optimizationConfig.js`**: Optimizaciones de rendimiento
+
+### Utilidades
+
+- **`utils/`**: Conjunto modular de utilidades:
+  - `financialUtils.js`: Cálculos monetarios
+  - `dateValidators.js`: Validación de fechas
+  - `imageUtils.js`: Gestión de imágenes
+  - `generalUtils.js`: Utilidades generales
+
+## 🚀 Despliegue
+
+### Construcción para Producción
+
+```bash
+# Build optimizado
+npm run build:prod
+
+# Verificar build
+npm run analyze
+```
+
+### Docker Producción
+
+```bash
+# Construir imagen de producción
+docker build -f Dockerfile.prod \
+  --build-arg REACT_APP_API_URL=https://api.tudominio.com/api \
+  --build-arg REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_live_... \
+  -t movility-frontend:prod .
+
+# Ejecutar en producción
+docker run -p 80:80 movility-frontend:prod
+```
+
+### Nginx (Configuración incluida)
+
+El proyecto incluye configuración optimizada de Nginx con:
+
+- Headers de seguridad
+- Compresión gzip
+- Cache de archivos estáticos
+- Soporte para React Router (SPA)
+
+## 🔒 Seguridad
+
+### Medidas Implementadas
+
+- ✅ **Content Security Policy** configurado
+- ✅ **Headers de seguridad** (X-Frame-Options, X-XSS-Protection, etc.)
+- ✅ **Validación de entrada** con sanitización
+- ✅ **CSRF Protection** mediante tokens
+- ✅ **Rate limiting** en formularios
+- ✅ **Cookies seguras** en producción
+
+### Validaciones
+
+- Validación de emails y teléfonos
+- Sanitización de inputs HTML
+- Límites de longitud de texto
+- Detección de caracteres maliciosos
+
+## 🎯 Performance
+
+### Optimizaciones Implementadas
+
+- ✅ **Code splitting** automático por rutas
+- ✅ **Lazy loading** de componentes grandes
+- ✅ **Cache inteligente** con TTL
+- ✅ **Compresión gzip** en producción
+- ✅ **Optimización de imágenes** con placeholders
+- ✅ **Bundle size analysis** disponible
+
+### Métricas de Rendimiento
+
+- **First Contentful Paint**: < 1.5s
+- **Largest Contentful Paint**: < 2.5s
+- **Cumulative Layout Shift**: < 0.1
+- **Bundle size**: Optimizado por chunks
+
+## 🤝 Contribución
+
+### Guidelines
+
+1. Seguir la estructura de carpetas establecida
+2. Usar el sistema de logging centralizado
+3. Implementar tests para nuevas funcionalidades
+4. Documentar cambios significativos
+5. Mantener la configuración por entornos
+
+### Desarrollo
+
+```bash
+# Instalar dependencias
+npm install
+
+# Ejecutar en modo desarrollo
+npm start
+
+# Ejecutar tests
+npm test
+
+# Build de verificación
+npm run build
+```
+
+## 📄 Licencia
+
+MIT License - Ver archivo `LICENSE` para más detalles.
+
+## 👨‍💻 Autor
+
+**OUAEL BOUSSIALI**
+
+- Arquitectura y desarrollo del frontend
+- Optimización de rendimiento
+- Configuración de seguridad
+- Integración con servicios
+
+---
+
+**🚗 Movility for You** - Sistema de alquiler de vehículos moderno y optimizado.
 
 ### Analyzing the Bundle Size
 

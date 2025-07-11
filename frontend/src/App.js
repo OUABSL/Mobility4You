@@ -78,7 +78,6 @@ function App() {
                 <Route path="/reservation-confirmation/*" element={<ReservaCliente isMobile={isMobile} />} />
                 <Route path="/reservations" element={<ConsultarReservaCliente isMobile={isMobile} />} />
                 <Route path="/reservations/:reservaId" element={<DetallesReserva isMobile={isMobile}/>} />
-                {/* Nueva ruta para pago de diferencia */}
                 <Route path="/pago-diferencia/:id" element={<PagoDiferenciaReserva />} />
               </Routes>
             </div>

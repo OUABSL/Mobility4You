@@ -1,5 +1,8 @@
+# Dockerfile para Backend Django - Arquitectura Modular
+# Apps: usuarios, vehiculos, reservas, politicas, facturas_contratos, comunicacion
+
 # Usa una imagen oficial de Python como base
-FROM python:3.10-slim-bullseye
+FROM python:3.10-slim-bullseye AS base
 
 # Establecer variables de entorno
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -9,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema necesarias para Django y MariaDB
 RUN apt-get update && apt-get install -y \
     pkg-config \
     default-libmysqlclient-dev \
@@ -20,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     mariadb-client \
     netcat-openbsd \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -37,19 +41,45 @@ RUN find . -type f -name "*.pyc" -delete
 # Copiar el resto del código fuente al contenedor
 COPY . /app/
 
-# Eliminar migraciones anteriores (excepto __init__.py)
-RUN find ./api/migrations -type f -name "*.py" ! -name "__init__.py" -delete
+# Limpiar archivos de migración existentes para regeneración modular
+RUN echo "Limpiando migraciones para arquitectura modular..." && \
+    for app in usuarios vehiculos reservas politicas facturas_contratos comunicacion; do \
+        if [ -d "./$app/migrations" ]; then \
+            find "./$app/migrations" -type f -name "*.py" ! -name "__init__.py" -delete 2>/dev/null || true; \
+            echo "Limpiadas migraciones de $app"; \
+        fi; \
+    done && \
+    # Limpiar migraciones de app api legacy si existe
+    if [ -d "./api/migrations" ]; then \
+        find "./api/migrations" -type f -name "*.py" ! -name "__init__.py" -delete 2>/dev/null || true; \
+        echo "Limpiadas migraciones legacy de api"; \
+    fi
 
-# Crear directorio de logs y archivos estáticos
-RUN mkdir -p /app/logs && touch /app/logs/django.log && chmod 666 /app/logs/django.log
-RUN mkdir -p /app/staticfiles
+# Crear directorios necesarios para la aplicación
+RUN mkdir -p /app/logs /app/staticfiles /app/media && \
+    touch /app/logs/django.log && \
+    chmod 666 /app/logs/django.log && \
+    echo "Directorios de aplicación creados"
 
-# Script de entrada
-COPY ./entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Crear un entrypoint básico que será sobrescrito por el volumen montado
+RUN echo '#!/bin/bash\n\
+echo "=== ENTRYPOINT MODULAR BÁSICO ==="\n\
+echo "DB_HOST: $DB_HOST"\n\
+echo "Esperando base de datos..."\n\
+until nc -z $DB_HOST 3306; do sleep 2; done\n\
+echo "✅ Base de datos disponible"\n\
+python manage.py migrate\n\
+python manage.py collectstatic --noinput\n\
+exec "$@"' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh && \
+    echo "Entrypoint básico creado"
 
 # Exponer puerto
 EXPOSE 8000
 
+# Health check para verificar que el servidor Django responde
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health/ || exit 1
+
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120"]

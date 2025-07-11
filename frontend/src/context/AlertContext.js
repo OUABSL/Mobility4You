@@ -1,5 +1,5 @@
 // src/context/AlertContext.js
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
 
 // Crear el contexto
 const AlertContext = createContext(null);
@@ -25,105 +25,120 @@ export const AlertProvider = ({ children }) => {
     timeout: 30000, // tiempo en ms antes de ocultar automáticamente
     position: 'top', // 'top', 'bottom'
   });
-  
+
   // Referencia para el temporizador de autoclose
   const timeoutRef = React.useRef(null);
 
-    /**
-     * Oculta la alerta actual
-     */
-    const hideAlert = useCallback(() => {
-    setAlert(prev => ({ ...prev, show: false }));
+  /**
+   * Oculta la alerta actual
+   */
+  const hideAlert = useCallback(() => {
+    setAlert((prev) => ({ ...prev, show: false }));
 
     // Limpiar temporizador
     if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-    }, []);
+  }, []);
 
-        /**
-     * Muestra una alerta con los parámetros especificados
-     * @param {Object} alertConfig - Configuración de la alerta
-     */
-    const showAlert = useCallback((alertConfig) => {
-    // Limpiar temporizador anterior si existe
-    if (timeoutRef.current) {
+  /**
+   * Muestra una alerta con los parámetros especificados
+   * @param {Object} alertConfig - Configuración de la alerta
+   */
+  const showAlert = useCallback(
+    (alertConfig) => {
+      // Limpiar temporizador anterior si existe
+      if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
-    }
+      }
 
-    // Actualizar el estado de la alerta
-    setAlert({
+      // Actualizar el estado de la alerta
+      setAlert({
         ...alert,
         ...alertConfig,
         show: true,
-    });
+      });
 
-    // Configurar autoclose si hay timeout
-    if (alertConfig.timeout !== 0) {
+      // Configurar autoclose si hay timeout
+      if (alertConfig.timeout !== 0) {
         const timeout = alertConfig.timeout || alert.timeout;
         timeoutRef.current = setTimeout(() => {
-        hideAlert();
+          hideAlert();
         }, timeout);
-    }
-    }, [alert, hideAlert]);
-  
+      }
+    },
+    [alert, hideAlert],
+  );
+
   /**
    * Muestra una alerta de éxito
    * @param {string} message - Mensaje a mostrar
    * @param {Object} options - Opciones adicionales
    */
-  const showSuccess = useCallback((message, options = {}) => {
-    showAlert({
-      message,
-      variant: 'success',
-      icon: 'check-circle',
-      ...options,
-    });
-  }, [showAlert]);
-  
+  const showSuccess = useCallback(
+    (message, options = {}) => {
+      showAlert({
+        message,
+        variant: 'success',
+        icon: 'check-circle',
+        ...options,
+      });
+    },
+    [showAlert],
+  );
+
   /**
    * Muestra una alerta de error
    * @param {string} message - Mensaje a mostrar
    * @param {Object} options - Opciones adicionales
    */
-  const showError = useCallback((message, options = {}) => {
-    showAlert({
-      message,
-      variant: 'danger',
-      icon: 'exclamation-triangle',
-      ...options,
-    });
-  }, [showAlert]);
-  
+  const showError = useCallback(
+    (message, options = {}) => {
+      showAlert({
+        message,
+        variant: 'danger',
+        icon: 'exclamation-triangle',
+        ...options,
+      });
+    },
+    [showAlert],
+  );
+
   /**
    * Muestra una alerta de advertencia
    * @param {string} message - Mensaje a mostrar
    * @param {Object} options - Opciones adicionales
    */
-  const showWarning = useCallback((message, options = {}) => {
-    showAlert({
-      message,
-      variant: 'warning',
-      icon: 'exclamation-circle',
-      ...options,
-    });
-  }, [showAlert]);
-  
+  const showWarning = useCallback(
+    (message, options = {}) => {
+      showAlert({
+        message,
+        variant: 'warning',
+        icon: 'exclamation-circle',
+        ...options,
+      });
+    },
+    [showAlert],
+  );
+
   /**
    * Muestra una alerta informativa
    * @param {string} message - Mensaje a mostrar
    * @param {Object} options - Opciones adicionales
    */
-  const showInfo = useCallback((message, options = {}) => {
-    showAlert({
-      message,
-      variant: 'info',
-      icon: 'info-circle',
-      ...options,
-    });
-  }, [showAlert]);
-  
+  const showInfo = useCallback(
+    (message, options = {}) => {
+      showAlert({
+        message,
+        variant: 'info',
+        icon: 'info-circle',
+        ...options,
+      });
+    },
+    [showAlert],
+  );
+
   // Limpiar temporizador al desmontar
   React.useEffect(() => {
     return () => {
@@ -132,7 +147,7 @@ export const AlertProvider = ({ children }) => {
       }
     };
   }, []);
-  
+
   // Valores a compartir en el contexto
   const alertContextValue = {
     alert,
@@ -144,7 +159,7 @@ export const AlertProvider = ({ children }) => {
     showWarning,
     showInfo,
   };
-  
+
   return (
     <AlertContext.Provider value={alertContextValue}>
       {children}

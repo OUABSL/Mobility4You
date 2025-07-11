@@ -308,6 +308,7 @@
   font-weight: 600;
   transition: all 0.3s ease;
   padding: 0.6rem 1rem;
+  max-width: 220px !important;
 }
 
 .btn-reservar:hover {
