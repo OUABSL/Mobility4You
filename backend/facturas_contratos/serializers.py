@@ -49,7 +49,6 @@ class FacturaSerializer(serializers.ModelSerializer):
             "total",
             "estado",
             "url_pdf",
-            "notas",
             "created_at",
             "updated_at",
         ]
