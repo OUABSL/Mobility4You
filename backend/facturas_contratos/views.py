@@ -99,8 +99,11 @@ class ContratoViewSet(viewsets.ModelViewSet):
                 )
 
             # Crear nuevo contrato
+            import uuid
+            numero_contrato = str(uuid.uuid4())  # Generar un identificador único
             contrato = Contrato.objects.create(
                 reserva=reserva,
+                numero_contrato=numero_contrato,
                 condiciones=request.data.get("condiciones", "Condiciones estándar"),
                 estado="borrador",
             )
