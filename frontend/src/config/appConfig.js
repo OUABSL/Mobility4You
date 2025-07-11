@@ -9,6 +9,7 @@
  * - Configuración de caché
  * - Configuración de logging
  * - Variables de entorno
+ * - Configuración de media (Backblaze B2)
  *
  * @author OUAEL BOUSSIALI
  * @version 1.0.0
@@ -32,8 +33,27 @@ export const DEBUG_MODE =
  */
 export const API_URL =
   process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+
 export const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+
+/**
+ * Configuración de media files (Backblaze B2 o local)
+ */
+export const MEDIA_CONFIG = {
+  BASE_URL:
+    process.env.NODE_ENV === 'production'
+      ? process.env.REACT_APP_MEDIA_BASE_URL ||
+        'https://s3.us-west-004.backblazeb2.com/your-bucket-name/media/'
+      : `${BACKEND_URL}/media/`,
+
+  getMediaUrl: (relativePath) => {
+    if (!relativePath) return null;
+    if (relativePath.startsWith('http')) return relativePath;
+    const cleanPath = relativePath.replace(/^\/+/, '');
+    return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
+  },
+};
 export const NGINX_URL = process.env.REACT_APP_NGINX_URL || 'http://localhost';
 export const FRONTEND_URL =
   process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
