@@ -45,7 +45,7 @@ class FacturaSerializer(serializers.ModelSerializer):
             "numero_factura",
             "fecha_emision",
             "base_imponible",
-            "importe_iva",
+            "iva",
             "total",
             "estado",
             "url_pdf",
