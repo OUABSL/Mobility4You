@@ -113,6 +113,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# Configuration for Render.com (uses DATABASE_URL) and local development
+import dj_database_url
+
+# Default database configuration for local development
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -126,6 +130,11 @@ DATABASES = {
         },
     }
 }
+
+# For Render.com deployment, use DATABASE_URL if available
+database_url = env("DATABASE_URL", default=None)
+if database_url:
+    DATABASES["default"] = dj_database_url.parse(database_url)
 
 # DATABASES = {
 #     'default': {
