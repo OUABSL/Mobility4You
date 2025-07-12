@@ -115,16 +115,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": env("MYSQL_DATABASE", default="mobility4you"),
-        "USER": env("MYSQL_USER", default="mobility"),
-        "PASSWORD": env("MYSQL_PASSWORD", default="miclave"),
-        "HOST": env(
-            "DB_HOST", default="db"
-        ),  # 'db' para Docker Compose, 'localhost' para local
-        "PORT": env("DB_PORT", default="3306"),
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("POSTGRES_DB", default="mobility4you"),
+        "USER": env("POSTGRES_USER", default="mobility"),
+        "PASSWORD": env("POSTGRES_PASSWORD", default="miclave"),
+        "HOST": env("DB_HOST", default="db"),  # 'db' para Docker Compose, 'localhost' para local
+        "PORT": env("DB_PORT", default="5432"),
         "OPTIONS": {
-            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+            "sslmode": "prefer",  # Para Render.com
         },
     }
 }

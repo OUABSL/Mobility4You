@@ -7,7 +7,7 @@ echo "Variables: DB_HOST=$DB_HOST, DB_NAME=$DB_NAME, DB_USER=$DB_USER"
 echo "Esperando a que la base de datos esté disponible..."
 timeout=30
 counter=0
-until nc -z $DB_HOST 3306; do
+until nc -z $DB_HOST ${DB_PORT:-5432}; do
   sleep 2
   counter=$((counter + 1))
   if [ $counter -ge $timeout ]; then
