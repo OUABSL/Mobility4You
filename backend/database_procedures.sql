@@ -1,442 +1,277 @@
--- Archivo: database_procedures.sql
--- Descripción: Procedimientos, triggers y vistas para Mobility 4 You
--- Versión: 3.0 - Corregido para Django
--- Fecha: 2025-05-24
+-- Archivo: database_procedures_postgresql.sql
+-- Descripción: Procedimientos, triggers y funciones para Mobility 4 You - PostgreSQL
+-- Versión: 4.0 - Migrado a PostgreSQL
+-- Fecha: 2025-01-12
 
 -- ====================================
 -- 1. CONFIGURACIÓN INICIAL
 -- ====================================
 
-SET NAMES utf8mb4;
-SET CHARACTER SET utf8mb4;
-SET COLLATION_CONNECTION = utf8mb4_unicode_ci;
-SET TIME_ZONE = '+00:00';
-SET SQL_MODE = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+-- PostgreSQL no requiere configuración específica de encoding
+-- El timezone se configura en settings.py de Django
 
 -- ====================================
--- 2. TRIGGERS
+-- 2. FUNCIONES Y TRIGGERS
 -- ====================================
 
-DELIMITER $$
-
--- Trigger para normalizar direcciones a minúsculas
-DROP TRIGGER IF EXISTS before_insert_direccion$$
-CREATE TRIGGER before_insert_direccion
-BEFORE INSERT ON direccion
-FOR EACH ROW
+-- Función para normalizar direcciones a minúsculas
+CREATE OR REPLACE FUNCTION normalize_direccion()
+RETURNS TRIGGER AS $$
 BEGIN
-    SET NEW.ciudad = LOWER(NEW.ciudad);
-    SET NEW.provincia = LOWER(NEW.provincia);
-    SET NEW.pais = LOWER(NEW.pais);
-END$$
+    NEW.ciudad := LOWER(NEW.ciudad);
+    NEW.provincia := LOWER(NEW.provincia);
+    NEW.pais := LOWER(NEW.pais);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS before_update_direccion$$
-CREATE TRIGGER before_update_direccion
-BEFORE UPDATE ON direccion
-FOR EACH ROW
+-- Función para actualizar updated_at automáticamente
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
 BEGIN
-    SET NEW.ciudad = LOWER(NEW.ciudad);
-    SET NEW.provincia = LOWER(NEW.provincia);
-    SET NEW.pais = LOWER(NEW.pais);
-END$$
+    NEW.updated_at := NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Trigger para actualizar updated_at automáticamente
-DROP TRIGGER IF EXISTS before_update_usuario$$
-CREATE TRIGGER before_update_usuario
-BEFORE UPDATE ON usuario
-FOR EACH ROW
-BEGIN
-    SET NEW.updated_at = NOW();
-END$$
-
-DROP TRIGGER IF EXISTS before_update_vehiculo$$
-CREATE TRIGGER before_update_vehiculo
-BEFORE UPDATE ON vehiculo
-FOR EACH ROW
-BEGIN
-    SET NEW.updated_at = NOW();
-END$$
-
-DROP TRIGGER IF EXISTS before_update_reserva$$
-CREATE TRIGGER before_update_reserva
-BEFORE UPDATE ON reserva
-FOR EACH ROW
-BEGIN
-    SET NEW.updated_at = NOW();
-END$$
-
--- Trigger para validar fechas de reserva
-DROP TRIGGER IF EXISTS before_insert_reserva$$
-CREATE TRIGGER before_insert_reserva
-BEFORE INSERT ON reserva
-FOR EACH ROW
+-- Función para validar fechas de reserva
+CREATE OR REPLACE FUNCTION validate_reserva_dates()
+RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.fecha_devolucion <= NEW.fecha_recogida THEN
-        SIGNAL SQLSTATE '45000' 
-        SET MESSAGE_TEXT = 'La fecha de devolución debe ser posterior a la fecha de recogida';
+        RAISE EXCEPTION 'La fecha de devolución debe ser posterior a la fecha de recogida';
     END IF;
     
     -- Establecer importes según método de pago si no vienen informados
     IF NEW.metodo_pago = 'tarjeta' AND NEW.importe_pagado_inicial IS NULL THEN
-        SET NEW.importe_pagado_inicial = NEW.precio_total;
-        SET NEW.importe_pendiente_inicial = 0;
-    ELSEIF NEW.metodo_pago = 'efectivo' AND NEW.importe_pagado_inicial IS NULL THEN
-        SET NEW.importe_pagado_inicial = 0;
-        SET NEW.importe_pendiente_inicial = NEW.precio_total;
+        NEW.importe_pagado_inicial := NEW.precio_total;
+        NEW.importe_pendiente_inicial := 0;
+    ELSIF NEW.metodo_pago = 'efectivo' AND NEW.importe_pagado_inicial IS NULL THEN
+        NEW.importe_pagado_inicial := 0;
+        NEW.importe_pendiente_inicial := NEW.precio_total;
     END IF;
-END$$
-
--- Trigger para validar edad del conductor
-DROP TRIGGER IF EXISTS before_insert_reserva_conductor$$
-CREATE TRIGGER before_insert_reserva_conductor
-BEFORE INSERT ON reserva_conductor
-FOR EACH ROW
-BEGIN
-    DECLARE v_edad_conductor INT;
-    DECLARE v_edad_minima INT;
-    DECLARE v_vehiculo_id INT;
     
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Función para validar edad del conductor
+CREATE OR REPLACE FUNCTION validate_conductor_age()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_edad_conductor INTEGER;
+    v_edad_minima INTEGER;
+    v_vehiculo_id INTEGER;
+BEGIN
     -- Obtener edad del conductor
-    SELECT TIMESTAMPDIFF(YEAR, fecha_nacimiento, CURDATE()) INTO v_edad_conductor
-    FROM usuario
+    SELECT EXTRACT(YEAR FROM AGE(fecha_nacimiento)) INTO v_edad_conductor
+    FROM usuarios_usuario
     WHERE id = NEW.conductor_id;
     
     -- Obtener vehículo de la reserva
     SELECT vehiculo_id INTO v_vehiculo_id
-    FROM reserva
+    FROM reservas_reserva
     WHERE id = NEW.reserva_id;
     
     -- Obtener edad mínima del grupo
     SELECT gc.edad_minima INTO v_edad_minima
-    FROM vehiculo v
-    JOIN grupo_coche gc ON v.grupo_id = gc.id
+    FROM vehiculos_vehiculo v
+    JOIN vehiculos_grupocoche gc ON v.grupo_id = gc.id
     WHERE v.id = v_vehiculo_id;
     
     IF v_edad_conductor < v_edad_minima THEN
-        SIGNAL SQLSTATE '45000' 
-        SET MESSAGE_TEXT = 'El conductor no cumple la edad mínima requerida para este vehículo';
+        RAISE EXCEPTION 'El conductor no cumple la edad mínima requerida para este vehículo';
     END IF;
-END$$
-
-DELIMITER ;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ====================================
--- 3. ÍNDICES ADICIONALES (solo si no existen)
+-- 3. CREACIÓN DE TRIGGERS
 -- ====================================
+
+-- Triggers para normalizar direcciones (si existen las tablas)
+-- Nota: Estos triggers se crearán solo si las tablas correspondientes existen
+
+-- CREATE TRIGGER IF NOT EXISTS trigger_normalize_direccion_insert
+--     BEFORE INSERT ON lugares_direccion
+--     FOR EACH ROW EXECUTE FUNCTION normalize_direccion();
+
+-- CREATE TRIGGER IF NOT EXISTS trigger_normalize_direccion_update
+--     BEFORE UPDATE ON lugares_direccion
+--     FOR EACH ROW EXECUTE FUNCTION normalize_direccion();
+
+-- Triggers para updated_at automático
+-- CREATE TRIGGER IF NOT EXISTS trigger_usuario_updated_at
+--     BEFORE UPDATE ON usuarios_usuario
+--     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- CREATE TRIGGER IF NOT EXISTS trigger_vehiculo_updated_at
+--     BEFORE UPDATE ON vehiculos_vehiculo
+--     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- CREATE TRIGGER IF NOT EXISTS trigger_reserva_updated_at
+--     BEFORE UPDATE ON reservas_reserva
+--     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Triggers para validaciones
+-- CREATE TRIGGER IF NOT EXISTS trigger_validate_reserva_dates
+--     BEFORE INSERT ON reservas_reserva
+--     FOR EACH ROW EXECUTE FUNCTION validate_reserva_dates();
+
+-- CREATE TRIGGER IF NOT EXISTS trigger_validate_conductor_age
+--     BEFORE INSERT ON reservas_reservaconductor
+--     FOR EACH ROW EXECUTE FUNCTION validate_conductor_age();
+
+-- ====================================
+-- 4. ÍNDICES ADICIONALES
+-- ====================================
+
+-- Nota: Los índices se crearán mediante migraciones de Django
+-- Aquí se documentan para referencia:
 
 -- Índices para mejorar búsquedas comunes
-CREATE INDEX IF NOT EXISTS idx_vehiculo_disponibilidad ON vehiculo(disponible, activo, categoria_id);
-CREATE INDEX IF NOT EXISTS idx_reserva_usuario_estado ON reserva(usuario_id, estado);
-CREATE INDEX IF NOT EXISTS idx_tarifa_vigente ON tarifa_vehiculo(vehiculo_id, fecha_inicio, fecha_fin);
-CREATE INDEX IF NOT EXISTS idx_reserva_metodo_pago ON reserva(metodo_pago, estado);
-CREATE INDEX IF NOT EXISTS idx_reserva_pagos ON reserva(importe_pendiente_inicial, importe_pendiente_extra);
-CREATE INDEX IF NOT EXISTS idx_usuario_rol_activo ON usuario(rol, activo);
-CREATE INDEX IF NOT EXISTS idx_contenido_tipo_activo ON contenido(tipo, activo);
-CREATE INDEX IF NOT EXISTS idx_reserva_fechas_estado ON reserva(fecha_recogida, fecha_devolucion, estado);
-CREATE INDEX IF NOT EXISTS idx_tarifa_vehiculo_fechas ON tarifa_vehiculo(vehiculo_id, fecha_inicio, fecha_fin);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vehiculo_disponibilidad 
+--     ON vehiculos_vehiculo(disponible, activo, categoria_id);
+
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reserva_usuario_estado 
+--     ON reservas_reserva(usuario_id, estado);
+
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tarifa_vigente 
+--     ON vehiculos_tarifavehiculo(vehiculo_id, fecha_inicio, fecha_fin);
+
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reserva_metodo_pago 
+--     ON reservas_reserva(metodo_pago, estado);
+
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reserva_pagos 
+--     ON reservas_reserva(importe_pendiente_inicial, importe_pendiente_extra);
+
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_usuario_rol_activo 
+--     ON usuarios_usuario(rol, activo);
+
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_reserva_fechas_estado 
+--     ON reservas_reserva(fecha_recogida, fecha_devolucion, estado);
 
 -- ====================================
--- 4. VISTAS ÚTILES
+-- 5. VISTAS ÚTILES
 -- ====================================
 
 -- Vista para vehículos disponibles con precio actual
-DROP VIEW IF EXISTS v_vehiculos_disponibles;
-CREATE VIEW v_vehiculos_disponibles AS
-SELECT 
-    v.*,
-    c.nombre AS categoria_nombre,
-    g.nombre AS grupo_nombre,
-    g.edad_minima,
-    t.precio_dia AS precio_actual,
-    (SELECT imagen FROM imagen_vehiculo WHERE vehiculo_id = v.id AND portada = 1 LIMIT 1) AS imagen_principal
-FROM vehiculo v
-JOIN categoria c ON v.categoria_id = c.id
-JOIN grupo_coche g ON v.grupo_id = g.id
-LEFT JOIN tarifa_vehiculo t ON v.id = t.vehiculo_id 
-    AND CURDATE() BETWEEN t.fecha_inicio AND IFNULL(t.fecha_fin, '9999-12-31')
-WHERE v.disponible = 1 AND v.activo = 1;
+-- Nota: Las vistas se implementarán mediante Django ORM
+-- Esta es solo documentación de referencia
 
--- Vista para reservas activas
-DROP VIEW IF EXISTS v_reservas_activas;
-CREATE VIEW v_reservas_activas AS
-SELECT 
-    r.*,
-    u.first_name,
-    u.last_name,
-    u.email,
-    v.marca,
-    v.modelo,
-    v.matricula,
-    lr.nombre AS lugar_recogida_nombre,
-    ld.nombre AS lugar_devolucion_nombre,
-    pp.titulo AS politica_titulo
-FROM reserva r
-LEFT JOIN usuario u ON r.usuario_id = u.id
-JOIN vehiculo v ON r.vehiculo_id = v.id
-JOIN lugar lr ON r.lugar_recogida_id = lr.id
-JOIN lugar ld ON r.lugar_devolucion_id = ld.id
-JOIN politica_pago pp ON r.politica_pago_id = pp.id
-WHERE r.estado IN ('pendiente', 'confirmada')
-    AND r.fecha_devolucion >= CURDATE();
-
--- Vista para reservas con información de pagos
-DROP VIEW IF EXISTS v_reservas_con_pagos;
-CREATE VIEW v_reservas_con_pagos AS
-SELECT 
-    r.*,
-    (r.importe_pendiente_inicial + IFNULL(r.importe_pendiente_extra, 0)) AS importe_pendiente_total,
-    (r.importe_pagado_inicial + IFNULL(r.importe_pagado_extra, 0)) AS importe_pagado_total,
-    u.first_name,
-    u.last_name,
-    u.email,
-    v.marca,
-    v.modelo,
-    pp.titulo AS politica_titulo
-FROM reserva r
-LEFT JOIN usuario u ON r.usuario_id = u.id
-JOIN vehiculo v ON r.vehiculo_id = v.id
-JOIN politica_pago pp ON r.politica_pago_id = pp.id;
-
--- Vista para usuarios con estadísticas de reservas
-DROP VIEW IF EXISTS v_usuarios_con_reservas;
-CREATE VIEW v_usuarios_con_reservas AS
-SELECT 
-    u.id,
-    u.username,
-    u.email,
-    u.first_name,
-    u.last_name,
-    u.rol,
-    u.activo,
-    COUNT(DISTINCT r.id) AS total_reservas,
-    SUM(CASE WHEN r.estado = 'confirmada' THEN 1 ELSE 0 END) AS reservas_confirmadas,
-    SUM(CASE WHEN r.estado = 'cancelada' THEN 1 ELSE 0 END) AS reservas_canceladas,
-    SUM(CASE WHEN r.estado = 'pendiente' THEN 1 ELSE 0 END) AS reservas_pendientes
-FROM usuario u
-LEFT JOIN reserva r ON u.id = r.usuario_id
-GROUP BY u.id, u.username, u.email, u.first_name, u.last_name, u.rol, u.activo;
+-- CREATE OR REPLACE VIEW v_vehiculos_disponibles AS
+-- SELECT 
+--     v.*,
+--     c.nombre AS categoria_nombre,
+--     g.nombre AS grupo_nombre,
+--     g.edad_minima,
+--     t.precio_dia AS precio_actual
+-- FROM vehiculos_vehiculo v
+-- LEFT JOIN vehiculos_categoria c ON v.categoria_id = c.id
+-- LEFT JOIN vehiculos_grupocoche g ON v.grupo_id = g.id
+-- LEFT JOIN vehiculos_tarifavehiculo t ON v.id = t.vehiculo_id 
+--     AND CURRENT_DATE BETWEEN t.fecha_inicio AND t.fecha_fin
+-- WHERE v.disponible = true AND v.activo = true;
 
 -- ====================================
--- 5. PROCEDIMIENTOS ALMACENADOS
+-- 6. FUNCIONES DE UTILIDAD
 -- ====================================
 
-DELIMITER $$
-
--- Procedimiento para verificar disponibilidad de vehículo
-DROP PROCEDURE IF EXISTS sp_verificar_disponibilidad$$
-CREATE PROCEDURE sp_verificar_disponibilidad(
-    IN p_vehiculo_id INT,
-    IN p_fecha_inicio DATETIME,
-    IN p_fecha_fin DATETIME,
-    OUT p_disponible BOOLEAN
-)
+-- Función para calcular disponibilidad de vehículo
+CREATE OR REPLACE FUNCTION check_vehicle_availability(
+    p_vehiculo_id INTEGER,
+    p_fecha_inicio DATE,
+    p_fecha_fin DATE
+) RETURNS BOOLEAN AS $$
+DECLARE
+    reservas_conflicto INTEGER;
 BEGIN
-    DECLARE v_count INT DEFAULT 0;
-    
-    -- Verificar que el vehículo existe y está activo
-    SELECT COUNT(*) INTO v_count
-    FROM vehiculo
-    WHERE id = p_vehiculo_id AND activo = 1 AND disponible = 1;
-    
-    IF v_count = 0 THEN
-        SET p_disponible = FALSE;
-    ELSE
-        -- Verificar reservas solapadas
-        SELECT COUNT(*) INTO v_count
-        FROM reserva
-        WHERE vehiculo_id = p_vehiculo_id
-            AND estado IN ('confirmada', 'pendiente')
-            AND (
-                (fecha_recogida <= p_fecha_inicio AND fecha_devolucion > p_fecha_inicio)
-                OR (fecha_recogida < p_fecha_fin AND fecha_devolucion >= p_fecha_fin)
-                OR (fecha_recogida >= p_fecha_inicio AND fecha_devolucion <= p_fecha_fin)
-            );
-        
-        -- Verificar mantenimientos programados
-        IF v_count = 0 THEN
-            SELECT COUNT(*) INTO v_count
-            FROM mantenimiento
-            WHERE vehiculo_id = p_vehiculo_id
-                AND DATE(fecha) BETWEEN DATE(p_fecha_inicio) AND DATE(p_fecha_fin);
-        END IF;
-        
-        SET p_disponible = (v_count = 0);
-    END IF;
-END$$
-
--- Procedimiento para calcular precio de reserva
-DROP PROCEDURE IF EXISTS sp_calcular_precio_reserva$$
-CREATE PROCEDURE sp_calcular_precio_reserva(
-    IN p_vehiculo_id INT,
-    IN p_fecha_inicio DATETIME,
-    IN p_fecha_fin DATETIME,
-    IN p_promocion_id INT,
-    OUT p_precio_dia DECIMAL(10,2),
-    OUT p_precio_base DECIMAL(10,2),
-    OUT p_descuento DECIMAL(10,2),
-    OUT p_impuestos DECIMAL(10,2),
-    OUT p_precio_total DECIMAL(10,2)
-)
-BEGIN
-    DECLARE v_dias INT;
-    DECLARE v_precio_dia_tarifa DECIMAL(8,2);
-    DECLARE v_descuento_pct DECIMAL(5,2) DEFAULT 0;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        -- En caso de error, devolver valores por defecto
-        SET p_precio_dia = 50.00;
-        SET p_precio_base = 50.00;
-        SET p_descuento = 0.00;
-        SET p_impuestos = 10.50;
-        SET p_precio_total = 60.50;
-    END;
-    
-    -- Calcular días (mínimo 1)
-    SET v_dias = GREATEST(1, DATEDIFF(DATE(p_fecha_fin), DATE(p_fecha_inicio)));
-    
-    -- Obtener precio por día según temporada
-    SELECT precio_dia INTO v_precio_dia_tarifa
-    FROM tarifa_vehiculo
+    SELECT COUNT(*) INTO reservas_conflicto
+    FROM reservas_reserva
     WHERE vehiculo_id = p_vehiculo_id
-        AND DATE(p_fecha_inicio) BETWEEN fecha_inicio AND IFNULL(fecha_fin, '9999-12-31')
-    ORDER BY fecha_inicio DESC
+      AND estado NOT IN ('cancelada', 'rechazada')
+      AND (
+          (fecha_recogida <= p_fecha_inicio AND fecha_devolucion > p_fecha_inicio)
+          OR (fecha_recogida < p_fecha_fin AND fecha_devolucion >= p_fecha_fin)
+          OR (fecha_recogida >= p_fecha_inicio AND fecha_devolucion <= p_fecha_fin)
+      );
+    
+    RETURN reservas_conflicto = 0;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Función para obtener precio de vehículo en fecha específica
+CREATE OR REPLACE FUNCTION get_vehicle_price(
+    p_vehiculo_id INTEGER,
+    p_fecha DATE DEFAULT CURRENT_DATE
+) RETURNS DECIMAL(10,2) AS $$
+DECLARE
+    precio DECIMAL(10,2);
+BEGIN
+    SELECT t.precio_dia INTO precio
+    FROM vehiculos_tarifavehiculo t
+    WHERE t.vehiculo_id = p_vehiculo_id
+      AND p_fecha BETWEEN t.fecha_inicio AND t.fecha_fin
+    ORDER BY t.fecha_inicio DESC
     LIMIT 1;
     
-    -- Si no hay tarifa específica, usar precio base de 50€
-    IF v_precio_dia_tarifa IS NULL THEN
-        SET v_precio_dia_tarifa = 50.00;
-    END IF;
-    
-    SET p_precio_dia = v_precio_dia_tarifa;
-    SET p_precio_base = v_dias * v_precio_dia_tarifa;
-    
-    -- Aplicar promoción si existe y está activa
-    IF p_promocion_id IS NOT NULL THEN
-        SELECT descuento_pct INTO v_descuento_pct
-        FROM promocion
-        WHERE id = p_promocion_id
-            AND activo = 1
-            AND DATE(p_fecha_inicio) BETWEEN fecha_inicio AND fecha_fin;
-            
-        IF v_descuento_pct IS NULL THEN
-            SET v_descuento_pct = 0;
-        END IF;
-    END IF;
-    
-    -- Calcular descuento
-    SET p_descuento = p_precio_base * (v_descuento_pct / 100);
-    
-    -- Calcular impuestos (21% IVA sobre precio con descuento)
-    SET p_impuestos = (p_precio_base - p_descuento) * 0.21;
-    
-    -- Calcular total
-    SET p_precio_total = p_precio_base - p_descuento + p_impuestos;
-END$$
-
--- Procedimiento para procesar pagos de reserva
-DROP PROCEDURE IF EXISTS sp_procesar_pago_reserva$$
-CREATE PROCEDURE sp_procesar_pago_reserva(
-    IN p_reserva_id INT,
-    IN p_tipo_pago VARCHAR(20), -- 'inicial' o 'extra'
-    IN p_importe DECIMAL(10,2),
-    OUT p_resultado VARCHAR(100)
-)
-BEGIN
-    DECLARE v_estado_actual VARCHAR(20);
-    DECLARE v_existe INT DEFAULT 0;
-    
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        SET p_resultado = 'ERROR: Error en la base de datos';
-        ROLLBACK;
-    END;
-    
-    START TRANSACTION;
-    
-    -- Verificar que la reserva existe
-    SELECT COUNT(*), estado INTO v_existe, v_estado_actual
-    FROM reserva
-    WHERE id = p_reserva_id;
-    
-    IF v_existe = 0 THEN
-        SET p_resultado = 'ERROR: Reserva no encontrada';
-        ROLLBACK;
-    ELSEIF v_estado_actual = 'cancelada' THEN
-        SET p_resultado = 'ERROR: Reserva cancelada';
-        ROLLBACK;
-    ELSE
-        IF p_tipo_pago = 'inicial' THEN
-            -- Actualizar pago inicial
-            UPDATE reserva
-            SET importe_pagado_inicial = importe_pagado_inicial + p_importe,
-                importe_pendiente_inicial = GREATEST(0, importe_pendiente_inicial - p_importe),
-                estado = CASE 
-                    WHEN importe_pendiente_inicial - p_importe <= 0 THEN 'confirmada'
-                    ELSE estado
-                END,
-                updated_at = NOW()
-            WHERE id = p_reserva_id;
-        ELSEIF p_tipo_pago = 'extra' THEN
-            -- Actualizar pago extra
-            UPDATE reserva
-            SET importe_pagado_extra = IFNULL(importe_pagado_extra, 0) + p_importe,
-                importe_pendiente_extra = GREATEST(0, IFNULL(importe_pendiente_extra, 0) - p_importe),
-                updated_at = NOW()
-            WHERE id = p_reserva_id;
-        ELSE
-            SET p_resultado = 'ERROR: Tipo de pago inválido';
-            ROLLBACK;
-        END IF;
-        
-        IF ROW_COUNT() > 0 THEN
-            SET p_resultado = 'OK: Pago procesado correctamente';
-            COMMIT;
-        ELSE
-            SET p_resultado = 'ERROR: No se pudo procesar el pago';
-            ROLLBACK;
-        END IF;
-    END IF;
-END$$
-
--- Procedimiento para obtener vehículos disponibles en un rango de fechas
-DROP PROCEDURE IF EXISTS sp_buscar_vehiculos_disponibles$$
-CREATE PROCEDURE sp_buscar_vehiculos_disponibles(
-    IN p_fecha_inicio DATETIME,
-    IN p_fecha_fin DATETIME,
-    IN p_categoria_id INT,
-    IN p_lugar_id INT
-)
-BEGIN
-    SELECT DISTINCT
-        v.*,
-        c.nombre AS categoria_nombre,
-        g.nombre AS grupo_nombre,
-        g.edad_minima,
-        tv.precio_dia,
-        (SELECT url FROM imagen_vehiculo WHERE vehiculo_id = v.id AND portada = 1 LIMIT 1) AS imagen_principal
-    FROM vehiculo v
-    JOIN categoria c ON v.categoria_id = c.id
-    JOIN grupo_coche g ON v.grupo_id = g.id
-    LEFT JOIN tarifa_vehiculo tv ON v.id = tv.vehiculo_id 
-        AND DATE(p_fecha_inicio) BETWEEN tv.fecha_inicio AND IFNULL(tv.fecha_fin, '9999-12-31')
-    WHERE v.activo = 1 
-        AND v.disponible = 1
-        AND (p_categoria_id IS NULL OR v.categoria_id = p_categoria_id)
-        AND v.id NOT IN (
-            SELECT DISTINCT vehiculo_id
-            FROM reserva
-            WHERE estado IN ('confirmada', 'pendiente')
-            AND (
-                (fecha_recogida <= p_fecha_inicio AND fecha_devolucion > p_fecha_inicio)
-                OR (fecha_recogida < p_fecha_fin AND fecha_devolucion >= p_fecha_fin)
-                OR (fecha_recogida >= p_fecha_inicio AND fecha_devolucion <= p_fecha_fin)
-            )
-        )
-    ORDER BY tv.precio_dia ASC, v.marca, v.modelo;
-END$$
-
-DELIMITER ;
+    RETURN COALESCE(precio, 0.00);
+END;
+$$ LANGUAGE plpgsql;
 
 -- ====================================
--- FIN DEL SCRIPT
+-- 7. COMENTARIOS Y DOCUMENTACIÓN
 -- ====================================
+
+COMMENT ON FUNCTION normalize_direccion() IS 'Normaliza direcciones a minúsculas antes de insertar/actualizar';
+COMMENT ON FUNCTION update_updated_at_column() IS 'Actualiza automáticamente el campo updated_at';
+COMMENT ON FUNCTION validate_reserva_dates() IS 'Valida que las fechas de reserva sean correctas y establece importes por defecto';
+COMMENT ON FUNCTION validate_conductor_age() IS 'Valida que el conductor cumpla la edad mínima para el vehículo';
+COMMENT ON FUNCTION check_vehicle_availability(INTEGER, DATE, DATE) IS 'Verifica si un vehículo está disponible en un rango de fechas';
+COMMENT ON FUNCTION get_vehicle_price(INTEGER, DATE) IS 'Obtiene el precio vigente de un vehículo para una fecha específica';
+
+-- ====================================
+-- 8. NOTAS DE MIGRACIÓN
+-- ====================================
+
+/*
+NOTAS IMPORTANTES PARA LA MIGRACIÓN A POSTGRESQL:
+
+1. Triggers y Funciones:
+   - Se han migrado de la sintaxis MySQL a PostgreSQL
+   - Los triggers usan funciones separadas (buena práctica en PostgreSQL)
+   - Se utiliza LANGUAGE plpgsql para funciones con lógica
+
+2. Nombres de Tablas:
+   - Se actualizaron para reflejar la estructura de Django (app_model)
+   - Ejemplo: 'usuario' -> 'usuarios_usuario'
+
+3. Funciones de Fecha:
+   - TIMESTAMPDIFF() -> EXTRACT(YEAR FROM AGE())
+   - NOW() se mantiene igual
+   - CURDATE() -> CURRENT_DATE
+
+4. Tipos de Datos:
+   - INT -> INTEGER
+   - Los DECIMAL se mantienen iguales
+
+5. Control de Errores:
+   - SIGNAL SQLSTATE -> RAISE EXCEPTION
+
+6. Implementación:
+   - Los triggers están comentados para activarlos después de verificar nombres de tablas
+   - Los índices se manejan mejor mediante migraciones de Django
+   - Las vistas se implementan mejor con Django ORM
+
+7. Funciones Adicionales:
+   - Se agregaron funciones de utilidad específicas para PostgreSQL
+   - Mejor manejo de tipos de datos y funciones de fecha
+
+PRÓXIMOS PASOS:
+1. Verificar nombres exactos de tablas en Django
+2. Activar triggers necesarios
+3. Implementar índices mediante migraciones
+4. Testear funciones de utilidad
+*/

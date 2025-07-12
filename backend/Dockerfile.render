@@ -1,0 +1,57 @@
+# Dockerfile para Backend Django - Compatible con Render
+# Optimizado para PostgreSQL y configuración de Render
+
+# Usa una imagen oficial de Python como base
+FROM python:3.10-slim-bullseye AS base
+
+# Establecer variables de entorno
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
+
+# Instalar dependencias del sistema necesarias para Django y PostgreSQL
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    build-essential \
+    gettext \
+    libpq-dev \
+    libffi-dev \
+    gcc \
+    postgresql-client \
+    netcat-openbsd \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Crear directorio de aplicación
+WORKDIR /app
+
+# Copiar requirements y instalar dependencias Python
+COPY requirements.txt /app/
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Copiar código de aplicación
+COPY . /app/
+
+# Crear directorios necesarios
+RUN mkdir -p /app/staticfiles /app/media /app/logs && \
+    touch /app/logs/django.log && \
+    chmod 666 /app/logs/django.log
+
+# Copiar y hacer ejecutable el entrypoint para Render
+COPY entrypoint.render.sh /app/entrypoint.render.sh
+RUN chmod +x /app/entrypoint.render.sh
+
+# Exponer puerto
+EXPOSE 8000
+
+# Health check para verificar que el servidor Django responde
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/admin/ || exit 1
+
+ENTRYPOINT ["/app/entrypoint.render.sh"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

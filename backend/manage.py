@@ -9,7 +9,8 @@ def main():
     # Determinar el entorno y configurar el módulo de settings apropiado
     environment = os.environ.get("DJANGO_ENV", "development")
     
-    if environment == "production":
+    # Detectar si estamos en Render por la presencia de RENDER_EXTERNAL_HOSTNAME
+    if os.environ.get("RENDER_EXTERNAL_HOSTNAME") or environment == "production":
         settings_module = "config.settings.render"
     elif environment == "development":
         settings_module = "config.settings.development"

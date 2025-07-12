@@ -31,8 +31,17 @@ from .placeholders import placeholder_urlpatterns
 def health_check(request):
     return JsonResponse({"status": "healthy", "service": "mobility4you-backend"})
 
+# Health check specifically for Render
+def render_health_check(request):
+    return JsonResponse({
+        "status": "ok", 
+        "service": "mobility4you-backend",
+        "environment": "production"
+    })
+
 urlpatterns = [
     path("health/", health_check, name="health-check"),
+    path("healthz", render_health_check, name="render-health-check"),  # Para Render
     path("admin/", mobility_admin_site.urls),  # Usar nuestro admin personalizado
     # APIs modulares (sin namespace por ahora para evitar conflictos)
     path("api/usuarios/", include("usuarios.urls")),
