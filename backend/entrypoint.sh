@@ -2,7 +2,14 @@
 set -e  # Exit on any error
 
 echo "=== MOBILITY4YOU ENTRYPOINT OPTIMIZADO ==="
-echo "Variables: DB_HOST=$DB_HOST, DB_NAME=$DB_NAME, DB_USER=$DB_USER"
+echo "🔍 DEBUG: Variables de entorno cargadas:"
+echo "DJANGO_ENV=$DJANGO_ENV"
+echo "DB_HOST=$DB_HOST"
+echo "DB_NAME=$DB_NAME"
+echo "DB_USER=$DB_USER"
+echo "DB_PASSWORD=***"
+echo "SECRET_KEY=***"
+echo "DEBUG=$DEBUG"
 
 echo "Esperando a que la base de datos esté disponible..."
 timeout=30

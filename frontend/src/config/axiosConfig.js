@@ -36,7 +36,8 @@ const ensureCSRFToken = async () => {
 
   try {
     // Hacer una petición GET simple para obtener el token CSRF
-    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost/api';
+    const API_URL =
+      process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
     const response = await axios.get(`${API_URL}/vehiculos/`, {
       headers: {
         Accept: 'application/json',

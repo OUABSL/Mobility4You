@@ -15,7 +15,7 @@ import {
 import { loadStripe } from '@stripe/stripe-js';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap';
-import { DEBUG_MODE } from '../../assets/testingData/testingData';
+import { DEBUG_MODE } from '../../config/appConfig';
 import '../../css/StripePaymentForm.css';
 import {
   confirmPaymentIntent,
