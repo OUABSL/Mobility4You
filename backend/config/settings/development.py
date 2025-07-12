@@ -3,6 +3,8 @@
 Configuración para desarrollo local
 """
 
+import os
+
 from .base import *
 
 DEBUG = True
@@ -14,16 +16,30 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("POSTGRES_DB", default="mobility4you"),
-        "USER": env("POSTGRES_USER", default="postgres"),
-        "PASSWORD": env("POSTGRES_PASSWORD", default="superseguro_postgres"),
-        "HOST": env("POSTGRES_HOST", default="postgres"),  # 'postgres' para Docker Compose, 'localhost' para desarrollo local
-        "PORT": env("POSTGRES_PORT", default="5432"),
+        "NAME": os.environ.get("POSTGRES_DB") or os.environ.get("DB_NAME", "mobility4you"),
+        "USER": os.environ.get("POSTGRES_USER") or os.environ.get("DB_USER", "postgres"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD") or os.environ.get("DB_PASSWORD", "superseguro_postgres"),
+        "HOST": os.environ.get("POSTGRES_HOST") or os.environ.get("DB_HOST", "db"),  # 'db' para Docker Compose
+        "PORT": os.environ.get("POSTGRES_PORT") or os.environ.get("DB_PORT", "5432"),
         "OPTIONS": {
             "sslmode": "prefer",
         },
     }
 }
+
+# Debug de configuración de base de datos
+print(f"🔧 [DEVELOPMENT] Database config:")
+print(f"🔧 ENGINE: {DATABASES['default']['ENGINE']}")
+print(f"🔧 NAME: {DATABASES['default']['NAME']}")
+print(f"🔧 USER: {DATABASES['default']['USER']}")
+print(f"🔧 HOST: {DATABASES['default']['HOST']}")
+print(f"🔧 PORT: {DATABASES['default']['PORT']}")
+
+# Variables de entorno para debug
+print(f"📋 Environment variables:")
+print(f"   POSTGRES_DB: {os.environ.get('POSTGRES_DB', 'NOT_SET')}")
+print(f"   DB_HOST: {os.environ.get('DB_HOST', 'NOT_SET')}")
+print(f"   DB_ENGINE: {os.environ.get('DB_ENGINE', 'NOT_SET')}")
 
 # Archivos estáticos para desarrollo
 STATIC_URL = "/django-static/"

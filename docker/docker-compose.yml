@@ -1,36 +1,27 @@
-services: # Base de datos MariaDB con configuración optimizada
+services:
+  # PostgreSQL Database - Optimizado para desarrollo
   db:
-    image: mariadb:10.6
-    container_name: mobility4you_db
-    volumes:
-      - db_data:/var/lib/mysql
-      - ./mariadb-init.sh:/docker-entrypoint-initdb.d/mariadb-init.sh:ro
-    restart: always
-    ports:
-      - "3306:3306" # Exponer puerto para desarrollo local
+    image: postgres:16-alpine
+    container_name: mobility4you_postgres_dev
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
     networks:
       - mobility4you_network
     healthcheck:
-      test:
-        [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "localhost",
-          "-u",
-          "mobility",
-          "-p$MYSQL_PASSWORD",
-        ]
-      timeout: 20s
-      retries: 10
-      interval: 10s # Backend Django con arquitectura modular
-  # Apps: usuarios, vehiculos, reservas, politicas, facturas_contratos, comunicacion
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Django con PostgreSQL
   backend:
     build:
       context: ../backend
@@ -41,32 +32,34 @@ services: # Base de datos MariaDB con configuración optimizada
       - ../backend:/app
       - static_volume:/app/staticfiles
       - ../backend/logs:/app/logs
-      - ../backend/entrypoint.sh:/entrypoint.sh:ro # Montar entrypoint desde backend/
     env_file:
-      - .env
+      - ../backend/.env
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
+      # - DJANGO_SETTINGS_MODULE=config.settings  # Usa la configuración del .env
       - DJANGO_ENV=${DJANGO_ENV:-development}
+      # Database PostgreSQL
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
       - DB_HOST=db
-      - DB_NAME=${MYSQL_DATABASE}
-      - DB_USER=${MYSQL_USER}
-      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - DB_PORT=5432
+      # Django Core
       - SECRET_KEY=${SECRET_KEY}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0}
       - DEBUG=${DEBUG:-True}
+      - DJANGO_ENV=development
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0}
       # Redis
       - REDIS_URL=redis://redis:6379/0
-      # Stripe Configuration
+      # Stripe
       - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      - STRIPE_ENVIRONMENT=${STRIPE_ENVIRONMENT:-test}
-      - STRIPE_API_VERSION=${STRIPE_API_VERSION:-2023-10-16}
       # URLs
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
@@ -86,11 +79,9 @@ services: # Base de datos MariaDB con configuración optimizada
       - /usr/app/node_modules
     depends_on:
       - backend
+    env_file:
+      - ../frontend/.env
     environment:
-      # React Stripe environment variables
-      - REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
-      - REACT_APP_API_URL=${REACT_APP_API_URL}
-      - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
       - CHOKIDAR_USEPOLLING=true
     ports:
       - "3000:3000"
@@ -129,9 +120,8 @@ services: # Base de datos MariaDB con configuración optimizada
       retries: 3
 
 volumes:
-  db_data:
+  postgres_data:
   static_volume:
-  # media_volume: DEPRECATED - Media files now unified in static_volume
   redis_data:
 
 networks:

@@ -1,6 +1,6 @@
 # Mapeo automático de archivos estáticos versionados
 # Generado automáticamente - NO EDITAR MANUALMENTE
-# Última actualización: 2025-07-11 17:27:09.143328
+# Última actualización: 2025-07-12 18:47:42.450922
 
 from datetime import datetime
 
@@ -21,4 +21,4 @@ def get_versioned_asset(asset_key, fallback=None):
     return VERSIONED_ASSETS.get(asset_key, fallback or asset_key)
 
 # Timestamp de generación
-GENERATED_AT = '2025-07-11T17:27:09.143354'
+GENERATED_AT = '2025-07-12T18:47:42.450957'

@@ -1,40 +1,27 @@
 # Production Docker Compose Configuration
 # =====================================
-# This configuration is optimized for production deployment with SSL, security, and monitoring.
-# Compatible with modular architecture: usuarios, vehiculos, reservas, politicas, facturas_contratos, comunicacion
+# PostgreSQL optimizado para producción con arquitectura modular
 
 services:
-  # Database Service - MariaDB with production optimizations
+  # Database Service - PostgreSQL with production optimizations
   db:
-    image: mariadb:10.6
-    container_name: mobility4you_db_prod
-    volumes:
-      - db_data_prod:/var/lib/mysql
-      - ./mariadb-init.sh:/docker-entrypoint-initdb.d/mariadb-init.sh:ro
-      - ./mysql/production.cnf:/etc/mysql/conf.d/production.cnf:ro
-    restart: unless-stopped
+    image: postgres:16-alpine
+    container_name: mobility4you_postgres_prod
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    restart: unless-stopped
     networks:
       - mobility4you_network
     healthcheck:
-      test:
-        [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "localhost",
-          "-u",
-          "mobility",
-          "-p$MYSQL_PASSWORD",
-        ]
-      timeout: 20s
-      retries: 10
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 30s
+      timeout: 10s
+      retries: 5
       start_period: 30s
     deploy:
       resources:
@@ -42,7 +29,9 @@ services:
           memory: 1G
           cpus: "0.5"
     security_opt:
-      - no-new-privileges:true # Backend Service - Django with Gunicorn (Modular Architecture)
+      - no-new-privileges:true
+
+  # Backend Service - Django with Gunicorn
   backend:
     build:
       context: ../backend
@@ -61,39 +50,31 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - DJANGO_SETTINGS_MODULE=config.production
+      # Django Core
       - DJANGO_ENV=production
-      - DB_HOST=db
-      - DB_NAME=${MYSQL_DATABASE}
-      - DB_USER=${MYSQL_USER}
-      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - DEBUG=False
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
-      - DEBUG=False
-      # Redis Configuration
+      # Database PostgreSQL
+      - DB_ENGINE=postgresql
+      - DB_HOST=db
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_PORT=5432
+      # Redis
       - REDIS_URL=redis://redis:6379/0
-      # Stripe Configuration
+      # Stripe
       - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      - STRIPE_ENVIRONMENT=${STRIPE_ENVIRONMENT:-live}
-      - STRIPE_API_VERSION=${STRIPE_API_VERSION:-2023-10-16}
       # URLs
       - FRONTEND_URL=${FRONTEND_URL}
       - BACKEND_URL=${BACKEND_URL}
-      # Security Configuration
+      # Security
       - SECURE_SSL_REDIRECT=${SECURE_SSL_REDIRECT:-True}
-      - SECURE_HSTS_SECONDS=${SECURE_HSTS_SECONDS:-31536000}
       - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-True}
       - CSRF_COOKIE_SECURE=${CSRF_COOKIE_SECURE:-True}
-      # Email Configuration
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_USE_TLS=${EMAIL_USE_TLS}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
-      # Monitoring
-      - SENTRY_DSN=${SENTRY_DSN}
     networks:
       - mobility4you_network
     deploy:
@@ -249,16 +230,13 @@ services:
       - backup
 
 volumes:
-  db_data_prod:
+  postgres_data_prod:
     driver: local
   static_volume_prod:
     driver: local
-  # media_volume_prod: DEPRECATED - Media files now unified in static_volume_prod
   logs_volume_prod:
     driver: local
   redis_data_prod:
-    driver: local
-  prometheus_data:
     driver: local
 
 networks:

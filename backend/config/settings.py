@@ -21,16 +21,29 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Detectar entorno y cargar el archivo .env adecuado
 env = environ.Env()
 DJANGO_ENV = os.environ.get("DJANGO_ENV", "development")
+
+# Cargar archivo .env si existe
+env_file = None
 if DJANGO_ENV == "production":
     env_file = os.path.join(BASE_DIR, ".env.prod")
 else:
     env_file = os.path.join(BASE_DIR, ".env")
-environ.Env.read_env(env_file)
+
+# Cargar variables de entorno desde archivo si existe
+if env_file and os.path.exists(env_file):
+    environ.Env.read_env(env_file)
+    print(f"✅ Loaded environment from: {env_file}")
+else:
+    print(f"⚠️ Environment file not found: {env_file}")
+
+# Verificación de variables críticas para debug
+print(f"POSTGRES_DB from env: {os.environ.get('POSTGRES_DB', 'NOT_SET')}")
+print(f"DB_HOST from env: {os.environ.get('DB_HOST', 'NOT_SET')}")
 
 # Secret key y debug desde el entorno
-SECRET_KEY = env("SECRET_KEY", default="claveprivadatemporal")
-DEBUG = env.bool("DEBUG", default=(DJANGO_ENV != "production"))
-ALLOWED_HOSTS = env.list("ALLOWED_HOST", default=["localhost", "127.0.0.1"])
+SECRET_KEY = os.environ.get("SECRET_KEY", "claveprivadatemporal")
+DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0").split(",")
 
 
 # Quick-start development settings - unsuitable for production
@@ -119,22 +132,30 @@ import dj_database_url
 # Default database configuration for local development
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("POSTGRES_DB", default="mobility4you"),
-        "USER": env("POSTGRES_USER", default="mobility"),
-        "PASSWORD": env("POSTGRES_PASSWORD", default="miclave"),
-        "HOST": env("DB_HOST", default="db"),  # 'db' para Docker Compose, 'localhost' para local
-        "PORT": env("DB_PORT", default="5432"),
+        "ENGINE": os.environ.get("DB_ENGINE", "django.db.backends.postgresql"),
+        "NAME": os.environ.get("DB_NAME") or os.environ.get("POSTGRES_DB", "mobility4you"),
+        "USER": os.environ.get("DB_USER") or os.environ.get("POSTGRES_USER", "postgres"),
+        "PASSWORD": os.environ.get("DB_PASSWORD") or os.environ.get("POSTGRES_PASSWORD", "superseguro_postgres"),
+        "HOST": os.environ.get("DB_HOST", "db"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
         "OPTIONS": {
             "sslmode": "prefer",  # Para Render.com
         },
     }
 }
 
+# Debug de configuración de base de datos
+print(f"🔧 Database config - ENGINE: django.db.backends.postgresql")
+print(f"🔧 Database config - NAME: {DATABASES['default']['NAME']}")
+print(f"🔧 Database config - USER: {DATABASES['default']['USER']}")
+print(f"🔧 Database config - HOST: {DATABASES['default']['HOST']}")
+print(f"🔧 Database config - PORT: {DATABASES['default']['PORT']}")
+
 # For Render.com deployment, use DATABASE_URL if available
-database_url = env("DATABASE_URL", default=None)
+database_url = os.environ.get("DATABASE_URL", None)
 if database_url:
     DATABASES["default"] = dj_database_url.parse(database_url)
+    print(f"✅ Using DATABASE_URL: {database_url[:50]}...")
 
 # DATABASES = {
 #     'default': {
