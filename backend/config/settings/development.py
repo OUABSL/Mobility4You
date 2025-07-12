@@ -9,17 +9,18 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
 
-# Database para desarrollo (MySQL/MariaDB)
+# Database para desarrollo - PostgreSQL (migrado desde MySQL)
+# Para usar PostgreSQL local, instalar: brew install postgresql (macOS) o sudo apt-get install postgresql (Ubuntu)
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": env("MYSQL_DATABASE", default="mobility4you"),
-        "USER": env("MYSQL_USER", default="mobility"),
-        "PASSWORD": env("MYSQL_PASSWORD", default="miclave"),
-        "HOST": env("DB_HOST", default="db"),  # 'db' para Docker Compose
-        "PORT": env("DB_PORT", default="3306"),
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("POSTGRES_DB", default="mobility4you"),
+        "USER": env("POSTGRES_USER", default="postgres"),
+        "PASSWORD": env("POSTGRES_PASSWORD", default="superseguro_postgres"),
+        "HOST": env("POSTGRES_HOST", default="postgres"),  # 'postgres' para Docker Compose, 'localhost' para desarrollo local
+        "PORT": env("POSTGRES_PORT", default="5432"),
         "OPTIONS": {
-            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+            "sslmode": "prefer",
         },
     }
 }
