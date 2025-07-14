@@ -1,8 +1,8 @@
 {
   "files": {
-    "main.css": "./static/css/main.9d284424.css",
-    "main.js": "./static/js/main.92d3259f.js",
-    "static/js/206.4eb6da3a.chunk.js": "./static/js/206.4eb6da3a.chunk.js",
+    "main.css": "./static/css/main.bda39225.css",
+    "main.js": "./static/js/main.8d506164.js",
+    "static/js/206.cf6c7555.chunk.js": "./static/js/206.cf6c7555.chunk.js",
     "static/media/gps.png": "./static/media/gps.ba702c909300b932a87c.png",
     "static/media/BMW-320i-M-Sport.jpg": "./static/media/BMW-320i-M-Sport.11a60d044b4aba3563d2.jpg",
     "static/media/secondary-driver.png": "./static/media/secondary-driver.499d1df780e532d6bffc.png",
@@ -18,7 +18,7 @@
     "static/media/car-door-left.svg": "./static/media/car-door-left.a2e43805f19de18d6d3938d05a338727.svg"
   },
   "entrypoints": [
-    "static/css/main.9d284424.css",
-    "static/js/main.92d3259f.js"
+    "static/css/main.bda39225.css",
+    "static/js/main.8d506164.js"
   ]
 }
