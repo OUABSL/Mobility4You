@@ -3,9 +3,9 @@ set -e
 
 echo "🚀 Building Mobility4You Frontend for Render..."
 
-# Install dependencies
+# Install dependencies with legacy peer deps for compatibility
 echo "📦 Installing dependencies..."
-npm ci --production=false
+npm ci --production=false --legacy-peer-deps
 
 # Build the application with production environment
 echo "🔨 Building application..."

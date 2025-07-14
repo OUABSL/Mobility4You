@@ -1,0 +1,6 @@
+# =======================================================
+# CONFIGURACIÓN MÍNIMA ESENCIAL PARA RENDER
+# =======================================================
+
+# CRÍTICO: Resolver conflictos de peer dependencies 
+legacy-peer-deps=true
