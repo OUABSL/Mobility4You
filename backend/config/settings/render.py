@@ -99,14 +99,38 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = "DENY"
 
-# CORS para producción
+# CORS para producción - URLs completamente parametrizadas
 CORS_ALLOWED_ORIGINS = [
-    env("FRONTEND_URL", default="https://your-frontend.onrender.com"),
+    env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
+    env("FRONTEND_URL_SECONDARY", default=""),  # URL secundaria opcional
+]
+
+# Filtrar URLs vacías
+CORS_ALLOWED_ORIGINS = [url for url in CORS_ALLOWED_ORIGINS if url]
+
+# Permitir credenciales CORS
+CORS_ALLOW_CREDENTIALS = True
+
+# Headers permitidos
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    env("FRONTEND_URL", default="https://your-frontend.onrender.com"),
+    env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
+    env("FRONTEND_URL_SECONDARY", default=""),  # URL secundaria opcional
 ]
+
+# Filtrar URLs vacías
+CSRF_TRUSTED_ORIGINS = [url for url in CSRF_TRUSTED_ORIGINS if url]
 
 # Email configuración
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

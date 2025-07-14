@@ -29,13 +29,22 @@ export const DEBUG_MODE =
   process.env.REACT_APP_DEBUG_MODE === 'true';
 
 /**
- * URLs de APIs principales
+ * URLs de APIs principales - Completamente parametrizadas
  */
 export const API_URL =
-  process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+  process.env.REACT_APP_API_URL ||
+  `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api`;
 
 export const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+
+export const NGINX_URL =
+  process.env.REACT_APP_NGINX_URL ||
+  process.env.REACT_APP_BACKEND_URL ||
+  'http://localhost';
+
+export const FRONTEND_URL =
+  process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
 
 /**
  * Configuración de media files (Backblaze B2 o local)
@@ -54,9 +63,6 @@ export const MEDIA_CONFIG = {
     return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
   },
 };
-export const NGINX_URL = process.env.REACT_APP_NGINX_URL || 'http://localhost';
-export const FRONTEND_URL =
-  process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
 
 export const API_URLS = {
   BASE: API_URL,

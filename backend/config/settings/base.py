@@ -27,7 +27,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "corsheaders",
+    "corsheaders",  # Para CORS
     "django_filters",
     # Aplicaciones modulares
     "config",
@@ -45,9 +45,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # Para servir archivos estáticos en producción
+    "corsheaders.middleware.CorsMiddleware",  # CORS - Debe ir al principio
     "config.middleware.RequestTrackingMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "config.middleware.CORSMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
