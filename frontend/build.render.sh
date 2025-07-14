@@ -1,15 +1,23 @@
 #!/bin/bash
 # =======================================================
-# BUILD SCRIPT ESPECÍFICO PARA RENDER.COM
+# BUILD SCRIPT OPTIMIZADO PARA RENDER.COM
 # =======================================================
 
 set -e
 
 echo "🌐 Building Mobility4You Frontend for Render.com..."
 
-# Limpiar cache de npm
-echo "🧹 Cleaning npm cache..."
-npm cache clean --force
+# Verificar que estamos en el directorio correcto
+if [ ! -f "package.json" ]; then
+    echo "❌ Error: package.json not found. Make sure you're in the frontend directory."
+    exit 1
+fi
+
+# Limpiar cache de npm (solo si existe)
+if [ -d "$HOME/.npm" ]; then
+    echo "🧹 Cleaning npm cache..."
+    npm cache clean --force
+fi
 
 # Eliminar node_modules y package-lock.json para fresh install
 echo "🗑️ Removing existing dependencies..."
@@ -31,9 +39,12 @@ NODE_ENV=production npm run build
 if [ -d "build" ]; then
     echo "✅ Build completed successfully!"
     echo "📁 Build output size:"
-    du -sh build/
+    du -sh build/ 2>/dev/null || echo "Build directory created"
     echo "🗂️ Build contents:"
-    ls -la build/
+    ls -la build/ | head -10
+    echo "🎯 Key files present:"
+    [ -f "build/index.html" ] && echo "  ✅ index.html" || echo "  ❌ index.html missing"
+    [ -d "build/static" ] && echo "  ✅ static/" || echo "  ❌ static/ missing"
 else
     echo "❌ Build failed - no build directory found"
     exit 1
