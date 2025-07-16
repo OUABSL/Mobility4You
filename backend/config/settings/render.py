@@ -88,16 +88,12 @@ if os.environ.get('USE_S3') == 'TRUE':
     # URL para archivos media en B2
     MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
     
-    print(f"🔧 [B2] Configuración de media activada:")
-    print(f"🔧 Bucket: {AWS_STORAGE_BUCKET_NAME}")
-    print(f"🔧 Endpoint: {AWS_S3_ENDPOINT_URL}")
-    print(f"🔧 Media URL: {MEDIA_URL}")
     
 else:
     # Fallback: archivos media locales
     MEDIA_URL = "/media/"
     MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
-    print("🔧 [LOCAL] Usando almacenamiento local para media")
+    print("[LOCAL] Usando almacenamiento local para media")
 # CORS simplificado
 CORS_ALLOWED_ORIGINS = [
     env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
@@ -127,12 +123,12 @@ LOGGING = {
 FRONTEND_URL = env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com")
 BACKEND_URL = env("BACKEND_URL", default="https://mobility4you.onrender.com")
 
-print(f"🔧 [RENDER] Configuración cargada:")
-print(f"🔧 DEBUG: {DEBUG}")
-print(f"🔧 FRONTEND_URL: {FRONTEND_URL}")
-print(f"🔧 BACKEND_URL: {BACKEND_URL}")
-print(f"🔧 ALLOWED_HOSTS: {ALLOWED_HOSTS}")
-print(f"🔧 Database configured: {'Yes' if DATABASE_URL else 'No (using SQLite)'}")
+print(f"[RENDER] Configuración cargada:")
+print(f"[DEBUG]: {DEBUG}")
+print(f"[FRONTEND_URL]: {FRONTEND_URL}")
+print(f"[BACKEND_URL]: {BACKEND_URL}")
+print(f"[ALLOWED_HOSTS]: {ALLOWED_HOSTS}")
+print(f"[DATABASE]: {'Yes' if DATABASE_URL else 'No (using SQLite)'}")
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = True

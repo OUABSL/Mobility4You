@@ -28,15 +28,15 @@ DATABASES = {
 }
 
 # Debug de configuración de base de datos
-print(f"🔧 [DEVELOPMENT] Database config:")
-print(f"🔧 ENGINE: {DATABASES['default']['ENGINE']}")
-print(f"🔧 NAME: {DATABASES['default']['NAME']}")
-print(f"🔧 USER: {DATABASES['default']['USER']}")
-print(f"🔧 HOST: {DATABASES['default']['HOST']}")
-print(f"🔧 PORT: {DATABASES['default']['PORT']}")
+print(f"[DEVELOPMENT] Database config:")
+print(f"[ENGINE]: {DATABASES['default']['ENGINE']}")
+print(f"[NAME]: {DATABASES['default']['NAME']}")
+print(f"[USER]: {DATABASES['default']['USER']}")
+print(f"[HOST]: {DATABASES['default']['HOST']}")
+print(f"[PORT]: {DATABASES['default']['PORT']}")
 
 # Variables de entorno para debug
-print(f"📋 Environment variables:")
+print(f"[DEBUG] Environment variables:")
 print(f"   POSTGRES_DB: {os.environ.get('POSTGRES_DB', 'NOT_SET')}")
 print(f"   DB_HOST: {os.environ.get('DB_HOST', 'NOT_SET')}")
 print(f"   DB_ENGINE: {os.environ.get('DB_ENGINE', 'NOT_SET')}")
@@ -81,15 +81,15 @@ if os.environ.get('USE_S3') == 'TRUE':
     # URL para archivos media en B2
     MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
     
-    print(f"🔧 [DEVELOPMENT B2] Configuración de media en B2:")
-    print(f"🔧 Bucket: {AWS_STORAGE_BUCKET_NAME}")
-    print(f"🔧 Media URL: {MEDIA_URL}")
+    print(f"[DEVELOPMENT B2] Configuración de media en B2:")
+    print(f"[B2] Bucket: {AWS_STORAGE_BUCKET_NAME}")
+    print(f"[B2] Media URL: {MEDIA_URL}")
     
 else:
     # Configuración local por defecto
     MEDIA_URL = "/media/"
     MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
-    print("🔧 [DEVELOPMENT LOCAL] Usando almacenamiento local para media")
+    print("[DEVELOPMENT LOCAL] Usando almacenamiento local para media")
 
 # Email backend para desarrollo
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

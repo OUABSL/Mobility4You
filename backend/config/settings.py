@@ -29,21 +29,21 @@ if DJANGO_ENV == "production":
 elif os.path.exists(os.path.join(BASE_DIR, ".env.local")):
     # Desarrollo local (sin Docker)
     env_file = os.path.join(BASE_DIR, ".env.local")
-    print("🔧 [LOCAL] Configuración para desarrollo local")
+    print("[LOCAL] Configuración para desarrollo local")
 else:
     # Desarrollo con Docker
     env_file = os.path.join(BASE_DIR, ".env")
-    print("🔧 [DOCKER] Configuración para desarrollo con Docker")
+    print("[DOCKER] Configuración para desarrollo con Docker")
 
 # Cargar variables de entorno desde archivo si existe
 if env_file and os.path.exists(env_file):
     environ.Env.read_env(env_file)
-    print(f"🔧 [CONFIG] Archivo .env cargado desde: {env_file}")
+    print(f"[CONFIG] Archivo .env cargado desde: {env_file}")
 else:
-    print(f"⚠️ Environment file not found: {env_file}")
+    print(f"[WARNING] Environment file not found: {env_file}")
 
 # Verificación de variables críticas para debug
-print(f"📋 Environment variables:")
+print(f"[DEBUG] Environment variables:")
 print(f"   POSTGRES_DB: {os.environ.get('POSTGRES_DB', 'NOT_SET')}")
 print(f"   DB_HOST: {os.environ.get('DB_HOST', 'NOT_SET')}")
 print(f"   DB_ENGINE: {os.environ.get('DB_ENGINE', 'NOT_SET')}")
@@ -78,7 +78,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",  # Agregado
     "corsheaders",  # Agregado
-    "django_filters",  # Agregado por Ouael el 22-05    # Aplicaciones modulares
+    "django_filters",  # Agregado por Ouael el 22-05
+    
+    # Aplicaciones modulares
     "config",  # Para servir archivos estáticos personalizados del admin
     "usuarios",
     "lugares",  # Nueva app para lugares y direcciones
@@ -89,8 +91,6 @@ INSTALLED_APPS = [
     "comunicacion",
     "payments",  # Aplicación de pagos existente
     "utils",  # Utilidades del sistema incluye comandos de gestión
-    # Aplicación original (DESACTIVADA - migración completada)
-    # 'api',       # ✅ Funcionalidad migrada a apps modulares
 ]
 
 MIDDLEWARE = [
@@ -135,7 +135,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 # Configuration for Render.com (uses DATABASE_URL) and local development
-import dj_database_url
+try:
+    import dj_database_url
+    HAS_DJ_DATABASE_URL = True
+except ImportError:
+    HAS_DJ_DATABASE_URL = False
+    print("[WARNING] dj_database_url not available - DATABASE_URL support disabled")
 
 # Default database configuration for local development
 DATABASES = {
@@ -153,18 +158,20 @@ DATABASES = {
 }
 
 # Debug de configuración de base de datos
-print(f"🔧 [DEVELOPMENT] Database config:")
-print(f"🔧 ENGINE: {DATABASES['default']['ENGINE']}")
-print(f"🔧 NAME: {DATABASES['default']['NAME']}")
-print(f"🔧 USER: {DATABASES['default']['USER']}")
-print(f"🔧 HOST: {DATABASES['default']['HOST']}")
-print(f"🔧 PORT: {DATABASES['default']['PORT']}")
+print(f"[DEVELOPMENT] Database config:")
+print(f"[ENGINE]: {DATABASES['default']['ENGINE']}")
+print(f"[NAME]: {DATABASES['default']['NAME']}")
+print(f"[USER]: {DATABASES['default']['USER']}")
+print(f"[HOST]: {DATABASES['default']['HOST']}")
+print(f"[PORT]: {DATABASES['default']['PORT']}")
 
 # For Render.com deployment, use DATABASE_URL if available
 database_url = os.environ.get("DATABASE_URL", None)
-if database_url:
+if database_url and HAS_DJ_DATABASE_URL:
     DATABASES["default"] = dj_database_url.parse(database_url)
-    print(f"✅ Using DATABASE_URL: {database_url[:50]}...")
+    print(f"[SUCCESS] Using DATABASE_URL: {database_url[:50]}...")
+elif database_url and not HAS_DJ_DATABASE_URL:
+    print("[WARNING] DATABASE_URL provided but dj_database_url not available")
 
 # DATABASES = {
 #     'default': {
@@ -198,20 +205,6 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-
-
-# Agregado
-# REST_FRAMEWORK = {
-#     'DEFAULT_PERMISSION_CLASSES': [
-#         'rest_framework.permissions.AllowAny',  # Permite acceso público (ajústalo según necesidad)
-#     ],
-#     'DEFAULT_AUTHENTICATION_CLASSES': [
-#         'rest_framework.authentication.SessionAuthentication',
-#         'rest_framework.authentication.BasicAuthentication',
-#     ],
-# }
-
-
 
 # También agregar la configuración de filtros en REST_FRAMEWORK
 REST_FRAMEWORK = {
