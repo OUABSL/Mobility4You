@@ -12,6 +12,7 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from utils.static_mapping import get_versioned_asset
 
+from .forms import LugarForm
 from .models import Direccion, Lugar
 
 logger = logging.getLogger("admin_operations")
@@ -77,9 +78,8 @@ class DireccionAdmin(admin.ModelAdmin):
             obj.calle or "Sin calle especificada",
             f"{obj.ciudad}, {obj.provincia}" if obj.ciudad and obj.provincia else "Ubicación incompleta"
         )
-    
+    direccion_completa.short_description = "Dirección"
 
-    @admin.display(description="Ciudad")
     def ciudad_display(self, obj):
         """Muestra la ciudad con ícono"""
         if obj.ciudad:
@@ -88,20 +88,18 @@ class DireccionAdmin(admin.ModelAdmin):
                 obj.ciudad
             )
         return format_html('<span style="color: #95a5a6;">Sin ciudad</span>')
-    
+    ciudad_display.short_description = "Ciudad"
 
-    @admin.display(description="Provincia")
     def provincia_display(self, obj):
         """Muestra la provincia"""
         if obj.provincia:
             return format_html(
-                '<span >{}</span>',
+                '<span>{}</span>',
                 obj.provincia
             )
         return format_html('<span style="color: #95a5a6;">Sin provincia</span>')
-    
+    provincia_display.short_description = "Provincia"
 
-    @admin.display(description="Pais")
     def pais_display(self, obj):
         """Muestra el país con bandera"""
         flag_map = {
@@ -113,19 +111,18 @@ class DireccionAdmin(admin.ModelAdmin):
         flag = flag_map.get(obj.pais, "🌍")
         
         return format_html(
-            '<span >{} {}</span>',
+            '<span>{} {}</span>',
             flag, obj.pais
         )
-    
+    pais_display.short_description = "País"
 
-    @admin.display(description="Codigo Postal")
     def codigo_postal_display(self, obj):
         """Muestra el código postal formateado"""
         return format_html(
             '<code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">{}</code>',
             obj.codigo_postal
         )
-    
+    codigo_postal_display.short_description = "Código Postal"
 
     def lugares_asociados(self, obj):
         """Muestra los lugares asociados a esta dirección"""
@@ -142,16 +139,29 @@ class DireccionAdmin(admin.ModelAdmin):
             pass
         
         return format_html('<span style="color: #95a5a6;">Sin lugares</span>')
-    
+    lugares_asociados.short_description = "Lugares"
 
     def get_queryset(self, request):
         """Optimiza las consultas"""
         return super().get_queryset(request).select_related('lugar')
 
 
+class DireccionInline(admin.StackedInline):
+    """Inline para editar dirección junto con el lugar"""
+    model = Direccion
+    fields = (
+        ('calle',),
+        ('ciudad', 'provincia'),
+        ('pais', 'codigo_postal'),
+    )
+    extra = 0
+
+
 @admin.register(Lugar)
 class LugarAdmin(admin.ModelAdmin):
     """Admin avanzado para lugares"""
+    
+    form = LugarForm  # Usar formulario personalizado
     
     # Media para archivos CSS personalizados
     class Media:
@@ -198,21 +208,31 @@ class LugarAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "nombre",
-                    "direccion",
                     ("activo", "popular"),
-                    "estadisticas_display"
                 ),
                 "classes": ["wide"]
             },
         ),
         (
-            "📍 Ubicación",
+            "📍 Dirección",
+            {
+                "fields": (
+                    "calle",
+                    ("ciudad", "provincia"),
+                    ("pais", "codigo_postal"),
+                ),
+                "classes": ["wide"]
+            },
+        ),
+        (
+            "�️ Coordenadas",
             {
                 "fields": (
                     ("latitud", "longitud"),
                     "coordenadas_info"
                 ),
-                "classes": ["wide"]
+                "classes": ["wide"],
+                "description": "Las coordenadas son opcionales pero ayudan a localizar el lugar en el mapa"
             },
         ),
         (
@@ -225,11 +245,20 @@ class LugarAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "🎨 Adicional",
+            "🎨 Información Adicional",
             {
                 "fields": (
                     "icono_url",
                     "info_adicional",
+                ),
+                "classes": ["wide"]
+            },
+        ),
+        (
+            "📊 Estadísticas",
+            {
+                "fields": (
+                    "estadisticas_display",
                 ),
                 "classes": ["wide"]
             },
@@ -245,7 +274,58 @@ class LugarAdmin(admin.ModelAdmin):
         ),
     )
 
-    @admin.display(description="Nombre")
+    # Configurar campos de solo lectura para formularios
+    def get_readonly_fields(self, request, obj=None):
+        readonly = ['created_at', 'updated_at', 'coordenadas_info', 'estadisticas_display']
+        return readonly
+
+    # Remover configuraciones que no son necesarias con el formulario personalizado
+    # raw_id_fields = ('direccion',)  # No necesario con formulario integrado
+    # autocomplete_fields = ('direccion',)  # No necesario con formulario integrado
+
+    def save_model(self, request, obj, form, change):
+        """Guardar modelo con logging mejorado"""
+        try:
+            if change:
+                action = "actualizado"
+                logger.info(f"Lugar {obj.id} siendo actualizado por {request.user.username}")
+            else:
+                action = "creado"
+                logger.info(f"Nuevo lugar siendo creado por {request.user.username}")
+            
+            super().save_model(request, obj, form, change)
+            
+            messages.success(
+                request, 
+                f"✅ Lugar '{obj.nombre}' {action} exitosamente."
+            )
+            
+        except Exception as e:
+            logger.error(f"Error al guardar lugar: {str(e)}")
+            messages.error(
+                request,
+                f"❌ Error al guardar el lugar: {str(e)}"
+            )
+            raise
+
+    def delete_model(self, request, obj):
+        """Eliminar modelo con logging"""
+        try:
+            lugar_nombre = obj.nombre
+            logger.info(f"Lugar {obj.id} ({lugar_nombre}) siendo eliminado por {request.user.username}")
+            super().delete_model(request, obj)
+            messages.success(
+                request,
+                f"✅ Lugar '{lugar_nombre}' eliminado exitosamente."
+            )
+        except Exception as e:
+            logger.error(f"Error al eliminar lugar: {str(e)}")
+            messages.error(
+                request,
+                f"❌ Error al eliminar el lugar: {str(e)}"
+            )
+            raise
+
     def nombre_display(self, obj):
         """Muestra el nombre con estado visual"""
         icon = "🟢" if obj.activo else "🔴"
@@ -253,18 +333,18 @@ class LugarAdmin(admin.ModelAdmin):
         
         return format_html(
             '<div class="nombre-lugar">'
-            '{} <strong >{}</strong> {}'
+            '{} <strong>{}</strong> {}'
             '</div>',
             icon, obj.nombre, star
         )
-    
+    nombre_display.short_description = "Nombre"
 
     def direccion_info(self, obj):
         """Muestra información de la dirección"""
         if obj.direccion:
             return format_html(
                 '<div class="direccion-info" style="font-size: 12px;">'
-                '<strong >{}</strong><br/>'
+                '<strong>{}</strong><br/>'
                 '<span style="color: #7f8c8d;">{}, {}</span><br/>'
                 '<code style="background: #f8f9fa; padding: 1px 4px; border-radius: 2px;">{}</code>'
                 '</div>',
@@ -274,7 +354,7 @@ class LugarAdmin(admin.ModelAdmin):
                 obj.direccion.codigo_postal
             )
         return format_html('<span style="color: #e74c3c;">⚠️ Sin dirección</span>')
-    
+    direccion_info.short_description = "Dirección"
 
     def contacto_info(self, obj):
         """Muestra información de contacto"""
@@ -293,9 +373,8 @@ class LugarAdmin(admin.ModelAdmin):
             )
         
         return format_html('<span style="color: #95a5a6;">Sin contacto</span>')
-    
+    contacto_info.short_description = "Contacto"
 
-    @admin.display(description="Coordenadas")
     def coordenadas_display(self, obj):
         """Muestra las coordenadas con enlace a mapa"""
         if obj.latitud and obj.longitud:
@@ -313,9 +392,8 @@ class LugarAdmin(admin.ModelAdmin):
                 float(obj.longitud)
             )
         return format_html('<span style="color: #95a5a6;">Sin coordenadas</span>')
-    
+    coordenadas_display.short_description = "Coordenadas"
 
-    @admin.display(description="Estado")
     def estado_display(self, obj):
         """Muestra el estado del lugar"""
         if obj.activo:
@@ -326,9 +404,8 @@ class LugarAdmin(admin.ModelAdmin):
             return format_html(
                 '<span class="badge badge-danger" style="font-size: 11px;">❌ Inactivo</span>'
             )
-    
+    estado_display.short_description = "Estado"
 
-    @admin.display(description="Popularidad")
     def popularidad_display(self, obj):
         """Muestra el nivel de popularidad"""
         if obj.popular:
@@ -339,9 +416,8 @@ class LugarAdmin(admin.ModelAdmin):
             return format_html(
                 '<span style="color: #95a5a6;">📍 Normal</span>'
             )
-    
+    popularidad_display.short_description = "Popularidad"
 
-    @admin.display(description="Acciones")
     def acciones_display(self, obj):
         """Muestra acciones rápidas"""
         acciones = []
@@ -388,7 +464,7 @@ class LugarAdmin(admin.ModelAdmin):
         return mark_safe(
             f'<div class="acciones-lugar">{"<br/><br/>".join(acciones)}</div>'
         )
-    
+    acciones_display.short_description = "Acciones"
 
     def coordenadas_info(self, obj):
         """Información detallada de coordenadas"""
@@ -403,9 +479,8 @@ class LugarAdmin(admin.ModelAdmin):
                 obj.latitud, obj.longitud, maps_url
             )
         return "No hay coordenadas definidas"
-    
+    coordenadas_info.short_description = "Información de Coordenadas"
 
-    @admin.display(description="Estadisticas")
     def estadisticas_display(self, obj):
         """Muestra estadísticas del lugar"""
         from django.utils.timesince import timesince
@@ -425,7 +500,7 @@ class LugarAdmin(admin.ModelAdmin):
             '<div class="estadisticas-lugar" style="font-size: 11px; color: #7f8c8d;">{}</div>',
             "<br/>".join(stats)
         )
-    
+    estadisticas_display.short_description = "Estadísticas"
 
     def get_queryset(self, request):
         """Optimiza las consultas"""
