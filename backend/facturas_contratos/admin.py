@@ -1,4 +1,6 @@
 # facturas_contratos/admin.py
+import logging
+
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.db.models import Count, Q, Sum
@@ -12,6 +14,8 @@ from utils.static_mapping import get_versioned_asset
 from .models import Contrato, Factura
 from .utils import (generar_contrato_pdf, generar_factura_pdf,
                     generar_numero_contrato, generar_numero_factura)
+
+logger = logging.getLogger("admin_operations")
 
 
 def safe_float(value, default=0.0):

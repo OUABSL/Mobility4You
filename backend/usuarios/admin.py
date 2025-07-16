@@ -174,7 +174,9 @@ class DateRangeFilter(SimpleListFilter):
 
 @admin.register(Usuario)
 class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
-    """Administrador avanzado para el modelo Usuario"""    # Media para archivos CSS y JS personalizados
+    """Administrador avanzado para el modelo Usuario"""
+    
+    # Media para archivos CSS y JS personalizados
     class Media:
         css = {
             "all": (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
@@ -344,7 +346,7 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
                     '<span style="color: #28a745;">🔐 Autenticado</span>'
                 )
         else:
-            return format_html('<span style="color: #6c757d;">👤 Cliente</span>')    
+            return format_html('<span style="color: #6c757d;">👤 Cliente</span>')
 
     def get_rol(self, obj):
         """Mostrar rol con indicador de acceso"""

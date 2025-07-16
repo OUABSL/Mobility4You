@@ -19,9 +19,9 @@ env = environ.Env()
 env_file = BASE_DIR / '.env'
 if env_file.exists():
     environ.Env.read_env(env_file)
-    print(f"🔧 [CONFIG] Archivo .env cargado desde: {env_file}")
+    print(f"[CONFIG] Archivo .env cargado desde: {env_file}")
 else:
-    print(f"⚠️ [CONFIG] No se encontró archivo .env en: {env_file}")
+    print(f"[WARNING] No se encontró archivo .env en: {env_file}")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY", default="claveprivadatemporal")
