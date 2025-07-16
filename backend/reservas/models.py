@@ -24,7 +24,7 @@ class Reserva(models.Model):
     usuario = models.ForeignKey(
         "usuarios.Usuario",
         related_name="reservas",
-        on_delete=models.SET(-1),
+        on_delete=models.CASCADE,
         null=False,
         blank=False,
     )
@@ -40,24 +40,28 @@ class Reserva(models.Model):
         related_name="reservas",
         on_delete=models.RESTRICT,
         null=False,
+        blank=False,
     )
     vehiculo = models.ForeignKey(
         "vehiculos.Vehiculo",
         related_name="reservas",
         on_delete=models.RESTRICT,
         null=False,
+        blank=False,
     )
     lugar_recogida = models.ForeignKey(
         "lugares.Lugar",
         related_name="recogidas",
         on_delete=models.RESTRICT,
         null=False,
+        blank=False,
     )
     lugar_devolucion = models.ForeignKey(
         "lugares.Lugar",
         related_name="devoluciones",
         on_delete=models.RESTRICT,
         null=False,
+        blank=False,
     )
 
     # Fechas

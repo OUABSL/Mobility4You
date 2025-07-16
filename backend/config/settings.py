@@ -26,19 +26,27 @@ DJANGO_ENV = os.environ.get("DJANGO_ENV", "development")
 env_file = None
 if DJANGO_ENV == "production":
     env_file = os.path.join(BASE_DIR, ".env.prod")
+elif os.path.exists(os.path.join(BASE_DIR, ".env.local")):
+    # Desarrollo local (sin Docker)
+    env_file = os.path.join(BASE_DIR, ".env.local")
+    print("🔧 [LOCAL] Configuración para desarrollo local")
 else:
+    # Desarrollo con Docker
     env_file = os.path.join(BASE_DIR, ".env")
+    print("🔧 [DOCKER] Configuración para desarrollo con Docker")
 
 # Cargar variables de entorno desde archivo si existe
 if env_file and os.path.exists(env_file):
     environ.Env.read_env(env_file)
-    print(f"✅ Loaded environment from: {env_file}")
+    print(f"🔧 [CONFIG] Archivo .env cargado desde: {env_file}")
 else:
     print(f"⚠️ Environment file not found: {env_file}")
 
 # Verificación de variables críticas para debug
-print(f"POSTGRES_DB from env: {os.environ.get('POSTGRES_DB', 'NOT_SET')}")
-print(f"DB_HOST from env: {os.environ.get('DB_HOST', 'NOT_SET')}")
+print(f"📋 Environment variables:")
+print(f"   POSTGRES_DB: {os.environ.get('POSTGRES_DB', 'NOT_SET')}")
+print(f"   DB_HOST: {os.environ.get('DB_HOST', 'NOT_SET')}")
+print(f"   DB_ENGINE: {os.environ.get('DB_ENGINE', 'NOT_SET')}")
 
 # Secret key y debug desde el entorno
 SECRET_KEY = os.environ.get("SECRET_KEY", "claveprivadatemporal")
@@ -145,11 +153,12 @@ DATABASES = {
 }
 
 # Debug de configuración de base de datos
-print(f"🔧 Database config - ENGINE: django.db.backends.postgresql")
-print(f"🔧 Database config - NAME: {DATABASES['default']['NAME']}")
-print(f"🔧 Database config - USER: {DATABASES['default']['USER']}")
-print(f"🔧 Database config - HOST: {DATABASES['default']['HOST']}")
-print(f"🔧 Database config - PORT: {DATABASES['default']['PORT']}")
+print(f"🔧 [DEVELOPMENT] Database config:")
+print(f"🔧 ENGINE: {DATABASES['default']['ENGINE']}")
+print(f"🔧 NAME: {DATABASES['default']['NAME']}")
+print(f"🔧 USER: {DATABASES['default']['USER']}")
+print(f"🔧 HOST: {DATABASES['default']['HOST']}")
+print(f"🔧 PORT: {DATABASES['default']['PORT']}")
 
 # For Render.com deployment, use DATABASE_URL if available
 database_url = os.environ.get("DATABASE_URL", None)
