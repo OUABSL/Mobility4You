@@ -7,5 +7,10 @@ class LugaresConfig(AppConfig):
     verbose_name = "Gestión de Lugares y Direcciones"
 
     def ready(self):
-        # Importar señales si las hay
-        pass
+        """Inicialización cuando la app está lista"""
+        try:
+            # Importar señales si las hay
+            # import lugares.signals
+            pass
+        except ImportError:
+            pass
