@@ -50,6 +50,7 @@ class Contrato(models.Model):
         related_name="contratos",
         on_delete=models.CASCADE,
         null=False,
+        blank=False,
     )
     numero_contrato = models.CharField(
         _("Número de contrato"), max_length=50, unique=True, null=False, blank=False
@@ -100,6 +101,7 @@ class Factura(models.Model):
         related_name="facturas",
         on_delete=models.CASCADE,
         null=False,
+        blank=False,
     )
     numero_factura = models.CharField(
         _("Número de factura"), max_length=50, unique=True, null=False, blank=False

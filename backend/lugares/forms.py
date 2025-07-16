@@ -142,13 +142,18 @@ class LugarForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Si estamos editando un lugar existente, prellenar campos de dirección
-        if self.instance and self.instance.pk and hasattr(self.instance, 'direccion'):
-            direccion = self.instance.direccion
-            self.fields['calle'].initial = direccion.calle
-            self.fields['ciudad'].initial = direccion.ciudad
-            self.fields['provincia'].initial = direccion.provincia
-            self.fields['pais'].initial = direccion.pais
-            self.fields['codigo_postal'].initial = direccion.codigo_postal
+        if self.instance and self.instance.pk:
+            try:
+                direccion = self.instance.direccion
+                if direccion:
+                    self.fields['calle'].initial = direccion.calle
+                    self.fields['ciudad'].initial = direccion.ciudad
+                    self.fields['provincia'].initial = direccion.provincia
+                    self.fields['pais'].initial = direccion.pais
+                    self.fields['codigo_postal'].initial = direccion.codigo_postal
+            except (AttributeError, Direccion.DoesNotExist):
+                # Si no hay dirección asociada, usar valores por defecto
+                pass
 
     def clean(self):
         cleaned_data = super().clean()
@@ -176,11 +181,11 @@ class LugarForm(forms.ModelForm):
         lugar = super().save(commit=False)
         
         # Crear o actualizar la dirección
-        if hasattr(lugar, 'direccion') and lugar.direccion:
-            # Actualizar dirección existente
+        try:
+            # Intentar obtener la dirección existente
             direccion = lugar.direccion
-        else:
-            # Crear nueva dirección
+        except (AttributeError, Direccion.DoesNotExist):
+            # Crear nueva dirección si no existe
             direccion = Direccion()
         
         # Asignar valores de dirección
@@ -191,7 +196,9 @@ class LugarForm(forms.ModelForm):
         direccion.codigo_postal = self.cleaned_data.get('codigo_postal')
         
         if commit:
+            # Primero guardar la dirección
             direccion.save()
+            # Luego asignar al lugar y guardar
             lugar.direccion = direccion
             lugar.save()
         

@@ -325,6 +325,9 @@ class ReservaAdmin(admin.ModelAdmin):
     @admin.display(description="Dias Alquiler")
     def dias_alquiler_display(self, obj):
         """Días de alquiler calculados"""
+        if not obj.fecha_recogida or not obj.fecha_devolucion:
+            return format_html('<span style="color: #6c757d;">No definido</span>')
+        
         dias = obj.dias_alquiler()
         return format_html(
             '<strong>{} días</strong><br>'
@@ -336,6 +339,9 @@ class ReservaAdmin(admin.ModelAdmin):
 
     def precio_total_calculado(self, obj):
         """Precio total calculado automáticamente"""
+        if not obj.precio_total:
+            return format_html('<span style="color: #6c757d;">No definido</span>')
+        
         precio_calculado = obj.calcular_precio_total()
         diferencia = abs(precio_calculado - obj.precio_total)
         
@@ -378,13 +384,23 @@ class ReservaAdmin(admin.ModelAdmin):
 
     def validacion_disponibilidad(self, obj):
         """Validar disponibilidad del vehículo"""
-        if obj.verificar_disponibilidad_vehiculo():
+        if not obj.pk or not hasattr(obj, 'vehiculo') or not obj.vehiculo:
             return format_html(
-                '<span style="color: #28a745;">✅ Vehículo disponible</span>'
+                '<span style="color: #6c757d;">Pendiente de verificación</span>'
             )
-        else:
+        
+        try:
+            if obj.verificar_disponibilidad_vehiculo():
+                return format_html(
+                    '<span style="color: #28a745;">✅ Vehículo disponible</span>'
+                )
+            else:
+                return format_html(
+                    '<span style="color: #dc3545;">❌ Conflicto de disponibilidad</span>'
+                )
+        except Exception:
             return format_html(
-                '<span style="color: #dc3545;">❌ Conflicto de disponibilidad</span>'
+                '<span style="color: #ffc107;">⚠️ Error verificando disponibilidad</span>'
             )
 
     def get_urls(self):
