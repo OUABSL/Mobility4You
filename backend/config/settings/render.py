@@ -58,25 +58,41 @@ if os.environ.get('USE_S3') == 'TRUE':
     # Endpoint de S3 de tu bucket de B2
     AWS_S3_ENDPOINT_URL = f'https://{os.environ.get("B2_S3_ENDPOINT")}'
     
-    # Configuración de almacenamiento
+    # Configuración de almacenamiento para Django 4.2+
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+        },
+    }
+    
+    # Configuración legacy para compatibilidad
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
     
+    # Configuración de S3/B2
     AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = 'public-read'
     AWS_S3_CUSTOM_DOMAIN = None
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',
     }
+    AWS_S3_REGION_NAME = 'eu-central-003'  # Región correcta de tu bucket B2
+    AWS_S3_USE_SSL = True
+    AWS_S3_VERIFY = True
     
     # URLs para acceder a los archivos
     STATIC_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/static/'
     MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
     
 else:
-    # Fallback: usar WhiteNoise para archivos estáticos
+    # Fallback: usar almacenamiento local con WhiteNoise
     STATIC_URL = "/static/"
     STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
     
     # WhiteNoise configuración optimizada
     STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

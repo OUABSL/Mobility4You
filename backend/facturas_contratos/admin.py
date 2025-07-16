@@ -10,6 +10,8 @@ from django.utils.translation import gettext_lazy as _
 from utils.static_mapping import get_versioned_asset
 
 from .models import Contrato, Factura
+from .utils import (generar_contrato_pdf, generar_factura_pdf,
+                    generar_numero_contrato, generar_numero_factura)
 
 
 def safe_float(value, default=0.0):
@@ -131,6 +133,7 @@ class ContratoAdmin(admin.ModelAdmin):
         "updated_at",
         "estadisticas_display",
         "reserva_detalle_display",
+        "pdf_actions_display",
     )
 
     fieldsets = (
@@ -150,7 +153,9 @@ class ContratoAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "condiciones",
+                    "archivo_pdf",
                     "url_pdf",
+                    "pdf_actions_display",
                 ),
                 "classes": ["wide"]
             },
@@ -345,6 +350,37 @@ class ContratoAdmin(admin.ModelAdmin):
         )
     
 
+    @admin.display(description="Acciones PDF")
+    def pdf_actions_display(self, obj):
+        """Muestra botones para generar y descargar PDFs"""
+        actions_html = []
+        
+        # Botón para generar PDF
+        if not obj.archivo_pdf:
+            actions_html.append(
+                f'<button type="button" onclick="generarContratoPDF({obj.id})" '
+                f'class="btn btn-primary btn-sm">📄 Generar PDF</button>'
+            )
+        else:
+            # Enlace para descargar PDF existente
+            actions_html.append(
+                f'<a href="{obj.archivo_pdf.url}" target="_blank" '
+                f'class="btn btn-success btn-sm">📥 Descargar PDF</a>'
+            )
+            
+            # Botón para regenerar PDF
+            actions_html.append(
+                f'<button type="button" onclick="generarContratoPDF({obj.id})" '
+                f'class="btn btn-warning btn-sm">🔄 Regenerar PDF</button>'
+            )
+        
+        return format_html(
+            '<div class="pdf-actions" style="margin: 10px 0;">'
+            '{}'
+            '</div>',
+            ' '.join(actions_html)
+        )
+
     @admin.display(description="Reserva Detalle")
     def reserva_detalle_display(self, obj):
         """Muestra detalles completos de la reserva"""
@@ -411,7 +447,38 @@ class ContratoAdmin(admin.ModelAdmin):
         
         self.message_user(request, mensaje, level=messages.INFO)
 
-    actions = ["marcar_firmados", "generar_reporte_contratos"]
+    @admin.action(description="📄 Generar PDFs de contratos seleccionados")
+    def generar_pdfs_contratos(self, request, queryset):
+        """Genera PDFs para los contratos seleccionados"""
+        generados = 0
+        errores = 0
+        
+        for contrato in queryset:
+            try:
+                # Generar PDF del contrato
+                pdf_path = generar_contrato_pdf(contrato)
+                if pdf_path:
+                    generados += 1
+                else:
+                    errores += 1
+            except Exception as e:
+                errores += 1
+                
+        if generados > 0:
+            self.message_user(
+                request,
+                f"✅ {generados} PDFs de contratos generados exitosamente.",
+                level=messages.SUCCESS
+            )
+        
+        if errores > 0:
+            self.message_user(
+                request,
+                f"❌ {errores} contratos tuvieron errores al generar PDF.",
+                level=messages.ERROR
+            )
+
+    actions = ["marcar_firmados", "generar_reporte_contratos", "generar_pdfs_contratos"]
 
     def get_queryset(self, request):
         """Optimiza consultas"""
@@ -459,6 +526,7 @@ class FacturaAdmin(admin.ModelAdmin):
         "estadisticas_display",
         "desglose_display",
         "reserva_detalle_display",
+        "pdf_actions_display",
     )
 
     fieldsets = (
@@ -487,7 +555,11 @@ class FacturaAdmin(admin.ModelAdmin):
         (
             "📄 Documentación",
             {
-                "fields": ["url_pdf"],
+                "fields": [
+                    "archivo_pdf",
+                    "url_pdf",
+                    "pdf_actions_display"
+                ],
                 "classes": ["wide"]
             }
         ),
@@ -712,6 +784,37 @@ class FacturaAdmin(admin.ModelAdmin):
         )
     
 
+    @admin.display(description="Acciones PDF")
+    def pdf_actions_display(self, obj):
+        """Muestra botones para generar y descargar PDFs de facturas"""
+        actions_html = []
+        
+        # Botón para generar PDF
+        if not obj.archivo_pdf:
+            actions_html.append(
+                f'<button type="button" onclick="generarFacturaPDF({obj.id})" '
+                f'class="btn btn-primary btn-sm">📄 Generar PDF</button>'
+            )
+        else:
+            # Enlace para descargar PDF existente
+            actions_html.append(
+                f'<a href="{obj.archivo_pdf.url}" target="_blank" '
+                f'class="btn btn-success btn-sm">📥 Descargar PDF</a>'
+            )
+            
+            # Botón para regenerar PDF
+            actions_html.append(
+                f'<button type="button" onclick="generarFacturaPDF({obj.id})" '
+                f'class="btn btn-warning btn-sm">🔄 Regenerar PDF</button>'
+            )
+        
+        return format_html(
+            '<div class="pdf-actions" style="margin: 10px 0;">'
+            '{}'
+            '</div>',
+            ' '.join(actions_html)
+        )
+
     @admin.display(description="Reserva Detalle")
     def reserva_detalle_display(self, obj):
         """Muestra detalles completos de la reserva"""
@@ -779,7 +882,38 @@ class FacturaAdmin(admin.ModelAdmin):
         
         self.message_user(request, mensaje, level=messages.INFO)
 
-    actions = ["marcar_emitidas", "generar_reporte_facturas"]
+    @admin.action(description="🧾 Generar PDFs de facturas seleccionadas")
+    def generar_pdfs_facturas(self, request, queryset):
+        """Genera PDFs para las facturas seleccionadas"""
+        generados = 0
+        errores = 0
+        
+        for factura in queryset:
+            try:
+                # Generar PDF de la factura
+                pdf_path = generar_factura_pdf(factura)
+                if pdf_path:
+                    generados += 1
+                else:
+                    errores += 1
+            except Exception as e:
+                errores += 1
+                
+        if generados > 0:
+            self.message_user(
+                request,
+                f"✅ {generados} PDFs de facturas generados exitosamente.",
+                level=messages.SUCCESS
+            )
+        
+        if errores > 0:
+            self.message_user(
+                request,
+                f"❌ {errores} facturas tuvieron errores al generar PDF.",
+                level=messages.ERROR
+            )
+
+    actions = ["marcar_emitidas", "generar_reporte_facturas", "generar_pdfs_facturas"]
 
     def get_queryset(self, request):
         """Optimiza consultas"""
