@@ -1,6 +1,6 @@
 # config/settings/render.py
 """
-Configuración optimizada para despliegue en Render
+Configuración simplificada para despliegue en Render
 """
 
 import os
@@ -11,16 +11,14 @@ import environ
 from .base import *
 
 # Inicializar environ
-env = environ.Env(
-    DEBUG=(bool, False)
-)
+env = environ.Env(DEBUG=(bool, False))
 
 DEBUG = False
 
 # Hosts permitidos en Render
 ALLOWED_HOSTS = [
-    ".onrender.com",  # Permitir todos los subdominios de Render
-    "localhost",
+    ".onrender.com",
+    "localhost", 
     "127.0.0.1",
 ]
 
@@ -30,7 +28,6 @@ if "RENDER_EXTERNAL_HOSTNAME" in os.environ:
 
 # Database - PostgreSQL en Render
 DATABASE_URL = os.environ.get('DATABASE_URL')
-
 if DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.parse(
@@ -40,7 +37,7 @@ if DATABASE_URL:
         )
     }
 else:
-    # Fallback para desarrollo o si no está configurada
+    # Fallback para desarrollo
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -48,62 +45,94 @@ else:
         }
     }
 
-# Configuración para Backblaze B2
+# CONFIGURACIÓN HÍBRIDA: WhiteNoise para estáticos + B2 para media
+# Archivos estáticos (CSS, JS) se sirven desde el repositorio con WhiteNoise
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+# WhiteNoise configuración optimizada para archivos estáticos
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = False
+
+# CONFIGURACIÓN DE BACKBLAZE B2 PARA ARCHIVOS MEDIA
+# Solo para archivos subidos por el admin (imágenes de vehículos, avatares, etc.)
 if os.environ.get('USE_S3') == 'TRUE':
-    # Credenciales de B2 (leídas desde variables de entorno)
+    # Credenciales de B2 para archivos media
     AWS_ACCESS_KEY_ID = os.environ.get('B2_APPLICATION_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('B2_APPLICATION_KEY')
     AWS_STORAGE_BUCKET_NAME = os.environ.get('B2_BUCKET_NAME')
-    
-    # Endpoint de S3 de tu bucket de B2
     AWS_S3_ENDPOINT_URL = f'https://{os.environ.get("B2_S3_ENDPOINT")}'
     
-    # Configuración de almacenamiento para Django 4.2+
+    # Configuración para Django 4.2+ - Solo configurar el almacenamiento de media
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
         "staticfiles": {
-            "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
     
-    # Configuración legacy para compatibilidad
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
-    
-    # Configuración de S3/B2
+    # Configuración específica de S3/B2
     AWS_S3_FILE_OVERWRITE = False
     AWS_DEFAULT_ACL = 'public-read'
     AWS_S3_CUSTOM_DOMAIN = None
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',
     }
-    AWS_S3_REGION_NAME = 'eu-central-003'  # Región correcta de tu bucket B2
+    AWS_S3_REGION_NAME = 'eu-central-003'
     AWS_S3_USE_SSL = True
     AWS_S3_VERIFY = True
     
-    # URLs para acceder a los archivos
-    STATIC_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/static/'
-    MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
+    # URL para archivos media en B2
+    MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
+    
+    print(f"🔧 [B2] Configuración de media activada:")
+    print(f"🔧 Bucket: {AWS_STORAGE_BUCKET_NAME}")
+    print(f"🔧 Endpoint: {AWS_S3_ENDPOINT_URL}")
+    print(f"🔧 Media URL: {MEDIA_URL}")
     
 else:
-    # Fallback: usar almacenamiento local con WhiteNoise
-    STATIC_URL = "/static/"
-    STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+    # Fallback: archivos media locales
     MEDIA_URL = "/media/"
     MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
-    
-    # WhiteNoise configuración optimizada
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-    WHITENOISE_USE_FINDERS = True
-    WHITENOISE_AUTOREFRESH = False
-    
-    # Media files con WhiteNoise (no recomendado para producción)
-    MEDIA_URL = "/media/"
-    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+    print("🔧 [LOCAL] Usando almacenamiento local para media")
+# CORS simplificado
+CORS_ALLOWED_ORIGINS = [
+    env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
+]
+CORS_ALLOW_CREDENTIALS = True
 
-# Seguridad mejorada
+# Configuración básica de seguridad para HTTPS
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+
+# Logging simplificado
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
+
+# Variables de aplicación para URLs parametrizadas
+FRONTEND_URL = env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com")
+BACKEND_URL = env("BACKEND_URL", default="https://mobility4you.onrender.com")
+
+print(f"🔧 [RENDER] Configuración cargada:")
+print(f"🔧 DEBUG: {DEBUG}")
+print(f"🔧 FRONTEND_URL: {FRONTEND_URL}")
+print(f"🔧 BACKEND_URL: {BACKEND_URL}")
+print(f"🔧 ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+print(f"🔧 Database configured: {'Yes' if DATABASE_URL else 'No (using SQLite)'}")
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = True

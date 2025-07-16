@@ -41,13 +41,55 @@ print(f"   POSTGRES_DB: {os.environ.get('POSTGRES_DB', 'NOT_SET')}")
 print(f"   DB_HOST: {os.environ.get('DB_HOST', 'NOT_SET')}")
 print(f"   DB_ENGINE: {os.environ.get('DB_ENGINE', 'NOT_SET')}")
 
-# Archivos estáticos para desarrollo
+# CONFIGURACIÓN HÍBRIDA PARA DESARROLLO: Local estáticos + B2 para media (opcional)
 STATIC_URL = "/django-static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
-# Media files para desarrollo
-MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
+# CONFIGURACIÓN DE BACKBLAZE B2 PARA ARCHIVOS MEDIA (OPCIONAL EN DESARROLLO)
+# Solo si se habilita USE_S3=TRUE en .env para pruebas
+if os.environ.get('USE_S3') == 'TRUE':
+    import environ
+    env = environ.Env()
+    
+    # Credenciales de B2 para archivos media
+    AWS_ACCESS_KEY_ID = os.environ.get('B2_APPLICATION_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('B2_APPLICATION_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('B2_BUCKET_NAME')
+    AWS_S3_ENDPOINT_URL = f'https://{os.environ.get("B2_S3_ENDPOINT")}'
+    
+    # Configuración para Django 4.2+ - Solo media en B2, estáticos locales
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    
+    # Configuración específica de S3/B2
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_S3_CUSTOM_DOMAIN = None
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
+    AWS_S3_REGION_NAME = 'eu-central-003'
+    AWS_S3_USE_SSL = True
+    AWS_S3_VERIFY = True
+    
+    # URL para archivos media en B2
+    MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
+    
+    print(f"🔧 [DEVELOPMENT B2] Configuración de media en B2:")
+    print(f"🔧 Bucket: {AWS_STORAGE_BUCKET_NAME}")
+    print(f"🔧 Media URL: {MEDIA_URL}")
+    
+else:
+    # Configuración local por defecto
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
+    print("🔧 [DEVELOPMENT LOCAL] Usando almacenamiento local para media")
 
 # Email backend para desarrollo
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
