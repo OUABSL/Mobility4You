@@ -12,8 +12,16 @@ import environ
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Initialize environment
+# Initialize environment and load .env file
 env = environ.Env()
+
+# Load .env file from backend directory
+env_file = BASE_DIR / '.env'
+if env_file.exists():
+    environ.Env.read_env(env_file)
+    print(f"🔧 [CONFIG] Archivo .env cargado desde: {env_file}")
+else:
+    print(f"⚠️ [CONFIG] No se encontró archivo .env en: {env_file}")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY", default="claveprivadatemporal")
