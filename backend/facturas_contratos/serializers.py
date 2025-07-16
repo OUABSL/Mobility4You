@@ -1,14 +1,14 @@
 # facturas_contratos/serializers.py
-from rest_framework import serializers
-
 # Direct imports - removing lazy imports as per best practices  
 from reservas.serializers import ReservaSerializer
+from rest_framework import serializers
 
 from .models import Contrato, Factura
 
 
 class ContratoSerializer(serializers.ModelSerializer):
     reserva_detail = serializers.SerializerMethodField()
+    archivo_pdf_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Contrato
@@ -19,6 +19,8 @@ class ContratoSerializer(serializers.ModelSerializer):
             "numero_contrato",
             "fecha_firma",
             "condiciones",
+            "archivo_pdf",
+            "archivo_pdf_url",
             "url_pdf",
             "estado",
             "created_at",
@@ -32,9 +34,19 @@ class ContratoSerializer(serializers.ModelSerializer):
             return ReservaSerializer(obj.reserva, context=self.context).data
         return None
 
+    def get_archivo_pdf_url(self, obj):
+        """Obtener URL del archivo PDF si existe"""
+        if obj.archivo_pdf:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.archivo_pdf.url)
+            return obj.archivo_pdf.url
+        return obj.url_pdf
+
 
 class FacturaSerializer(serializers.ModelSerializer):
     reserva_detail = serializers.SerializerMethodField()
+    archivo_pdf_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Factura
@@ -47,8 +59,10 @@ class FacturaSerializer(serializers.ModelSerializer):
             "base_imponible",
             "iva",
             "total",
-            "estado",
+            "archivo_pdf",
+            "archivo_pdf_url",
             "url_pdf",
+            "estado",
             "created_at",
             "updated_at",
         ]
@@ -59,3 +73,12 @@ class FacturaSerializer(serializers.ModelSerializer):
         if obj.reserva and self.context.get("include_reserva_detail", False):
             return ReservaSerializer(obj.reserva, context=self.context).data
         return None
+
+    def get_archivo_pdf_url(self, obj):
+        """Obtener URL del archivo PDF si existe"""
+        if obj.archivo_pdf:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.archivo_pdf.url)
+            return obj.archivo_pdf.url
+        return obj.url_pdf

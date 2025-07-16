@@ -53,14 +53,102 @@ export const MEDIA_CONFIG = {
   BASE_URL:
     process.env.NODE_ENV === 'production'
       ? process.env.REACT_APP_MEDIA_BASE_URL ||
-        'https://s3.us-west-004.backblazeb2.com/your-bucket-name/media/'
+        process.env.REACT_APP_B2_MEDIA_URL ||
+        'https://s3.eu-central-003.backblazeb2.com/mobility4you-media-prod/media/'
       : `${BACKEND_URL}/media/`,
 
   getMediaUrl: (relativePath) => {
     if (!relativePath) return null;
     if (relativePath.startsWith('http')) return relativePath;
+    // Eliminar barras iniciales y asegurar formato correcto
     const cleanPath = relativePath.replace(/^\/+/, '');
     return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
+  },
+
+  // Función específica para imágenes de vehículos
+  getVehicleImageUrl: (relativePath) => {
+    if (!relativePath) return null;
+    if (relativePath.startsWith('http')) return relativePath;
+
+    // Si ya incluye 'vehicles/' en la ruta, usar tal como está
+    const cleanPath = relativePath.replace(/^\/+/, '');
+    if (cleanPath.startsWith('vehicles/')) {
+      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
+    }
+
+    // Si no incluye 'vehicles/', agregarlo
+    return `${MEDIA_CONFIG.BASE_URL}vehicles/${cleanPath}`;
+  },
+
+  // Función específica para imágenes de extras
+  getExtraImageUrl: (relativePath) => {
+    if (!relativePath) return null;
+    if (relativePath.startsWith('http')) return relativePath;
+
+    // Si ya incluye 'extras/' en la ruta, usar tal como está
+    const cleanPath = relativePath.replace(/^\/+/, '');
+    if (cleanPath.startsWith('extras/')) {
+      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
+    }
+
+    // Si no incluye 'extras/', agregarlo
+    return `${MEDIA_CONFIG.BASE_URL}extras/${cleanPath}`;
+  },
+
+  // Función específica para imágenes de carnets
+  getCarnetImageUrl: (relativePath) => {
+    if (!relativePath) return null;
+    if (relativePath.startsWith('http')) return relativePath;
+
+    // Si ya incluye 'carnets/' en la ruta, usar tal como está
+    const cleanPath = relativePath.replace(/^\/+/, '');
+    if (cleanPath.startsWith('carnets/')) {
+      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
+    }
+
+    // Si no incluye 'carnets/', agregarlo
+    return `${MEDIA_CONFIG.BASE_URL}carnets/${cleanPath}`;
+  },
+
+  // Función específica para documentos de reservaciones (contratos y facturas)
+  getReservationDocumentUrl: (relativePath) => {
+    if (!relativePath) return null;
+    if (relativePath.startsWith('http')) return relativePath;
+
+    // Si ya incluye 'reservations/' en la ruta, usar tal como está
+    const cleanPath = relativePath.replace(/^\/+/, '');
+    if (cleanPath.startsWith('reservations/')) {
+      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
+    }
+
+    // Si no incluye 'reservations/', agregarlo
+    return `${MEDIA_CONFIG.BASE_URL}reservations/${cleanPath}`;
+  },
+
+  // Función específica para contratos
+  getContratoUrl: (relativePath) => {
+    if (!relativePath) return null;
+    if (relativePath.startsWith('http')) return relativePath;
+
+    const cleanPath = relativePath.replace(/^\/+/, '');
+    if (cleanPath.startsWith('reservations/contratos/')) {
+      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
+    }
+
+    return `${MEDIA_CONFIG.BASE_URL}reservations/contratos/${cleanPath}`;
+  },
+
+  // Función específica para facturas
+  getFacturaUrl: (relativePath) => {
+    if (!relativePath) return null;
+    if (relativePath.startsWith('http')) return relativePath;
+
+    const cleanPath = relativePath.replace(/^\/+/, '');
+    if (cleanPath.startsWith('reservations/facturas/')) {
+      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
+    }
+
+    return `${MEDIA_CONFIG.BASE_URL}reservations/facturas/${cleanPath}`;
   },
 };
 

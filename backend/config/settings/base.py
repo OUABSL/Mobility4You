@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",  # Para CORS
     "django_filters",
+    "storages",  # Para Backblaze B2 Storage
     # Aplicaciones modulares
     "config",
     "usuarios",
@@ -106,6 +107,13 @@ AUTH_USER_MODEL = "usuarios.Usuario"
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Configuración de archivos estáticos y media (desarrollo)
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
 
 # REST Framework
 REST_FRAMEWORK = {

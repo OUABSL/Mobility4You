@@ -1,16 +1,14 @@
 # facturas_contratos/views.py
 from django.shortcuts import get_object_or_404
+# Direct imports - removing lazy imports as per best practices
+from reservas.models import Reserva
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-# Direct imports - removing lazy imports as per best practices
-from reservas.models import Reserva
-
 from .models import Contrato, Factura
 from .serializers import ContratoSerializer, FacturaSerializer
-
 
 try:
     from .permissions import IsAdminOrReadOnly
@@ -53,12 +51,51 @@ class ContratoViewSet(viewsets.ModelViewSet):
         """Descargar PDF del contrato"""
         contrato = self.get_object()
 
-        if contrato.url_pdf:
+        if contrato.archivo_pdf:
+            return Response({"success": True, "pdf_url": contrato.archivo_pdf.url})
+        elif contrato.url_pdf:
             return Response({"success": True, "pdf_url": contrato.url_pdf})
         else:
             return Response(
                 {"success": False, "error": "PDF no disponible"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+    @action(detail=True, methods=["post"])
+    def generar_pdf(self, request, pk=None):
+        """Generar PDF del contrato"""
+        contrato = self.get_object()
+        
+        # Verificar permisos
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"success": False, "error": "Sin permisos para generar PDF"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        try:
+            from .utils import generar_contrato_pdf
+            pdf_path = generar_contrato_pdf(contrato)
+            
+            if pdf_path:
+                # Actualizar el objeto contrato
+                contrato.refresh_from_db()
+                serializer = self.get_serializer(contrato)
+                return Response({
+                    "success": True,
+                    "message": "PDF generado exitosamente",
+                    "contrato": serializer.data,
+                    "pdf_url": contrato.archivo_pdf.url if contrato.archivo_pdf else contrato.url_pdf
+                })
+            else:
+                return Response(
+                    {"success": False, "error": "Error generando PDF"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+        except Exception as e:
+            return Response(
+                {"success": False, "error": f"Error generando PDF: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )    @action(detail=False, methods=["post"])
     def generar_desde_reserva(self, request):
         """Generar contrato desde una reserva"""
@@ -154,12 +191,51 @@ class FacturaViewSet(viewsets.ModelViewSet):
         """Descargar PDF de la factura"""
         factura = self.get_object()
 
-        if factura.url_pdf:
+        if factura.archivo_pdf:
+            return Response({"success": True, "pdf_url": factura.archivo_pdf.url})
+        elif factura.url_pdf:
             return Response({"success": True, "pdf_url": factura.url_pdf})
         else:
             return Response(
                 {"success": False, "error": "PDF no disponible"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+    @action(detail=True, methods=["post"])
+    def generar_pdf(self, request, pk=None):
+        """Generar PDF de la factura"""
+        factura = self.get_object()
+        
+        # Verificar permisos
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"success": False, "error": "Sin permisos para generar PDF"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        try:
+            from .utils import generar_factura_pdf
+            pdf_path = generar_factura_pdf(factura)
+            
+            if pdf_path:
+                # Actualizar el objeto factura
+                factura.refresh_from_db()
+                serializer = self.get_serializer(factura)
+                return Response({
+                    "success": True,
+                    "message": "PDF generado exitosamente",
+                    "factura": serializer.data,
+                    "pdf_url": factura.archivo_pdf.url if factura.archivo_pdf else factura.url_pdf
+                })
+            else:
+                return Response(
+                    {"success": False, "error": "Error generando PDF"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+        except Exception as e:
+            return Response(
+                {"success": False, "error": f"Error generando PDF: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )    @action(detail=False, methods=["post"])
     def generar_desde_reserva(self, request):
         """Generar factura desde una reserva"""
@@ -201,15 +277,15 @@ class FacturaViewSet(viewsets.ModelViewSet):
 
             # Calcular importes
             base_imponible = reserva.precio_total or 0
-            importe_iva = base_imponible * 0.21  # 21% IVA
-            importe_total = base_imponible + importe_iva
+            iva = base_imponible * 0.21  # 21% IVA
+            total = base_imponible + iva
 
             # Crear nueva factura
             factura = Factura.objects.create(
                 reserva=reserva,
                 base_imponible=base_imponible,
-                iva=importe_iva,
-                total=importe_total,
+                iva=iva,
+                total=total,
                 estado="emitida",
             )
 
