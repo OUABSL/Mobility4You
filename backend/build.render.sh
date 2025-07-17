@@ -27,9 +27,30 @@ fi
 echo "⬆️ Upgrading pip..."
 python -m pip install --upgrade pip
 
+# Verificar versión de Python y compatibilidad con psycopg2
+PYTHON_VERSION=$(python --version 2>&1 | cut -d' ' -f2)
+echo "🐍 Python version detected: $PYTHON_VERSION"
+
+# Manejar instalación específica para Python 3.13
+if [[ $PYTHON_VERSION == 3.13.* ]]; then
+    echo "⚠️  Python 3.13 detected - Installing psycopg2 with special handling..."
+    pip install --upgrade --pre psycopg2-binary==2.9.10 || pip install psycopg2-binary
+fi
+
 # Instalar dependencias Python
 echo "📦 Installing Python dependencies..."
 pip install -r requirements.txt
+
+# Verificar instalación crítica de psycopg2
+echo "🔍 Verifying PostgreSQL driver..."
+python -c "import psycopg2; print(f'✅ psycopg2 {psycopg2.__version__} installed successfully')" || {
+    echo "❌ psycopg2 installation failed, attempting recovery..."
+    pip install --force-reinstall psycopg2-binary==2.9.10
+    python -c "import psycopg2; print(f'✅ psycopg2 {psycopg2.__version__} recovered successfully')" || {
+        echo "❌ Critical: Cannot install PostgreSQL driver"
+        exit 1
+    }
+}
 
 # Verificar instalación de dependencias críticas
 echo "🔍 Verifying critical dependencies..."
