@@ -17,6 +17,22 @@ echo "  - DJANGO_SETTINGS_MODULE: $DJANGO_SETTINGS_MODULE"
 echo "  - Python version: $(python --version)"
 echo "  - Current directory: $(pwd)"
 
+# Verificar configuración de base de datos
+echo "🔍 Checking database configuration..."
+if [ -n "$DATABASE_URL" ]; then
+    echo "  ✅ DATABASE_URL is configured"
+    echo "  📊 Database type: PostgreSQL (from DATABASE_URL)"
+else
+    echo "  ⚠️  DATABASE_URL is not configured"
+    echo "  📊 Database type: SQLite (fallback) - NOT RECOMMENDED FOR PRODUCTION"
+    echo ""
+    echo "🚨 WARNING: SQLite is not recommended for production!"
+    echo "   Please configure PostgreSQL in Render:"
+    echo "   1. Create a PostgreSQL database in Render"
+    echo "   2. Add the DATABASE_URL to your service environment variables"
+    echo ""
+fi
+
 # Verificar que estamos en el directorio del backend
 if [ ! -f "manage.py" ]; then
     echo "❌ Error: manage.py not found. Make sure you're in the backend directory."
@@ -43,6 +59,30 @@ echo "🔧 Checking Django configuration..."
 python manage.py check --deploy || {
     echo "⚠️ Django deployment checks found issues, but continuing..."
 }
+
+# Verificar configuración de base de datos específicamente
+echo "🔍 Verifying database setup..."
+python manage.py shell -c "
+from django.conf import settings
+import os
+
+db_config = settings.DATABASES['default']
+engine = db_config.get('ENGINE', 'Unknown')
+
+if 'postgresql' in engine.lower():
+    print('✅ Using PostgreSQL database (RECOMMENDED)')
+    if os.environ.get('DATABASE_URL'):
+        print('✅ DATABASE_URL configured correctly')
+    else:
+        print('⚠️  PostgreSQL configured but DATABASE_URL missing')
+elif 'sqlite' in engine.lower():
+    print('⚠️  Using SQLite database (NOT RECOMMENDED FOR PRODUCTION)')
+    print('🚨 WARNING: Data will be lost on each redeploy!')
+else:
+    print(f'📊 Database engine: {engine}')
+
+print(f'📍 Database name: {db_config.get(\"NAME\", \"Unknown\")}')
+"
 
 # **MIGRACIONES FORZADAS Y ROBUSTAS**
 echo "🔄 Managing database migrations (FORCED for Render)..."
