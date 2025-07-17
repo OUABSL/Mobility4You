@@ -54,6 +54,23 @@ python -c "import django; print(f'✅ Django {django.get_version()} installed')"
     exit 1
 }
 
+# Verificar psycopg para PostgreSQL
+python -c "
+try:
+    import psycopg
+    print(f'✅ psycopg {psycopg.__version__} installed (PostgreSQL adapter)')
+except ImportError:
+    try:
+        import psycopg2
+        print(f'✅ psycopg2 {psycopg2.__version__} installed (PostgreSQL adapter)')
+    except ImportError:
+        print('❌ No PostgreSQL adapter found!')
+        exit(1)
+" || {
+    echo "❌ PostgreSQL adapter installation failed"
+    exit 1
+}
+
 # Verificar configuración de Django
 echo "🔧 Checking Django configuration..."
 python manage.py check --deploy || {
