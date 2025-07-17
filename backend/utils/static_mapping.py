@@ -1,6 +1,6 @@
 # Mapeo automático de archivos estáticos versionados
 # Generado automáticamente - NO EDITAR MANUALMENTE
-# Última actualización: 2025-07-16 23:47:34.194232
+# Última actualización: 2025-07-17 17:20:46.662054
 
 from datetime import datetime
 
@@ -18,7 +18,13 @@ VERSIONED_ASSETS = {
 # Función helper para obtener asset versionado
 def get_versioned_asset(asset_key, fallback=None):
     """Obtiene la ruta del asset versionado o fallback si no existe"""
-    return VERSIONED_ASSETS.get(asset_key, fallback or asset_key)
+    try:
+        return VERSIONED_ASSETS.get(asset_key, fallback or asset_key)
+    except (KeyError, AttributeError) as e:
+        # En caso de error, devolver el fallback o una ruta por defecto
+        if fallback:
+            return fallback
+        return f"admin/{asset_key}.css" if "css" in asset_key else f"admin/{asset_key}.js"
 
 # Timestamp de generación
-GENERATED_AT = '2025-07-16T23:47:34.194257'
+GENERATED_AT = '2025-07-17T17:20:46.662075'
