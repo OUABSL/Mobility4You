@@ -17,22 +17,6 @@ echo "  - DJANGO_SETTINGS_MODULE: $DJANGO_SETTINGS_MODULE"
 echo "  - Python version: $(python --version)"
 echo "  - Current directory: $(pwd)"
 
-# Verificar configuración de base de datos
-echo "🔍 Checking database configuration..."
-if [ -n "$DATABASE_URL" ]; then
-    echo "  ✅ DATABASE_URL is configured"
-    echo "  📊 Database type: PostgreSQL (from DATABASE_URL)"
-else
-    echo "  ⚠️  DATABASE_URL is not configured"
-    echo "  📊 Database type: SQLite (fallback) - NOT RECOMMENDED FOR PRODUCTION"
-    echo ""
-    echo "🚨 WARNING: SQLite is not recommended for production!"
-    echo "   Please configure PostgreSQL in Render:"
-    echo "   1. Create a PostgreSQL database in Render"
-    echo "   2. Add the DATABASE_URL to your service environment variables"
-    echo ""
-fi
-
 # Verificar que estamos en el directorio del backend
 if [ ! -f "manage.py" ]; then
     echo "❌ Error: manage.py not found. Make sure you're in the backend directory."
@@ -54,52 +38,11 @@ python -c "import django; print(f'✅ Django {django.get_version()} installed')"
     exit 1
 }
 
-# Verificar psycopg para PostgreSQL
-python -c "
-try:
-    import psycopg
-    print(f'✅ psycopg {psycopg.__version__} installed (PostgreSQL adapter)')
-except ImportError:
-    try:
-        import psycopg2
-        print(f'✅ psycopg2 {psycopg2.__version__} installed (PostgreSQL adapter)')
-    except ImportError:
-        print('❌ No PostgreSQL adapter found!')
-        exit(1)
-" || {
-    echo "❌ PostgreSQL adapter installation failed"
-    exit 1
-}
-
 # Verificar configuración de Django
 echo "🔧 Checking Django configuration..."
 python manage.py check --deploy || {
     echo "⚠️ Django deployment checks found issues, but continuing..."
 }
-
-# Verificar configuración de base de datos específicamente
-echo "🔍 Verifying database setup..."
-python manage.py shell -c "
-from django.conf import settings
-import os
-
-db_config = settings.DATABASES['default']
-engine = db_config.get('ENGINE', 'Unknown')
-
-if 'postgresql' in engine.lower():
-    print('✅ Using PostgreSQL database (RECOMMENDED)')
-    if os.environ.get('DATABASE_URL'):
-        print('✅ DATABASE_URL configured correctly')
-    else:
-        print('⚠️  PostgreSQL configured but DATABASE_URL missing')
-elif 'sqlite' in engine.lower():
-    print('⚠️  Using SQLite database (NOT RECOMMENDED FOR PRODUCTION)')
-    print('🚨 WARNING: Data will be lost on each redeploy!')
-else:
-    print(f'📊 Database engine: {engine}')
-
-print(f'📍 Database name: {db_config.get(\"NAME\", \"Unknown\")}')
-"
 
 # **MIGRACIONES FORZADAS Y ROBUSTAS**
 echo "🔄 Managing database migrations (FORCED for Render)..."
@@ -234,6 +177,39 @@ fi
 
 # **VERIFICACIONES FINALES**
 echo "🧪 Running final verification tests..."
+
+# Verificar archivos estáticos críticos
+echo "🔍 Checking critical static files..."
+STATIC_ROOT=${STATIC_ROOT:-staticfiles}
+
+# Verificar CSS personalizado
+if [ -f "$STATIC_ROOT/admin/css/custom_admin.css" ]; then
+    echo "✅ Custom admin CSS found"
+else
+    echo "❌ Custom admin CSS missing"
+    # Intentar copiar desde config/static
+    if [ -f "config/static/admin/css/custom_admin.css" ]; then
+        mkdir -p "$STATIC_ROOT/admin/css"
+        cp "config/static/admin/css/custom_admin.css" "$STATIC_ROOT/admin/css/"
+        echo "✅ Custom admin CSS copied"
+    fi
+fi
+
+# Verificar archivos JavaScript críticos
+JS_FILES=("vehiculos_admin.js" "usuarios_admin.js" "reservas_admin.js" "politicas_admin.js" "comunicacion_admin.js" "lugares_admin.js" "payments_admin.js" "facturas_contratos_admin.js")
+for js_file in "${JS_FILES[@]}"; do
+    if [ -f "$STATIC_ROOT/admin/js/$js_file" ]; then
+        echo "✅ $js_file found"
+    else
+        echo "❌ $js_file missing"
+        # Intentar copiar desde config/static
+        if [ -f "config/static/admin/js/$js_file" ]; then
+            mkdir -p "$STATIC_ROOT/admin/js"
+            cp "config/static/admin/js/$js_file" "$STATIC_ROOT/admin/js/"
+            echo "✅ $js_file copied"
+        fi
+    fi
+done
 
 # Test básico de Django
 python manage.py check || {

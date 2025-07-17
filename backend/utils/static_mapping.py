@@ -5,16 +5,17 @@ import os
 from datetime import datetime
 
 # Mapeo de archivos versionados (generado automáticamente en desarrollo)
-# En producción (Render), estos pueden no estar disponibles
+# En producción (Render), usamos archivos base sin versionado
 VERSIONED_ASSETS = {
-    "css": "admin/css/custom_admin_veeb3cfb9.css",
-    "js_vehiculos": "admin/js/vehiculos_admin_vfd3d29f9.js", 
-    "js_politicas": "admin/js/politicas_admin_v0d04259b.js",
-    "js_usuarios": "admin/js/usuarios_admin_vc5b6f7e1.js",
-    "js_payments": "admin/js/payments_admin_v74cfa735.js",
-    "js_reservas": "admin/js/reservas_admin_v74440271.js",
-    "js_comunicacion": "admin/js/comunicacion_admin_v9f784c33.js",
-    "js_lugares": "admin/js/lugares_admin_v6ba3dda2.js",
+    "css": "admin/css/custom_admin.css",
+    "js_vehiculos": "admin/js/vehiculos_admin.js", 
+    "js_politicas": "admin/js/politicas_admin.js",
+    "js_usuarios": "admin/js/usuarios_admin.js",
+    "js_payments": "admin/js/payments_admin.js",
+    "js_reservas": "admin/js/reservas_admin.js",
+    "js_comunicacion": "admin/js/comunicacion_admin.js",
+    "js_lugares": "admin/js/lugares_admin.js",
+    "js_facturas_contratos": "admin/js/facturas_contratos_admin.js",
 }
 
 # Fallbacks seguros para cuando los archivos versionados no están disponibles
@@ -72,16 +73,14 @@ def get_versioned_asset(asset_key, fallback=None):
         if os.environ.get('DEBUG', '').lower() == 'true':
             print(error_msg)
             
-        # Devolver fallback de emergencia
-        if fallback:
-            return fallback
-        elif asset_key in SAFE_FALLBACKS:
-            return SAFE_FALLBACKS[asset_key]
+        # Devolver fallback de emergencia - SIEMPRE archivos base
+        if asset_key == 'css':
+            return "admin/css/custom_admin.css"
         elif asset_key.startswith('js_'):
             app_name = asset_key.replace('js_', '')
             return f"admin/js/{app_name}_admin.js"
-        elif asset_key == 'css':
-            return "admin/css/custom_admin.css"
+        elif fallback:
+            return fallback
         else:
             return f"admin/css/{asset_key}.css"
 
