@@ -16,23 +16,6 @@ from utils.static_mapping import get_versioned_asset
 from .models import Contacto, Contenido
 
 logger = logging.getLogger("admin_operations")
-import logging
-from typing import Any, Optional
-
-from django.contrib import admin, messages
-from django.contrib.admin import SimpleListFilter
-from django.db.models import Count, Q, QuerySet
-from django.http import HttpRequest, JsonResponse
-from django.urls import path
-from django.utils import timezone
-from django.utils.html import format_html
-from django.utils.safestring import mark_safe
-from django.utils.translation import gettext_lazy as _
-from utils.static_mapping import get_versioned_asset
-
-from .models import Contacto, Contenido
-
-logger = logging.getLogger("admin_operations")
 
 
 # ======================

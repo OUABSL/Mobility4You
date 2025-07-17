@@ -169,3 +169,17 @@ mobility_admin_site.register(Contacto, ContactoAdmin)
 mobility_admin_site.register(PagoStripe, PagoStripeAdmin)
 mobility_admin_site.register(ReembolsoStripe, ReembolsoStripeAdmin)
 mobility_admin_site.register(WebhookStripe, WebhookStripeAdmin)
+
+# Registrar modelos de Django Auth y Admin en el sitio personalizado
+from django.contrib.auth.models import Group, User
+from django.contrib.auth.admin import GroupAdmin, UserAdmin
+from django.contrib.admin.models import LogEntry
+from django.contrib.admin import ModelAdmin
+
+# Solo registrar si no están ya registrados
+try:
+    mobility_admin_site.register(Group, GroupAdmin)
+    mobility_admin_site.register(User, UserAdmin) 
+    mobility_admin_site.register(LogEntry, ModelAdmin)
+except admin.sites.AlreadyRegistered:
+    pass  # Ya están registrados
