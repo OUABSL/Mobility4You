@@ -142,7 +142,7 @@ class LugarForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Si estamos editando un lugar existente, prellenar campos de dirección
-        if self.instance and self.instance.pk:
+        if self.instance and self.instance.pk and hasattr(self.instance, 'direccion'):
             try:
                 direccion = self.instance.direccion
                 if direccion:
@@ -181,21 +181,27 @@ class LugarForm(forms.ModelForm):
         lugar = super().save(commit=False)
         
         # Crear o actualizar la dirección
-        try:
-            # Intentar obtener la dirección existente
+        if hasattr(lugar, 'direccion') and lugar.direccion:
+            # Actualizar dirección existente
             direccion = lugar.direccion
-        except (AttributeError, Direccion.DoesNotExist):
-            # Crear nueva dirección si no existe
+        else:
+            # Crear nueva dirección
             direccion = Direccion()
         
         # Asignar valores de dirección
-        direccion.calle = self.cleaned_data.get('calle')
-        direccion.ciudad = self.cleaned_data.get('ciudad')
-        direccion.provincia = self.cleaned_data.get('provincia')
+        direccion.calle = self.cleaned_data.get('calle', '')
+        direccion.ciudad = self.cleaned_data.get('ciudad', '')
+        direccion.provincia = self.cleaned_data.get('provincia', '')
         direccion.pais = self.cleaned_data.get('pais', 'España')
-        direccion.codigo_postal = self.cleaned_data.get('codigo_postal')
+        direccion.codigo_postal = self.cleaned_data.get('codigo_postal', '')
         
         if commit:
+            # Validar que los datos requeridos estén presentes
+            if not direccion.codigo_postal:
+                raise ValidationError(_('El código postal es obligatorio'))
+            if not direccion.ciudad:
+                raise ValidationError(_('La ciudad es obligatoria'))
+                
             # Primero guardar la dirección
             direccion.save()
             # Luego asignar al lugar y guardar
