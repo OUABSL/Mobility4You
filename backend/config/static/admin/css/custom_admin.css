@@ -95,6 +95,10 @@ div.breadcrumbs a:hover {
   min-height: calc(100vh - 120px);
 }
 
+.login #content {
+  min-height: 300px !important;
+}
+
 .module {
   border-radius: 0.5rem;
   box-shadow: var(--mobility-shadow);
@@ -605,8 +609,391 @@ fieldset.module .module {
   font-weight: 600;
 }
 
-
 /* Ocultar la columna original */
 .inline-group .tabular td.original p {
   display: none !important;
+}
+
+/* ===== ESTILOS ESPECÍFICOS PARA FACTURAS Y CONTRATOS ===== */
+
+/* Notificaciones y alertas mejoradas */
+.alert {
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.alert-success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border-left: 4px solid #28a745;
+  color: #155724;
+}
+
+.alert-danger {
+  background: linear-gradient(135deg, #f8d7da 0%, #f1b0b7 100%);
+  border-left: 4px solid #dc3545;
+  color: #721c24;
+}
+
+.alert-warning {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border-left: 4px solid #ffc107;
+  color: #856404;
+}
+
+.alert-info {
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  border-left: 4px solid #17a2b8;
+  color: #0c5460;
+}
+
+/* Botones mejorados para PDF */
+.btn {
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #1e7e34 0%, #155724 100%);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+  color: #212529;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+}
+
+.btn-warning:hover {
+  background: linear-gradient(135deg, #e0a800 0%, #d39e00 100%);
+  box-shadow: 0 4px 8px rgba(255, 193, 7, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Botones pequeños */
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+
+/* Estados de formularios */
+.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.is-valid {
+  border-color: #28a745 !important;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+}
+
+/* Indicadores de loading */
+body.loading {
+  cursor: wait;
+}
+
+body.loading * {
+  pointer-events: none;
+}
+
+body.loading::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Spinner de carga */
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid var(--mobility-primary);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Hover mejorado para tablas */
+.table-hover-highlight {
+  background-color: rgba(0, 123, 255, 0.1) !important;
+  transition: background-color 0.2s ease;
+}
+
+/* Estilos para displays personalizados */
+.fecha-firma {
+  text-align: center;
+}
+
+.fecha-firma strong {
+  color: var(--mobility-dark);
+  font-size: 0.9rem;
+}
+
+.fecha-firma small {
+  font-style: italic;
+}
+
+.importe-factura {
+  text-align: center;
+}
+
+.importe-factura strong {
+  font-size: 1.1rem;
+  color: var(--mobility-success);
+}
+
+.estadisticas-contrato,
+.estadisticas-factura {
+  background: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border-left: 3px solid var(--mobility-info);
+}
+
+.desglose-factura {
+  font-family: "Monaco", "Menlo", monospace;
+  font-size: 0.875rem;
+}
+
+.pdf-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.reserva-detalle {
+  max-width: 250px;
+  line-height: 1.4;
+}
+
+.reserva-detalle p {
+  margin: 0.25rem 0;
+}
+
+/* Badges mejorados */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.badge-success {
+  background: var(--mobility-success);
+  color: white;
+}
+
+.badge-warning {
+  background: var(--mobility-warning);
+  color: var(--mobility-dark);
+}
+
+.badge-danger {
+  background: var(--mobility-danger);
+  color: white;
+}
+
+.badge-info {
+  background: var(--mobility-info);
+  color: white;
+}
+
+.badge-secondary {
+  background: var(--mobility-secondary);
+  color: white;
+}
+
+/* Calculadora de IVA */
+.iva-calculation-display {
+  animation: slideInFromTop 0.3s ease-out;
+}
+
+@keyframes slideInFromTop {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Indicador de auto-save */
+#auto-save-indicator {
+  animation: slideInFromRight 0.3s ease-out;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes slideInFromRight {
+  0% {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Contenedor de notificaciones */
+#notification-container {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Tooltips mejorados */
+.tooltip {
+  font-size: 0.8rem;
+}
+
+.tooltip-inner {
+  background: var(--mobility-dark);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  max-width: 200px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pdf-actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  #notification-container {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+  }
+
+  .reserva-detalle {
+    max-width: none;
+  }
+
+  .iva-calculation-display {
+    font-size: 0.8rem;
+  }
+}
+
+/* Mejoras para campos de formulario */
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--mobility-primary);
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  outline: 0;
+}
+
+/* Estados de validación para campos */
+.form-group .is-invalid {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.form-group .is-valid {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='m2.3 6.73.8.03 1.48-4.32c.083-.24.132-.427.132-.529 0-.246-.195-.41-.481-.41-.193 0-.39.085-.518.26l-.065.13-.81 2.05c-.13.31-.18.479-.18.506 0 .23.197.375.418.375.134 0 .265-.015.37-.046l.316-.045c.05-.01.053-.04.01-.06L2.3 6.73z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+/* Mejoras adicionales para accesibilidad */
+.btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.5);
+  outline: 0;
+}
+
+/* Animaciones suaves */
+* {
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Print styles */
+@media print {
+  .pdf-actions,
+  .btn,
+  #notification-container,
+  #auto-save-indicator {
+    display: none !important;
+  }
 }

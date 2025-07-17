@@ -195,9 +195,18 @@ class GlobalExceptionMiddleware(MiddlewareMixin):
             'request_path': request.path,
             'request_method': request.method,
             'user_id': request.user.id if hasattr(request, 'user') and request.user.is_authenticated else None,
-            'remote_addr': RequestTrackingMiddleware()._get_client_ip(request),
+            'remote_addr': self._get_client_ip(request),
             'request_body': request_body,
         }
+
+    def _get_client_ip(self, request):
+        """Obtener IP real del cliente considerando proxies"""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR', 'unknown')
+        return ip
 
 
 class SecurityHeadersMiddleware(MiddlewareMixin):

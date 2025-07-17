@@ -1,14 +1,18 @@
 # facturas_contratos/admin.py
+import json
 import logging
 
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.db.models import Count, Q, Sum
-from django.urls import reverse
+from django.http import JsonResponse
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from utils.static_mapping import get_versioned_asset
 
 from .models import Contrato, Factura
@@ -488,6 +492,82 @@ class ContratoAdmin(admin.ModelAdmin):
         """Optimiza consultas"""
         return super().get_queryset(request).select_related("reserva", "reserva__usuario", "reserva__vehiculo")
 
+    def get_urls(self):
+        """Añadir URLs personalizadas para AJAX"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'generar-pdf/<int:contrato_id>/',
+                self.admin_site.admin_view(self.generar_pdf_ajax),
+                name='generar_contrato_pdf'
+            ),
+            path(
+                'verificar-estado/<int:contrato_id>/',
+                self.admin_site.admin_view(self.verificar_estado_ajax),
+                name='verificar_estado_contrato'
+            ),
+        ]
+        return custom_urls + urls
+
+    def generar_pdf_ajax(self, request, contrato_id):
+        """Generar PDF de contrato vía AJAX"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+        try:
+            contrato = Contrato.objects.get(id=contrato_id)
+            
+            # Generar PDF
+            pdf_path = generar_contrato_pdf(contrato)
+            
+            if pdf_path:
+                # Actualizar el objeto contrato
+                contrato.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'PDF generado exitosamente',
+                    'download_url': contrato.archivo_pdf.url if contrato.archivo_pdf else None,
+                    'contrato_id': contrato.id
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Error al generar el PDF'
+                }, status=500)
+                
+        except Contrato.DoesNotExist:
+            return JsonResponse({'error': 'Contrato no encontrado'}, status=404)
+        except Exception as e:
+            logger.error(f"Error generando PDF contrato {contrato_id}: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Error interno: {str(e)}'
+            }, status=500)
+
+    def verificar_estado_ajax(self, request, contrato_id):
+        """Verificar estado del contrato vía AJAX"""
+        try:
+            contrato = Contrato.objects.get(id=contrato_id)
+            
+            return JsonResponse({
+                'success': True,
+                'contrato_id': contrato.id,
+                'estado': contrato.estado,
+                'fecha_firma': contrato.fecha_firma.isoformat() if contrato.fecha_firma else None,
+                'numero_contrato': contrato.numero_contrato,
+                'tiene_pdf': bool(contrato.archivo_pdf)
+            })
+            
+        except Contrato.DoesNotExist:
+            return JsonResponse({'error': 'Contrato no encontrado'}, status=404)
+        except Exception as e:
+            logger.error(f"Error verificando estado contrato {contrato_id}: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Error interno: {str(e)}'
+            }, status=500)
+
 
 @admin.register(Factura)
 class FacturaAdmin(admin.ModelAdmin):
@@ -922,5 +1002,133 @@ class FacturaAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimiza consultas"""
         return super().get_queryset(request).select_related("reserva", "reserva__usuario", "reserva__vehiculo")
+
+    def get_urls(self):
+        """Añadir URLs personalizadas para AJAX"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'generar-pdf/<int:factura_id>/',
+                self.admin_site.admin_view(self.generar_pdf_ajax),
+                name='generar_factura_pdf'
+            ),
+            path(
+                'verificar-estado/<int:factura_id>/',
+                self.admin_site.admin_view(self.verificar_estado_ajax),
+                name='verificar_estado_factura'
+            ),
+            path(
+                'calcular-iva/',
+                self.admin_site.admin_view(self.calcular_iva_ajax),
+                name='calcular_iva'
+            ),
+        ]
+        return custom_urls + urls
+
+    def generar_pdf_ajax(self, request, factura_id):
+        """Generar PDF de factura vía AJAX"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+        try:
+            factura = Factura.objects.get(id=factura_id)
+            
+            # Generar PDF
+            pdf_path = generar_factura_pdf(factura)
+            
+            if pdf_path:
+                # Actualizar el objeto factura
+                factura.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'PDF de factura generado exitosamente',
+                    'download_url': factura.archivo_pdf.url if factura.archivo_pdf else None,
+                    'factura_id': factura.id
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Error al generar el PDF de la factura'
+                }, status=500)
+                
+        except Factura.DoesNotExist:
+            return JsonResponse({'error': 'Factura no encontrada'}, status=404)
+        except Exception as e:
+            logger.error(f"Error generando PDF factura {factura_id}: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Error interno: {str(e)}'
+            }, status=500)
+
+    def verificar_estado_ajax(self, request, factura_id):
+        """Verificar estado de la factura vía AJAX"""
+        try:
+            factura = Factura.objects.get(id=factura_id)
+            
+            return JsonResponse({
+                'success': True,
+                'factura_id': factura.id,
+                'estado': factura.estado,
+                'fecha_emision': factura.fecha_emision.isoformat() if factura.fecha_emision else None,
+                'numero_factura': factura.numero_factura,
+                'base_imponible': float(factura.base_imponible or 0),
+                'iva': float(factura.iva or 0),
+                'total': float(factura.total or 0),
+                'tiene_pdf': bool(factura.archivo_pdf)
+            })
+            
+        except Factura.DoesNotExist:
+            return JsonResponse({'error': 'Factura no encontrada'}, status=404)
+        except Exception as e:
+            logger.error(f"Error verificando estado factura {factura_id}: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Error interno: {str(e)}'
+            }, status=500)
+
+    def calcular_iva_ajax(self, request):
+        """Calcular IVA vía AJAX"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+        try:
+            data = json.loads(request.body)
+            base_imponible = float(data.get('base_imponible', 0))
+            porcentaje_iva = float(data.get('porcentaje_iva', 21))  # IVA estándar España
+            
+            if base_imponible < 0:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'La base imponible debe ser positiva'
+                }, status=400)
+            
+            iva = (base_imponible * porcentaje_iva) / 100
+            total = base_imponible + iva
+            
+            return JsonResponse({
+                'success': True,
+                'base_imponible': round(base_imponible, 2),
+                'porcentaje_iva': porcentaje_iva,
+                'iva': round(iva, 2),
+                'total': round(total, 2)
+            })
+            
+        except (ValueError, TypeError) as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Valores numéricos inválidos: {str(e)}'
+            }, status=400)
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'JSON inválido'
+            }, status=400)
+        except Exception as e:
+            logger.error(f"Error calculando IVA: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Error interno: {str(e)}'
+            }, status=500)
 
 
