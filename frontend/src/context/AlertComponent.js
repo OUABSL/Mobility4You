@@ -58,7 +58,7 @@ const AlertComponent = () => {
 
   return (
     <div className={`global-alert-container ${positionClass}`}>
-      <Container>
+      <Container style={{ marginTop: '60px' }}>
         <Alert
           variant={alert.variant}
           onClose={hideAlert}
