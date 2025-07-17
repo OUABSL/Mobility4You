@@ -1,8 +1,8 @@
 # Configuración de archivos estáticos para Render
 # Fallback robusto cuando VERSIONED_ASSETS no está disponible
 
-from datetime import datetime
 import os
+from datetime import datetime
 
 # Mapeo de archivos versionados (generado automáticamente en desarrollo)
 # En producción (Render), estos pueden no estar disponibles
