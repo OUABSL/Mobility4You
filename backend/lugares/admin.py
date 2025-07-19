@@ -284,7 +284,7 @@ class LugarAdmin(admin.ModelAdmin):
     # autocomplete_fields = ('direccion',)  # No necesario con formulario integrado
 
     def save_model(self, request, obj, form, change):
-        """Guardar modelo con logging mejorado"""
+        """Guardar modelo con logging mejorado y manejo correcto de dirección"""
         try:
             if change:
                 action = "actualizado"
@@ -293,6 +293,8 @@ class LugarAdmin(admin.ModelAdmin):
                 action = "creado"
                 logger.info(f"Nuevo lugar siendo creado por {request.user.username}")
             
+            # El formulario personalizado LugarForm ya maneja la creación/actualización de la dirección
+            # en su método save(), así que simplemente llamamos al save del formulario
             super().save_model(request, obj, form, change)
             
             messages.success(
@@ -309,15 +311,24 @@ class LugarAdmin(admin.ModelAdmin):
             raise
 
     def delete_model(self, request, obj):
-        """Eliminar modelo con logging"""
+        """Eliminar modelo con logging y manejo de dirección"""
         try:
             lugar_nombre = obj.nombre
+            direccion_id = obj.direccion.id if obj.direccion else None
+            
             logger.info(f"Lugar {obj.id} ({lugar_nombre}) siendo eliminado por {request.user.username}")
+            
+            # Eliminar el lugar (la dirección se eliminará automáticamente debido a la relación OneToOne)
             super().delete_model(request, obj)
+            
             messages.success(
                 request,
-                f"✅ Lugar '{lugar_nombre}' eliminado exitosamente."
+                f"✅ Lugar '{lugar_nombre}' y su dirección eliminados exitosamente."
             )
+            
+            if direccion_id:
+                logger.info(f"Dirección {direccion_id} eliminada junto con lugar {lugar_nombre}")
+                
         except Exception as e:
             logger.error(f"Error al eliminar lugar: {str(e)}")
             messages.error(
@@ -325,6 +336,30 @@ class LugarAdmin(admin.ModelAdmin):
                 f"❌ Error al eliminar el lugar: {str(e)}"
             )
             raise
+
+    def response_add(self, request, obj, post_url_continue=None):
+        """Personalizar respuesta después de crear un lugar"""
+        try:
+            return super().response_add(request, obj, post_url_continue)
+        except Exception as e:
+            logger.error(f"Error después de crear lugar: {str(e)}")
+            messages.error(
+                request,
+                f"❌ El lugar se creó pero hubo un problema: {str(e)}"
+            )
+            return super().response_add(request, obj, post_url_continue)
+
+    def response_change(self, request, obj):
+        """Personalizar respuesta después de actualizar un lugar"""
+        try:
+            return super().response_change(request, obj)
+        except Exception as e:
+            logger.error(f"Error después de actualizar lugar: {str(e)}")
+            messages.error(
+                request,
+                f"❌ El lugar se actualizó pero hubo un problema: {str(e)}"
+            )
+            return super().response_change(request, obj)
 
     def nombre_display(self, obj):
         """Muestra el nombre con estado visual"""
