@@ -56,6 +56,25 @@ export const fetchCarsService = async (filterValues = {}) => {
         const data = response.data;
         const rawCars = data.results || data.cars || [];
         const count = data.count || data.total || 0;
+        const isEmpty = data.isEmpty || false;
+        const message = data.message || '';
+
+        // Manejar caso de base de datos vacía de forma elegante
+        if (isEmpty || count === 0 || rawCars.length === 0) {
+          logger.info(
+            'ℹ️ [fetchCarsService] No hay vehículos disponibles:',
+            message || 'No hay vehículos en el sistema',
+          );
+
+          return {
+            cars: [],
+            total: 0,
+            filterOptions: {},
+            success: true,
+            isEmpty: true,
+            message: message || 'No hay vehículos disponibles en este momento',
+          };
+        }
 
         // Usar el mapper universal para transformar los datos de vehículos
         const mappedCars = await universalMapper.mapVehicles(rawCars);
@@ -73,6 +92,11 @@ export const fetchCarsService = async (filterValues = {}) => {
           total: count,
           filterOptions,
           success: data.success !== undefined ? data.success : true,
+          message:
+            message ||
+            `${mappedCars.length} vehículo${
+              mappedCars.length !== 1 ? 's' : ''
+            } disponible${mappedCars.length !== 1 ? 's' : ''}`,
         };
       } catch (error) {
         logger.warn(

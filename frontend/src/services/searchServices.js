@@ -259,136 +259,204 @@ export const validateSearchForm = (formData) => {
 
 /**
  * Busca vehículos disponibles según criterios de búsqueda
- * MIGRADO: Prioriza base de datos, fallback a testingData solo si DEBUG_MODE = true y API falla
- * OPTIMIZADO: Implementa caché para evitar búsquedas duplicadas
+ * UNIFICADO: Una sola llamada que obtiene vehículos disponibles para fechas específicas
+ * OPTIMIZADO: Implementa caché y manejo de errores robusto
  * @param {Object} searchParams - Parámetros de búsqueda
  * @returns {Promise<Object>} - Resultados de la búsqueda con estructura unificada
  */
 export const searchAvailableVehicles = async (searchParams) => {
   const searchKey = `search_${JSON.stringify(searchParams)}`;
 
-  return await withCache('cars', async () => {
-    try {
-      const { isValid, errors } = validateSearchForm(searchParams);
-      if (!isValid) {
-        const errorMessage = Object.values(errors).join('. ');
-        throw new Error(errorMessage);
-      }
-
-      logger.info(
-        '🔍 [searchAvailableVehicles] Consultando disponibilidad en BD con parámetros:',
-        searchParams,
-      );
-
-      // Asegurar que las fechas estén en formato ISO
-      const formatearFecha = (fecha) => {
-        if (!fecha) return null;
-        const date = new Date(fecha);
-        return date.toISOString();
-      };
-
-      // Transformar parámetros para el backend con formato mejorado
-      const backendParams = {
-        fecha_recogida: formatearFecha(searchParams.pickupDate),
-        fecha_devolucion: formatearFecha(searchParams.dropoffDate),
-        lugar_recogida_id: parseInt(searchParams.pickupLocation),
-        lugar_devolucion_id: parseInt(
-          searchParams.dropoffLocation || searchParams.pickupLocation,
-        ),
-        categoria_id: searchParams.categoria_id
-          ? parseInt(searchParams.categoria_id)
-          : undefined,
-        grupo_id: searchParams.grupo_id
-          ? parseInt(searchParams.grupo_id)
-          : undefined,
-      };
-
-      // Limpiar parámetros undefined
-      Object.keys(backendParams).forEach((key) => {
-        if (backendParams[key] === undefined) {
-          delete backendParams[key];
+  return await withCache(
+    'search_results',
+    async () => {
+      try {
+        const { isValid, errors } = validateSearchForm(searchParams);
+        if (!isValid) {
+          const errorMessage = Object.values(errors).join('. ');
+          throw new Error(errorMessage);
         }
-      });
 
-      const response = await withTimeout(
-        axios.post(`${API_URL}/vehiculos/disponibilidad/`, backendParams),
-        12000,
-      );
-
-      logger.info(
-        '✅ [searchAvailableVehicles] Datos cargados desde BD:',
-        response.data.count,
-        'vehículos disponibles',
-      );
-
-      // Validar estructura de respuesta
-      if (!response.data || typeof response.data.success === 'undefined') {
-        throw new Error('Formato de respuesta inválido del servidor');
-      }
-
-      if (!response.data.success) {
-        throw new Error(
-          response.data.error || 'Error en la búsqueda de vehículos',
-        );
-      }
-
-      return {
-        success: true,
-        count: response.data.count || 0,
-        results: response.data.results || [],
-        filterOptions:
-          response.data.filterOptions ||
-          extractFilterOptions(response.data.results || []),
-      };
-    } catch (error) {
-      logger.warn(
-        '⚠️ [searchAvailableVehicles] Error consultando BD:',
-        error.message,
-      );
-
-      // Mejorar manejo de errores específicos
-      if (error.response) {
-        const status = error.response.status;
-        const errorData = error.response.data;
-
-        if (status === 400) {
-          throw new Error(
-            errorData.error || 'Parámetros de búsqueda inválidos',
-          );
-        } else if (status === 404) {
-          throw new Error('Servicio de búsqueda no disponible');
-        } else if (status >= 500) {
-          throw new Error('Error temporal del servidor. Intenta nuevamente.');
-        }
-      }
-
-      // FALLBACK: Solo si DEBUG_MODE está activo
-      if (shouldUseTestingData(true)) {
         logger.info(
-          '🔄 [searchAvailableVehicles] Usando datos de testing como fallback',
+          '🔍 [searchAvailableVehicles] Consultando disponibilidad en BD con parámetros:',
+          searchParams,
         );
 
-        const { default: testingCars } = await import(
-          '../assets/testingData/testingData'
+        // Asegurar que las fechas estén en formato ISO
+        const formatearFecha = (fecha) => {
+          if (!fecha) return null;
+          const date = new Date(fecha);
+          return date.toISOString();
+        };
+
+        // Transformar parámetros para el backend con formato mejorado
+        const backendParams = {
+          fecha_recogida: formatearFecha(searchParams.pickupDate),
+          fecha_devolucion: formatearFecha(searchParams.dropoffDate),
+          lugar_recogida_id: parseInt(searchParams.pickupLocation),
+          lugar_devolucion_id: parseInt(
+            searchParams.dropoffLocation || searchParams.pickupLocation,
+          ),
+          categoria_id: searchParams.categoria_id
+            ? parseInt(searchParams.categoria_id)
+            : undefined,
+          grupo_id: searchParams.grupo_id
+            ? parseInt(searchParams.grupo_id)
+            : undefined,
+        };
+
+        // Limpiar parámetros undefined
+        Object.keys(backendParams).forEach((key) => {
+          if (backendParams[key] === undefined) {
+            delete backendParams[key];
+          }
+        });
+
+        // UNIFICADA: Una sola llamada para obtener vehículos disponibles
+        const response = await withTimeout(
+          axios.post(`${API_URL}/vehiculos/disponibilidad/`, backendParams),
+          12000,
         );
-        await new Promise((resolve) => setTimeout(resolve, 800));
+
+        logger.info(
+          '✅ [searchAvailableVehicles] Datos cargados desde BD:',
+          response.data.count || 0,
+          'vehículos disponibles',
+        );
+
+        // Validar estructura de respuesta
+        if (!response.data || typeof response.data.success === 'undefined') {
+          logger.warn('⚠️ Formato de respuesta inesperado:', response.data);
+          // Intentar procesar de todos modos si hay datos
+          if (response.data && Array.isArray(response.data.results)) {
+            return {
+              success: true,
+              count: response.data.results.length,
+              results: response.data.results,
+              filterOptions: extractFilterOptions(response.data.results),
+              message: 'Búsqueda completada',
+            };
+          }
+          throw new Error('Formato de respuesta inválido del servidor');
+        }
+
+        if (!response.data.success) {
+          const errorMsg =
+            response.data.error ||
+            response.data.message ||
+            'Error en la búsqueda de vehículos';
+          throw new Error(errorMsg);
+        }
+
+        // Manejar caso de cero resultados de forma elegante
+        const results = response.data.results || [];
+        const count = response.data.count || 0;
+
+        if (count === 0) {
+          logger.info(
+            'ℹ️ [searchAvailableVehicles] No se encontraron vehículos disponibles para los criterios especificados',
+          );
+          return {
+            success: true,
+            count: 0,
+            results: [],
+            filterOptions: {},
+            message:
+              'No hay vehículos disponibles para las fechas y ubicación seleccionadas. Intenta con otras fechas o ubicaciones.',
+            isEmpty: true,
+          };
+        }
 
         return {
           success: true,
-          message: 'Búsqueda realizada con éxito (datos de testing)',
-          count: testingCars.length,
-          results: testingCars,
-          filterOptions: extractFilterOptions(testingCars),
+          count,
+          results,
+          filterOptions:
+            response.data.filterOptions || extractFilterOptions(results),
+          message: `Se encontraron ${count} vehículo${
+            count !== 1 ? 's' : ''
+          } disponible${count !== 1 ? 's' : ''}`,
         };
-      }
+      } catch (error) {
+        logger.warn(
+          '⚠️ [searchAvailableVehicles] Error consultando BD:',
+          error.message,
+        );
 
-      // EN PRODUCCIÓN: Error claro al usuario
-      throw new Error(
-        error.message ||
-          'Error al buscar vehículos disponibles. Verifica tu conexión e intenta nuevamente.',
-      );
-    }
-  });
+        // Mejorar manejo de errores específicos
+        if (error.response) {
+          const status = error.response.status;
+          const errorData = error.response.data;
+
+          if (status === 400) {
+            throw new Error(
+              errorData.error ||
+                errorData.message ||
+                'Parámetros de búsqueda inválidos',
+            );
+          } else if (status === 404) {
+            // 404 puede significar que no hay vehículos disponibles, no un error
+            logger.info(
+              'ℹ️ [searchAvailableVehicles] No hay vehículos disponibles (404)',
+            );
+            return {
+              success: true,
+              count: 0,
+              results: [],
+              filterOptions: {},
+              message:
+                'No hay vehículos disponibles para las fechas y ubicación seleccionadas.',
+              isEmpty: true,
+            };
+          } else if (status >= 500) {
+            throw new Error(
+              'Error temporal del servidor. Intenta nuevamente en unos minutos.',
+            );
+          }
+        }
+
+        // Manejar errores de conectividad específicos
+        if (error.code === 'ECONNABORTED') {
+          throw new Error(
+            'La búsqueda está tardando demasiado. Verifica tu conexión e intenta nuevamente.',
+          );
+        }
+
+        if (error.message && error.message.includes('Network Error')) {
+          throw new Error(
+            'Error de conexión. Verifica tu conexión a internet e intenta nuevamente.',
+          );
+        }
+
+        // FALLBACK: Solo si DEBUG_MODE está activo
+        if (shouldUseTestingData(true)) {
+          logger.info(
+            '🔄 [searchAvailableVehicles] Usando datos de testing como fallback',
+          );
+
+          const { testingCarsData } = await import(
+            '../assets/testingData/testingData'
+          );
+          await new Promise((resolve) => setTimeout(resolve, 800));
+
+          return {
+            success: true,
+            message: 'Búsqueda realizada con éxito (datos de testing)',
+            count: testingCarsData.length,
+            results: testingCarsData,
+            filterOptions: extractFilterOptions(testingCarsData),
+          };
+        }
+
+        // EN PRODUCCIÓN: Error claro al usuario
+        throw new Error(
+          error.message ||
+            'Error al buscar vehículos disponibles. Verifica tu conexión e intenta nuevamente.',
+        );
+      }
+    },
+    5,
+  ); // Cache por 5 minutos para búsquedas específicas
 };
 
 /**
