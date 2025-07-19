@@ -291,23 +291,43 @@ class CORSMiddleware(MiddlewareMixin):
         if not settings.DEBUG:
             production_origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', [])
             allowed_origins.extend(production_origins)
+            # Agregar dominios específicos para Render y dominio personalizado
+            allowed_origins.extend([
+                'https://mobility4you.es',
+                'https://www.mobility4you.es',
+                'https://mobility4you.onrender.com',
+                'https://mobility4you-ydav.onrender.com',
+            ])
 
         # Configurar headers CORS
         if origin and origin in allowed_origins:
             response['Access-Control-Allow-Origin'] = origin
+            response['Access-Control-Allow-Credentials'] = 'true'
         elif settings.DEBUG:
-            # En desarrollo, permitir cualquier origen o usar wildcard para requests sin origin
+            # En desarrollo, permitir cualquier origen
             response['Access-Control-Allow-Origin'] = origin or '*'
+            response['Access-Control-Allow-Credentials'] = 'true'
         
-        # Solo agregar otros headers CORS si hay un origin header o estamos en debug
-        if origin or settings.DEBUG:
+        # Agregar headers CORS siempre para requests OPTIONS
+        if request.method == 'OPTIONS' or origin:
             response['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
             response['Access-Control-Allow-Headers'] = (
-                'Accept, Accept-Language, Content-Language, Content-Type, '
-                'Authorization, X-Requested-With, X-CSRFToken, X-Request-ID'
+                'Accept, Accept-Encoding, Accept-Language, Authorization, '
+                'Content-Type, Content-Language, DNT, Origin, User-Agent, '
+                'X-Requested-With, X-CSRFToken, X-Request-ID, '
+                'Access-Control-Allow-Origin, Access-Control-Allow-Credentials, '
+                'Access-Control-Allow-Headers, Access-Control-Allow-Methods'
             )
-            response['Access-Control-Allow-Credentials'] = 'true'
+            response['Access-Control-Expose-Headers'] = 'Content-Type, X-CSRFToken'
             response['Access-Control-Max-Age'] = '86400'  # 24 horas
+
+        # Log para debugging en producción
+        if not settings.DEBUG and origin:
+            logger = logging.getLogger(__name__)
+            if origin not in allowed_origins:
+                logger.warning(f"CORS: Origin no permitido: {origin}")
+            else:
+                logger.info(f"CORS: Origin permitido: {origin}")
 
 
 class HealthCheckMiddleware(MiddlewareMixin):
