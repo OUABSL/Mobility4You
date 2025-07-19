@@ -10,7 +10,7 @@
  * @created 2025-07-19
  */
 
-import { createServiceLogger } from '../services/logging';
+import { createServiceLogger } from '../config/appConfig';
 import { isValidDate, isValidFutureDate } from '../utils/dateValidators';
 
 // Crear logger para validaciones

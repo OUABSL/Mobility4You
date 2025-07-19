@@ -11,9 +11,8 @@
  * @created 2025-07-19
  */
 
-import { API_URLS } from '../config/appConfig';
+import { API_URLS, createServiceLogger } from '../config/appConfig';
 import axios from '../config/axiosConfig';
-import { createServiceLogger } from '../services/logging';
 import { withCache } from './cacheService';
 
 // Crear logger específico para este servicio
