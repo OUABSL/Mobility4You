@@ -6,7 +6,7 @@
  */
 
 import { DEBUG_MODE } from '../config/appConfig';
-import { logError, logInfo, roundToDecimals } from '../utils';
+import { logError, logInfo, logWarning, roundToDecimals } from '../utils';
 
 // Constantes de configuración
 const STORAGE_KEYS = {

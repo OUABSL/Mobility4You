@@ -14,19 +14,6 @@ const pendingRequests = new Map();
 // Crear logger para el servicio de caché
 const logger = createServiceLogger('CACHE');
 
-// Configuración de caché por tipo de dato
-const CACHE_CONFIG = {
-  locations: { key: 'locations_cache', ttl: 30 }, // 30 minutos
-  cars: { key: 'cars_cache', ttl: 15 }, // 15 minutos
-  car_groups: { key: 'car_groups_cache', ttl: 60 }, // 60 minutos
-  search_results: { key: 'search_cache', ttl: 5 }, // 5 minutos
-  statistics: { key: 'statistics_cache', ttl: 120 }, // 2 horas
-  features: { key: 'features_cache', ttl: 240 }, // 4 horas
-  destinations: { key: 'destinations_cache', ttl: 60 }, // 1 hora
-  testimonials: { key: 'testimonials_cache', ttl: 120 }, // 2 horas
-  extras: { key: 'extras_cache', ttl: 30 }, // 30 minutos
-};
-
 /**
  * Obtiene datos del caché si están vigentes
  * @param {string} cacheKey - Clave del caché
