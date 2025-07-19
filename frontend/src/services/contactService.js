@@ -1,6 +1,10 @@
 // src/services/contactService.js
 import axios from 'axios';
 import { BACKEND_URL, createServiceLogger } from '../config/appConfig';
+import {
+  mapContactFromBackend,
+  mapContactToBackend,
+} from './universalDataMapper';
 
 // Configuración del backend
 const API_BASE_URL = `${BACKEND_URL}/api/comunicacion`;
@@ -57,6 +61,18 @@ contactAPI.interceptors.response.use(
 
 /**
  * Servicio para enviar mensajes de contacto
+ *
+ * INTEGRACIÓN CON UNIVERSAL DATA MAPPER:
+ * Este servicio ahora utiliza el universalDataMapper para:
+ * - Mapear datos del formulario frontend al formato esperado por el backend (toBackend)
+ * - Mapear respuestas del backend al formato frontend (fromBackend)
+ * - Validación automática de campos usando esquemas declarativos
+ * - Transformación consistente de datos
+ *
+ * COMPATIBILIDAD:
+ * - Mantiene la misma API pública para el frontend
+ * - Agrega nuevos métodos para administración de contactos
+ * - Manejo robusto de errores y validación
  */
 class ContactService {
   /**
@@ -73,13 +89,8 @@ class ContactService {
       // Validación básica antes de enviar
       this.validateFormData(formData);
 
-      // Preparar datos para envío
-      const dataToSend = {
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        subject: formData.subject.trim(),
-        message: formData.message.trim(),
-      };
+      // Usar el universalDataMapper para mapear campos al formato esperado por el backend
+      const dataToSend = await mapContactToBackend(formData);
 
       // Realizar petición
       const response = await contactAPI.post('/contacto/', dataToSend);
@@ -271,6 +282,72 @@ class ContactService {
       message: `Error después de ${maxRetries} intentos: ${lastError.message}`,
       userMessage: `No se pudo enviar el mensaje después de ${maxRetries} intentos. Por favor, inténtalo más tarde.`,
     };
+  }
+
+  /**
+   * Obtiene contactos desde el backend (para administración)
+   * @param {Object} params - Parámetros de consulta
+   * @returns {Promise<Object>} Lista de contactos mapeados
+   */
+  async getContacts(params = {}) {
+    try {
+      const response = await contactAPI.get('/contacto/', { params });
+
+      if (response.data) {
+        // Usar el universalDataMapper para mapear los datos desde el backend
+        const mappedContacts = await mapContactFromBackend(response.data);
+
+        return {
+          success: true,
+          data: mappedContacts,
+          message: 'Contactos obtenidos correctamente',
+        };
+      } else {
+        throw new Error('Respuesta inválida del servidor');
+      }
+    } catch (error) {
+      logger.error('Error obteniendo contactos:', error);
+      return {
+        success: false,
+        message: error.userMessage || 'Error obteniendo contactos',
+        userMessage:
+          error.userMessage || 'Ha ocurrido un error al obtener los contactos',
+        originalError: error,
+      };
+    }
+  }
+
+  /**
+   * Obtiene un contacto específico por ID (para administración)
+   * @param {number} contactId - ID del contacto
+   * @returns {Promise<Object>} Contacto mapeado
+   */
+  async getContactById(contactId) {
+    try {
+      const response = await contactAPI.get(`/contacto/${contactId}/`);
+
+      if (response.data) {
+        // Usar el universalDataMapper para mapear los datos desde el backend
+        const mappedContact = await mapContactFromBackend(response.data);
+
+        return {
+          success: true,
+          data: mappedContact,
+          message: 'Contacto obtenido correctamente',
+        };
+      } else {
+        throw new Error('Respuesta inválida del servidor');
+      }
+    } catch (error) {
+      logger.error('Error obteniendo contacto:', error);
+      return {
+        success: false,
+        message: error.userMessage || 'Error obteniendo contacto',
+        userMessage:
+          error.userMessage || 'Ha ocurrido un error al obtener el contacto',
+        originalError: error,
+      };
+    }
   }
 }
 

@@ -174,11 +174,12 @@ const ContactUs = () => {
     try {
       const response = await sendContactForm(formData);
 
-      // Comprobar respuesta
-      if (response.status === 200 && response.data.success) {
+      // Comprobar respuesta del servicio
+      if (response.success) {
         // Éxito
         setSuccess(
-          '¡Mensaje enviado correctamente! Te responderemos lo antes posible.',
+          response.message ||
+            '¡Mensaje enviado correctamente! Te responderemos lo antes posible.',
         );
         setToastMessage('Mensaje enviado con éxito');
         setToastVariant('success');
@@ -195,16 +196,18 @@ const ContactUs = () => {
       } else {
         // Error en la respuesta
         throw new Error(
-          response.data.message || 'Ocurrió un error al enviar el mensaje.',
+          response.userMessage ||
+            response.message ||
+            'Ocurrió un error al enviar el mensaje.',
         );
       }
     } catch (err) {
       logger.error('Error completo:', err);
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Error al enviar el mensaje. Inténtalo más tarde.',
-      );
+      const errorMessage =
+        err.userMessage ||
+        err.message ||
+        'Error al enviar el mensaje. Inténtalo más tarde.';
+      setError(errorMessage);
       setToastMessage('Error al enviar el mensaje');
       setToastVariant('danger');
       setShowToast(true);
