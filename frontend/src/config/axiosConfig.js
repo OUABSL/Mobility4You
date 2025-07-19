@@ -59,12 +59,8 @@ axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Accept'] = 'application/json';
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 
-// Para producción, configurar headers específicos
-if (process.env.NODE_ENV === 'production') {
-  axios.defaults.headers.common['Access-Control-Allow-Origin'] =
-    'https://mobility4you.es';
-  axios.defaults.headers.common['Access-Control-Allow-Credentials'] = 'true';
-}
+// IMPORTANTE: NO incluir headers de respuesta CORS como headers de petición
+// Los headers Access-Control-Allow-* son enviados por el servidor, no por el cliente
 
 // Interceptor para requests
 axios.interceptors.request.use(

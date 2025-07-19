@@ -98,7 +98,96 @@ class ContenidoViewSet(viewsets.ModelViewSet):
                 "success": False,
                 "error": "Error obteniendo contenidos activos",
                 "results": []
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    @action(detail=False, methods=["get"])
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["get"])
+    def caracteristicas(self, request):
+        """Obtener características activas para el frontend"""
+        try:
+            caracteristicas = self.get_queryset().filter(
+                activo=True, 
+                tipo="caracteristica"
+            ).order_by("orden", "titulo")
+
+            if not caracteristicas.exists():
+                return Response(
+                    {
+                        "success": True,
+                        "message": "No hay características disponibles",
+                        "count": 0,
+                        "results": [],
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            serializer = self.get_serializer(caracteristicas, many=True)
+            
+            return Response(
+                {
+                    "success": True,
+                    "count": caracteristicas.count(),
+                    "results": serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            logger.error(f"Error al obtener características: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "success": False,
+                    "error": "Error al obtener características",
+                    "message": "No se pudieron cargar las características",
+                    "results": [],
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=False, methods=["get"])
+    def estadisticas(self, request):
+        """Obtener estadísticas generales del sitio"""
+        try:
+            # Obtener contenidos estadísticos
+            estadisticas = self.get_queryset().filter(
+                activo=True, 
+                tipo="estadistica"
+            ).order_by("orden", "titulo")
+
+            if not estadisticas.exists():
+                return Response(
+                    {
+                        "success": True,
+                        "message": "No hay estadísticas disponibles",
+                        "count": 0,
+                        "results": [],
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            serializer = self.get_serializer(estadisticas, many=True)
+            
+            return Response(
+                {
+                    "success": True,
+                    "count": estadisticas.count(),
+                    "results": serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            logger.error(f"Error al obtener estadísticas: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "success": False,
+                    "error": "Error al obtener estadísticas",
+                    "message": "No se pudieron cargar las estadísticas",
+                    "results": [],
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=False, methods=["get"])
     def por_tipo(self, request):
         """Obtener contenidos agrupados por tipo"""
         try:
@@ -253,7 +342,7 @@ class ContactoViewSet(viewsets.ModelViewSet):
         return Response({"success": True, "message": "Mensaje marcado como en proceso"})
 
     @action(detail=False, methods=["get"])
-    def estadisticas(self, request):
+    def stats_contacto(self, request):
         """Obtener estadísticas de mensajes de contacto"""
         if not (request.user.is_staff or request.user.is_superuser):
             return Response(

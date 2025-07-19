@@ -14,8 +14,18 @@ const pendingRequests = new Map();
 // Crear logger para el servicio de caché
 const logger = createServiceLogger('CACHE');
 
-// Configuración de caché por tipo de dato - ahora viene del config centralizado
-// Las claves se mantienen aquí por compatibilidad, pero TTL viene de appConfig
+// Configuración de caché por tipo de dato
+const CACHE_CONFIG = {
+  locations: { key: 'locations_cache', ttl: 30 }, // 30 minutos
+  cars: { key: 'cars_cache', ttl: 15 }, // 15 minutos
+  car_groups: { key: 'car_groups_cache', ttl: 60 }, // 60 minutos
+  search_results: { key: 'search_cache', ttl: 5 }, // 5 minutos
+  statistics: { key: 'statistics_cache', ttl: 120 }, // 2 horas
+  features: { key: 'features_cache', ttl: 240 }, // 4 horas
+  destinations: { key: 'destinations_cache', ttl: 60 }, // 1 hora
+  testimonials: { key: 'testimonials_cache', ttl: 120 }, // 2 horas
+  extras: { key: 'extras_cache', ttl: 30 }, // 30 minutos
+};
 
 /**
  * Obtiene datos del caché si están vigentes
@@ -78,19 +88,27 @@ const clearAllCache = () => {
  * Evita llamadas duplicadas usando promesas pendientes
  * @param {string} dataType - Tipo de dato (locations, cars, etc.)
  * @param {Function} fetchFunction - Función que obtiene los datos
+ * @param {number} customTTL - TTL personalizado en minutos (opcional)
  * @returns {Promise<any>} - Datos obtenidos
  */
-const withCache = async (dataType, fetchFunction) => {
+const withCache = async (dataType, fetchFunction, customTTL = null) => {
   const config = CACHE_CONFIG[dataType];
   if (!config) {
-    throw new Error(`Tipo de dato no configurado: ${dataType}`);
+    logger.warn(
+      `Tipo de dato no configurado: ${dataType}, usando configuración por defecto`,
+    );
+    // Configuración por defecto para tipos no configurados
+    const defaultConfig = { key: `cache_${dataType}`, ttl: customTTL || 15 };
+    CACHE_CONFIG[dataType] = defaultConfig;
   }
 
-  const { key: cacheKey, ttl } = config;
+  const { key: cacheKey, ttl: configTTL } = CACHE_CONFIG[dataType];
+  const ttl = customTTL || configTTL;
 
   // 1. Verificar si hay datos en caché válidos
   const cachedData = getCachedData(cacheKey);
   if (cachedData) {
+    logger.info(`✅ [CACHE HIT] ${cacheKey} - datos desde caché`);
     return cachedData;
   }
 
@@ -108,9 +126,19 @@ const withCache = async (dataType, fetchFunction) => {
       logger.info(`🌐 [CACHE FETCH] Obteniendo datos frescos para ${cacheKey}`);
       const data = await fetchFunction();
 
-      // Almacenar en caché solo si la respuesta es válida
-      if (data && (Array.isArray(data) ? data.length > 0 : true)) {
-        setCachedData(cacheKey, data, ttl);
+      // Validar datos antes de almacenar en caché
+      if (
+        data &&
+        (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)
+      ) {
+        setCachedData(cacheKey, data, ttl * 60 * 1000); // Convertir minutos a ms
+        logger.info(
+          `💾 [CACHE STORED] ${cacheKey} almacenado con TTL ${ttl} min`,
+        );
+      } else {
+        logger.warn(
+          `⚠️ [CACHE] Datos vacíos para ${cacheKey}, no se almacenan en caché`,
+        );
       }
 
       return data;
@@ -120,17 +148,29 @@ const withCache = async (dataType, fetchFunction) => {
         error.message,
       );
 
-      // Evitar bucles: si es error de conexión, no reintentar automáticamente
+      // Manejo inteligente de errores de red
       if (
         error.code === 'ECONNABORTED' ||
         error.message.includes('502') ||
-        error.message.includes('Connection refused')
+        error.message.includes('503') ||
+        error.message.includes('Connection refused') ||
+        error.message.includes('Network Error')
       ) {
         logger.warn(
           `🚫 [CACHE] Evitando reintento automático para ${cacheKey} debido a error de conexión`,
         );
+
+        // Intentar obtener datos expirados como fallback
+        const expiredData = dataCache.get(cacheKey);
+        if (expiredData && expiredData.data) {
+          logger.info(
+            `🔄 [CACHE FALLBACK] Usando datos expirados para ${cacheKey}`,
+          );
+          return expiredData.data;
+        }
+
         throw new Error(
-          `Servicio temporalmente no disponible para ${dataType}`,
+          `Servicio temporalmente no disponible para ${dataType}. Intenta de nuevo en unos momentos.`,
         );
       }
 

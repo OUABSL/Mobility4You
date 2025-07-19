@@ -512,6 +512,7 @@ export const saveSearchParams = (searchParams) => {
         tipo: searchParams.tipo,
         grupo: searchParams.grupo,
       },
+      grupo_id: searchParams.grupo_id,
     };
 
     sessionStorage.setItem('reservaData', JSON.stringify(updatedData));
@@ -546,6 +547,8 @@ export const getStoredSearchParams = () => {
       dropoffDate: new Date(data.fechas.dropoffDate),
       dropoffTime: data.fechas.dropoffTime,
       mayor21: data.mayor21,
+      grupo: data.meta?.grupo,
+      grupo_id: data.grupo_id,
     };
   } catch (error) {
     logger.error('Error retrieving search params:', error);

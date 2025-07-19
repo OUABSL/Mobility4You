@@ -92,6 +92,55 @@ class ReservationStorageService {
   }
 
   /**
+   * Valida los datos de reserva mínimos requeridos
+   * @param {Object} data - Datos de reserva a validar
+   * @throws {Error} Si los datos no son válidos
+   */
+  validateReservationData(data) {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Los datos de reserva deben ser un objeto válido');
+    }
+
+    // Validar fechas
+    if (!data.fechas || typeof data.fechas !== 'object') {
+      throw new Error('Los datos de fechas son requeridos');
+    }
+
+    const { pickupDate, dropoffDate, pickupTime, dropoffTime } = data.fechas;
+
+    if (!pickupDate || !dropoffDate) {
+      throw new Error('Las fechas de recogida y devolución son requeridas');
+    }
+
+    // Validar que las fechas sean válidas
+    const pickup = new Date(pickupDate);
+    const dropoff = new Date(dropoffDate);
+
+    if (isNaN(pickup.getTime()) || isNaN(dropoff.getTime())) {
+      throw new Error('Las fechas proporcionadas no son válidas');
+    }
+
+    if (pickup >= dropoff) {
+      throw new Error(
+        'La fecha de devolución debe ser posterior a la fecha de recogida',
+      );
+    }
+
+    // Validar ubicaciones
+    if (!data.fechas.pickupLocation || !data.fechas.dropoffLocation) {
+      throw new Error(
+        'Las ubicaciones de recogida y devolución son requeridas',
+      );
+    }
+
+    // Validar vehículo si está presente
+    if (data.vehiculo && !data.vehiculo.id) {
+      throw new Error('El vehículo debe tener un ID válido');
+    }
+
+    logInfo('Datos de reserva validados correctamente');
+  }
+  /**
    * Método de recuperación automática para datos inconsistentes
    */
   autoRecoverReservation() {
@@ -114,6 +163,46 @@ class ReservationStorageService {
       return false;
     }
   }
+
+  /**
+   * Limpia datos corruptos o inconsistentes del storage
+   */
+  cleanupCorruptedData() {
+    try {
+      const keys = Object.values(STORAGE_KEYS);
+      let cleaned = false;
+
+      keys.forEach((key) => {
+        try {
+          const value = sessionStorage.getItem(key);
+          if (
+            value &&
+            key !== STORAGE_KEYS.TIMER_START &&
+            key !== STORAGE_KEYS.RESERVATION_STEP
+          ) {
+            // Intentar parsear JSON para verificar integridad
+            JSON.parse(value);
+          }
+        } catch (parseError) {
+          logWarning(`Datos corruptos encontrados en ${key}, eliminando`);
+          sessionStorage.removeItem(key);
+          cleaned = true;
+        }
+      });
+
+      if (cleaned) {
+        logInfo('Limpieza de datos corruptos completada');
+        // Si se limpiaron datos, asegurar consistencia eliminando todo
+        this.clearAllReservationData();
+      }
+
+      return cleaned;
+    } catch (error) {
+      logError('Error en limpieza de datos corruptos', error);
+      return false;
+    }
+  }
+
   /**
    * Guarda los datos de reserva inicial y comienza el timer
    */
