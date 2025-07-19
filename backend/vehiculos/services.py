@@ -10,7 +10,6 @@ from typing import Any, List, Optional
 
 from django.db.models import Q, QuerySet
 from django.utils import timezone
-
 # Direct imports - removing lazy imports as per best practices
 from reservas.models import Reserva
 
@@ -41,8 +40,26 @@ def buscar_vehiculos_disponibles(
     """
     logger.info(f"Búsqueda de vehículos disponibles: {fecha_inicio} - {fecha_fin}")
     
-    # Base: vehículos activos y disponibles
-    vehiculos = Vehiculo.objects.filter(activo=True, disponible=True)    # Filtrar por lugar si se especifica (lugar de recogida)
+    # Validar que las fechas sean válidas
+    if not fecha_inicio or not fecha_fin:
+        logger.error("Fechas de inicio y fin son requeridas")
+        return Vehiculo.objects.none()
+    
+    if fecha_inicio >= fecha_fin:
+        logger.error("Fecha de inicio debe ser anterior a fecha de fin")
+        return Vehiculo.objects.none()
+    
+    # Base: vehículos activos y disponibles con relaciones optimizadas
+    vehiculos = Vehiculo.objects.filter(
+        activo=True, 
+        disponible=True
+    ).select_related(
+        'categoria', 
+        'grupo'
+    ).prefetch_related(
+        'imagenes', 
+        'tarifas'
+    )    # Filtrar por lugar si se especifica (lugar de recogida)
     if lugar_id:
         # Nota: Filtrado por lugar deshabilitado hasta que se implemente el modelo Lugar
         logger.info(f"Filtrado por lugar {lugar_id} solicitado pero no implementado")
@@ -68,19 +85,30 @@ def buscar_vehiculos_disponibles(
             logger.warning(f"Grupo {grupo_id} no encontrado")
             return Vehiculo.objects.none()    # Excluir vehículos con reservas que se solapen con las fechas
     try:
-        reservas_solapadas = Reserva.objects.filter(
+        # Consulta optimizada para encontrar reservas solapadas
+        reservas_solapadas_query = Reserva.objects.filter(
             vehiculo_id__in=vehiculos.values_list("id", flat=True),
-            estado__in=["pendiente", "confirmada", "pagada"],
+            estado__in=["pendiente", "confirmada", "pagada", "en_curso"],
             fecha_recogida__lt=fecha_fin,
             fecha_devolucion__gt=fecha_inicio,
-        ).values_list("vehiculo_id", flat=True)
+        )
         
-        vehiculos = vehiculos.exclude(id__in=reservas_solapadas)
-        logger.info(f"Excluidos {len(reservas_solapadas)} vehículos con reservas solapadas")
+        # Log de debug para ver cuántas reservas solapadas hay
+        num_reservas_solapadas = reservas_solapadas_query.count()
+        logger.info(f"Encontradas {num_reservas_solapadas} reservas solapadas en total")
+        
+        # Obtener IDs de vehículos con reservas solapadas
+        vehiculos_ocupados = list(reservas_solapadas_query.values_list("vehiculo_id", flat=True))
+        
+        if vehiculos_ocupados:
+            vehiculos = vehiculos.exclude(id__in=vehiculos_ocupados)
+            logger.info(f"Excluidos {len(vehiculos_ocupados)} vehículos con reservas solapadas: {vehiculos_ocupados}")
+        else:
+            logger.info("No hay vehículos con reservas solapadas")
         
     except Exception as e:
-        logger.error(f"Error filtrando reservas solapadas: {str(e)}")
-        # Continuar sin filtrar si hay error en reservas
+        logger.error(f"Error filtrando reservas solapadas: {str(e)}", exc_info=True)
+        # Continuar sin filtrar si hay error en reservas para no bloquear la búsqueda
 
     vehiculos_count = vehiculos.count()
     logger.info(f"Vehículos disponibles encontrados: {vehiculos_count}")

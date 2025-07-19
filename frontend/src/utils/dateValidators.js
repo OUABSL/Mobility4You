@@ -21,6 +21,7 @@ const logger = createServiceLogger('DATE_VALIDATORS');
  */
 export function isValidDate(dateValue) {
   try {
+    if (!dateValue) return false;
     const date = new Date(dateValue);
     return !isNaN(date.getTime());
   } catch {
@@ -99,13 +100,7 @@ export function validateDateRange(startDate, endDate) {
     }
   }
 
-  result.isValid =
-    result.startDateValid && result.endDateValid && result.rangeValid;
-
-  if (DEBUG_MODE && !result.isValid) {
-    logger.warn('Validación de rango de fechas falló:', result);
-  }
-
+  result.isValid = result.errors.length === 0;
   return result;
 }
 
@@ -125,64 +120,94 @@ export function validateReservationDates(
     isValid: false,
     errors: [],
     warnings: [],
+    pickupDateValid: false,
+    dropoffDateValid: false,
+    rangeValid: false,
+    durationValid: false,
+    hoursDifference: 0,
   };
 
-  // Validar que ambas fechas sean válidas
-  const rangeValidation = validateDateRange(pickupDate, dropoffDate);
-  if (!rangeValidation.isValid) {
-    result.errors.push(...rangeValidation.errors);
-    return result;
-  }
+  try {
+    // Validar fecha de recogida
+    if (!isValidDate(pickupDate)) {
+      result.errors.push('Fecha de recogida inválida');
+    } else {
+      const pickup = new Date(pickupDate);
+      const now = new Date();
 
-  const pickup = new Date(pickupDate);
-  const dropoff = new Date(dropoffDate);
-  const now = new Date();
+      if (pickup <= now) {
+        result.errors.push('La fecha de recogida debe ser futura');
+      } else {
+        result.pickupDateValid = true;
 
-  // Validar que la fecha de recogida sea futura
-  if (pickup <= now) {
-    result.errors.push('La fecha de recogida debe ser futura');
-  }
+        // Advertencia si la fecha es muy próxima (menos de 2 horas)
+        const hoursUntilPickup =
+          (pickup.getTime() - now.getTime()) / (1000 * 60 * 60);
+        if (hoursUntilPickup < 2) {
+          result.warnings.push(
+            'La fecha de recogida es muy próxima. Contacta con nosotros para confirmar disponibilidad.',
+          );
+        }
+      }
+    }
 
-  // Validar duración mínima
-  const durationMs = dropoff.getTime() - pickup.getTime();
-  const durationHours = durationMs / (1000 * 60 * 60);
+    // Validar fecha de devolución
+    if (!isValidDate(dropoffDate)) {
+      result.errors.push('Fecha de devolución inválida');
+    } else {
+      result.dropoffDateValid = true;
+    }
 
-  if (durationHours < minHours) {
-    result.errors.push(
-      `La reserva debe tener una duración mínima de ${minHours} horas`,
-    );
-  }
+    // Validar rango y duración si ambas fechas son válidas
+    if (result.pickupDateValid && result.dropoffDateValid) {
+      const pickup = new Date(pickupDate);
+      const dropoff = new Date(dropoffDate);
 
-  // Advertencias para reservas muy largas (más de 30 días)
-  const maxDays = 30;
-  const durationDays = durationHours / 24;
+      if (pickup >= dropoff) {
+        result.errors.push(
+          'La fecha de devolución debe ser posterior a la fecha de recogida',
+        );
+      } else {
+        result.rangeValid = true;
 
-  if (durationDays > maxDays) {
-    result.warnings.push(
-      `La reserva es muy larga (${Math.ceil(
-        durationDays,
-      )} días). Considera dividirla en reservas más cortas.`,
-    );
-  }
+        // Calcular diferencia en horas
+        const timeDiff = dropoff.getTime() - pickup.getTime();
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
+        result.hoursDifference = hoursDiff;
 
-  // Advertencia para reservas muy próximas (menos de 2 horas)
-  const advanceHours = (pickup.getTime() - now.getTime()) / (1000 * 60 * 60);
-  if (advanceHours < 2) {
-    result.warnings.push(
-      'La reserva es con muy poca antelación. Verifica la disponibilidad.',
-    );
-  }
+        if (hoursDiff < minHours) {
+          result.errors.push(
+            `La duración mínima del alquiler es de ${minHours} horas`,
+          );
+        } else {
+          result.durationValid = true;
+        }
 
-  result.isValid = result.errors.length === 0;
+        // Advertencias para duraciones muy largas
+        if (hoursDiff > 24 * 30) {
+          // Más de 30 días
+          result.warnings.push(
+            'Reservas de más de 30 días pueden requerir condiciones especiales',
+          );
+        }
+      }
+    }
 
-  if (DEBUG_MODE) {
-    logger.info('Validación de fechas de reserva:', {
-      pickupDate,
-      dropoffDate,
-      durationHours: Math.round(durationHours * 100) / 100,
-      advanceHours: Math.round(advanceHours * 100) / 100,
-      result,
-    });
+    // La validación es exitosa si no hay errores
+    result.isValid = result.errors.length === 0;
+
+    if (result.isValid) {
+      logger.info(
+        `✅ Fechas de reserva válidas: ${pickupDate} - ${dropoffDate} (${result.hoursDifference.toFixed(
+          1,
+        )}h)`,
+      );
+    } else {
+      logger.warn(`❌ Fechas de reserva inválidas:`, result.errors);
+    }
+  } catch (error) {
+    logger.error('Error validando fechas de reserva:', error);
+    result.errors.push('Error interno validando las fechas');
   }
 
   return result;
@@ -239,63 +264,45 @@ export function calculateHoursDifference(startDate, endDate) {
 }
 
 /**
- * Formatea una fecha para mostrar en la UI
+ * Formatea una fecha para envío al backend
  * @param {string|Date} dateValue - Fecha a formatear
- * @param {object} options - Opciones de formateo
- * @returns {string} Fecha formateada
- */
-export function formatDateForUI(dateValue, options = {}) {
-  const {
-    includeTime = false,
-    locale = 'es-ES',
-    dateStyle = 'medium',
-    timeStyle = 'short',
-  } = options;
-
-  try {
-    const date = new Date(dateValue);
-
-    if (!isValidDate(date)) {
-      return 'Fecha inválida';
-    }
-
-    if (includeTime) {
-      return date.toLocaleString(locale, {
-        dateStyle,
-        timeStyle,
-      });
-    } else {
-      return date.toLocaleDateString(locale, {
-        dateStyle,
-      });
-    }
-  } catch (error) {
-    if (DEBUG_MODE) {
-      logger.error('Error formateando fecha para UI:', error);
-    }
-    return 'Error de formato';
-  }
-}
-
-/**
- * Convierte una fecha a formato ISO para envío al backend
- * @param {string|Date} dateValue - Fecha a convertir
- * @returns {string} Fecha en formato ISO
+ * @returns {string|null} Fecha en formato ISO o null si es inválida
  */
 export function formatDateForBackend(dateValue) {
   try {
-    const date = new Date(dateValue);
-
-    if (!isValidDate(date)) {
-      throw new Error('Fecha inválida');
+    if (!isValidDate(dateValue)) {
+      return null;
     }
 
+    const date = new Date(dateValue);
     return date.toISOString();
   } catch (error) {
     if (DEBUG_MODE) {
       logger.error('Error formateando fecha para backend:', error);
     }
-    throw error;
+    return null;
+  }
+}
+
+/**
+ * Formatea una fecha para mostrar en UI
+ * @param {string|Date} dateValue - Fecha a formatear
+ * @param {string} locale - Locale a usar (por defecto 'es-ES')
+ * @returns {string|null} Fecha formateada o null si es inválida
+ */
+export function formatDateForUI(dateValue, locale = 'es-ES') {
+  try {
+    if (!isValidDate(dateValue)) {
+      return null;
+    }
+
+    const date = new Date(dateValue);
+    return date.toLocaleDateString(locale);
+  } catch (error) {
+    if (DEBUG_MODE) {
+      logger.error('Error formateando fecha para UI:', error);
+    }
+    return null;
   }
 }
 

@@ -22,6 +22,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { createServiceLogger } from '../config/appConfig';
 import { useAlertContext } from '../context/AlertContext'; // Importar el contexto de alertas
+import { getCarGroupsAsOptions } from '../services/groupsService';
 import {
   availableTimes,
   fetchLocations,
@@ -39,13 +40,6 @@ import '../css/FormBusqueda.css';
 const searchTypes = [
   { id: 'coches', label: 'Coches', icon: faCarSide },
   { id: 'furgonetas', label: 'Furgonetas', icon: faTruck },
-];
-
-// Grupos de coches (subcategorías) — más adelante vendrán de la API
-const carGroups = [
-  { id: 'A', title: 'Fiat 500, Panda o similar' },
-  { id: 'B', title: 'Seat Ibiza, VW Polo, Fabia o similar' },
-  // C se añadirá luego
 ];
 
 // Componente del formulario de búsqueda
@@ -169,6 +163,10 @@ const FormBusqueda = ({
   // Tipo de búsqueda y grupo seleccionado
   const [tipoBusqueda, setTipoBusqueda] = useState('coches');
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
+
+  // Estado para grupos de coche dinámicos desde BD
+  const [carGroups, setCarGroups] = useState([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   // Estados de alertas
   const { showSuccess, showError, showWarning } = useAlertContext();
@@ -334,6 +332,58 @@ const FormBusqueda = ({
     };
     loadInitialData();
   }, [showWarning, locations]); // Incluir locations como dependencia controlada
+
+  // Cargar grupos de coche desde la base de datos
+  useEffect(() => {
+    const loadCarGroups = async () => {
+      try {
+        setLoadingGroups(true);
+        logger.info('🔍 [FormBusqueda] Cargando grupos de coche desde BD...');
+
+        const groupsData = await getCarGroupsAsOptions();
+        setCarGroups(groupsData);
+
+        logger.info(
+          `✅ [FormBusqueda] Grupos de coche cargados: ${groupsData.length} grupos`,
+        );
+
+        // Si hay datos guardados que incluyan grupo, restaurarlo
+        try {
+          const storedData = sessionStorage.getItem('reservaData');
+          if (storedData) {
+            const data = JSON.parse(storedData);
+            if (data.grupo_id) {
+              setGrupoSeleccionado(data.grupo_id.toString());
+              logger.info(
+                `🔄 [FormBusqueda] Grupo restaurado: ${data.grupo_id}`,
+              );
+            }
+          }
+        } catch (error) {
+          logger.warn('⚠️ Error restaurando grupo seleccionado:', error);
+        }
+      } catch (error) {
+        logger.error(
+          '❌ [FormBusqueda] Error cargando grupos de coche:',
+          error,
+        );
+        // En caso de error, usar solo la opción "Todas las categorías"
+        setCarGroups([
+          {
+            value: '',
+            label: 'Todas las categorías',
+            text: 'Todas las categorías',
+            id: null,
+          },
+        ]);
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+
+    loadCarGroups();
+  }, []);
+
   // Efecto para manejar el scroll y fijar el formulario si es necesario
   useEffect(() => {
     const navbar = document.querySelector('.navbar');
@@ -576,6 +626,11 @@ const FormBusqueda = ({
       dropoffTime,
       tipo: tipoBusqueda,
       grupo: grupoSeleccionado,
+      // NUEVO: Agregar grupo_id para el backend
+      grupo_id:
+        grupoSeleccionado && grupoSeleccionado !== ''
+          ? parseInt(grupoSeleccionado)
+          : null,
       mayor21,
       // Agregar datos completos de ubicación para referencia
       pickupLocationData: pickupLocation,
@@ -1017,13 +1072,17 @@ const FormBusqueda = ({
                 <Form.Select
                   value={grupoSeleccionado || ''}
                   onChange={(e) => setGrupoSeleccionado(e.target.value || null)}
+                  disabled={loadingGroups}
                 >
-                  <option value="">Todos</option>
-                  {carGroups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      Segmento {g.id}: {g.title}
-                    </option>
-                  ))}
+                  {loadingGroups ? (
+                    <option>Cargando categorías...</option>
+                  ) : (
+                    carGroups.map((group) => (
+                      <option key={group.value} value={group.value}>
+                        {group.label}
+                      </option>
+                    ))
+                  )}
                 </Form.Select>
               </Col>
             )}
