@@ -55,6 +55,17 @@ axios.defaults.xsrfCookieName = 'csrftoken';
 axios.defaults.xsrfHeaderName = 'X-CSRFToken';
 axios.defaults.withCredentials = true;
 
+// Configuración específica para CORS entre dominios
+axios.defaults.headers.common['Accept'] = 'application/json';
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+
+// Para producción, configurar headers específicos
+if (process.env.NODE_ENV === 'production') {
+  axios.defaults.headers.common['Access-Control-Allow-Origin'] =
+    'https://mobility4you.es';
+  axios.defaults.headers.common['Access-Control-Allow-Credentials'] = 'true';
+}
+
 // Interceptor para requests
 axios.interceptors.request.use(
   async (config) => {
@@ -100,6 +111,7 @@ axios.interceptors.response.use(
     return response;
   },
   async (error) => {
+    // Log detallado para debugging
     if (process.env.NODE_ENV === 'development') {
       logger.error('Axios response error:', {
         status: error.response?.status,
@@ -108,7 +120,27 @@ axios.interceptors.response.use(
         headers: error.response?.headers,
         url: error.config?.url,
         method: error.config?.method,
+        message: error.message,
       });
+    }
+
+    // Manejo específico de errores CORS
+    if (
+      error.message?.includes('CORS') ||
+      error.message?.includes('Network Error')
+    ) {
+      logger.error('CORS/Network error detected:', {
+        url: error.config?.url,
+        origin: window.location.origin,
+        message: error.message,
+      });
+
+      // En producción, mostrar mensaje específico para errores de CORS
+      if (process.env.NODE_ENV === 'production') {
+        console.error(
+          '❌ Error de conectividad con el servidor. Verifica la configuración de CORS.',
+        );
+      }
     }
 
     // Si es un error 403 de CSRF, intentar renovar el token y reintentar una vez
@@ -129,6 +161,7 @@ axios.interceptors.response.use(
         return axios.request(error.config);
       }
     }
+
     return Promise.reject(error);
   },
 );

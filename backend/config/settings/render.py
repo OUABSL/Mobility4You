@@ -102,6 +102,7 @@ CORS_ALLOWED_ORIGINS = [
     env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
     "https://mobility4you.es",
     "https://www.mobility4you.es",
+    "https://mobility4you.onrender.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
@@ -117,6 +118,10 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'access-control-allow-origin',
+    'access-control-allow-credentials',
+    'access-control-allow-headers',
+    'access-control-allow-methods',
 ]
 
 # Métodos HTTP permitidos
@@ -128,6 +133,29 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
+# Headers expuestos para CORS
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'x-csrftoken',
+]
+
+# CSRF configuración para dominios cruzados
+CSRF_TRUSTED_ORIGINS = [
+    "https://mobility4you.es",
+    "https://www.mobility4you.es",
+    "https://mobility4you.onrender.com",
+    "https://mobility4you-ydav.onrender.com",
+]
+
+# Configuración específica de CSRF
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = "None"  # Necesario para dominios cruzados
+CSRF_COOKIE_SECURE = True  # Solo HTTPS en producción
+CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
+CSRF_COOKIE_NAME = "csrftoken"
+CSRF_COOKIE_DOMAIN = None  # Permitir subdominios
 
 # Configuración básica de seguridad para HTTPS
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -292,3 +320,21 @@ if STRIPE_WEBHOOK_SECRET == "whsec_placeholder":
 # Configuración adicional para Render
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
+
+# Headers de seguridad adicionales para CORS
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
+
+# Configuración específica para debugging CORS en producción
+if DEBUG:
+    print(f"[CORS DEBUG] ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+    print(f"[CORS DEBUG] TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
+    print(f"[CORS DEBUG] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+
+# Forzar headers específicos para todas las respuestas
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = True
+
+print(f"[RENDER CONFIG] Configuración cargada correctamente")
+print(f"[RENDER CONFIG] DEBUG: {DEBUG}")
+print(f"[RENDER CONFIG] CORS Origins: {len(CORS_ALLOWED_ORIGINS)} configurados")
+print(f"[RENDER CONFIG] CSRF Origins: {len(CSRF_TRUSTED_ORIGINS)} configurados")
