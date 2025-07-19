@@ -28,6 +28,7 @@
  * - Usuarios (users)
  * - Extras (extras)
  * - Conductores (drivers)
+ * - Contacto (contact)
  *
  * @author OUAEL BOUSSIALI
  * @version 4.0.0
@@ -1238,6 +1239,138 @@ const MAPPING_SCHEMAS = {
       },
     },
   },
+
+  // CONTACTO: Mapeo bidireccional para mensajes de contacto
+  contact: {
+    toBackend: {
+      nombre: {
+        sources: ['name', 'nombre'],
+        required: true,
+        validator: (v) => typeof v === 'string' && v.trim().length >= 2,
+        transformer: (item, value) => value?.trim() || '',
+        error: 'El nombre debe tener al menos 2 caracteres',
+      },
+      email: {
+        sources: ['email'],
+        required: true,
+        validator: (v) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          return typeof v === 'string' && emailRegex.test(v.trim());
+        },
+        transformer: (item, value) => value?.trim().toLowerCase() || '',
+        error: 'El email no tiene un formato válido',
+      },
+      asunto: {
+        sources: ['subject', 'asunto'],
+        required: true,
+        validator: (v) => typeof v === 'string' && v.trim().length >= 5,
+        transformer: (item, value) => value?.trim() || '',
+        error: 'El asunto debe tener al menos 5 caracteres',
+      },
+      mensaje: {
+        sources: ['message', 'mensaje'],
+        required: true,
+        validator: (v) => typeof v === 'string' && v.trim().length >= 10,
+        transformer: (item, value) => value?.trim() || '',
+        error: 'El mensaje debe tener al menos 10 caracteres',
+      },
+    },
+    fromBackend: {
+      id: {
+        sources: ['id'],
+        required: true,
+        validator: positiveNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, null),
+      },
+      nombre: {
+        sources: ['nombre'],
+        required: true,
+        validator: (v) => typeof v === 'string' && v.length > 0,
+      },
+      email: {
+        sources: ['email'],
+        required: true,
+        validator: (v) => typeof v === 'string' && v.includes('@'),
+      },
+      asunto: {
+        sources: ['asunto'],
+        required: true,
+        validator: (v) => typeof v === 'string' && v.length > 0,
+      },
+      mensaje: {
+        sources: ['mensaje'],
+        required: true,
+        validator: (v) => typeof v === 'string' && v.length > 0,
+      },
+      estado: {
+        sources: ['estado'],
+        default: 'pendiente',
+        validator: (v) =>
+          ['pendiente', 'en_proceso', 'resuelto', 'cerrado'].includes(v),
+      },
+      fechaCreacion: {
+        sources: ['fecha_creacion'],
+        transformer: (item, value) => {
+          if (!value) return null;
+          try {
+            return new Date(value).toISOString();
+          } catch (error) {
+            logger.warn(
+              'Invalid date format for contact creation date:',
+              value,
+            );
+            return null;
+          }
+        },
+      },
+      fechaRespuesta: {
+        sources: ['fecha_respuesta'],
+        default: null,
+        transformer: (item, value) => {
+          if (!value) return null;
+          try {
+            return new Date(value).toISOString();
+          } catch (error) {
+            logger.warn(
+              'Invalid date format for contact response date:',
+              value,
+            );
+            return null;
+          }
+        },
+      },
+      respuesta: {
+        sources: ['respuesta'],
+        default: '',
+        validator: (v) => typeof v === 'string',
+      },
+      respondidoPor: {
+        sources: ['respondido_por'],
+        default: '',
+        validator: (v) => typeof v === 'string',
+      },
+      ipAddress: {
+        sources: ['ip_address'],
+        default: null,
+        validator: (v) => !v || typeof v === 'string',
+      },
+      userAgent: {
+        sources: ['user_agent'],
+        default: '',
+        validator: (v) => typeof v === 'string',
+      },
+      esReciente: {
+        sources: ['es_reciente'],
+        default: false,
+        validator: (v) => typeof v === 'boolean',
+      },
+      tiempoRespuestaDias: {
+        sources: ['tiempo_respuesta_dias'],
+        default: null,
+        validator: (v) => !v || typeof v === 'number',
+      },
+    },
+  },
 };
 
 // ========================================
@@ -2120,6 +2253,71 @@ class UniversalDataMapper {
     }
   }
 
+  /**
+   * Mapea datos de contacto del frontend al backend
+   * @param {object} frontendData - Datos del formulario de contacto
+   * @returns {Promise<object>} Datos de contacto mapeados para el backend
+   */
+  async mapContactToBackend(frontendData) {
+    logger.info('Iniciando mapeo de contacto frontend -> backend');
+
+    try {
+      // Validación inicial
+      if (!frontendData || typeof frontendData !== 'object') {
+        throw new ValidationError('Datos de contacto inválidos o faltantes');
+      }
+
+      const result = await this.mapData(frontendData, 'contact', 'toBackend');
+
+      logger.info('Mapeo de contacto completado exitosamente', {
+        nombre: result.nombre,
+        email: result.email,
+        asunto: result.asunto,
+        mensajeLength: result.mensaje?.length || 0,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Error en mapeo de contacto:', error, frontendData);
+      throw new UniversalMappingError(
+        `Error mapeando contacto: ${error.message}`,
+        'CONTACT_MAPPING_ERROR',
+        { frontendData, originalError: error },
+      );
+    }
+  }
+
+  /**
+   * Mapea datos de contacto del backend al frontend
+   * @param {object|Array} backendData - Datos del backend
+   * @returns {Promise<object|Array>} Datos de contacto mapeados para el frontend
+   */
+  async mapContactFromBackend(backendData) {
+    logger.info('Iniciando mapeo de contacto backend -> frontend');
+
+    try {
+      const result = await this.mapData(backendData, 'contact', 'fromBackend');
+
+      logger.info('Mapeo de contacto desde backend completado exitosamente', {
+        isArray: Array.isArray(result),
+        itemCount: Array.isArray(result) ? result.length : 1,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error(
+        'Error en mapeo de contacto desde backend:',
+        error,
+        backendData,
+      );
+      throw new UniversalMappingError(
+        `Error mapeando contacto desde backend: ${error.message}`,
+        'CONTACT_MAPPING_ERROR',
+        { backendData, originalError: error },
+      );
+    }
+  }
+
   // ========================================
   // MÉTODOS UTILITARIOS
   // ========================================
@@ -2227,6 +2425,10 @@ export const mapReservationToBackend = (data) =>
   universalMapper.mapReservationToBackend(data);
 export const mapReservationFromBackend = (data) =>
   universalMapper.mapReservationFromBackend(data);
+export const mapContactToBackend = (data) =>
+  universalMapper.mapContactToBackend(data);
+export const mapContactFromBackend = (data) =>
+  universalMapper.mapContactFromBackend(data);
 
 // Exports de funciones utilitarias
 export const clearMappingCaches = () => universalMapper.clearAllCaches();
