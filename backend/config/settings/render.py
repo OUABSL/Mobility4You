@@ -97,13 +97,21 @@ else:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
     print("[LOCAL] Usando almacenamiento local para media")
-# CORS configuración para múltiples dominios
+# ========================================
+# CONFIGURACIÓN CORS Y CSRF UNIFICADA
+# ========================================
+
+# CORS - Configuración completa y sin duplicaciones
 CORS_ALLOWED_ORIGINS = [
-    env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
     "https://mobility4you.es",
     "https://www.mobility4you.es",
     "https://mobility4you.onrender.com",
+    env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
 ]
+
+# Filtrar URLs vacías y duplicadas
+CORS_ALLOWED_ORIGINS = list(set([url for url in CORS_ALLOWED_ORIGINS if url]))
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
 
@@ -118,10 +126,6 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
-    'access-control-allow-origin',
-    'access-control-allow-credentials',
-    'access-control-allow-headers',
-    'access-control-allow-methods',
 ]
 
 # Métodos HTTP permitidos
@@ -141,12 +145,7 @@ CORS_EXPOSE_HEADERS = [
 ]
 
 # CSRF configuración para dominios cruzados
-CSRF_TRUSTED_ORIGINS = [
-    "https://mobility4you.es",
-    "https://www.mobility4you.es",
-    "https://mobility4you.onrender.com",
-    "https://mobility4you-ydav.onrender.com",
-]
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
 
 # Configuración específica de CSRF
 CSRF_USE_SESSIONS = False
@@ -176,8 +175,11 @@ LOGGING = {
     },
 }
 
-# Variables de aplicación para URLs parametrizadas
-FRONTEND_URL = env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com")
+# ========================================
+# VARIABLES DE APLICACIÓN
+# ========================================
+
+FRONTEND_URL = env("FRONTEND_URL", default="https://mobility4you.es")
 BACKEND_URL = env("BACKEND_URL", default="https://mobility4you.onrender.com")
 
 print(f"[RENDER] Configuración cargada:")
@@ -186,6 +188,12 @@ print(f"[FRONTEND_URL]: {FRONTEND_URL}")
 print(f"[BACKEND_URL]: {BACKEND_URL}")
 print(f"[ALLOWED_HOSTS]: {ALLOWED_HOSTS}")
 print(f"[DATABASE]: {'Yes' if DATABASE_URL else 'No (using SQLite)'}")
+print(f"[CORS CONFIG] CORS Origins: {len(CORS_ALLOWED_ORIGINS)} configurados")
+print(f"[CORS CONFIG] CSRF Origins: {len(CSRF_TRUSTED_ORIGINS)} configurados")
+# ========================================
+# CONFIGURACIÓN DE SEGURIDAD
+# ========================================
+
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = True
@@ -197,40 +205,15 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = "DENY"
 
-# CORS para producción - URLs completamente parametrizadas
-CORS_ALLOWED_ORIGINS = [
-    env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
-    env("FRONTEND_URL_SECONDARY", default=""),  # URL secundaria opcional
-]
+# Configuración específica para debugging CORS en producción
+if DEBUG:
+    print(f"[CORS DEBUG] ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+    print(f"[CORS DEBUG] TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
+    print(f"[CORS DEBUG] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
-# Filtrar URLs vacías
-CORS_ALLOWED_ORIGINS = [url for url in CORS_ALLOWED_ORIGINS if url]
-
-# Permitir credenciales CORS
-CORS_ALLOW_CREDENTIALS = True
-
-# Headers permitidos
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
-
-CSRF_TRUSTED_ORIGINS = [
-    env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
-    "https://mobility4you.es",
-    "https://www.mobility4you.es",
-    env("FRONTEND_URL_SECONDARY", default=""),  # URL secundaria opcional
-]
-
-# Filtrar URLs vacías
-CSRF_TRUSTED_ORIGINS = [url for url in CSRF_TRUSTED_ORIGINS if url]
+# Forzar headers específicos para todas las respuestas
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = True
 
 # Email configuración
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -262,60 +245,20 @@ else:
         }
     }
 
-# Logging optimizado para producción
+# Logging simplificado para producción
 LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
-            "style": "{",
-        },
-        "simple": {
-            "format": "{levelname} {message}",
-            "style": "{",
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
         },
     },
-    "handlers": {
-        "console": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "formatter": "simple",
-        },
-        "file": {
-            "level": "ERROR",
-            "class": "logging.FileHandler",
-            "filename": "/tmp/django_errors.log",
-            "formatter": "verbose",
-        },
-    },
-    "loggers": {
-        "django": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "django.request": {
-            "handlers": ["console", "file"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-        "": {
-            "handlers": ["console"],
-            "level": "INFO",
-        },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
 }
-
-# Validaciones específicas para producción
-if not SECRET_KEY or SECRET_KEY == "claveprivadatemporal":
-    raise ValueError("SECRET_KEY debe configurarse en producción")
-
-if STRIPE_SECRET_KEY == "sk_test_placeholder":
-    raise ValueError("STRIPE_SECRET_KEY debe configurarse en producción")
-
-if STRIPE_WEBHOOK_SECRET == "whsec_placeholder":
-    raise ValueError("STRIPE_WEBHOOK_SECRET debe configurarse en producción")
 
 # Configuración adicional para Render
 USE_X_FORWARDED_HOST = True
@@ -324,15 +267,19 @@ USE_X_FORWARDED_PORT = True
 # Headers de seguridad adicionales para CORS
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
 
-# Configuración específica para debugging CORS en producción
-if DEBUG:
-    print(f"[CORS DEBUG] ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
-    print(f"[CORS DEBUG] TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}")
-    print(f"[CORS DEBUG] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+# ========================================
+# VALIDACIONES FINALES
+# ========================================
 
-# Forzar headers específicos para todas las respuestas
-SESSION_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SECURE = True
+# Validaciones específicas para producción
+if not SECRET_KEY or SECRET_KEY == "claveprivadatemporal":
+    print("[WARNING] SECRET_KEY usando valor temporal")
+
+if hasattr(globals(), 'STRIPE_SECRET_KEY') and STRIPE_SECRET_KEY == "sk_test_placeholder":
+    print("[WARNING] STRIPE_SECRET_KEY usando valor placeholder")
+
+if hasattr(globals(), 'STRIPE_WEBHOOK_SECRET') and STRIPE_WEBHOOK_SECRET == "whsec_placeholder":
+    print("[WARNING] STRIPE_WEBHOOK_SECRET usando valor placeholder")
 
 print(f"[RENDER CONFIG] Configuración cargada correctamente")
 print(f"[RENDER CONFIG] DEBUG: {DEBUG}")

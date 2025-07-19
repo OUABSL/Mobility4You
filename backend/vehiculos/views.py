@@ -221,51 +221,94 @@ class VehiculoViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """Listado de vehículos con estructura de respuesta estandarizada - CORREGIDO"""
-        queryset = self.filter_queryset(self.get_queryset())
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
 
-        # Agregar precio por defecto a vehículos que tienen tarifa válida
-        vehiculos_con_precio = []
-        for vehiculo in queryset:
-            try:
-                # Usar la nueva propiedad precio_dia_actual
-                precio_actual = vehiculo.precio_dia_actual
-
-                # Solo incluir vehículos con tarifa válida
-                if precio_actual and precio_actual > 0:
-                    # Asignar temporalmente para compatibilidad con serializer
-                    vehiculo._precio_dia_temp = precio_actual
-                    vehiculos_con_precio.append(vehiculo)
-                else:
-                    logger.warning(
-                        f"Vehículo {vehiculo.id} sin tarifa válida, excluido del listado"
-                    )
-
-            except Exception as e:
-                logger.error(
-                    f"Error obteniendo precio para vehículo {vehiculo.id}: {str(e)}"
+            # Manejar caso cuando no hay vehículos en la base de datos
+            if not queryset.exists():
+                logger.info("No hay vehículos disponibles en la base de datos")
+                return Response(
+                    {
+                        "success": True,
+                        "message": "No hay vehículos disponibles en este momento. El administrador debe agregar vehículos al sistema.",
+                        "count": 0,
+                        "results": [],
+                        "filterOptions": {},
+                        "isEmpty": True
+                    },
+                    status=status.HTTP_200_OK,
                 )
-                continue
 
-        page = self.paginate_queryset(vehiculos_con_precio)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)            
-            return self.get_paginated_response(
+            # Agregar precio por defecto a vehículos que tienen tarifa válida
+            vehiculos_con_precio = []
+            for vehiculo in queryset:
+                try:
+                    # Usar la nueva propiedad precio_dia_actual
+                    precio_actual = vehiculo.precio_dia_actual
+
+                    # Solo incluir vehículos con tarifa válida
+                    if precio_actual and precio_actual > 0:
+                        # Asignar temporalmente para compatibilidad con serializer
+                        vehiculo._precio_dia_temp = precio_actual
+                        vehiculos_con_precio.append(vehiculo)
+                    else:
+                        logger.warning(
+                            f"Vehículo {vehiculo.id} sin tarifa válida, excluido del listado"
+                        )
+
+                except Exception as e:
+                    logger.error(
+                        f"Error obteniendo precio para vehículo {vehiculo.id}: {str(e)}"
+                    )
+                    continue
+
+            # Manejar caso cuando hay vehículos pero ninguno tiene tarifa válida
+            if not vehiculos_con_precio:
+                logger.warning("Hay vehículos en la BD pero ninguno tiene tarifa válida")
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Los vehículos no tienen tarifas configuradas. Contacta al administrador.",
+                        "count": 0,
+                        "results": [],
+                        "filterOptions": {},
+                        "isEmpty": True
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            page = self.paginate_queryset(vehiculos_con_precio)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(
+                    {
+                        "success": True,
+                        "results": serializer.data,
+                        "filterOptions": self._extract_filter_options(queryset),
+                    }
+                )
+
+            serializer = self.get_serializer(vehiculos_con_precio, many=True)
+            return Response(
                 {
                     "success": True,
+                    "count": len(vehiculos_con_precio),
                     "results": serializer.data,
                     "filterOptions": self._extract_filter_options(queryset),
+                    "message": f"Se encontraron {len(vehiculos_con_precio)} vehículo{'s' if len(vehiculos_con_precio) != 1 else ''} disponible{'s' if len(vehiculos_con_precio) != 1 else ''}"
                 }
             )
 
-        serializer = self.get_serializer(vehiculos_con_precio, many=True)
-        return Response(
-            {
-                "success": True,
-                "count": len(vehiculos_con_precio),
-                "results": serializer.data,
-                "filterOptions": self._extract_filter_options(queryset),
-            }
-        )
+        except Exception as e:
+            logger.error(f"Error en listado de vehículos: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "success": False,
+                    "error": "Error interno del servidor",
+                    "message": "No se pudieron cargar los vehículos. Intenta nuevamente más tarde.",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
     @method_decorator(csrf_exempt)
     @action(detail=False, methods=["get", "post"])
     def disponibilidad(self, request):
@@ -333,7 +376,25 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 lugar_id=lugar_recogida_id,
                 categoria_id=categoria_id,
                 grupo_id=grupo_id
-            )            # Obtener vehículos con precio válido para las fechas
+            )
+
+            # Manejar caso cuando no hay vehículos en la base de datos
+            if not vehiculos_disponibles.exists():
+                logger.info(f"No hay vehículos disponibles para las fechas {fecha_recogida} - {fecha_devolucion}")
+                return Response(
+                    {
+                        "success": True,
+                        "message": "No hay vehículos disponibles para las fechas y ubicación seleccionadas. Intenta con otras fechas o ubicaciones.",
+                        "count": 0,
+                        "results": [],
+                        "filterOptions": {},
+                        "isEmpty": True,
+                        "suggestion": "Prueba con fechas diferentes o contacta con nosotros para más opciones."
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            # Obtener vehículos con precio válido para las fechas
             vehiculos_con_precio = []
             for vehiculo in vehiculos_disponibles:
                 try:
@@ -355,6 +416,21 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                     )
                     continue
 
+            # Manejar caso cuando hay vehículos pero ninguno tiene tarifa válida
+            if not vehiculos_con_precio:
+                logger.warning("Hay vehículos disponibles pero ninguno tiene tarifa válida")
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Los vehículos disponibles no tienen tarifas configuradas para las fechas seleccionadas. Contacta al administrador.",
+                        "count": 0,
+                        "results": [],
+                        "filterOptions": {},
+                        "isEmpty": True
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
             # Serializar resultados
             serializer = self.get_serializer(vehiculos_con_precio, many=True)
 
@@ -367,6 +443,7 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                     "count": len(vehiculos_con_precio),
                     "results": serializer.data,
                     "filterOptions": filter_options,
+                    "message": f"Se encontraron {len(vehiculos_con_precio)} vehículo{'s' if len(vehiculos_con_precio) != 1 else ''} disponible{'s' if len(vehiculos_con_precio) != 1 else ''} para las fechas seleccionadas"
                 },
                 status=status.HTTP_200_OK,
             )
