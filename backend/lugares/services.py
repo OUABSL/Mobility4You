@@ -115,6 +115,117 @@ class LugarService:
             "inactivos": total - activos,
         }
 
+    @staticmethod
+    def crear_lugar_con_direccion(lugar_data: dict, direccion_data: dict) -> Lugar:
+        """
+        Crear un lugar con su dirección de manera atómica y segura
+        
+        Args:
+            lugar_data: Datos del lugar (nombre, teléfono, email, etc.)
+            direccion_data: Datos de la dirección (calle, ciudad, provincia, etc.)
+        
+        Returns:
+            Lugar creado con su dirección asociada
+        
+        Raises:
+            ValueError: Si los datos son inválidos
+            Exception: Si hay error en la creación
+        """
+        from django.db import transaction
+        
+        # Validaciones previas
+        if not direccion_data.get('ciudad'):
+            raise ValueError("La ciudad es obligatoria para crear un lugar")
+        
+        if not direccion_data.get('codigo_postal'):
+            raise ValueError("El código postal es obligatorio para crear un lugar")
+        
+        if not lugar_data.get('nombre'):
+            raise ValueError("El nombre del lugar es obligatorio")
+        
+        # Normalizar datos de dirección
+        direccion_normalizada = DireccionService.normalizar_direccion(direccion_data)
+        
+        try:
+            with transaction.atomic():
+                # PASO 1: Crear y guardar la dirección
+                direccion = Direccion.objects.create(
+                    calle=direccion_normalizada.get('calle', ''),
+                    ciudad=direccion_normalizada.get('ciudad', ''),
+                    provincia=direccion_normalizada.get('provincia', ''),
+                    pais=direccion_normalizada.get('pais', 'España'),
+                    codigo_postal=direccion_normalizada.get('codigo_postal', '')
+                )
+                
+                logger.info(f"Dirección creada exitosamente con ID: {direccion.pk}")
+                
+                # PASO 2: Crear el lugar con la dirección asociada
+                lugar = Lugar.objects.create(
+                    nombre=lugar_data['nombre'],
+                    direccion=direccion,
+                    latitud=lugar_data.get('latitud'),
+                    longitud=lugar_data.get('longitud'),
+                    telefono=lugar_data.get('telefono', ''),
+                    email=lugar_data.get('email', ''),
+                    icono_url=lugar_data.get('icono_url', ''),
+                    info_adicional=lugar_data.get('info_adicional', ''),
+                    activo=lugar_data.get('activo', True),
+                    popular=lugar_data.get('popular', False)
+                )
+                
+                logger.info(f"Lugar '{lugar.nombre}' creado exitosamente con dirección ID: {direccion.pk}")
+                
+                return lugar
+                
+        except Exception as e:
+            logger.error(f"Error al crear lugar con dirección: {str(e)}")
+            raise Exception(f"Error al crear lugar: {str(e)}")
+
+    @staticmethod
+    def actualizar_lugar_con_direccion(lugar: Lugar, lugar_data: dict, direccion_data: dict) -> Lugar:
+        """
+        Actualizar un lugar y su dirección de manera atómica
+        
+        Args:
+            lugar: Instancia del lugar a actualizar
+            lugar_data: Nuevos datos del lugar
+            direccion_data: Nuevos datos de la dirección
+        
+        Returns:
+            Lugar actualizado
+        """
+        from django.db import transaction
+        
+        try:
+            with transaction.atomic():
+                # Actualizar dirección
+                if lugar.direccion:
+                    direccion = lugar.direccion
+                    direccion_normalizada = DireccionService.normalizar_direccion(direccion_data)
+                    
+                    direccion.calle = direccion_normalizada.get('calle', direccion.calle)
+                    direccion.ciudad = direccion_normalizada.get('ciudad', direccion.ciudad)
+                    direccion.provincia = direccion_normalizada.get('provincia', direccion.provincia)
+                    direccion.pais = direccion_normalizada.get('pais', direccion.pais)
+                    direccion.codigo_postal = direccion_normalizada.get('codigo_postal', direccion.codigo_postal)
+                    direccion.save()
+                    
+                    logger.info(f"Dirección {direccion.pk} actualizada exitosamente")
+                
+                # Actualizar lugar
+                for field, value in lugar_data.items():
+                    if hasattr(lugar, field) and field != 'direccion':
+                        setattr(lugar, field, value)
+                
+                lugar.save()
+                logger.info(f"Lugar '{lugar.nombre}' actualizado exitosamente")
+                
+                return lugar
+                
+        except Exception as e:
+            logger.error(f"Error al actualizar lugar: {str(e)}")
+            raise Exception(f"Error al actualizar lugar: {str(e)}")
+
 
 class DireccionService:
     """Servicio para operaciones con direcciones"""

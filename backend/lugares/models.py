@@ -98,6 +98,14 @@ class Lugar(models.Model):
         if not self.id:
             self.created_at = timezone.now()
         self.updated_at = timezone.now()
+        
+        # Validación crítica: asegurar que el lugar tenga una dirección válida
+        if not self.direccion_id and not hasattr(self, '_skip_direccion_validation'):
+            raise ValueError(
+                "Un lugar debe tener una dirección asociada. "
+                "La dirección debe crearse y guardarse antes del lugar."
+            )
+        
         super().save(*args, **kwargs)
 
     def get_full_address(self) -> str:
