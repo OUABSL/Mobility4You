@@ -105,24 +105,50 @@ class LugarCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Crear lugar con dirección"""
-        direccion_data = validated_data.pop("direccion")
-        direccion = Direccion.objects.create(**direccion_data)
-        lugar = Lugar.objects.create(direccion=direccion, **validated_data)
-        return lugar
+        try:
+            direccion_data = validated_data.pop("direccion")
+            
+            # Crear la dirección primero
+            direccion = Direccion.objects.create(**direccion_data)
+            
+            # Luego crear el lugar con la dirección
+            lugar = Lugar.objects.create(direccion=direccion, **validated_data)
+            
+            logger.info(f"Lugar '{lugar.nombre}' creado exitosamente con dirección {direccion.id}")
+            return lugar
+            
+        except Exception as e:
+            logger.error(f"Error al crear lugar: {str(e)}")
+            # Si falla la creación del lugar, intentar limpiar la dirección creada
+            if 'direccion' in locals() and direccion.pk:
+                try:
+                    direccion.delete()
+                    logger.info(f"Dirección {direccion.id} eliminada tras error en creación de lugar")
+                except:
+                    pass
+            raise serializers.ValidationError(f"Error al crear lugar: {str(e)}")
 
     def update(self, instance, validated_data):
         """Actualizar lugar y dirección"""
-        direccion_data = validated_data.pop("direccion", None)
-        
-        if direccion_data:
-            direccion_serializer = DireccionSerializer(
-                instance.direccion, data=direccion_data, partial=True
-            )
-            if direccion_serializer.is_valid():
-                direccion_serializer.save()
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        
-        instance.save()
-        return instance
+        try:
+            direccion_data = validated_data.pop("direccion", None)
+            
+            if direccion_data:
+                direccion_serializer = DireccionSerializer(
+                    instance.direccion, data=direccion_data, partial=True
+                )
+                if direccion_serializer.is_valid(raise_exception=True):
+                    direccion_serializer.save()
+                    logger.info(f"Dirección {instance.direccion.id} actualizada")
+            
+            # Actualizar campos del lugar
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            
+            instance.save()
+            logger.info(f"Lugar {instance.id} actualizado exitosamente")
+            return instance
+            
+        except Exception as e:
+            logger.error(f"Error al actualizar lugar {instance.id}: {str(e)}")
+            raise serializers.ValidationError(f"Error al actualizar lugar: {str(e)}")

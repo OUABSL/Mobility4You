@@ -18,6 +18,9 @@ DEBUG = False
 # Hosts permitidos en Render
 ALLOWED_HOSTS = [
     ".onrender.com",
+    "mobility4you.onrender.com",
+    "mobility4you.es",
+    "www.mobility4you.es",
     "localhost", 
     "127.0.0.1",
 ]
@@ -94,11 +97,37 @@ else:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
     print("[LOCAL] Usando almacenamiento local para media")
-# CORS simplificado
+# CORS configuración para múltiples dominios
 CORS_ALLOWED_ORIGINS = [
     env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
+    "https://mobility4you.es",
+    "https://www.mobility4you.es",
 ]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
+
+# Headers permitidos para CORS
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Métodos HTTP permitidos
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
 # Configuración básica de seguridad para HTTPS
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -167,6 +196,8 @@ CORS_ALLOW_HEADERS = [
 
 CSRF_TRUSTED_ORIGINS = [
     env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
+    "https://mobility4you.es",
+    "https://www.mobility4you.es",
     env("FRONTEND_URL_SECONDARY", default=""),  # URL secundaria opcional
 ]
 

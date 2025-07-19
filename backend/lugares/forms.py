@@ -84,9 +84,11 @@ class LugarForm(forms.ModelForm):
     pais = forms.CharField(
         max_length=100,
         initial="España",
+        required=True,
         label=_("País"),
         widget=forms.TextInput(attrs={
-            'class': 'form-control'
+            'class': 'form-control',
+            'value': 'España'
         })
     )
     codigo_postal = forms.CharField(
@@ -142,45 +144,77 @@ class LugarForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Si estamos editando un lugar existente, prellenar campos de dirección
-        if self.instance and self.instance.pk and hasattr(self.instance, 'direccion'):
+        if self.instance and self.instance.pk:
             try:
-                direccion = self.instance.direccion
-                if direccion:
-                    self.fields['calle'].initial = direccion.calle
-                    self.fields['ciudad'].initial = direccion.ciudad
-                    self.fields['provincia'].initial = direccion.provincia
-                    self.fields['pais'].initial = direccion.pais
-                    self.fields['codigo_postal'].initial = direccion.codigo_postal
+                # Verificar si el lugar tiene dirección asociada
+                if hasattr(self.instance, 'direccion') and self.instance.direccion:
+                    direccion = self.instance.direccion
+                    self.fields['calle'].initial = direccion.calle or ''
+                    self.fields['ciudad'].initial = direccion.ciudad or ''
+                    self.fields['provincia'].initial = direccion.provincia or ''
+                    self.fields['pais'].initial = direccion.pais or 'España'
+                    self.fields['codigo_postal'].initial = direccion.codigo_postal or ''
             except (AttributeError, Direccion.DoesNotExist):
                 # Si no hay dirección asociada, usar valores por defecto
-                pass
+                self.fields['pais'].initial = 'España'
+        else:
+            # Para nuevos lugares, establecer valores por defecto
+            self.fields['pais'].initial = 'España'
 
     def clean(self):
         cleaned_data = super().clean()
         
+        # Asegurar que el país tenga un valor por defecto si está vacío
+        if not cleaned_data.get('pais'):
+            cleaned_data['pais'] = 'España'
+        
         # Validar que al menos ciudad y código postal estén presentes
-        ciudad = cleaned_data.get('ciudad')
-        codigo_postal = cleaned_data.get('codigo_postal')
+        ciudad = cleaned_data.get('ciudad', '').strip()
+        codigo_postal = cleaned_data.get('codigo_postal', '').strip()
+        
+        errors = {}
         
         if not codigo_postal:
-            raise ValidationError(_('El código postal es obligatorio'))
+            errors['codigo_postal'] = _('El código postal es obligatorio para crear un lugar')
         
         if not ciudad:
-            raise ValidationError(_('La ciudad es obligatoria'))
+            errors['ciudad'] = _('La ciudad es obligatoria para crear un lugar')
+        
+        # Validar formato del código postal español básico
+        if codigo_postal and len(codigo_postal) == 5 and not codigo_postal.isdigit():
+            errors['codigo_postal'] = _('El código postal debe contener solo números')
         
         # Validar coordenadas (si se proporcionan, deben ser ambas)
         latitud = cleaned_data.get('latitud')
         longitud = cleaned_data.get('longitud')
         
         if (latitud is not None) != (longitud is not None):
-            raise ValidationError(_('Debe proporcionar tanto latitud como longitud, o ninguna'))
+            if latitud is not None:
+                errors['longitud'] = _('Debe proporcionar la longitud cuando especifica latitud')
+            else:
+                errors['latitud'] = _('Debe proporcionar la latitud cuando especifica longitud')
+        
+        # Validar rangos de coordenadas si ambas están presentes
+        if latitud is not None and longitud is not None:
+            if not (-90 <= latitud <= 90):
+                errors['latitud'] = _('La latitud debe estar entre -90 y 90 grados')
+            if not (-180 <= longitud <= 180):
+                errors['longitud'] = _('La longitud debe estar entre -180 y 180 grados')
+        
+        if errors:
+            raise ValidationError(errors)
         
         return cleaned_data
 
     def save(self, commit=True):
+        """
+        Guardar el lugar con manejo correcto de la dirección
+        La dirección siempre debe crearse/actualizarse antes que el lugar
+        """
         lugar = super().save(commit=False)
         
         # Crear o actualizar la dirección
+        direccion = None
         if hasattr(lugar, 'direccion') and lugar.direccion:
             # Actualizar dirección existente
             direccion = lugar.direccion
@@ -188,24 +222,33 @@ class LugarForm(forms.ModelForm):
             # Crear nueva dirección
             direccion = Direccion()
         
-        # Asignar valores de dirección
-        direccion.calle = self.cleaned_data.get('calle', '')
-        direccion.ciudad = self.cleaned_data.get('ciudad', '')
-        direccion.provincia = self.cleaned_data.get('provincia', '')
-        direccion.pais = self.cleaned_data.get('pais', 'España')
-        direccion.codigo_postal = self.cleaned_data.get('codigo_postal', '')
+        # Asignar valores de dirección desde el formulario
+        direccion.calle = self.cleaned_data.get('calle', '').strip()
+        direccion.ciudad = self.cleaned_data.get('ciudad', '').strip()
+        direccion.provincia = self.cleaned_data.get('provincia', '').strip()
+        direccion.pais = self.cleaned_data.get('pais', 'España').strip()
+        direccion.codigo_postal = self.cleaned_data.get('codigo_postal', '').strip()
         
         if commit:
-            # Validar que los datos requeridos estén presentes
+            # Validar que los datos requeridos estén presentes antes de guardar
             if not direccion.codigo_postal:
                 raise ValidationError(_('El código postal es obligatorio'))
             if not direccion.ciudad:
                 raise ValidationError(_('La ciudad es obligatoria'))
                 
-            # Primero guardar la dirección
-            direccion.save()
-            # Luego asignar al lugar y guardar
-            lugar.direccion = direccion
-            lugar.save()
+            try:
+                # IMPORTANTE: Primero guardar la dirección
+                direccion.save()
+                
+                # Luego asignar la dirección al lugar y guardarlo
+                lugar.direccion = direccion
+                lugar.save()
+            except Exception as e:
+                # Si algo falla durante el guardado de la dirección o lugar,
+                # intentar limpiar la dirección creada si es nueva
+                if direccion.pk is None:
+                    # Solo si la dirección es nueva y no se pudo guardar
+                    pass
+                raise ValidationError(f'Error al guardar lugar y dirección: {str(e)}')
         
         return lugar
