@@ -2,12 +2,15 @@
 """
 Formularios personalizados para la gestión de lugares y direcciones
 """
+import logging
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from .models import Direccion, Lugar
+
+logger = logging.getLogger(__name__)
 
 
 class DireccionForm(forms.ModelForm):
@@ -168,12 +171,18 @@ class LugarForm(forms.ModelForm):
         if not cleaned_data.get('pais'):
             cleaned_data['pais'] = 'España'
         
-        # Validar que al menos ciudad y código postal estén presentes
+        # Validar campos obligatorios para dirección
         ciudad = cleaned_data.get('ciudad', '').strip()
         codigo_postal = cleaned_data.get('codigo_postal', '').strip()
+        nombre = cleaned_data.get('nombre', '').strip()
         
         errors = {}
         
+        # Validación de nombre del lugar
+        if not nombre:
+            errors['nombre'] = _('El nombre del lugar es obligatorio')
+        
+        # Validación de dirección
         if not codigo_postal:
             errors['codigo_postal'] = _('El código postal es obligatorio para crear un lugar')
         
@@ -181,8 +190,13 @@ class LugarForm(forms.ModelForm):
             errors['ciudad'] = _('La ciudad es obligatoria para crear un lugar')
         
         # Validar formato del código postal español básico
-        if codigo_postal and len(codigo_postal) == 5 and not codigo_postal.isdigit():
-            errors['codigo_postal'] = _('El código postal debe contener solo números')
+        if codigo_postal:
+            if len(codigo_postal) < 4:
+                errors['codigo_postal'] = _('El código postal debe tener al menos 4 dígitos')
+            elif len(codigo_postal) == 5 and not codigo_postal.isdigit():
+                errors['codigo_postal'] = _('El código postal debe contener solo números')
+            elif len(codigo_postal) > 10:
+                errors['codigo_postal'] = _('El código postal es demasiado largo')
         
         # Validar coordenadas (si se proporcionan, deben ser ambas)
         latitud = cleaned_data.get('latitud')
@@ -201,6 +215,23 @@ class LugarForm(forms.ModelForm):
             if not (-180 <= longitud <= 180):
                 errors['longitud'] = _('La longitud debe estar entre -180 y 180 grados')
         
+        # Validar formato de teléfono si se proporciona
+        telefono = cleaned_data.get('telefono') or ''
+        telefono = telefono.strip() if telefono else ''
+        if telefono:
+            import re
+            # Patrón básico para teléfonos (acepta + al inicio y números)
+            if not re.match(r'^\+?[\d\s\-\(\)]{9,20}$', telefono):
+                errors['telefono'] = _('Formato de teléfono inválido')
+        
+        # Validar email si se proporciona
+        email = cleaned_data.get('email') or ''
+        email = email.strip() if email else ''
+        if email:
+            import re
+            if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+                errors['email'] = _('Formato de email inválido')
+        
         if errors:
             raise ValidationError(errors)
         
@@ -208,47 +239,53 @@ class LugarForm(forms.ModelForm):
 
     def save(self, commit=True):
         """
-        Guardar el lugar con manejo correcto de la dirección
-        La dirección siempre debe crearse/actualizarse antes que el lugar
+        Guardar el lugar con manejo correcto de la dirección usando servicio especializado
         """
         lugar = super().save(commit=False)
         
-        # Crear o actualizar la dirección
-        direccion = None
-        if hasattr(lugar, 'direccion') and lugar.direccion:
-            # Actualizar dirección existente
-            direccion = lugar.direccion
-        else:
-            # Crear nueva dirección
-            direccion = Direccion()
+        if not commit:
+            return lugar
         
-        # Asignar valores de dirección desde el formulario
-        direccion.calle = self.cleaned_data.get('calle', '').strip()
-        direccion.ciudad = self.cleaned_data.get('ciudad', '').strip()
-        direccion.provincia = self.cleaned_data.get('provincia', '').strip()
-        direccion.pais = self.cleaned_data.get('pais', 'España').strip()
-        direccion.codigo_postal = self.cleaned_data.get('codigo_postal', '').strip()
+        # Preparar datos para el servicio
+        direccion_data = {
+            'calle': self.cleaned_data.get('calle', '').strip(),
+            'ciudad': self.cleaned_data.get('ciudad', '').strip(),
+            'provincia': self.cleaned_data.get('provincia', '').strip(),
+            'pais': self.cleaned_data.get('pais', 'España').strip(),
+            'codigo_postal': self.cleaned_data.get('codigo_postal', '').strip()
+        }
         
-        if commit:
-            # Validar que los datos requeridos estén presentes antes de guardar
-            if not direccion.codigo_postal:
-                raise ValidationError(_('El código postal es obligatorio'))
-            if not direccion.ciudad:
-                raise ValidationError(_('La ciudad es obligatoria'))
+        lugar_data = {
+            'nombre': lugar.nombre,
+            'latitud': lugar.latitud,
+            'longitud': lugar.longitud,
+            'telefono': lugar.telefono,
+            'email': lugar.email,
+            'icono_url': lugar.icono_url,
+            'info_adicional': lugar.info_adicional,
+            'activo': lugar.activo,
+            'popular': lugar.popular
+        }
+        
+        try:
+            if self.instance.pk:
+                # Actualizar lugar existente
+                from .services import LugarService
+                lugar_actualizado = LugarService.actualizar_lugar_con_direccion(
+                    self.instance, lugar_data, direccion_data
+                )
+                logger.info(f"Lugar '{lugar_actualizado.nombre}' actualizado exitosamente")
+                return lugar_actualizado
+            else:
+                # Crear nuevo lugar
+                from .services import LugarService
+                lugar_nuevo = LugarService.crear_lugar_con_direccion(lugar_data, direccion_data)
+                logger.info(f"Lugar '{lugar_nuevo.nombre}' creado exitosamente")
+                return lugar_nuevo
                 
-            try:
-                # IMPORTANTE: Primero guardar la dirección
-                direccion.save()
-                
-                # Luego asignar la dirección al lugar y guardarlo
-                lugar.direccion = direccion
-                lugar.save()
-            except Exception as e:
-                # Si algo falla durante el guardado de la dirección o lugar,
-                # intentar limpiar la dirección creada si es nueva
-                if direccion.pk is None:
-                    # Solo si la dirección es nueva y no se pudo guardar
-                    pass
-                raise ValidationError(f'Error al guardar lugar y dirección: {str(e)}')
-        
-        return lugar
+        except ValueError as ve:
+            logger.error(f"Error de validación: {str(ve)}")
+            raise ValidationError(str(ve))
+        except Exception as e:
+            logger.error(f"Error inesperado al guardar lugar: {str(e)}")
+            raise ValidationError(f'Error al guardar lugar: {str(e)}')

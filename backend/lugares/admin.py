@@ -3,6 +3,7 @@ import logging
 
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.urls import path
@@ -284,7 +285,7 @@ class LugarAdmin(admin.ModelAdmin):
     # autocomplete_fields = ('direccion',)  # No necesario con formulario integrado
 
     def save_model(self, request, obj, form, change):
-        """Guardar modelo con logging mejorado y manejo correcto de dirección"""
+        """Guardar modelo con logging mejorado y manejo seguro de dirección"""
         try:
             if change:
                 action = "actualizado"
@@ -293,21 +294,30 @@ class LugarAdmin(admin.ModelAdmin):
                 action = "creado"
                 logger.info(f"Nuevo lugar siendo creado por {request.user.username}")
             
-            # El formulario personalizado LugarForm ya maneja la creación/actualización de la dirección
-            # en su método save(), así que simplemente llamamos al save del formulario
-            super().save_model(request, obj, form, change)
+            # El formulario LugarForm maneja toda la lógica de dirección de manera segura
+            # usando transacciones atómicas y el servicio especializado
+            if isinstance(form, LugarForm):
+                lugar_guardado = form.save(commit=True)
+                logger.info(f"Lugar '{lugar_guardado.nombre}' {action} exitosamente usando formulario personalizado")
+            else:
+                # Fallback para formularios no personalizados (no debería ocurrir)
+                logger.warning("Usando fallback para formulario no personalizado")
+                super().save_model(request, obj, form, change)
             
             messages.success(
                 request, 
                 f"✅ Lugar '{obj.nombre}' {action} exitosamente."
             )
             
+        except ValidationError as ve:
+            error_msg = str(ve)
+            logger.error(f"Error de validación al guardar lugar: {error_msg}")
+            messages.error(request, f"❌ Error de validación: {error_msg}")
+            raise
         except Exception as e:
-            logger.error(f"Error al guardar lugar: {str(e)}")
-            messages.error(
-                request,
-                f"❌ Error al guardar el lugar: {str(e)}"
-            )
+            error_msg = str(e)
+            logger.error(f"Error inesperado al guardar lugar: {error_msg}")
+            messages.error(request, f"❌ Error al guardar el lugar: {error_msg}")
             raise
 
     def delete_model(self, request, obj):
