@@ -214,7 +214,7 @@ const FormBusqueda = ({
       return null;
     } catch (error) {
       logger.error(
-        '❌ [FormBusqueda] Error recuperando datos almacenados:',
+        '[FormBusqueda] Error recuperando datos almacenados:',
         error,
       );
       return null;
@@ -231,7 +231,7 @@ const FormBusqueda = ({
 
         if (locations && locations.length > 0) {
           logger.info(
-            '✅ [FormBusqueda] Usando ubicaciones desde props:',
+            '[FormBusqueda] Usando ubicaciones desde props:',
             locations.length,
           );
           locationsData = locations;
@@ -241,7 +241,7 @@ const FormBusqueda = ({
           logger.info('🌐 [FormBusqueda] Cargando ubicaciones desde API...');
           locationsData = await fetchLocations();
           logger.info(
-            '✅ [FormBusqueda] Ubicaciones disponibles:',
+            '[FormBusqueda] Ubicaciones disponibles:',
             locationsData,
           );
           setAvailableLocations(locationsData);
@@ -321,7 +321,7 @@ const FormBusqueda = ({
           setMayor21(storedData.mayor21 || false);
         }
       } catch (error) {
-        logger.error('❌ [FormBusqueda] Error cargando ubicaciones:', error);
+        logger.error('[FormBusqueda] Error cargando ubicaciones:', error);
         showWarning(
           'No se pudieron cargar todas las ubicaciones. Por favor, intenta más tarde.',
           {
@@ -344,7 +344,7 @@ const FormBusqueda = ({
         setCarGroups(groupsData);
 
         logger.info(
-          `✅ [FormBusqueda] Grupos de coche cargados: ${groupsData.length} grupos`,
+          `[FormBusqueda] Grupos de coche cargados: ${groupsData.length} grupos`,
         );
 
         // Si hay datos guardados que incluyan grupo, restaurarlo
@@ -364,7 +364,7 @@ const FormBusqueda = ({
         }
       } catch (error) {
         logger.error(
-          '❌ [FormBusqueda] Error cargando grupos de coche:',
+          '[FormBusqueda] Error cargando grupos de coche:',
           error,
         );
         // En caso de error, usar solo la opción "Todas las categorías"
@@ -471,7 +471,7 @@ const FormBusqueda = ({
     // Verificar que suggestions sea un array válido
     if (!Array.isArray(suggestions)) {
       logger.error(
-        '❌ [FormBusqueda] suggestions no es un array:',
+        '[FormBusqueda] suggestions no es un array:',
         suggestions,
       );
       return [];
@@ -488,7 +488,7 @@ const FormBusqueda = ({
         // Validar que location sea un objeto válido
         if (!location || typeof location !== 'object') {
           logger.error(
-            '❌ [FormBusqueda] Ubicación inválida en índice',
+            '[FormBusqueda] Ubicación inválida en índice',
             index,
             ':',
             location,

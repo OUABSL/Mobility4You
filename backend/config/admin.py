@@ -25,7 +25,7 @@ class MobilityAdminSite(AdminSite):
         from utils.static_mapping import get_versioned_asset
         
         context.update({
-            'custom_css': get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),
+            'custom_css': get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),
             'logo_url': "admin/img/logo_home_horizontal.png",
             'site_logo_title': _("Mobility4You"),
         })

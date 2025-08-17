@@ -357,3 +357,42 @@ export function calculatePriceBreakdown(totalPrice, taxRate) {
     taxRate: taxRate,
   };
 }
+
+/**
+ * Extrae el IVA de un precio que ya lo incluye
+ * @param {number} priceWithTax - Precio con IVA incluido
+ * @param {number} taxRate - Tasa de IVA (por defecto 21% = 0.21)
+ * @returns {object} - Objeto con precio sin IVA e IVA extraído
+ */
+export function extractTaxFromPrice(priceWithTax, taxRate = 0.21) {
+  if (typeof priceWithTax !== 'number' || priceWithTax <= 0) {
+    return {
+      priceWithoutTax: 0,
+      taxAmount: 0,
+      priceWithTax: 0,
+    };
+  }
+
+  // Fórmula: precio_sin_iva = precio_con_iva / (1 + tasa_iva)
+  const priceWithoutTax = priceWithTax / (1 + taxRate);
+  const taxAmount = priceWithTax - priceWithoutTax;
+
+  return {
+    priceWithoutTax: roundToDecimals(priceWithoutTax, 2),
+    taxAmount: roundToDecimals(taxAmount, 2),
+    priceWithTax: roundToDecimals(priceWithTax, 2),
+  };
+}
+
+/**
+ * Calcula precio total con tarifa de política incluida
+ * @param {number} basePrice - Precio base por día
+ * @param {number} policyFee - Tarifa de política por día
+ * @param {number} days - Número de días
+ * @returns {number} - Precio total (IVA ya incluido)
+ */
+export function calculateTotalWithPolicy(basePrice, policyFee = 0, days = 1) {
+  const pricePerDay = (basePrice + policyFee);
+  const totalPrice = pricePerDay * days;
+  return roundToDecimals(totalPrice, 2);
+}

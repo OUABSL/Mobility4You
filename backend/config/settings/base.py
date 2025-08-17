@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "storages",  # Para Backblaze B2 Storage
     # Aplicaciones modulares
     "config",
+    "utils",  # Utilidades del sistema (comandos, middleware, etc.)
     "usuarios",
     "lugares",
     "vehiculos",
@@ -48,7 +49,6 @@ INSTALLED_APPS = [
     "facturas_contratos",
     "comunicacion",
     "payments",
-    "utils",
 ]
 
 MIDDLEWARE = [

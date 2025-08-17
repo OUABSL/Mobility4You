@@ -190,16 +190,20 @@ print(f"[ALLOWED_HOSTS]: {ALLOWED_HOSTS}")
 print(f"[DATABASE]: {'Yes' if DATABASE_URL else 'No (using SQLite)'}")
 print(f"[CORS CONFIG] CORS Origins: {len(CORS_ALLOWED_ORIGINS)} configurados")
 print(f"[CORS CONFIG] CSRF Origins: {len(CSRF_TRUSTED_ORIGINS)} configurados")
+print(f"[SSL CONFIG] SECURE_SSL_REDIRECT: {SECURE_SSL_REDIRECT}")
+print(f"[SSL CONFIG] SESSION_COOKIE_SECURE: {env.bool('SESSION_COOKIE_SECURE', default=True)}")
+print(f"[SSL CONFIG] CSRF_COOKIE_SECURE: {env.bool('CSRF_COOKIE_SECURE', default=True)}")
 # ========================================
 # CONFIGURACIÓN DE SEGURIDAD
 # ========================================
 
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_SSL_REDIRECT = True
-SECURE_HSTS_SECONDS = 31536000  # 1 año
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+# Configuración de seguridad que respeta variables de entorno
+SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
+# SECURE_SSL_REDIRECT ya está configurado arriba con env.bool()
+SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)  # 1 año
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
+SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=True)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True

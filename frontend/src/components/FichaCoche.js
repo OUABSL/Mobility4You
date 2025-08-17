@@ -38,10 +38,6 @@ import '../css/FichaCoche.css';
 import { fetchPoliticasPago } from '../services/reservationServices';
 import { getStoredSearchParams } from '../services/searchServices';
 import { roundToDecimals } from '../utils';
-import {
-  calculateDisplayTaxAmount,
-  formatTaxRate,
-} from '../utils/financialUtils';
 
 // Crear logger para el componente
 const logger = createServiceLogger('FICHA_COCHE');
@@ -78,6 +74,7 @@ const FichaCoche = ({ car, onClose }) => {
             id: 'emergency-fallback',
             title: 'Opción Básica',
             deductible: 0,
+            tarifa: 0,
             descripcion: 'Opción de emergencia - contacte con soporte',
             incluye: ['Cobertura básica'],
             noIncluye: ['Servicios adicionales limitados'],
@@ -521,8 +518,17 @@ const FichaCoche = ({ car, onClose }) => {
               <div className="d-flex justify-content-between mb-2 price-item">
                 <span>Precio base por día:</span>
                 <span>{car.precio_dia}€</span>
-              </div>{' '}
-              <div className="d-flex justify-content-between mb-2 price-item">
+              </div>
+
+              {/* Mostrar tarifa de política si existe */}
+              {selectedPayment && selectedPayment.tarifa > 0 && (
+                <div className="d-flex justify-content-between mb-2 price-item">
+                  <span>Tarifa de protección por día:</span>
+                  <span>{selectedPayment.tarifa}€</span>
+                </div>
+              )}
+
+              {/* <div className="d-flex justify-content-between mb-2 price-item">
                 <span>IVA {formatTaxRate(car.tasaImpuesto)}:</span>
                 <span>
                   {calculateDisplayTaxAmount(
@@ -531,20 +537,38 @@ const FichaCoche = ({ car, onClose }) => {
                   ).toFixed(2)}
                   €
                 </span>
-              </div>
+              </div> */}
+
               <hr />
               <div className="d-flex justify-content-between price-total">
                 <span>Total por día:</span>
                 <span>
-                  {roundToDecimals(
-                    (Number(car.precio_dia) || 0) +
-                      calculateDisplayTaxAmount(
-                        Number(car.precio_dia) || 0,
-                        car.tasaImpuesto,
-                      ),
-                  ).toFixed(2)}
+                  {(() => {
+                    const precioBase = Number(car.precio_dia) || 0;
+                    const tarifaPolitica = selectedPayment?.tarifa || 0;
+                    // El precio ya incluye IVA según las nuevas especificaciones
+                    const totalConIva = precioBase + tarifaPolitica;
+                    return roundToDecimals(totalConIva).toFixed(2);
+                  })()}
                   €
                 </span>
+              </div>
+
+              {/* Mostrar desglose IVA solo informativamente */}
+              <div className="mt-2">
+                <small className="text-muted">
+                  (IVA 21% incluido:{' '}
+                  {(() => {
+                    const precioBase = Number(car.precio_dia) || 0;
+                    const tarifaPolitica = selectedPayment?.tarifa || 0;
+                    const totalConIva = precioBase + tarifaPolitica;
+                    // Extraer IVA del precio que ya lo incluye usando la fórmula correcta
+                    const precioSinIva = totalConIva / 1.21;
+                    const iva = totalConIva - precioSinIva;
+                    return roundToDecimals(iva).toFixed(2);
+                  })()}
+                  €)
+                </small>
               </div>
             </div>
 

@@ -132,7 +132,7 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
         }
         js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
 
@@ -240,7 +240,15 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
             color, "{}".format(float(obj.deductible)), nivel
         )
 
-
+    @admin.display(description="Tarifa adicional por día sumada al importe de la reserva del clienta")
+    def tarifa_display(self, obj):
+        return format_html(
+            '<div class="tarifa-display">'
+            '<p> style="color: #7f8c8d;>{} € Por día</p`>'
+            '</div>', "{}".format(float(obj.tarifa))
+        )
+    
+    
     @admin.display(description="Items Incluidos")
     def items_incluidos_display(self, obj):
         """Muestra resumen de items incluidos"""
@@ -518,7 +526,7 @@ class TipoPenalizacionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
         }
         js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
 
@@ -706,7 +714,7 @@ class PromocionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
         }
         js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
 

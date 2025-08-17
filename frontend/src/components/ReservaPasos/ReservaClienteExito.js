@@ -5,6 +5,7 @@ import {
   faCheckCircle,
   faClock,
   faDownload,
+  faInfoCircle,
   faMapMarkerAlt,
   faPrint,
   faShieldAlt,
@@ -37,6 +38,7 @@ const ReservaClienteExito = () => {
   const [error, setError] = useState(null);
   // Estado para activar modo debug (útil para solucionar problemas)
   const [debugMode, setDebugMode] = useState(false);
+
   useEffect(() => {
     try {
       logger.info('[ReservaClienteExito] Cargando datos de reserva completada');
@@ -186,6 +188,7 @@ const ReservaClienteExito = () => {
       );
     }
   }, [location.state, storageService]);
+
   // Imprimir la reserva
   const handleImprimirReserva = () => {
     try {
@@ -362,7 +365,9 @@ const ReservaClienteExito = () => {
     } catch (err) {
       setError('No se pudo acceder a la gestión de reservas.');
     }
-  }; // Activar modo debug con tecla secreta (presionar 'd' cinco veces seguidas)
+  };
+
+  // Activar modo debug con tecla secreta (presionar 'd' cinco veces seguidas)
   useEffect(() => {
     let keyPresses = [];
     const keyListener = (e) => {
@@ -725,7 +730,7 @@ const ReservaClienteExito = () => {
   };
 
   const getTotalPagado = () => {
-    // Campo directo del backend
+    // Cálculo correcto del total incluyendo tarifa de política
     if (typeof reservaCompletada.precio_total === 'number') {
       return reservaCompletada.precio_total;
     }
@@ -737,13 +742,13 @@ const ReservaClienteExito = () => {
     if (precioTotal) return precioTotal;
     if (total) return total;
 
-    // Sumar pagado y pendiente si están disponibles
-    const pagadoInicial = reservaCompletada.importe_pagado_inicial || 0;
-    const pendienteInicial = reservaCompletada.importe_pendiente_inicial || 0;
-    const pagadoExtra = reservaCompletada.importe_pagado_extra || 0;
-    const pendienteExtra = reservaCompletada.importe_pendiente_extra || 0;
+    // Cálculo completo incluyendo todos los componentes
+    const precioBase = reservaCompletada.precio_base || 0;
+    const precioExtras = reservaCompletada.precio_extras || 0;
+    const tarifaPolitica = reservaCompletada.tarifa_politica || 0;
+    const impuestos = reservaCompletada.precio_impuestos || 0;
 
-    return pagadoInicial + pendienteInicial + pagadoExtra + pendienteExtra;
+    return precioBase + precioExtras + tarifaPolitica + impuestos;
   };
 
   const getConductorInfo = () => {
@@ -815,11 +820,15 @@ const ReservaClienteExito = () => {
               extra.extra_nombre || extra.nombre || `Extra ${idx + 1}`;
             const precio = extra.extra_precio || extra.precio || 0;
             const cantidad = extra.cantidad || 1;
+            // Obtener días de la reserva para calcular precio total del extra
+            const dias = reservaCompletada.dias_alquiler || 1;
+            const precioTotal = precio * cantidad * dias;
 
             return (
               <li key={idx}>
                 {cantidad > 1 ? `${cantidad}x ` : ''}
-                {nombre} ({formatCurrency(precio * cantidad)})
+                {nombre} ({formatCurrency(precio)}/día × {dias} días ={' '}
+                {formatCurrency(precioTotal)})
               </li>
             );
           })}
@@ -910,35 +919,32 @@ const ReservaClienteExito = () => {
   };
 
   const getPaymentOption = () => {
-    // Campo del backend ReservaDetailSerializer
+    // Mostrar información completa de la política
     if (reservaCompletada.politica_pago_titulo) {
-      return reservaCompletada.politica_pago_titulo;
+      const titulo = reservaCompletada.politica_pago_titulo;
+      const deductible = reservaCompletada.politica_pago_deductible || 0;
+      const tarifa = reservaCompletada.tarifa_politica || 0;
+
+      let descripcion = titulo;
+      if (deductible > 0) {
+        descripcion += ` (Franquicia: €${deductible})`;
+      } else {
+        descripcion += ' (Sin franquicia)';
+      }
+
+      if (tarifa > 0) {
+        descripcion += ` + €${tarifa}/día`;
+      }
+
+      return descripcion;
     }
 
-    // Campos alternativos por compatibilidad
-    if (reservaCompletada.payment_policy_title) {
-      return reservaCompletada.payment_policy_title;
+    // Campos alternativos
+    if (reservaCompletada.politica_pago_detail?.titulo) {
+      return reservaCompletada.politica_pago_detail.titulo;
     }
 
-    // Métodos alternativos por compatibilidad (desde frontend)
-    if (paymentOption) {
-      if (typeof paymentOption === 'string') return paymentOption;
-      if (paymentOption.nombre) return paymentOption.nombre;
-      if (paymentOption.titulo) return paymentOption.titulo;
-      if (paymentOption.descripcion) return paymentOption.descripcion;
-    }
-
-    if (opcion_pago) {
-      if (typeof opcion_pago === 'string') return opcion_pago;
-      if (opcion_pago.nombre) return opcion_pago.nombre;
-      if (opcion_pago.titulo) return opcion_pago.titulo;
-    }
-
-    return (
-      reservaCompletada.payment_option ||
-      reservaCompletada.opcion_pago ||
-      'No especificada'
-    );
+    return 'No especificada';
   };
 
   // Renderizado principal
@@ -1045,35 +1051,85 @@ const ReservaClienteExito = () => {
                     <th>Extras incluidos</th>
                     <td>{getExtrasInfo()}</td>
                   </tr>
+
+                  {/* Desglose completo de precios */}
+                  <tr>
+                    <th colSpan="2" className="bg-light">
+                      <strong>Desglose de Precios</strong>
+                    </th>
+                  </tr>
+
                   <tr>
                     <th>
-                      <strong>Precio por día</strong>
+                      <strong>Precio base</strong>
                     </th>
                     <td>
                       <strong>
-                        {formatCurrency(reservaCompletada.precio_dia || 0)}
+                        {formatCurrency(reservaCompletada.precio_base || 0)}
                       </strong>
                     </td>
                   </tr>
+
+                  {/* Mostrar tarifa de política si existe */}
+                  {reservaCompletada.tarifa_politica > 0 && (
+                    <tr>
+                      <th>
+                        <strong>Tarifa de protección</strong>
+                      </th>
+                      <td>
+                        <strong>
+                          {formatCurrency(
+                            reservaCompletada.tarifa_politica || 0,
+                          )}
+                        </strong>
+                      </td>
+                    </tr>
+                  )}
+
+                  {reservaCompletada.precio_extras > 0 && (
+                    <tr>
+                      <th>
+                        <strong>Extras</strong>
+                      </th>
+                      <td>
+                        <strong>
+                          {formatCurrency(reservaCompletada.precio_extras || 0)}
+                        </strong>
+                      </td>
+                    </tr>
+                  )}
+
                   <tr>
                     <th>
-                      <strong>Impuestos</strong>
+                      <strong>IVA (incluido)</strong>
                     </th>
                     <td>
                       <strong>
                         {formatCurrency(
-                          reservaCompletada.precio_impuestos || 0,
+                          reservaCompletada.precio_impuestos ||
+                            reservaCompletada.iva ||
+                            0,
                         )}
                       </strong>
                     </td>
                   </tr>
-                  <tr>
+
+                  <tr className="table-success">
                     <th>
-                      <strong>Total de la reserva</strong>
+                      <strong>TOTAL DE LA RESERVA</strong>
                     </th>
                     <td>
-                      <strong>{formatCurrency(getTotalPagado())}</strong>
+                      <strong style={{ fontSize: '1.2em' }}>
+                        {formatCurrency(getTotalPagado())}
+                      </strong>
                     </td>
+                  </tr>
+
+                  {/* Separador para estado de pagos */}
+                  <tr>
+                    <th colSpan="2" className="bg-light">
+                      <strong>Estado de Pagos</strong>
+                    </th>
                   </tr>
                   <tr>
                     <th>Importe pagado inicial</th>
@@ -1114,6 +1170,39 @@ const ReservaClienteExito = () => {
                   )}
                 </tbody>
               </Table>
+              {/* Información adicional */}
+              {(reservaCompletada.dias_alquiler ||
+                reservaCompletada.observaciones) && (
+                <Card className="mb-4 bg-light">
+                  <Card.Body>
+                    <h6 className="mb-3">
+                      <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
+                      Información adicional
+                    </h6>
+
+                    {reservaCompletada.dias_alquiler && (
+                      <p className="mb-2">
+                        <strong>Duración del alquiler:</strong>{' '}
+                        {reservaCompletada.dias_alquiler} días
+                      </p>
+                    )}
+
+                    {reservaCompletada.observaciones && (
+                      <p className="mb-2">
+                        <strong>Observaciones:</strong>{' '}
+                        {reservaCompletada.observaciones}
+                      </p>
+                    )}
+
+                    <p className="mb-0 text-muted">
+                      <small>
+                        Todos los precios incluyen IVA. La tarifa de protección
+                        se aplica por día de alquiler.
+                      </small>
+                    </p>
+                  </Card.Body>
+                </Card>
+              )}
               <div className="d-flex justify-content-between">
                 <Button
                   variant="outline-primary"

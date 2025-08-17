@@ -61,7 +61,7 @@ class ImagenVehiculoInline(admin.TabularInline):
     
     class Media:
         css = {
-            'all': ('admin/css/custom_admin.css',)
+            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
         }
 
     def imagen_preview(self, obj):
@@ -89,7 +89,7 @@ class TarifaVehiculoInline(admin.TabularInline):
     
     class Media:
         css = {
-            'all': ('admin/css/custom_admin.css',)
+            'all': ('admin/css/custom_admin.c5880bb26f05.css',)
         }
 
 
@@ -104,7 +104,7 @@ class MantenimientoInline(admin.TabularInline):
     
     class Media:
         css = {
-            'all': ('admin/css/custom_admin.css',)
+            'all': ('admin/css/custom_admin.c5880bb26f05.css',)
         }
 
 
@@ -623,7 +623,7 @@ class VehiculoAdmin(admin.ModelAdmin):
     class Media:
         js = (get_versioned_asset("js_vehiculos", "admin/js/vehiculos_admin_vfd3d29f9.js"),)
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
+            "all": (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
         }
 
 

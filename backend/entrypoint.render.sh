@@ -53,5 +53,27 @@ echo "📁 Recopilando archivos estáticos..."
 python manage.py collectstatic --noinput
 echo "✅ Archivos estáticos recopilados"
 
+# Versionado automático de archivos estáticos
+echo "🔄 Ejecutando versionado automático de archivos estáticos..."
+if python manage.py version_static_assets; then
+    echo "✅ Versionado automático completado"
+else
+    echo "⚠️ Versionado automático falló, usando fallbacks"
+    # Crear mapeo de fallback
+    python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.render')
+django.setup()
+
+try:
+    from utils.static_hooks import StaticVersioningHooks
+    StaticVersioningHooks.ensure_fallback_mapping()
+    print('✅ Mapeo de fallback creado')
+except Exception as e:
+    print(f'⚠️ Error creando fallback: {e}')
+"
+fi
+
 echo "🚀 Iniciando servidor Django..."
 exec "$@"

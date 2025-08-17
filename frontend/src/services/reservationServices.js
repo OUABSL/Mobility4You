@@ -12,7 +12,7 @@ import {
   shouldUseTestingData,
   TIMEOUT_CONFIG,
 } from '../config/appConfig';
-import { logError, logInfo, logWarning, withTimeout } from '../utils';
+import { logError, logInfo, withTimeout } from '../utils';
 import { validateReservationData } from '../validations/reservationValidations'; // Importar validaciones
 import { withCache } from './cacheService';
 import { fetchLocations } from './searchServices'; // Import para obtener ubicaciones
@@ -276,7 +276,7 @@ export const createReservation = async (data) => {
  *   lugarRecogida: { nombre: "Aeropuerto de Málaga (AGP)" },
  *   lugarDevolucion: { nombre: "Estación de Tren María Zambrano" },
  *   conductores: [{ conductor: { email, nombre, apellido } }],
- *   politicaPago: { titulo: "All Inclusive", deductible: 0 },
+ *   politicaPago: { titulo: "All Inclusive", deductible: 0.00, tarifa: 0.00},
  *   precioTotal: 395.16, extras: [...], promocion: {...}
  * }
  *
@@ -291,23 +291,23 @@ export const createReservation = async (data) => {
  */
 export const findReservation = async (reservaId, email) => {
   try {
-    // ✅ Generar clave de cache
+    // Generar clave de cache
     const cacheKey = getReservationCacheKey(reservaId, email);
 
-    // ✅ Verificar cache primero
+    // Verificar cache primero
     const cachedData = getCachedReservation(cacheKey);
     if (cachedData) {
       return cachedData;
     }
 
-    // ✅ Cancelar request anterior si existe
+    // Cancelar request anterior si existe
     if (currentFindRequest) {
       currentFindRequest.abort();
       currentFindRequest = null;
       logger.info('🚫 Request anterior cancelado por nuevo request');
     }
 
-    // ✅ Crear AbortController para este request
+    // Crear AbortController para este request
     const controller = new AbortController();
     currentFindRequest = controller;
 
@@ -320,7 +320,7 @@ export const findReservation = async (reservaId, email) => {
         reserva &&
         reserva.conductores.some((c) => c.conductor.email === email)
       ) {
-        // ✅ Guardar en cache los datos de prueba también
+        // Guardar en cache los datos de prueba también
         setCachedReservation(cacheKey, reserva);
         return reserva;
       }
@@ -333,16 +333,16 @@ export const findReservation = async (reservaId, email) => {
       { reserva_id: reservaId, email },
       {
         ...getAuthHeaders(),
-        signal: controller.signal, // ✅ Añadir signal para cancelación
+        signal: controller.signal, // Añadir signal para cancelación
       },
     );
 
-    currentFindRequest = null; // ✅ Limpiar referencia
+    currentFindRequest = null; // Limpiar referencia
 
     if (response.data && response.data.success) {
-      logger.info('✅ Reserva encontrada exitosamente');
+      logger.info('Reserva encontrada exitosamente');
 
-      // ✅ Guardar en cache
+      // Guardar en cache
       setCachedReservation(cacheKey, response.data);
 
       return response.data;
@@ -352,15 +352,15 @@ export const findReservation = async (reservaId, email) => {
       );
     }
   } catch (error) {
-    currentFindRequest = null; // ✅ Limpiar referencia en error
+    currentFindRequest = null; // Limpiar referencia en error
 
-    // ✅ No loggear errores de cancelación
+    // No loggear errores de cancelación
     if (error.name === 'AbortError') {
       logger.info('🚫 Request cancelado por nuevo request');
       return;
     }
 
-    logger.error('❌ Error en findReservation:', error.message);
+    logger.error('Error en findReservation:', error.message);
 
     if (error.response) {
       const status = error.response.status;
@@ -427,75 +427,19 @@ export const findReservation = async (reservaId, email) => {
  */
 export const calculateReservationPrice = async (data) => {
   try {
-    // En modo DEBUG, intentar backend primero, fallback mínimo solo si falla
-    if (DEBUG_MODE) {
-      logInfo(
-        '⚠️ MODO DEBUG: Intentando calcular precio en backend primero...',
-      );
+    logger.info('💰 Calculando precio de reserva con datos reales', data);
 
-      try {
-        // Mapear campos para el backend
-        const mappedData = {
-          vehiculo_id: data.vehiculo?.id || data.vehiculo_id,
-          fecha_recogida: data.fechaRecogida || data.fecha_recogida,
-          fecha_devolucion: data.fechaDevolucion || data.fecha_devolucion,
-          lugar_recogida_id: data.lugarRecogida?.id || data.lugar_recogida_id,
-          lugar_devolucion_id:
-            data.lugarDevolucion?.id || data.lugar_devolucion_id,
-          politica_pago_id: data.politicaPago?.id || data.politica_pago_id,
-          extras:
-            data.extras?.map((extra) =>
-              typeof extra === 'object' ? extra.id : extra,
-            ) || [],
-        };
+    // Validación de datos requeridos
+    if (!data.vehiculo_id && !data.vehiculo?.id) {
+      throw new Error('ID de vehículo es requerido para calcular precio');
+    }
 
-        const response = await axios.post(
-          `${API_URL}/reservas/calcular-precio/`,
-          mappedData,
-          getAuthHeaders(),
-        );
+    if (!data.fecha_recogida && !data.fechaRecogida) {
+      throw new Error('Fecha de recogida es requerida');
+    }
 
-        logInfo('✅ Precio calculado desde backend:', response.data);
-        return response.data;
-      } catch (backendError) {
-        logError(
-          '❌ Error en backend, modo DEBUG fallback activado:',
-          backendError,
-        );
-
-        // Fallback mínimo solo para DEBUG
-        logInfo('⚠️ FALLBACK DEBUG: Estimación temporal básica');
-
-        const fechaInicio = new Date(data.fechaRecogida || data.fecha_recogida);
-        const fechaFin = new Date(
-          data.fechaDevolucion || data.fecha_devolucion,
-        );
-        const diasAlquiler = Math.ceil(
-          (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24),
-        );
-
-        // Estimación muy básica para DEBUG SOLAMENTE (NO usar en producción)
-        const estimatedPrice = diasAlquiler * 50; // Solo para fallback de DEBUG
-
-        logInfo('⚠️ CRÍTICO: Estimación temporal, verificar con backend');
-
-        return {
-          originalPrice: estimatedPrice * 0.8,
-          newPrice: estimatedPrice,
-          difference: estimatedPrice * 0.2,
-          diasAlquiler,
-          isEstimate: true,
-          warningMessage: 'Estimación temporal - backend no disponible',
-          breakdown: {
-            precio_base: estimatedPrice * 0.8,
-            precio_extras: 0,
-            subtotal: estimatedPrice * 0.8,
-            impuestos: estimatedPrice * 0.2,
-            total: estimatedPrice,
-            note: 'Estimación temporal - usar backend para cálculos reales',
-          },
-        };
-      }
+    if (!data.fecha_devolucion && !data.fechaDevolucion) {
+      throw new Error('Fecha de devolución es requerida');
     }
 
     // Si hay un ID de reserva, es una edición
@@ -503,45 +447,83 @@ export const calculateReservationPrice = async (data) => {
       return await calculateEditReservationPrice(data.id, data);
     }
 
-    // Mapear campos para el backend
+    // Mapear campos para el backend (formato estándar)
     const mappedData = {
-      vehiculo_id: data.vehiculo?.id || data.vehiculo_id,
-      fecha_recogida: data.fechaRecogida || data.fecha_recogida,
-      fecha_devolucion: data.fechaDevolucion || data.fecha_devolucion,
-      lugar_recogida_id: data.lugarRecogida?.id || data.lugar_recogida_id,
-      lugar_devolucion_id: data.lugarDevolucion?.id || data.lugar_devolucion_id,
-      politica_pago_id: data.politicaPago?.id || data.politica_pago_id,
-      extras:
-        data.extras?.map((extra) =>
-          typeof extra === 'object' ? extra.id : extra,
-        ) || [],
+      vehiculo_id: data.vehiculo_id || data.vehiculo?.id,
+      fecha_recogida: data.fecha_recogida || data.fechaRecogida,
+      fecha_devolucion: data.fecha_devolucion || data.fechaDevolucion,
+      lugar_recogida_id: data.lugar_recogida_id || data.lugarRecogida?.id,
+      lugar_devolucion_id: data.lugar_devolucion_id || data.lugarDevolucion?.id,
+      politica_pago_id: data.politica_pago_id || data.politicaPago?.id,
+      extras: (data.extras || []).map((extra) =>
+        typeof extra === 'object'
+          ? { extra_id: extra.id, cantidad: 1 }
+          : { extra_id: extra, cantidad: 1 },
+      ),
     };
 
-    // Llamar al endpoint de cálculo
+    logger.info('📤 Enviando datos al backend:', mappedData);
+
+    // Llamar al endpoint de cálculo real
     const response = await axios.post(
-      `${API_URL}/reservas/reservas/calcular-precio/`,
+      `${API_URL}/reservas/calcular_precio/`,
       mappedData,
-      getAuthHeaders(),
+      {
+        headers: getAuthHeaders(),
+        timeout: TIMEOUT_CONFIG.RESERVATIONS,
+      },
     );
 
-    return response.data;
+    if (response.data.success) {
+      logger.info(
+        'Precio calculado exitosamente desde backend:',
+        response.data,
+      );
+      return response.data;
+    } else {
+      throw new Error(response.data.error || 'Error en el cálculo del backend');
+    }
   } catch (error) {
-    logger.error('Error calculating reservation price:', error);
+    logger.error('Error calculando precio de reserva:', error);
+
+    // Manejar diferentes tipos de errores
+    if (error.code === 'ECONNABORTED') {
+      throw new Error(
+        'Tiempo de espera agotado. Por favor, intenta nuevamente.',
+      );
+    }
+
+    if (error.response?.status === 404) {
+      throw new Error(
+        'Servicio de cálculo no disponible. Contacta con soporte.',
+      );
+    }
+
+    if (error.response?.status === 400) {
+      const errorMessage =
+        error.response.data?.error || 'Datos de reserva inválidos';
+      throw new Error(errorMessage);
+    }
+
+    if (error.response?.status >= 500) {
+      throw new Error(
+        'Error interno del servidor. Por favor, intenta más tarde.',
+      );
+    }
+
+    // Error de red
+    if (!error.response) {
+      throw new Error('Error de conexión. Verifica tu conexión a internet.');
+    }
+
+    // Error genérico
     const errorMessage =
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
       error.response?.data?.error ||
       error.message ||
-      'Error al calcular el precio.';
-
-    throw new Error(
-      typeof errorMessage === 'string'
-        ? errorMessage
-        : 'Error al calcular el precio.',
-    );
+      'Error al calcular el precio';
+    throw new Error(errorMessage);
   }
 };
-
 /**
  * ✏️💰 CALCULAR PRECIO DE EDICIÓN DE RESERVA
  *
@@ -555,163 +537,88 @@ export const calculateReservationPrice = async (data) => {
  */
 export const calculateEditReservationPrice = async (reservaId, editData) => {
   try {
-    if (DEBUG_MODE) {
-      logInfo('🔄 Calculando precio de edición en modo DEBUG', {
-        reservaId,
-        editData,
-      });
+    logger.info('🔄 Calculando precio de edición de reserva', {
+      reservaId,
+      editData,
+    });
 
-      // Obtener datos de la reserva original del sessionStorage
-      const reservaOriginal = JSON.parse(
-        sessionStorage.getItem('reservaData') || '{}',
+    // Validación de datos requeridos
+    if (!reservaId) {
+      throw new Error(
+        'ID de reserva es requerido para calcular precio de edición',
       );
-      const editReservaData = JSON.parse(
-        sessionStorage.getItem('editReservaData') || '{}',
-      );
-
-      // Usar precio original real de la reserva (SIN valores hardcodeados para producción)
-      const originalPrice = parseFloat(
-        reservaOriginal.precio_total ||
-          editReservaData.originalReservation?.precio_total ||
-          0,
-      );
-
-      logInfo('💰 Precio original de la reserva:', originalPrice);
-
-      // Calcular días de alquiler para la nueva configuración
-      const fechaInicio = new Date(
-        editData.fechaRecogida || editData.fecha_recogida,
-      );
-      const fechaFin = new Date(
-        editData.fechaDevolucion || editData.fecha_devolucion,
-      );
-      const diasAlquiler = Math.ceil(
-        (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24),
-      );
-
-      logInfo(`� Duración de la reserva: ${diasAlquiler} días`);
-
-      // FALLBACK DEBUG: Solo para desarrollo cuando falla la API
-      if (!DEBUG_MODE) {
-        throw new Error(
-          'Cálculo de precios en frontend no disponible en producción. Usar backend.',
-        );
-      }
-
-      // Variables para el cálculo fallback (solo DEBUG)
-      const precioDiario =
-        reservaOriginal?.car?.precio_dia ||
-        editReservaData?.car?.precio_dia ||
-        50; // Fallback temporal
-      const precioBase = precioDiario * diasAlquiler;
-
-      // Calcular precio de extras
-      let totalExtras = 0;
-      if (editData.extras && editData.extras.length > 0) {
-        totalExtras = editData.extras.reduce((total, extra) => {
-          // Sin fallback hardcodeado - debe venir del backend
-          const precioExtra = extra.precio || 0; // No calcular sin datos reales
-          return total + precioExtra;
-        }, 0);
-      }
-
-      // Subtotal antes de impuestos
-      const subtotal = precioBase + totalExtras;
-
-      // Sin valores hardcodeados de IVA - debe venir del backend
-      logError('❌ No se puede calcular IVA sin datos del backend');
-      const iva = 0; // Sin cálculo sin datos del backend
-      const newPrice = subtotal; // Solo subtotal sin impuestos
-
-      // Calcular diferencia
-      const difference = newPrice - originalPrice;
-
-      logInfo(`📊 Desglose del cálculo (MODO DEBUG - SIN IMPUESTOS):`);
-      logInfo(
-        `  💶 Precio base: €${precioBase.toFixed(
-          2,
-        )} (${diasAlquiler} días × €${precioDiario})`,
-      );
-      logInfo(`  🎁 Extras: €${totalExtras.toFixed(2)}`);
-      logInfo(`  📋 Subtotal: €${subtotal.toFixed(2)}`);
-      logInfo(`  🏛️ IVA: No calculado (requiere backend)`);
-      logInfo(`  💳 Total nuevo: €${newPrice.toFixed(2)}`);
-      logInfo(`  📊 Precio original: €${originalPrice.toFixed(2)}`);
-      logInfo(`  🔄 Diferencia: €${difference.toFixed(2)}`);
-
-      logWarning('⚠️ CÁLCULO SIN IVA - Los impuestos deben venir del backend');
-
-      return {
-        originalPrice: parseFloat(originalPrice.toFixed(2)),
-        newPrice: parseFloat(newPrice.toFixed(2)),
-        difference: parseFloat(difference.toFixed(2)),
-        diasAlquiler,
-        breakdown: {
-          precio_base: parseFloat(precioBase.toFixed(2)),
-          precio_extras: parseFloat(totalExtras.toFixed(2)),
-          subtotal: parseFloat(subtotal.toFixed(2)),
-          impuestos: parseFloat(iva.toFixed(2)),
-          total: parseFloat(newPrice.toFixed(2)),
-        },
-      };
     }
 
-    // Preparar datos para el backend fuera del bloque DEBUG_MODE
+    // Preparar datos para el backend
     const mappedData = {
-      fechaRecogida: editData.fechaRecogida || editData.fecha_recogida,
-      fechaDevolucion: editData.fechaDevolucion || editData.fecha_devolucion,
-      lugarRecogida_id: editData.lugarRecogida_id || editData.lugar_recogida_id,
-      lugarDevolucion_id:
-        editData.lugarDevolucion_id || editData.lugar_devolucion_id,
-      extras: editData.extras || [],
+      vehiculo_id: editData.vehiculo_id || editData.vehiculo?.id,
+      fecha_recogida: editData.fecha_recogida || editData.fechaRecogida,
+      fecha_devolucion: editData.fecha_devolucion || editData.fechaDevolucion,
+      lugar_recogida_id:
+        editData.lugar_recogida_id || editData.lugarRecogida_id,
+      lugar_devolucion_id:
+        editData.lugar_devolucion_id || editData.lugarDevolucion_id,
+      politica_pago_id: editData.politica_pago_id || editData.politicaPago_id,
+      extras: (editData.extras || []).map((extra) => ({
+        extra_id:
+          typeof extra === 'object' ? extra.extra_id || extra.id : extra,
+        cantidad: typeof extra === 'object' ? extra.cantidad || 1 : 1,
+      })),
     };
+
+    logger.info('📤 Enviando datos de edición al backend:', mappedData);
 
     const response = await axios.post(
-      `${API_URL}/reservas/reservas/${reservaId}/calcular_precio_edicion/`,
+      `${API_URL}/reservas/${reservaId}/calcular_precio_edicion/`,
       mappedData,
-      getAuthHeaders(),
+      {
+        headers: getAuthHeaders(),
+        timeout: TIMEOUT_CONFIG.RESERVATIONS,
+      },
     );
 
-    logInfo(
-      `Precio de edición calculado para reserva ${reservaId}:`,
-      response.data,
-    );
-    return response.data;
+    if (response.data.success) {
+      logger.info(
+        '✅ Precio de edición calculado exitosamente:',
+        response.data,
+      );
+      return response.data;
+    } else {
+      throw new Error(
+        response.data.error || 'Error calculando precio de edición',
+      );
+    }
   } catch (error) {
-    logError('Error calculating edit reservation price:', error);
+    logger.error('❌ Error calculando precio de edición:', error);
 
-    // Preparar datos para debug (en caso de error)
-    const debugData = {
-      fechaRecogida: editData.fechaRecogida || editData.fecha_recogida,
-      fechaDevolucion: editData.fechaDevolucion || editData.fecha_devolucion,
-      lugarRecogida_id: editData.lugarRecogida_id || editData.lugar_recogida_id,
-      lugarDevolucion_id:
-        editData.lugarDevolucion_id || editData.lugar_devolucion_id,
-      extras: editData.extras || [],
-    };
+    // Manejar errores específicos
+    if (error.response?.status === 404) {
+      throw new Error('Reserva no encontrada o no disponible para edición');
+    }
 
-    // Debug detallado del error
-    if (DEBUG_MODE) {
-      logger.error('API Error:', {
-        error,
-        endpoint: `/reservas/reservas/${reservaId}/calcular-precio-edicion/`,
-        data: debugData,
-        context: 'price-calculation',
-      });
+    if (error.response?.status === 400) {
+      const errorMessage =
+        error.response.data?.error || 'Datos de edición inválidos';
+      throw new Error(errorMessage);
+    }
+
+    if (error.response?.status === 403) {
+      throw new Error('No tienes permisos para editar esta reserva');
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      throw new Error('Tiempo de espera agotado. Intenta nuevamente.');
+    }
+
+    if (!error.response) {
+      throw new Error('Error de conexión. Verifica tu conexión a internet.');
     }
 
     const errorMessage =
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
       error.response?.data?.error ||
       error.message ||
-      'Error al calcular el precio de edición.';
-
-    throw new Error(
-      typeof errorMessage === 'string'
-        ? errorMessage
-        : 'Error al calcular el precio de edición.',
-    );
+      'Error al calcular precio de edición';
+    throw new Error(errorMessage);
   }
 };
 
@@ -774,10 +681,10 @@ export const editReservation = async (reservaId, data) => {
       getAuthHeaders(),
     );
 
-    logger.info('✅ Reserva editada exitosamente');
+    logger.info('Reserva editada exitosamente');
     return response.data;
   } catch (error) {
-    logger.error('❌ Error editing reservation:', error);
+    logger.error('Error editing reservation:', error);
 
     // Logging detallado del error para debugging
     if (error.response) {
@@ -819,9 +726,9 @@ export const editReservation = async (reservaId, data) => {
  * 5. Notificación al cliente y actualización de estado
  *
  * 💰 POLÍTICAS DE CANCELACIÓN (según configuración):
- * - ✅ Más de 24h antes: Cancelación gratuita
+ * - Más de 24h antes: Cancelación gratuita
  * - ⚠️ Menos de 24h: Cargo del 50% del valor total
- * - ❌ No-show: Cargo del 100% del importe
+ * - No-show: Cargo del 100% del importe
  * - 🏢 Reservas corporativas: Aplican acuerdos específicos
  *
  * 📤 EFECTOS POST-CANCELACIÓN:
@@ -977,7 +884,7 @@ export const getExtrasDisponibles = async () => {
 };
 
 /**
- * 🛒 OBTENER EXTRAS DISPONIBLES (OPTIMIZADO)
+ * 🛒 OBTENER EXTRAS DISPONIBLES
  *
  * Función especializada para obtener únicamente los extras actualmente disponibles
  * para reserva. A diferencia de `getExtrasDisponibles()`, esta función utiliza un
@@ -1185,7 +1092,7 @@ export { datosReservaPrueba };
  * - Integración con flujo de checkout del frontend
  *
  * 🛡️ SEGURIDAD Y CUMPLIMIENTO:
- * - ✅ **PCI DSS Compliant**: No maneja datos sensibles directamente
+ * - **PCI DSS Compliant**: No maneja datos sensibles directamente
  * - 🔐 **Encriptación**: Todas las comunicaciones cifradas con Stripe
  * - 📝 **Auditoría**: Logging completo de todas las transacciones
  * - ⚡ **Idempotencia**: Previene duplicación de cargos accidentales
@@ -1281,7 +1188,7 @@ export const processDifferencePayment = async (reservaId, paymentData) => {
       // Simular procesamiento de pago en desarrollo
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      logger.info('✅ Pago simulado exitosamente');
+      logger.info('Pago simulado exitosamente');
 
       return {
         success: true,
@@ -1304,7 +1211,7 @@ export const processDifferencePayment = async (reservaId, paymentData) => {
 
     return response.data;
   } catch (error) {
-    logger.error('❌ Error procesando pago:', error);
+    logger.error('Error procesando pago:', error);
     const errorMessage =
       error.response?.data?.detail ||
       error.response?.data?.message ||
@@ -2023,7 +1930,7 @@ const validateAndCleanReservationData = (data) => {
     }
   }
 
-  logger.info('✅ Datos validados y limpiados:', cleanedData);
+  logger.info('Datos validados y limpiados:', cleanedData);
   return cleanedData;
 };
 
@@ -2055,7 +1962,7 @@ export const mapReservationDataToBackend = async (data) => {
     return mappedData;
   } catch (error) {
     // Detailed error logging for debugging - provide specific error context
-    logError('❌ Universal mapper failed, using fallback logic', {
+    logError('Universal mapper failed, using fallback logic', {
       error: error.message,
       errorType: error.constructor.name,
       stack: error.stack,
@@ -2418,6 +2325,7 @@ export const fetchPoliticasPago = async () => {
         id: `politica-${politica.id}`,
         title: politica.titulo,
         deductible: politica.deductible,
+        tarifa: politica.tarifa,
         descripcion: politica.descripcion,
         incluye: politica.incluye.map((item) => item.titulo),
         noIncluye: politica.no_incluye.map((item) => item.titulo),
@@ -2432,6 +2340,7 @@ export const fetchPoliticasPago = async () => {
             id: p.id,
             title: p.title,
             deductible: p.deductible,
+            tarifa: p.tarifa,
             incluye_count: p.incluye.length,
             noIncluye_count: p.noIncluye.length,
           })),

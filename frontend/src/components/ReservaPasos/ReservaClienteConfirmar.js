@@ -992,7 +992,7 @@ const ReservaClienteConfirmar = () => {
                       ? typeof fechas.pickupLocation === 'object'
                         ? fechas.pickupLocation.nombre
                         : fechas.pickupLocation
-                      : 'Aeropuerto de Málaga'}
+                      : '-'}
                   </div>
                   <div className="d-flex mb-3">
                     <div className="me-3">
@@ -1013,7 +1013,7 @@ const ReservaClienteConfirmar = () => {
                       ? typeof fechas.dropoffLocation === 'object'
                         ? fechas.dropoffLocation.nombre
                         : fechas.dropoffLocation
-                      : 'Aeropuerto de Málaga'}
+                      : '-'}
                   </div>
                   <div className="d-flex mb-3">
                     <div className="me-3">

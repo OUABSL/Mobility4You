@@ -382,6 +382,12 @@ const MAPPING_SCHEMAS = {
         validator: nonNegativeNumberValidator,
         transformer: (item, value) => safeNumberTransformer(value, 0),
       },
+      tarifa: {
+        sources: ['tarifa'],
+        default: 0,
+        validator: nonNegativeNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
       activo: {
         sources: ['activo'],
         default: true,
@@ -500,13 +506,7 @@ const MAPPING_SCHEMAS = {
         error: 'ID de vehículo inválido o no seleccionado',
       },
       lugar_recogida: {
-        sources: [
-          'fechas.pickupLocation.id',
-          'lugarRecogida.id',
-          'lugar_recogida_id',
-          'pickupLocation.id',
-          'lugar_recogida',
-        ],
+        sources: ['lugar_recogida_id', 'pickupLocation.id', 'lugar_recogida'],
         required: true,
         validator: positiveNumberValidator,
         transformer: (item, value) => safeNumberTransformer(value, null),
@@ -514,8 +514,6 @@ const MAPPING_SCHEMAS = {
       },
       lugar_devolucion: {
         sources: [
-          'fechas.dropoffLocation.id',
-          'lugarDevolucion.id',
           'lugar_devolucion_id',
           'dropoffLocation.id',
           'lugar_devolucion',
@@ -569,12 +567,7 @@ const MAPPING_SCHEMAS = {
       },
 
       politica_pago: {
-        sources: [
-          'politicaPago.id',
-          'politica_pago_id',
-          'politica_pago',
-          'paymentOption',
-        ],
+        sources: ['politica_pago_id', 'politica_pago', 'paymentOption'],
         required: true,
         transformer: (item, value) => {
           if (typeof value === 'number') return value;
@@ -638,7 +631,7 @@ const MAPPING_SCHEMAS = {
           'detallesReserva.precioCocheBase',
           'precioBase',
           'precio_base',
-          'precio_dia', // Agregar precio_dia como fuente para precio base
+          'precio_dia',
         ],
         default: 0,
         validator: nonNegativeNumberValidator,
@@ -655,21 +648,35 @@ const MAPPING_SCHEMAS = {
         validator: nonNegativeNumberValidator,
         transformer: (item, value) => safeNumberTransformer(value, 0),
       },
-      precio_impuestos: {
+      tarifa_politica: {
         sources: [
-          'detallesReserva.impuestos',
-          'detallesReserva.iva',
-          'precioImpuestos',
-          'precio_impuestos',
+          'desglose.tarifa_politica',
+          'breakdown.tarifa_politica',
+          'tarifa_politica',
+          'tarifaPolitica',
+          'politica_pago.tarifa',
+          'politicaPago.tarifa',
         ],
         default: 0,
         validator: nonNegativeNumberValidator,
         transformer: (item, value) => safeNumberTransformer(value, 0),
       },
-      tasa_impuesto: {
-        sources: ['tasaImpuesto', 'tasa_impuesto'],
-        default: 0, // No default hardcodeado - debe venir del backend
+      iva_incluido: {
+        sources: ['desglose.iva', 'breakdown.iva', 'iva', 'impuestos'],
+        default: 0,
         validator: nonNegativeNumberValidator,
+        transformer: (item, value) => safeNumberTransformer(value, 0),
+      },
+      precio_total_con_iva: {
+        sources: [
+          'desglose.total_con_iva',
+          'breakdown.total_con_iva',
+          'precio_total',
+          'precioTotal',
+          'total',
+        ],
+        default: 0,
+        validator: positiveNumberValidator,
         transformer: (item, value) => safeNumberTransformer(value, 0),
       },
       metodo_pago: {
@@ -2111,14 +2118,6 @@ class UniversalDataMapper {
     // Verificar campos específicos que están causando problemas
     logger.info('🎯 Verificando campos específicos:');
     logger.info('- car.id:', extractByPath(frontendData, 'car.id'));
-    logger.info(
-      '- fechas.pickupLocation.id:',
-      extractByPath(frontendData, 'fechas.pickupLocation.id'),
-    );
-    logger.info(
-      '- fechas.dropoffLocation.id:',
-      extractByPath(frontendData, 'fechas.dropoffLocation.id'),
-    );
     logger.info(
       '- fechas.pickupDate:',
       extractByPath(frontendData, 'fechas.pickupDate'),

@@ -1,0 +1,181 @@
+# =======================================================
+# DOCKER COMPOSE OPTIMIZADO PARA SIMULAR RENDER
+# Configuración que replica el entorno de Render.com lo más fielmente posible
+# =======================================================
+
+services:
+  # PostgreSQL con configuración similar a Render
+  postgres:
+    image: postgres:16-alpine
+    container_name: mobility4you_postgres_render
+    environment:
+      POSTGRES_DB: mobility4you_db
+      POSTGRES_USER: mobility4you_db_user
+      POSTGRES_PASSWORD: superseguro_postgres_render
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5433:5432" # Puerto diferente para evitar conflictos
+    volumes:
+      - postgres_data_render:/var/lib/postgresql/data
+      - ./scripts/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U mobility4you_db_user -d mobility4you_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - render_network
+    restart: unless-stopped
+
+  # Redis para caché (como en Render)
+  redis:
+    image: redis:7-alpine
+    container_name: mobility4you_redis_render
+    ports:
+      - "6380:6379" # Puerto diferente para evitar conflictos
+    volumes:
+      - redis_data_render:/data
+    networks:
+      - render_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Backend Django - Simulando Render con Gunicorn
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.render
+    container_name: mobility4you_backend_render
+    environment:
+      # Variables que similan Render
+      RENDER: "true"
+      DATABASE_URL: "postgresql://mobility4you_db_user:superseguro_postgres_render@postgres:5432/mobility4you_db"
+      REDIS_URL: "redis://redis:6379/0"
+
+      # Django settings para producción simulada
+      DJANGO_ENV: "production"
+      DJANGO_SETTINGS_MODULE: "config.settings.render"
+      DEBUG: "False"
+
+      # Configuración de base de datos
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: mobility4you_db
+      DB_USER: mobility4you_db_user
+      DB_PASSWORD: superseguro_postgres_render
+      DB_ENGINE: django.db.backends.postgresql
+
+      # Seguridad
+      SECRET_KEY: "render-simulation-secret-key-change-in-production"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,backend"
+      SECURE_SSL_REDIRECT: "False"
+      SESSION_COOKIE_SECURE: "False"
+      CSRF_COOKIE_SECURE: "False"
+      SECURE_HSTS_SECONDS: "0"
+      SECURE_HSTS_INCLUDE_SUBDOMAINS: "False"
+      SECURE_HSTS_PRELOAD: "False"
+
+      # URLs para testing local que simula producción
+      BACKEND_URL: "http://localhost:8000"
+      FRONTEND_URL: "http://localhost:3000"
+      API_BASE_URL: "http://localhost:8000/api"
+
+      # Configuración de media (B2)
+      USE_S3: "TRUE"
+      B2_APPLICATION_KEY_ID: "${B2_APPLICATION_KEY_ID:-test_key_id}"
+      B2_APPLICATION_KEY: "${B2_APPLICATION_KEY:-test_key}"
+      B2_BUCKET_NAME: "${B2_BUCKET_NAME:-mobility4you-media-prod}"
+      B2_S3_ENDPOINT: "${B2_S3_ENDPOINT:-s3.eu-central-003.backblazeb2.com}"
+
+      # Email (Brevo)
+      BREVO_API_KEY: "${BREVO_API_KEY:-test_brevo_key}"
+      BREVO_FROM_EMAIL: "noreply@mobility4you.com"
+
+      # Stripe
+      STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY:-pk_test_default}"
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-sk_test_default}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-whsec_default}"
+
+    ports:
+      - "8000:8000" # Puerto estándar para desarrollo
+    volumes:
+      - backend_static_render:/app/staticfiles
+      - backend_media_render:/app/media
+      - backend_logs_render:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - render_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend React - Simulando Render con build estático
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod # Usar Dockerfile de producción
+      target: production # Target de producción
+    container_name: mobility4you_frontend_render
+    environment:
+      # Variables de entorno para producción simulada
+      NODE_ENV: "production"
+      GENERATE_SOURCEMAP: "false"
+
+      # URLs que apuntan al backend simulado
+      REACT_APP_BACKEND_URL: "http://localhost:8000"
+      REACT_APP_API_URL: "http://localhost:8000/api"
+      REACT_APP_FRONTEND_URL: "http://localhost:3000"
+
+      # Configuración de producción
+      REACT_APP_DEBUG_MODE: "false"
+      REACT_APP_ENABLE_CONSOLE_LOGS: "false"
+
+      # Media desde B2
+      REACT_APP_B2_MEDIA_URL: "https://s3.eu-central-003.backblazeb2.com/mobility4you-media-prod/media/"
+
+      # Stripe frontend
+      REACT_APP_STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY:-pk_test_default}"
+      REACT_APP_STRIPE_ENABLED: "true"
+
+    ports:
+      - "3000:80" # Puerto 80 interno, 3000 externo
+    depends_on:
+      - backend
+    networks:
+      - render_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data_render:
+    name: mobility4you_postgres_data_render
+  redis_data_render:
+    name: mobility4you_redis_data_render
+  backend_static_render:
+    name: mobility4you_backend_static_render
+  backend_media_render:
+    name: mobility4you_backend_media_render
+  backend_logs_render:
+    name: mobility4you_backend_logs_render
+
+networks:
+  render_network:
+    name: mobility4you_render_network
+    driver: bridge

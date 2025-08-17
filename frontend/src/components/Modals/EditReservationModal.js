@@ -13,7 +13,7 @@ import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { createServiceLogger, DEBUG_MODE } from '../../config/appConfig';
 import {
-  calculateReservationPrice,
+  calculateEditReservationPrice,
   editReservation,
   fetchPoliticasPago,
   getExtrasDisponibles,
@@ -53,9 +53,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
     });
 
     if (!vehiculoId || isNaN(vehiculoId)) {
-      logger.error(
-        '❌ No se pudo extraer vehiculo_id válido de reservationData',
-      );
+      logger.error('No se pudo extraer vehiculo_id válido de reservationData');
       logger.error('🔍 Full reservation data for debugging:', reservationData);
 
       // Intentar extraer desde el URL o fallback
@@ -81,7 +79,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
         // PRIORIDAD 1: extra_id - ID de la tabla Extras (correcto)
         if (extra.extra_id) {
           logger.info(
-            '✅ Extra ID encontrado en extra_id:',
+            'Extra ID encontrado en extra_id:',
             extra.extra_id,
             'Nombre:',
             extra.nombre,
@@ -91,16 +89,13 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
 
         // PRIORIDAD 2: Formato anidado del universal mapper
         if (extra.extra && extra.extra.id) {
-          logger.info(
-            '✅ Extra ID encontrado en extra.extra.id:',
-            extra.extra.id,
-          );
+          logger.info('Extra ID encontrado en extra.extra.id:', extra.extra.id);
           return extra.extra.id;
         }
 
         // PRIORIDAD 3: Si es un número directo
         if (typeof extra === 'number') {
-          logger.info('✅ Extra es un número directo:', extra);
+          logger.info('Extra es un número directo:', extra);
           return extra;
         }
 
@@ -167,6 +162,21 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarType, setCalendarType] = useState('pickup'); // pickup o dropoff
 
+  // Horarios disponibles para el calendario (definir horarios comunes)
+  const availableTimes = [
+    '08:00',
+    '09:00',
+    '10:00',
+    '11:00',
+    '12:00',
+    '13:00',
+    '14:00',
+    '15:00',
+    '16:00',
+    '17:00',
+    '18:00',
+  ];
+
   // Calcular días de alquiler
   const calculateDays = (startDate, endDate) => {
     const start = new Date(startDate);
@@ -180,7 +190,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
   );
 
   // Horarios disponibles
-  const availableTimes = [
+  const º = [
     '08:00',
     '08:30',
     '09:00',
@@ -269,6 +279,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
             titulo: policy.title || policy.titulo,
             descripcion: policy.descripcion,
             deductible: policy.deductible,
+            tarifa: policy.tarifa,
             originalData: policy.originalData,
           })) || [];
 
@@ -324,9 +335,9 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
           );
         }
 
-        logger.info('✅ Todos los datos cargados correctamente');
+        logger.info('Todos los datos cargados correctamente');
       } catch (err) {
-        logger.error('❌ Error al cargar datos para edición:', err);
+        logger.error('Error al cargar datos para edición:', err);
         setError('Error al cargar los datos necesarios para la edición');
       } finally {
         setLoading(false);
@@ -347,10 +358,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
         formData.extras.includes(extra.id),
       );
 
-      logger.info(
-        '✅ Extras que deberían estar marcados:',
-        selectedExtrasDetails,
-      );
+      logger.info('Extras que deberían estar marcados:', selectedExtrasDetails);
 
       // Verificar en el DOM si están marcados
       setTimeout(() => {
@@ -401,92 +409,70 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
 
   // Calcular precio estimado
   const handleCalculatePrice = async () => {
+    if (
+      !formData.vehiculo_id ||
+      !formData.fechaRecogida ||
+      !formData.fechaDevolucion
+    ) {
+      setError(
+        'Por favor completa todos los campos requeridos antes de calcular el precio',
+      );
+      return;
+    }
+
     setCalculating(true);
     setError(null);
 
     try {
-      // Obtener el ID del vehículo con múltiples fallbacks
-      const vehiculoIdFromForm = formData.vehiculo_id;
-      const vehiculoIdFromReservation =
-        reservationData.vehiculo_id ||
-        reservationData.vehiculo?.id ||
-        (typeof reservationData.vehiculo === 'number'
-          ? reservationData.vehiculo
-          : null);
-      const vehiculoIdFinal = vehiculoIdFromForm || vehiculoIdFromReservation;
-
-      logger.info('🧮 Iniciando cálculo de precio - ID de vehículo:', {
-        'formData.vehiculo_id': vehiculoIdFromForm,
-        'reservationData.vehiculo_id': reservationData.vehiculo_id,
-        'reservationData.vehiculo?.id': reservationData.vehiculo?.id,
-        'typeof reservationData.vehiculo': typeof reservationData.vehiculo,
-        'reservationData.vehiculo': reservationData.vehiculo,
-        'vehiculoId final': vehiculoIdFinal,
-        'formData completo': formData,
-      });
-
-      if (!vehiculoIdFinal || isNaN(vehiculoIdFinal)) {
-        const errorMsg =
-          'ID de vehículo inválido o no seleccionado. No se puede calcular el precio.';
-        logger.error('❌ Error validación vehículo:', errorMsg);
-        throw new Error(errorMsg);
-      }
-
-      // Actualizar formData con el vehiculo_id validado si no lo tenía
-      if (!vehiculoIdFromForm && vehiculoIdFinal) {
-        logger.info('🔄 Actualizando formData con vehiculo_id validado');
-        setFormData((prev) => ({
-          ...prev,
-          vehiculo_id: vehiculoIdFinal,
-        }));
-      }
-
-      // Validar datos antes del cálculo
-      const validation = validateReservationEditData(formData, reservationData);
-      if (!validation.isValid) {
-        const errorMsg = `Datos inválidos: ${validation.errors.join(', ')}`;
-        logger.error('❌ Error validación datos:', errorMsg);
-        throw new Error(errorMsg);
-      }
-
-      // Debug: mostrar warnings si los hay
-      if (validation.warnings.length > 0) {
-        logger.warn('⚠️ Advertencias de validación:', validation.warnings);
-      }
-
-      // Preparar datos para el cálculo con formato backend
+      // Mapear los datos necesarios
       const calculationData = {
-        id: reservationData.id,
-        vehiculo_id: vehiculoIdFinal,
+        vehiculo_id: formData.vehiculo_id,
         fecha_recogida: formData.fechaRecogida.toISOString(),
         fecha_devolucion: formData.fechaDevolucion.toISOString(),
         lugar_recogida_id: formData.lugarRecogida_id,
         lugar_devolucion_id: formData.lugarDevolucion_id,
-        politica_pago_id: formData.politicaPago_id,
-        // Transformar extras al formato esperado por el backend para el cálculo
+        politica_pago_id: formData.politicaPago_id, // INCLUIR para cálculo de tarifa
         extras: formData.extras.map((extraId) => ({
           extra_id: extraId,
           cantidad: 1,
         })),
       };
 
-      // Debug: mostrar datos enviados
-      logger.info('📤 Datos para cálculo:', calculationData);
-      debugBackendData(calculationData, 'calcular precio edición');
-      debugExtrasPrice(
-        availableExtras.filter((extra) => formData.extras.includes(extra.id)),
-        diasAlquiler,
+      logger.info('📤 Calculando precio con datos:', calculationData);
+
+      // Usar el servicio de cálculo de edición que incluye la diferencia
+      const result = await calculateEditReservationPrice(
+        reservationData.id,
+        calculationData,
       );
 
-      const priceData = await calculateReservationPrice(calculationData);
+      if (result.success) {
+        // Estructura del resultado
+        const priceData = {
+          originalPrice: parseFloat(reservationData.precio_total) || 0,
+          newPrice: result.precio_total || 0,
+          difference:
+            (result.precio_total || 0) -
+            (parseFloat(reservationData.precio_total) || 0),
+          breakdown: {
+            precio_base: result.desglose?.precio_base || 0,
+            precio_extras: result.desglose?.precio_extras || 0,
+            tarifa_politica: result.desglose?.tarifa_politica || 0,
+            subtotal: result.desglose?.subtotal_sin_iva || 0,
+            iva: result.desglose?.iva || 0,
+            total: result.desglose?.total_con_iva || result.precio_total || 0,
+            dias: result.dias_alquiler || diasAlquiler,
+          },
+        };
 
-      logger.info('✅ Precio calculado exitosamente:', priceData);
-      setPriceEstimate(priceData);
-    } catch (err) {
-      logger.error('❌ Error en cálculo de precio:', err);
-      setError(
-        'Error al calcular el precio: ' + (err.message || 'Intente nuevamente'),
-      );
+        setPriceEstimate(priceData);
+        logger.info('Precio calculado exitosamente:', priceData);
+      } else {
+        throw new Error(result.error || 'Error calculando precio');
+      }
+    } catch (error) {
+      logger.error('Error calculando precio:', error);
+      setError(`Error calculando precio: ${error.message}`);
     } finally {
       setCalculating(false);
     }
@@ -532,7 +518,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
       if (!vehiculoIdFinal || isNaN(vehiculoIdFinal)) {
         const errorMsg =
           'ID de vehículo inválido o no seleccionado. No se puede guardar la reserva.';
-        logger.error('❌ Error de validación:', errorMsg);
+        logger.error('Error de validación:', errorMsg);
         throw new Error(errorMsg);
       }
 
@@ -540,7 +526,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
       const validation = validateReservationEditData(formData, reservationData);
       if (!validation.isValid) {
         const errorMsg = `Datos inválidos: ${validation.errors.join(', ')}`;
-        logger.error('❌ Error de validación del formulario:', errorMsg);
+        logger.error('Error de validación del formulario:', errorMsg);
         throw new Error(errorMsg);
       }
 
@@ -857,6 +843,33 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
                         }).format(priceEstimate.newPrice)}
                       </span>
                     </div>
+                    {/* Mostrar desglose si está disponible */}
+                    {priceEstimate.breakdown && (
+                      <div className="mt-2">
+                        <small className="text-muted">Desglose:</small>
+                        <div className="d-flex justify-content-between">
+                          <small>
+                            Base: {priceEstimate.breakdown.precio_base}€
+                          </small>
+                          <small>
+                            Extras: {priceEstimate.breakdown.precio_extras}€
+                          </small>
+                        </div>
+                        {priceEstimate.breakdown.tarifa_politica > 0 && (
+                          <div className="d-flex justify-content-between">
+                            <small>
+                              Tarifa protección:{' '}
+                              {priceEstimate.breakdown.tarifa_politica}€
+                            </small>
+                          </div>
+                        )}
+                        <div className="d-flex justify-content-between">
+                          <small>
+                            Impuestos: {priceEstimate.breakdown.impuestos}€
+                          </small>
+                        </div>
+                      </div>
+                    )}
                     {priceEstimate.difference !== 0 && (
                       <div className="d-flex justify-content-between mt-2">
                         <span>
