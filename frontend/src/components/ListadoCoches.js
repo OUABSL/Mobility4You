@@ -26,7 +26,7 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { createServiceLogger } from '../config/appConfig';
+import { createServiceLogger, MEDIA_CONFIG } from '../config/appConfig';
 import '../css/listadoCoches.css';
 
 // Componentes
@@ -549,13 +549,13 @@ const ListadoCoches = ({ isMobile = false }) => {
                                 car.imagen_principal ||
                                 car.imagenPrincipal?.original ||
                                 car.imagenPrincipal?.placeholder ||
-                                'https://via.placeholder.com/300x200/e3f2fd/1976d2.png?text=Vehículo'
+                                MEDIA_CONFIG.getVehicleImageUrl(null) // Placeholder desde B2
                               }
                               alt={`${car.marca} ${car.modelo}`}
                               onError={(e) => {
                                 e.target.src =
                                   car.imagenPrincipal?.placeholder ||
-                                  'https://via.placeholder.com/300x200/e3f2fd/1976d2.png?text=Vehículo';
+                                  MEDIA_CONFIG.getVehicleImageUrl(null); // Placeholder desde B2
                               }}
                             />
                           </div>

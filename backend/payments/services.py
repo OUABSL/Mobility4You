@@ -36,10 +36,18 @@ class StripePaymentService:
 
     def __init__(self):
         """Inicializa el servicio con configuraciones y validaciones"""
-        # Validar que Stripe esté configurado
-        if not stripe.api_key or stripe.api_key == "sk_test_placeholder":
+        # En desarrollo, permitir claves de prueba
+        if not stripe.api_key:
             raise ValueError(
                 "Stripe no está configurado correctamente. "
+                "Verifica STRIPE_SECRET_KEY en las variables de entorno."
+            )
+        
+        # Solo validar claves en producción
+        django_env = getattr(settings, 'DJANGO_ENV', 'development')
+        if django_env == "production" and stripe.api_key == "sk_test_placeholder":
+            raise ValueError(
+                "Stripe no está configurado correctamente para producción. "
                 "Verifica STRIPE_SECRET_KEY en las variables de entorno."
             )
         
@@ -62,8 +70,17 @@ class StripePaymentService:
         
         # Convertir a centavos para validación
         amount_cents = int(amount * 100)
-        min_amount = settings.STRIPE_MIN_AMOUNT.get(self.currency, 50)
-        max_amount = settings.STRIPE_MAX_AMOUNT.get(self.currency, 99999999)
+        
+        # Usar getattr con valores por defecto en caso de que la configuración no esté disponible
+        stripe_min_amounts = getattr(settings, 'STRIPE_MIN_AMOUNT', {
+            "eur": 20, "usd": 20, "gbp": 15
+        })
+        stripe_max_amounts = getattr(settings, 'STRIPE_MAX_AMOUNT', {
+            "eur": 99999999, "usd": 99999999, "gbp": 99999999
+        })
+        
+        min_amount = stripe_min_amounts.get(self.currency, 50)
+        max_amount = stripe_max_amounts.get(self.currency, 99999999)
         
         if amount_cents < min_amount:
             min_eur = min_amount / 100
@@ -137,9 +154,7 @@ class StripePaymentService:
             payment_intent_params = {
                 "amount": importe_centavos,
                 "currency": self.currency,
-                "payment_method_types": settings.STRIPE_CONFIG["payment_method_types"],
                 "capture_method": settings.STRIPE_CONFIG["capture_method"],
-                "confirmation_method": settings.STRIPE_CONFIG["confirmation_method"],
                 "automatic_payment_methods": settings.STRIPE_CONFIG["automatic_payment_methods"],
                 "description": self._generar_descripcion(reserva_data, tipo_pago),
                 "statement_descriptor": settings.STRIPE_CONFIG["statement_descriptor"],
@@ -230,7 +245,9 @@ class StripePaymentService:
                 "error_code": "stripe_error",
             }
         except Exception as e:
+            import traceback
             logger.error(f"Error interno al crear Payment Intent: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return {
                 "success": False,
                 "error": "Error interno del servidor",
@@ -371,11 +388,23 @@ class StripePaymentService:
             # Convertir a centavos
             importe_centavos = int(importe_reembolso * 100)
 
+            # Configuración de reembolsos con valores por defecto
+            refund_config = getattr(settings, 'STRIPE_REFUND_CONFIG', {
+                "reason_mapping": {
+                    "CANCELACION_CLIENTE": "requested_by_customer",
+                    "CANCELACION_EMPRESA": "requested_by_customer",
+                    "MODIFICACION_RESERVA": "requested_by_customer",
+                    "ERROR_PAGO": "duplicate",
+                    "FRAUDE": "fraudulent",
+                    "OTRO": "requested_by_customer",
+                }
+            })
+
             # Preparar parámetros del reembolso
             refund_params = {
                 "charge": pago_stripe.stripe_charge_id,
                 "amount": importe_centavos,
-                "reason": settings.STRIPE_REFUND_CONFIG["reason_mapping"].get(
+                "reason": refund_config["reason_mapping"].get(
                     motivo, "requested_by_customer"
                 ),
                 "metadata": {
@@ -497,26 +526,44 @@ class StripePaymentService:
     # Métodos privados auxiliares
 
     def _extraer_importe(self, reserva_data, tipo_pago):
-        """Extrae el importe según el tipo de pago"""
+        """Extrae el importe según el tipo de pago - Versión mejorada"""
         if tipo_pago == "INICIAL":
-            return Decimal(str(reserva_data.get("precio_total", 0)))
+            # Buscar precio total en diferentes ubicaciones posibles
+            importe = (
+                reserva_data.get("precio_total") or
+                reserva_data.get("precioTotal") or
+                reserva_data.get("total") or
+                reserva_data.get("detallesReserva", {}).get("total") or
+                reserva_data.get("detallesReserva", {}).get("precio_total") or
+                0
+            )
         elif tipo_pago == "DIFERENCIA":
-            return Decimal(str(reserva_data.get("diferencia", 0)))
+            importe = reserva_data.get("diferencia", 0)
         elif tipo_pago == "EXTRA":
-            return Decimal(str(reserva_data.get("importe_extra", 0)))
+            importe = reserva_data.get("importe_extra", 0)
         elif tipo_pago == "PENALIZACION":
-            return Decimal(str(reserva_data.get("importe_penalizacion", 0)))
+            importe = reserva_data.get("importe_penalizacion", 0)
         else:
+            importe = 0
+        
+        try:
+            return Decimal(str(importe))
+        except (TypeError, ValueError):
+            logger.warning(f"No se pudo convertir importe {importe} a Decimal para tipo {tipo_pago}")
             return Decimal("0")
 
     def _extraer_email_cliente(self, reserva_data):
-        """Extrae el email del cliente"""
-        return (
-            reserva_data.get("conductor", {}).get("email")
-            or reserva_data.get("conductorPrincipal", {}).get("email")
-            or reserva_data.get("email")
-            or ""
+        """Extrae el email del cliente - Versión mejorada"""
+        # Buscar email en múltiples ubicaciones posibles
+        email = (
+            reserva_data.get("conductor", {}).get("email") or
+            reserva_data.get("conductorPrincipal", {}).get("email") or
+            reserva_data.get("email") or
+            reserva_data.get("usuario", {}).get("email") or
+            reserva_data.get("usuario_email") or
+            ""
         )
+        return email.strip().lower() if email else ""
 
     def _extraer_nombre_cliente(self, reserva_data):
         """Extrae el nombre completo del cliente"""
@@ -545,7 +592,13 @@ class StripePaymentService:
 
     def _preparar_metadata(self, reserva_data, tipo_pago, metadata_extra):
         """Prepara los metadatos para Stripe"""
-        metadata = settings.STRIPE_DEFAULT_METADATA.copy()
+        # Usar getattr con valores por defecto en caso de que la configuración no esté disponible
+        default_metadata = getattr(settings, 'STRIPE_DEFAULT_METADATA', {
+            "platform": "mobility4you",
+            "version": "1.0",
+            "environment": getattr(settings, 'DJANGO_ENV', 'development'),
+        })
+        metadata = default_metadata.copy()
         metadata.update(
             {
                 "tipo_pago": tipo_pago,
@@ -563,12 +616,19 @@ class StripePaymentService:
 
     def _generar_idempotency_key(self, numero_pedido):
         """Genera una clave de idempotencia única"""
-        base_string = f"{settings.STRIPE_IDEMPOTENCY_KEY_PREFIX}_{numero_pedido}_{int(time.time())}"
+        prefix = getattr(settings, 'STRIPE_IDEMPOTENCY_KEY_PREFIX', 'mobility4you')
+        base_string = f"{prefix}_{numero_pedido}_{int(time.time())}"
         return hashlib.sha256(base_string.encode()).hexdigest()[:32]
 
     def _generar_descripcion(self, reserva_data, tipo_pago):
         """Genera la descripción del pago"""
-        config = settings.STRIPE_PAYMENT_CONFIG.get(tipo_pago, {})
+        payment_config = getattr(settings, 'STRIPE_PAYMENT_CONFIG', {
+            "INICIAL": {"description": "Pago inicial de reserva de vehículo"},
+            "DIFERENCIA": {"description": "Pago de diferencia por modificación de reserva"},
+            "EXTRA": {"description": "Pago adicional de extras"},
+            "PENALIZACION": {"description": "Pago de penalización"},
+        })
+        config = payment_config.get(tipo_pago, {})
         base_description = config.get("description", "Pago de reserva de vehículo")
 
         vehiculo_info = ""
@@ -675,7 +735,7 @@ class StripeWebhookService:
 
     def __init__(self):
         self.webhook_secret = settings.STRIPE_WEBHOOK_SECRET
-        self.tolerance = settings.STRIPE_WEBHOOK_TOLERANCE
+        self.tolerance = getattr(settings, 'STRIPE_WEBHOOK_TOLERANCE', 300)  # 5 minutos por defecto
         logger.info("StripeWebhookService inicializado")
 
     def procesar_webhook(self, payload, signature_header):

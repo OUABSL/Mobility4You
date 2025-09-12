@@ -8,7 +8,7 @@ import {
 } from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import { logError, logInfo, withTimeout } from '../utils';
-import universalMapper from './universalDataMapper';
+import simpleMapper from './dataMapper';
 
 // Configuración de Stripe
 let stripePromise = null;
@@ -582,32 +582,30 @@ export const validateCardData = async (stripe, elements) => {
 };
 
 /**
- * Utilidades para formateo - MIGRADO AL MAPPER UNIVERSAL
- * @deprecated Usar universalMapper.formatCurrency y universalMapper.formatPaymentDate
+ * Utilidades para formateo - MIGRADO AL SIMPLE MAPPER
+ * @deprecated Usar simpleMapper.formatCurrency en su lugar
  */
 export const formatCurrency = (amount, currency = 'EUR') => {
-  logger.warn('[DEPRECATED] Usar universalMapper.formatCurrency en su lugar');
-  return universalMapper.formatCurrency(amount, currency);
+  logger.warn('[DEPRECATED] Usar simpleMapper.formatCurrency en su lugar');
+  return simpleMapper.formatCurrency(amount, currency);
 };
 
 /**
- * Utilidades para formateo de fecha - MIGRADO AL MAPPER UNIVERSAL
- * @deprecated Usar universalMapper.formatPaymentDate
+ * Utilidades para formateo de fecha - MIGRADO AL SIMPLE MAPPER
+ * @deprecated Usar simpleMapper.formatPaymentDate
  */
 export const formatPaymentDate = (dateString) => {
-  logger.warn(
-    '[DEPRECATED] Usar universalMapper.formatPaymentDate en su lugar',
-  );
-  return universalMapper.formatPaymentDate(dateString);
+  logger.warn('[DEPRECATED] Usar simpleMapper.formatPaymentDate en su lugar');
+  return simpleMapper.formatPaymentDate(dateString);
 };
 
 /**
- * Mapea estados de Stripe a estados locales - MIGRADO AL MAPPER UNIVERSAL
- * @deprecated Usar universalMapper.mapStripeStatus
+ * Mapea estados de Stripe a estados locales - MIGRADO AL SIMPLE MAPPER
+ * @deprecated Usar simpleMapper.mapStripeStatus
  */
 export const mapStripeStatus = (stripeStatus) => {
-  logger.warn('[DEPRECATED] Usar universalMapper.mapStripeStatus en su lugar');
-  return universalMapper.mapStripeStatus(stripeStatus);
+  logger.warn('[DEPRECATED] Usar simpleMapper.mapStripeStatus en su lugar');
+  return simpleMapper.mapStripeStatus(stripeStatus);
 };
 
 /**

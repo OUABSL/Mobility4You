@@ -1,0 +1,150 @@
+# =======================================================
+# DOCKER COMPOSE OPTIMIZADO PARA SIMULAR RENDER
+# Configuración que replica el entorno de Render.com lo más fielmente posible
+# =======================================================
+
+services:
+  # PostgreSQL con configuración similar a Render
+  postgres:
+    image: postgres:16-alpine
+    container_name: mobility4you_postgres_render
+    environment:
+      POSTGRES_DB: mobility4you_db
+      POSTGRES_USER: mobility4you_db_user
+      POSTGRES_PASSWORD: superseguro_postgres_render
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_render:/var/lib/postgresql/data
+      - ../scripts/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U mobility4you_db_user -d mobility4you_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - render_network
+    restart: unless-stopped
+
+  # Redis para caché (como en Render)
+  redis:
+    image: redis:7-alpine
+    container_name: mobility4you_redis_render
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data_render:/data
+    networks:
+      - render_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Backend Django - Simulando Render con Gunicorn
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.render
+      # Forzar rebuild sin cache - cambiar este valor para invalidar cache
+      args:
+        REBUILD_CACHE: "v1.0.0-${RANDOM:-1}"
+        BUILD_DATE: "2025-08-23"
+    container_name: mobility4you_backend_render
+    env_file:
+      - ../backend/.env-dev
+    environment:
+      # Solo las variables específicas del contenedor que no están en .env-dev
+      # Override de variables para simulación de Render
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      DB_HOST: postgres
+      DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATABASE_URL: "postgresql://mobility4you_db_user:superseguro_postgres_render@postgres:5432/mobility4you_db"
+      REDIS_URL: "redis://redis:6379/0"
+
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_static_render:/app/staticfiles
+      - backend_media_render:/app/media
+      - backend_logs_render:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - render_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend React - Simulando Render con build estático
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.prod # Usar Dockerfile de producción
+      target: production # Target de producción
+    container_name: mobility4you_frontend_render
+    environment:
+      # Variables de entorno para producción simulada
+      NODE_ENV: "production"
+      GENERATE_SOURCEMAP: "false"
+
+      # URLs que apuntan al backend simulado (local para desarrollo)
+      REACT_APP_BACKEND_URL: "http://localhost:8000"
+      REACT_APP_API_URL: "http://localhost:8000/api"
+      REACT_APP_FRONTEND_URL: "http://localhost:3000"
+
+      # Configuración de producción
+      REACT_APP_DEBUG_MODE: "true"
+      REACT_APP_ENABLE_CONSOLE_LOGS: "true"
+
+      # Media desde backend local (no B2 en desarrollo)
+      REACT_APP_MEDIA_BASE_URL: "http://localhost:8000/media/"
+      REACT_APP_B2_MEDIA_URL: "http://localhost:8000/media/"
+
+      # Stripe frontend
+      REACT_APP_STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY:-pk_test_default}"
+      REACT_APP_STRIPE_ENABLED: "true"
+
+    ports:
+      - "3000:80" # Puerto 80 interno, 3000 externo
+    depends_on:
+      - backend
+    networks:
+      - render_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data_render:
+    name: mobility4you_postgres_data_render
+  redis_data_render:
+    name: mobility4you_redis_data_render
+  backend_static_render:
+    name: mobility4you_backend_static_render
+  backend_media_render:
+    name: mobility4you_backend_media_render
+  backend_logs_render:
+    name: mobility4you_backend_logs_render
+
+networks:
+  render_network:
+    name: mobility4you_render_network
+    driver: bridge

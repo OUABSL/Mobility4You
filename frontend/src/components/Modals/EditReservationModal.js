@@ -20,28 +20,18 @@ import {
 } from '../../services/reservationServices';
 import { fetchLocations } from '../../services/searchServices';
 import { debugBackendData, debugSessionStorage } from '../../utils';
+import { validateReservationDates } from '../../utils/dateValidators';
 import ModalCalendario from '../ModalCalendario';
+import { is } from 'date-fns/locale';
 // Crear logger para el componente
 const logger = createServiceLogger('EDIT_RESERVATION_MODAL');
 
-const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
+const EditReservationModal = ({ show, onHide, reservationData, onSave, isMobile }) => {
   const navigate = useNavigate();
-
-  // Debug: verificar datos de reserva al inicializar
-  logger.info('EditReservationModal - reservationData:', reservationData);
-
-  // Debug completo de los datos de entrada
-  const initialDebug = debugReservationData.debugReservationData(
-    reservationData,
-    'modal-initialization',
+  logger.info(
+    'EditReservationModal inicializado para reserva:',
+    reservationData?.id,
   );
-
-  logger.info('Initial validation result:', initialDebug);
-  logger.info('ID del vehículo disponible:', {
-    'reservationData.vehiculo?.id': reservationData.vehiculo?.id,
-    'reservationData.vehiculo_id': reservationData.vehiculo_id,
-    'reservationData.vehiculo': reservationData.vehiculo,
-  });
 
   // Extraer el vehiculo_id de manera robusta usando la nueva utilidad
   const getVehiculoId = () => {
@@ -54,7 +44,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
 
     if (!vehiculoId || isNaN(vehiculoId)) {
       logger.error('No se pudo extraer vehiculo_id válido de reservationData');
-      logger.error('🔍 Full reservation data for debugging:', reservationData);
+      logger.error('Full reservation data for debugging:', reservationData);
 
       // Intentar extraer desde el URL o fallback
       const fallbackId = reservationData.id; // usar ID de la reserva como fallback temporal
@@ -68,39 +58,28 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
   // Función para extraer extras seleccionados
   const getSelectedExtras = () => {
     if (!reservationData?.extras || !Array.isArray(reservationData.extras)) {
-      logger.info('📦 No hay extras en reservationData o no es un array');
       return [];
     }
-
-    logger.info('📦 Procesando extras de reserva:', reservationData.extras);
 
     const extractedIds = reservationData.extras
       .map((extra) => {
         // PRIORIDAD 1: extra_id - ID de la tabla Extras (correcto)
         if (extra.extra_id) {
-          logger.info(
-            'Extra ID encontrado en extra_id:',
-            extra.extra_id,
-            'Nombre:',
-            extra.nombre,
-          );
           return extra.extra_id;
         }
 
         // PRIORIDAD 2: Formato anidado del universal mapper
         if (extra.extra && extra.extra.id) {
-          logger.info('Extra ID encontrado en extra.extra.id:', extra.extra.id);
           return extra.extra.id;
         }
 
         // PRIORIDAD 3: Si es un número directo
         if (typeof extra === 'number') {
-          logger.info('Extra es un número directo:', extra);
           return extra;
         }
 
         // ⚠️ ADVERTENCIA: No usar extra.id para mapeo
-        logger.warn('⚠️ No se pudo extraer ID válido del extra:', extra);
+        console.warn('⚠️ No se pudo extraer ID válido del extra:', extra);
         return null;
       })
       .filter(Boolean);
@@ -116,10 +95,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
     } else if (lugarId) {
       return lugarId;
     }
-    logger.warn(`⚠️ No se pudo extraer ID de ${fieldName}:`, {
-      lugar,
-      lugarId,
-    });
+    console.warn(`⚠️ No se pudo extraer ID de ${fieldName}:`, lugar, lugarId);
     return null;
   };
 
@@ -127,27 +103,89 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
   const selectedExtrasIds = getSelectedExtras();
 
   const [formData, setFormData] = useState({
-    fechaRecogida: new Date(reservationData.fechaRecogida),
-    fechaDevolucion: new Date(reservationData.fechaDevolucion),
-    lugarRecogida_id: getLugarId(
-      reservationData.lugarRecogida,
-      reservationData.lugarRecogida_id,
-      'lugarRecogida',
-    ),
-    lugarDevolucion_id: getLugarId(
-      reservationData.lugarDevolucion,
-      reservationData.lugarDevolucion_id,
-      'lugarDevolucion',
-    ),
-    politicaPago_id:
-      reservationData.politicaPago?.id || reservationData.politicaPago_id,
-    vehiculo_id: vehiculoId, // Usar el ID extraído y validado
-    extras: selectedExtrasIds,
+    fechaRecogida: null,
+    fechaDevolucion: null,
+    lugarRecogida_id: null,
+    lugarDevolucion_id: null,
+    politicaPago_id: null,
+    vehiculo_id: null,
+    extras: [],
   });
 
-  // Debug del formulario inicializado
-  logger.info('📝 FormData inicial configurado:', formData);
-  debugEditFormData(formData, reservationData);
+  // Actualizar formData cuando cambien los reservationData
+  useEffect(() => {
+    if (reservationData && reservationData.id) {
+      // Validar y parsear fechas de manera segura
+      let fechaRecogida = null;
+      let fechaDevolucion = null;
+
+      try {
+        if (reservationData.fechaRecogida) {
+          fechaRecogida = new Date(reservationData.fechaRecogida);
+          if (isNaN(fechaRecogida.getTime())) {
+            logger.error(
+              'Fecha de recogida inválida:',
+              reservationData.fechaRecogida,
+            );
+            fechaRecogida = null;
+          }
+        }
+
+        if (reservationData.fechaDevolucion) {
+          fechaDevolucion = new Date(reservationData.fechaDevolucion);
+          if (isNaN(fechaDevolucion.getTime())) {
+            logger.error(
+              'Fecha de devolución inválida:',
+              reservationData.fechaDevolucion,
+            );
+            fechaDevolucion = null;
+          }
+        }
+      } catch (error) {
+        logger.error('Error parseando fechas de reserva:', error);
+      }
+
+      // Extraer política de pago de manera más robusta
+      const getPoliticaId = () => {
+        // Intentar extraer desde diferentes estructuras posibles
+        if (reservationData.politicaPago?.id)
+          return reservationData.politicaPago.id;
+        if (reservationData.politicaPago?.ID)
+          return reservationData.politicaPago.ID;
+        if (reservationData.politicaPago_id)
+          return reservationData.politicaPago_id;
+        if (reservationData.politica_pago?.id)
+          return reservationData.politica_pago.id;
+        if (reservationData.policy?.id) return reservationData.policy.id;
+
+        logger.warn(
+          '⚠️ No se pudo extraer politica_pago_id de:',
+          reservationData,
+        );
+        return null;
+      };
+
+      const newFormData = {
+        fechaRecogida: fechaRecogida,
+        fechaDevolucion: fechaDevolucion,
+        lugarRecogida_id: getLugarId(
+          reservationData.lugarRecogida,
+          reservationData.lugarRecogida_id,
+          'lugarRecogida',
+        ),
+        lugarDevolucion_id: getLugarId(
+          reservationData.lugarDevolucion,
+          reservationData.lugarDevolucion_id,
+          'lugarDevolucion',
+        ),
+        politicaPago_id: getPoliticaId(),
+        vehiculo_id: getVehiculoId(),
+        extras: getSelectedExtras(),
+      };
+
+      setFormData(newFormData);
+    }
+  }, [reservationData]);
 
   const [locations, setLocations] = useState([]);
   const [policies, setPolicies] = useState([]);
@@ -179,9 +217,16 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
 
   // Calcular días de alquiler
   const calculateDays = (startDate, endDate) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    if (!startDate || !endDate) return 0;
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+      return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    } catch (error) {
+      logger.warn('Error calculando días:', error);
+      return 0;
+    }
   };
 
   const diasAlquiler = calculateDays(
@@ -189,88 +234,38 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
     formData.fechaDevolucion,
   );
 
-  // Horarios disponibles
-  const º = [
-    '08:00',
-    '08:30',
-    '09:00',
-    '09:30',
-    '10:00',
-    '10:30',
-    '11:00',
-    '11:30',
-    '12:00',
-    '12:30',
-    '13:00',
-    '13:30',
-    '14:00',
-    '14:30',
-    '15:00',
-    '15:30',
-    '16:00',
-    '16:30',
-    '17:00',
-    '17:30',
-    '18:00',
-    '18:30',
-    '19:00',
-    '19:30',
-    '20:00',
-    '20:30',
-    '21:00',
-    '21:30',
-    '22:00',
-  ];
-
   // Cargar datos necesarios al abrir el modal
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        logger.info('🔄 Cargando datos para edición de reserva...');
+        setError(null); // Limpiar errores previos
 
-        // Debug: Mostrar datos de reserva recibidos
-        logger.info('📋 Datos de reserva recibidos:', {
-          'reservationData.id': reservationData.id,
-          'reservationData.vehiculo': reservationData.vehiculo,
-          'reservationData.vehiculo_id': reservationData.vehiculo_id,
-          'reservationData.lugarRecogida': reservationData.lugarRecogida,
-          'reservationData.lugarRecogida_id': reservationData.lugarRecogida_id,
-          'reservationData.lugarDevolucion': reservationData.lugarDevolucion,
-          'reservationData.lugarDevolucion_id':
-            reservationData.lugarDevolucion_id,
-          'reservationData.politicaPago': reservationData.politicaPago,
-          'reservationData.politicaPago_id': reservationData.politicaPago_id,
-          'reservationData.extras': reservationData.extras,
-          'reservationData.extras.length': reservationData.extras?.length || 0,
-        });
-
-        // Debug específico para estructura de extras del backend
-        if (reservationData.extras && reservationData.extras.length > 0) {
-          logger.info('🔍 Estructura de extras desde backend:', {
-            ejemplo_extra: reservationData.extras[0],
-            campos_disponibles: Object.keys(reservationData.extras[0] || {}),
-            esperado_extra_id: reservationData.extras[0]?.extra_id,
-            advertencia_id:
-              'El campo "id" es de ReservaExtra, usar "extra_id" para mapear',
-          });
+        // Validar que tenemos datos de reserva
+        if (!reservationData || !reservationData.id) {
+          throw new Error('No se proporcionaron datos de reserva válidos');
         }
+
+        logger.info(
+          '📦 Iniciando carga de datos para edición de reserva:',
+          reservationData.id,
+        );
 
         // Cargar datos en paralelo desde las APIs reales
         const [locationsData, policiesData, extrasData] = await Promise.all([
-          fetchLocations(),
-          fetchPoliticasPago(),
-          getExtrasDisponibles(),
+          fetchLocations().catch((err) => {
+            logger.warn('Error cargando ubicaciones:', err);
+            return [];
+          }),
+          fetchPoliticasPago().catch((err) => {
+            logger.warn('Error cargando políticas:', err);
+            return [];
+          }),
+          getExtrasDisponibles().catch((err) => {
+            logger.warn('Error cargando extras:', err);
+            return [];
+          }),
         ]);
-
-        logger.info('📍 Ubicaciones cargadas:', locationsData?.length || 0);
-        logger.info('🛡️ Políticas cargadas:', policiesData?.length || 0);
-        logger.info('🧳 Extras cargados:', extrasData?.length || 0);
-
-        // Debug: verificar duplicados
-        debugDuplicateKeys(locationsData, 'locations');
-        debugDuplicateKeys(policiesData, 'policies');
-        debugDuplicateKeys(extrasData, 'extras');
 
         // Transformar políticas al formato esperado por el modal
         const transformedPolicies =
@@ -288,9 +283,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
         setAvailableExtras(extrasData || []);
 
         // Debug: Verificar si los valores seleccionados están en las listas cargadas
-        logger.info(
-          '🔍 Verificando valores seleccionados contra datos cargados:',
-        );
+        logger.info('Verificando valores seleccionados contra datos cargados:');
 
         const selectedLugarRecogida = locationsData?.find(
           (loc) => loc.id === formData.lugarRecogida_id,
@@ -305,13 +298,17 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
           extrasData?.filter((extra) => formData.extras.includes(extra.id)) ||
           [];
 
-        logger.info('📍 Lugar recogida seleccionado:', selectedLugarRecogida);
-        logger.info(
-          '📍 Lugar devolución seleccionado:',
-          selectedLugarDevolucion,
-        );
-        logger.info('🛡️ Política seleccionada:', selectedPolitica);
-        logger.info('🧳 Extras seleccionados:', selectedExtrasObjects);
+        // Logging detallado para debugging política de pago
+        logger.info('🛡️ DEBUG política de pago:', {
+          'formData.politicaPago_id': formData.politicaPago_id,
+          'reservationData.politicaPago': reservationData.politicaPago,
+          'reservationData.politicaPago_id': reservationData.politicaPago_id,
+          'transformedPolicies disponibles': transformedPolicies.map((p) => ({
+            id: p.id,
+            titulo: p.titulo,
+          })),
+          selectedPolitica: selectedPolitica,
+        });
 
         // Advertencias si no se encuentran los valores
         if (!selectedLugarRecogida) {
@@ -328,6 +325,11 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
           logger.warn(
             '⚠️ Política de pago no encontrada en políticas cargadas',
           );
+          logger.warn(
+            '🛡️ Política de pago ID buscado:',
+            formData.politicaPago_id,
+          );
+          logger.warn('🛡️ Políticas disponibles:', transformedPolicies);
         }
         if (selectedExtrasObjects.length !== formData.extras.length) {
           logger.warn(
@@ -344,15 +346,18 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
       }
     };
 
-    if (show) {
+    if (show && reservationData && reservationData.id) {
       fetchData();
+    } else if (show && (!reservationData || !reservationData.id)) {
+      setError('No se proporcionaron datos válidos de reserva para editar');
+      setLoading(false);
     }
   }, [show, reservationData]);
 
   // Verificar extras seleccionados cuando se cargan los disponibles
   useEffect(() => {
     if (availableExtras.length > 0 && formData.extras.length > 0) {
-      logger.info('🔍 Verificando extras seleccionados contra disponibles:');
+      logger.info('Verificando extras seleccionados contra disponibles:');
 
       const selectedExtrasDetails = availableExtras.filter((extra) =>
         formData.extras.includes(extra.id),
@@ -409,13 +414,22 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
 
   // Calcular precio estimado
   const handleCalculatePrice = async () => {
-    if (
-      !formData.vehiculo_id ||
-      !formData.fechaRecogida ||
-      !formData.fechaDevolucion
-    ) {
+    // Validación de campos requeridos
+    if (!formData.vehiculo_id) {
+      setError('Debe seleccionar un vehículo antes de calcular el precio');
+      return;
+    }
+
+    if (!formData.fechaRecogida || !formData.fechaDevolucion) {
       setError(
-        'Por favor completa todos los campos requeridos antes de calcular el precio',
+        'Debe seleccionar fechas de recogida y devolución antes de calcular el precio',
+      );
+      return;
+    }
+
+    if (!formData.politicaPago_id) {
+      setError(
+        'Debe seleccionar una política de protección antes de calcular el precio',
       );
       return;
     }
@@ -424,6 +438,32 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
     setError(null);
 
     try {
+      // VALIDAR FECHAS antes de proceder
+      const dateValidation = validateReservationDates(
+        formData.fechaRecogida,
+        formData.fechaDevolucion,
+        'edit', // Contexto de edición
+      );
+
+      if (!dateValidation.isValid) {
+        const errorMessage = dateValidation.errors.join('. ');
+        setError(`Error en las fechas: ${errorMessage}`);
+        return;
+      }
+
+      // VALIDAR datos necesarios para cálculo de edición
+      if (
+        !formData.vehiculo_id ||
+        !formData.fechaRecogida ||
+        !formData.fechaDevolucion ||
+        !formData.politicaPago_id
+      ) {
+        setError(
+          'Faltan datos esenciales: vehículo, fechas y política de pago son requeridos',
+        );
+        return;
+      }
+
       // Mapear los datos necesarios
       const calculationData = {
         vehiculo_id: formData.vehiculo_id,
@@ -438,8 +478,6 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
         })),
       };
 
-      logger.info('📤 Calculando precio con datos:', calculationData);
-
       // Usar el servicio de cálculo de edición que incluye la diferencia
       const result = await calculateEditReservationPrice(
         reservationData.id,
@@ -447,26 +485,26 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
       );
 
       if (result.success) {
-        // Estructura del resultado
+        // Usar las claves homogéneas del backend
         const priceData = {
-          originalPrice: parseFloat(reservationData.precio_total) || 0,
-          newPrice: result.precio_total || 0,
-          difference:
-            (result.precio_total || 0) -
-            (parseFloat(reservationData.precio_total) || 0),
-          breakdown: {
+          precio_original:
+            result.precio_original ||
+            parseFloat(reservationData.precio_total) ||
+            0,
+          precio_nuevo: result.precio_nuevo || 0,
+          diferencia: result.diferencia || 0,
+          desglose: {
             precio_base: result.desglose?.precio_base || 0,
             precio_extras: result.desglose?.precio_extras || 0,
             tarifa_politica: result.desglose?.tarifa_politica || 0,
-            subtotal: result.desglose?.subtotal_sin_iva || 0,
-            iva: result.desglose?.iva || 0,
-            total: result.desglose?.total_con_iva || result.precio_total || 0,
+            precio_sin_iva: result.desglose?.precio_sin_iva || 0,
+            iva_simbolico: result.desglose?.iva_simbolico || 0,
+            total: result.desglose?.total || result.precio_nuevo || 0,
             dias: result.dias_alquiler || diasAlquiler,
           },
         };
 
         setPriceEstimate(priceData);
-        logger.info('Precio calculado exitosamente:', priceData);
       } else {
         throw new Error(result.error || 'Error calculando precio');
       }
@@ -490,7 +528,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
 
     try {
       // Validar que tenemos los datos necesarios antes de proceder
-      logger.info('🔍 Iniciando validación de datos para envío:', {
+      logger.info('Iniciando validación de datos para envío:', {
         formData,
         reservationData,
         priceEstimate,
@@ -522,6 +560,14 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
         throw new Error(errorMsg);
       }
 
+      // Validar política de pago
+      if (!formData.politicaPago_id) {
+        const errorMsg =
+          'Debe seleccionar una política de pago. No se puede guardar la reserva.';
+        logger.error('Error de validación:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
       // Validar datos del formulario
       const validation = validateReservationEditData(formData, reservationData);
       if (!validation.isValid) {
@@ -544,17 +590,18 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
           cantidad: 1,
         })),
         // Incluir datos de precio para validación backend
-        precio_total: priceEstimate.newPrice,
+        precio_total: priceEstimate.precio_nuevo,
         precio_base:
-          priceEstimate.newPrice - (priceEstimate.breakdown?.extras || 0),
-        precio_extras: priceEstimate.breakdown?.extras || 0,
+          priceEstimate.precio_nuevo -
+          (priceEstimate.desglose?.precio_extras || 0),
+        precio_extras: priceEstimate.desglose?.precio_extras || 0,
       };
 
-      logger.info('📤 Datos preparados para envío:', editedData);
+      logger.info('Datos preparados para envío:', editedData);
 
       // Si hay diferencia positiva, redirigir a pago de diferencia
-      if (priceEstimate.difference > 0) {
-        logger.info('💰 Diferencia positiva detectada, redirigiendo a pago');
+      if (priceEstimate.diferencia > 0) {
+        logger.info('Diferencia positiva detectada, redirigiendo a pago');
 
         // Debug: estado actual del sessionStorage
         debugSessionStorage();
@@ -594,7 +641,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
         navigate(`/pago-diferencia/${reservationData.id}`, {
           state: {
             email,
-            difference: priceEstimate.difference,
+            difference: priceEstimate.diferencia,
             fromEdit: true,
           },
         });
@@ -635,14 +682,24 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
 
   // Función para formatear la fecha para mostrar
   const formatDate = (date) => {
-    return format(date, 'dd/MM/yyyy HH:mm');
+    if (!date) return 'Fecha no disponible';
+    try {
+      const dateObj = date instanceof Date ? date : new Date(date);
+      if (isNaN(dateObj.getTime())) return 'Fecha inválida';
+      return format(dateObj, 'dd/MM/yyyy HH:mm');
+    } catch (error) {
+      logger.warn('Error formateando fecha:', error);
+      return 'Error en fecha';
+    }
   };
 
   return (
     <>
       <Modal show={show} onHide={onHide} backdrop="static" size="lg" centered>
         <Modal.Header closeButton>
-          <Modal.Title>Editar Reserva #{reservationData.id}</Modal.Title>
+          <Modal.Title>
+            Editar Reserva #{reservationData?.numero_reserva}
+          </Modal.Title>
         </Modal.Header>
 
         <Modal.Body>
@@ -663,6 +720,20 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
                     className="form-control d-flex justify-content-between align-items-center"
                     style={{ cursor: 'pointer' }}
                     onClick={() => {
+                      // Validar que tenemos fechas válidas antes de abrir el calendario
+                      if (
+                        !formData.fechaRecogida ||
+                        !formData.fechaDevolucion
+                      ) {
+                        logger.warn(
+                          'No se puede abrir calendario: fechas no disponibles',
+                        );
+                        setError(
+                          'Datos de fechas no disponibles. Recarga la página.',
+                        );
+                        return;
+                      }
+
                       setCalendarType('pickup');
                       setShowCalendar(true);
                     }}
@@ -679,6 +750,20 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
                     className="form-control d-flex justify-content-between align-items-center"
                     style={{ cursor: 'pointer' }}
                     onClick={() => {
+                      // Validar que tenemos fechas válidas antes de abrir el calendario
+                      if (
+                        !formData.fechaRecogida ||
+                        !formData.fechaDevolucion
+                      ) {
+                        logger.warn(
+                          'No se puede abrir calendario: fechas no disponibles',
+                        );
+                        setError(
+                          'Datos de fechas no disponibles. Recarga la página.',
+                        );
+                        return;
+                      }
+
                       setCalendarType('dropoff');
                       setShowCalendar(true);
                     }}
@@ -735,11 +820,20 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
             <Row className="mb-3">
               <Col md={12}>
                 <Form.Group>
-                  <Form.Label>Política de Protección</Form.Label>
+                  <Form.Label>
+                    Política de Protección{' '}
+                    <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Select
                     name="politicaPago_id"
                     value={formData.politicaPago_id || ''}
                     onChange={handleChange}
+                    required
+                    isInvalid={
+                      !formData.politicaPago_id &&
+                      error &&
+                      error.includes('política')
+                    }
                   >
                     <option value="">Selecciona una política...</option>
                     {policies.map((policy) => (
@@ -748,6 +842,13 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
                       </option>
                     ))}
                   </Form.Select>
+                  {!formData.politicaPago_id &&
+                    error &&
+                    error.includes('política') && (
+                      <Form.Control.Feedback type="invalid">
+                        Debe seleccionar una política de protección
+                      </Form.Control.Feedback>
+                    )}
                 </Form.Group>
               </Col>
             </Row>
@@ -831,7 +932,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
                         {new Intl.NumberFormat('es-ES', {
                           style: 'currency',
                           currency: 'EUR',
-                        }).format(priceEstimate.originalPrice)}
+                        }).format(priceEstimate.precio_original)}
                       </span>
                     </div>
                     <div className="d-flex justify-content-between">
@@ -840,32 +941,33 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
                         {new Intl.NumberFormat('es-ES', {
                           style: 'currency',
                           currency: 'EUR',
-                        }).format(priceEstimate.newPrice)}
+                        }).format(priceEstimate.precio_nuevo)}
                       </span>
                     </div>
                     {/* Mostrar desglose si está disponible */}
-                    {priceEstimate.breakdown && (
+                    {priceEstimate.desglose && (
                       <div className="mt-2">
                         <small className="text-muted">Desglose:</small>
                         <div className="d-flex justify-content-between">
                           <small>
-                            Base: {priceEstimate.breakdown.precio_base}€
+                            Base: {priceEstimate.desglose.precio_base}€
                           </small>
                           <small>
-                            Extras: {priceEstimate.breakdown.precio_extras}€
+                            Extras: {priceEstimate.desglose.precio_extras}€
                           </small>
                         </div>
-                        {priceEstimate.breakdown.tarifa_politica > 0 && (
+                        {priceEstimate.desglose.tarifa_politica > 0 && (
                           <div className="d-flex justify-content-between">
                             <small>
                               Tarifa protección:{' '}
-                              {priceEstimate.breakdown.tarifa_politica}€
+                              {priceEstimate.desglose.tarifa_politica}€
                             </small>
                           </div>
                         )}
                         <div className="d-flex justify-content-between">
                           <small>
-                            Impuestos: {priceEstimate.breakdown.impuestos}€
+                            IVA Incluida: {priceEstimate.desglose.iva_simbolico}
+                            €
                           </small>
                         </div>
                       </div>
@@ -874,14 +976,14 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
                       <div className="d-flex justify-content-between mt-2">
                         <span>
                           Diferencia (
-                          {priceEstimate.difference > 0
+                          {priceEstimate.diferencia > 0
                             ? 'a pagar'
                             : 'a reembolsar'}
                           ):
                         </span>
                         <span
                           className={
-                            priceEstimate.difference > 0
+                            priceEstimate.diferencia > 0
                               ? 'text-danger'
                               : 'text-success'
                           }
@@ -889,7 +991,7 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
                           {new Intl.NumberFormat('es-ES', {
                             style: 'currency',
                             currency: 'EUR',
-                          }).format(Math.abs(priceEstimate.difference))}
+                          }).format(Math.abs(priceEstimate.diferencia))}
                         </span>
                       </div>
                     )}
@@ -930,62 +1032,102 @@ const EditReservationModal = ({ show, onHide, reservationData, onSave }) => {
         </Modal.Footer>
       </Modal>
 
-      {/* Modal de Calendario */}
-      <ModalCalendario
-        openCalendar={showCalendar}
-        onHideCalendar={() => setShowCalendar(false)}
-        initialValues={{
-          pickupDate:
-            calendarType === 'pickup'
-              ? formData.fechaRecogida
-              : formData.fechaRecogida,
-          dropoffDate:
-            calendarType === 'dropoff'
-              ? formData.fechaDevolucion
-              : formData.fechaDevolucion,
-          pickupTime: format(formData.fechaRecogida, 'HH:mm'),
-          dropoffTime: format(formData.fechaDevolucion, 'HH:mm'),
-        }}
-        availableTimes={availableTimes}
-        onSave={(values) => {
-          if (calendarType === 'pickup') {
+      {/* Modal de Calendario - Solo mostrar si tenemos fechas válidas */}
+      {showCalendar && formData.fechaRecogida && formData.fechaDevolucion && (
+        <ModalCalendario
+          openCalendar={showCalendar}
+          onHideCalendar={() => setShowCalendar(false)}
+          initialValues={(() => {
+            try {
+              // NUNCA establecer valores por defecto para datos reales de usuarios
+              if (!formData.fechaRecogida || !formData.fechaDevolucion) {
+                logger.warn(
+                  '📅 Fechas no disponibles en formData - no abriendo calendario',
+                );
+                return null; // Retornar null para que el modal no se abra
+              }
+
+              // Validar que las fechas sean objetos Date válidos
+              const pickupDate =
+                formData.fechaRecogida instanceof Date
+                  ? formData.fechaRecogida
+                  : new Date(formData.fechaRecogida);
+
+              const dropoffDate =
+                formData.fechaDevolucion instanceof Date
+                  ? formData.fechaDevolucion
+                  : new Date(formData.fechaDevolucion);
+
+              // Verificar que las fechas creadas sean válidas
+              if (isNaN(pickupDate.getTime()) || isNaN(dropoffDate.getTime())) {
+                logger.error('📅 FATAL: Fechas inválidas detectadas:', {
+                  fechaRecogida: formData.fechaRecogida,
+                  fechaDevolucion: formData.fechaDevolucion,
+                  pickupDateValid: !isNaN(pickupDate.getTime()),
+                  dropoffDateValid: !isNaN(dropoffDate.getTime()),
+                });
+                return null;
+              }
+
+              const initialValues = {
+                pickupDate: pickupDate,
+                dropoffDate: dropoffDate,
+                pickupTime: format(pickupDate, 'HH:mm'),
+                dropoffTime: format(dropoffDate, 'HH:mm'),
+              };
+
+              logger.info(
+                '📅 EditReservationModal - initialValues para ModalCalendario:',
+                initialValues,
+              );
+
+              return initialValues;
+            } catch (error) {
+              logger.error(
+                '📅 FATAL: Error preparando initialValues para datos reales:',
+                error,
+              );
+              return null; // NO proporcionar valores por defecto para datos reales
+            }
+          })()}
+          availableTimes={availableTimes}
+          onSave={(values) => {
+            logger.info(
+              '📅 Calendar Save - Valores recibidos en EditReservationModal:',
+              values,
+            );
+            logger.info('📅 Calendar Save - Tipo de calendario:', calendarType);
+            logger.info('📅 Calendar Save - FormData anterior:', {
+              fechaRecogida: formData.fechaRecogida,
+              fechaDevolucion: formData.fechaDevolucion,
+            });
+
+            // Actualizar ambas fechas siempre - el usuario puede haber cambiado cualquiera
             setFormData((prev) => ({
               ...prev,
               fechaRecogida: values.pickupDate,
-            }));
-          } else {
-            setFormData((prev) => ({
-              ...prev,
               fechaDevolucion: values.dropoffDate,
             }));
-          }
-          // Reset price estimate when date changes
-          setPriceEstimate(null);
-          setShowCalendar(false);
-        }}
-        isMobile={false}
-      />
+
+            logger.info('📅 Calendar Save - Fechas que se van a guardar:', {
+              nuevaFechaRecogida: values.pickupDate,
+              nuevaFechaDevolucion: values.dropoffDate,
+            });
+
+            // Reset price estimate when date changes
+            setPriceEstimate(null);
+            setShowCalendar(false);
+          }}
+          isMobile={isMobile}
+          useAsEditor={true}
+          resetOnShow={true}
+        />
+      )}
     </>
   );
 };
 
-// Funciones de debug locales (simples implementaciones)
-// Funciones utilitarias locales específicas para el modal
-const debugExtrasPrice = (extras, priceCalculation) => {
-  if (DEBUG_MODE) {
-    logger.debug('Extras price calculation:', { extras, priceCalculation });
-  }
-};
 
-const debugDuplicateKeys = (data, context) => {
-  if (DEBUG_MODE && Array.isArray(data)) {
-    const ids = data.map((item) => item.id || item.ID);
-    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
-    if (duplicates.length > 0) {
-      logger.warn(`Duplicate keys found in ${context}:`, duplicates);
-    }
-  }
-};
 
 const validateReservationEditData = (formData, reservationData) => {
   // Validación básica
@@ -1008,21 +1150,6 @@ const validateReservationEditData = (formData, reservationData) => {
   return validation;
 };
 
-// Funciones utilitarias locales
-const debugReservationData = {
-  debugReservationData: (data, context) => {
-    if (DEBUG_MODE) {
-      logger.debug(`Reservation data (${context}):`, data);
-    }
-    return { isValid: true, errors: [], warnings: [] };
-  },
-};
-
-const debugEditFormData = (formData, reservationData) => {
-  if (DEBUG_MODE) {
-    logger.debug('Edit form data:', { formData, reservationData });
-  }
-};
 
 const extractVehiculoId = (reservationData) => {
   if (!reservationData) return null;

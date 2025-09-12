@@ -20,7 +20,7 @@ echo "Project root: $PROJECT_ROOT"
 cd "$PROJECT_ROOT"
 
 # Build and start development containers
-docker compose --env-file ./docker/.env.dev -f ./docker/docker-compose.yml up --build --remove-orphans -d
+docker compose -f ./docker/docker-compose.dev.yml up --build --remove-orphans -d
 
 echo "✅ Development environment started successfully!"
 echo "🌐 Frontend: http://localhost:3000"

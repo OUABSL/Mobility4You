@@ -1,4 +1,5 @@
 # facturas_contratos/views.py
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 # Direct imports - removing lazy imports as per best practices
 from reservas.models import Reserva
@@ -272,10 +273,15 @@ class FacturaViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Calcular importes
-            base_imponible = reserva.precio_total or 0
-            iva = base_imponible * 0.21  # 21% IVA
-            total = base_imponible + iva
+            # Calcular importes con IVA simbólico
+            # El precio_total ya incluye IVA, extraemos para mostrar desglose
+            total_con_iva = reserva.precio_total or 0
+            iva_percentage = getattr(settings, 'IVA_PERCENTAGE', 0.10)
+            
+            # Extraer IVA simbólico del total
+            base_imponible = total_con_iva / (1 + iva_percentage)
+            iva = total_con_iva - base_imponible
+            total = total_con_iva  # El total ya incluía IVA
 
             # Crear nueva factura
             factura = Factura.objects.create(

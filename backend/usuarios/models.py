@@ -5,6 +5,10 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from .validations import (validate_documento_flexible,
+                          validate_telefono_flexible,
+                          validate_tipo_documento_flexible)
+
 
 class Usuario(AbstractUser):
     """
@@ -60,11 +64,7 @@ class Usuario(AbstractUser):
         null=True,
         blank=True,
         help_text=_("Solo requerido para usuarios cliente/empresa"),
-        validators=[
-            RegexValidator(
-                regex=r"^(pasaporte|dni|nif|nie)$", message="Tipo de documento inválido"
-            )
-        ],
+        validators=[validate_tipo_documento_flexible],
     )
     numero_documento = models.CharField(
         _("Número de documento"),
@@ -72,11 +72,8 @@ class Usuario(AbstractUser):
         null=True,
         blank=True,
         unique=True,
-        help_text=_("Solo requerido para usuarios cliente/empresa"),        validators=[
-            RegexValidator(
-                regex=r"^[A-Z0-9]{6,20}$", message="Número de documento inválido"
-            )
-        ],
+        help_text=_("Solo requerido para usuarios cliente/empresa"),
+        validators=[validate_documento_flexible],
     )
     imagen_carnet = models.ImageField(
         _("Imagen de carnet"), upload_to="carnets/", null=True, blank=True
@@ -94,13 +91,9 @@ class Usuario(AbstractUser):
         null=True,
         blank=True,
         help_text=_(
-            "Número de teléfono de contacto, no se solicitará al segundo conductor, de allí que sea opcional. Se validará a nivel de frontend y endpoint que el conductor primario tenga un número de teléfono válido."
+            "Número de teléfono de contacto, formato flexible. Acepta formatos como +34123456789, 123456789, etc."
         ),
-        validators=[
-            RegexValidator(
-                regex=r"^\+?1?\d{9,15}$", message="Número de teléfono inválido"
-            )
-        ],
+        validators=[validate_telefono_flexible],
     )
     rol = models.CharField(
         _("Rol"),

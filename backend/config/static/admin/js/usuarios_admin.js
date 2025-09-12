@@ -261,13 +261,23 @@
   }
 
   function formatPhoneNumber(input) {
-    var value = $(input).val().replace(/\D/g, "");
+    var value = $(input).val().trim();
 
-    // Formato colombiano: +57 300 123 4567
-    if (value.length >= 10) {
-      value = value.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
-      if (!value.startsWith("+57")) {
-        value = "+57 " + value;
+    // Permitir formatos flexibles sin forzar prefijo específico
+    // Solo limpiar caracteres especiales excepto + al inicio
+    value = value.replace(/[^\d\+]/g, "");
+
+    // Si hay un + debe estar al inicio
+    if (value.includes("+") && !value.startsWith("+")) {
+      value = value.replace(/\+/g, "");
+    }
+
+    // Si tiene solo números y más de 15 dígitos, truncar
+    if (value.replace(/\+/g, "").length > 15) {
+      if (value.startsWith("+")) {
+        value = "+" + value.substring(1, 16);
+      } else {
+        value = value.substring(0, 15);
       }
     }
 

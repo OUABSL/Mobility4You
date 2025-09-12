@@ -15,8 +15,11 @@ class ReservaService:
 
     def calcular_precio_reserva(self, data):
         """
-        Calcula el precio total de una reserva con IVA incluido.
-        La tarifa de política se suma al precio base antes de calcular impuestos.
+        Calcula el precio total de una reserva.
+        NUEVA LÓGICA IVA SIMBÓLICO:
+        - Todos los precios YA INCLUYEN IVA
+        - El IVA es solo para mostrar al cliente (simbólico)
+        - No se añade IVA al cálculo, solo se extrae para desglose
         """
         try:
             # Importaciones lazy para evitar problemas circulares
@@ -49,6 +52,31 @@ class ReservaService:
                     "error": f"Faltan datos requeridos: {', '.join(missing_fields)}",
                 }
 
+            # Convertir fechas y validar
+            if isinstance(fecha_recogida, str):
+                fecha_recogida = datetime.fromisoformat(fecha_recogida.replace("Z", "+00:00"))
+            if isinstance(fecha_devolucion, str):
+                fecha_devolucion = datetime.fromisoformat(fecha_devolucion.replace("Z", "+00:00"))
+
+            # 🔍 VALIDAR FECHAS ANTES DE PROCEDER
+            from django.utils import timezone
+            now = timezone.now()
+            
+            # Validar que las fechas sean lógicas
+            if fecha_recogida >= fecha_devolucion:
+                return {
+                    "success": False,
+                    "error": "La fecha de devolución debe ser posterior a la fecha de recogida",
+                }
+            
+            # Validar que las fechas no sean en el pasado (con margen de 30 min para ediciones)
+            margin_time = now - timezone.timedelta(minutes=30)
+            if fecha_recogida <= margin_time:
+                return {
+                    "success": False,
+                    "error": "La fecha de recogida debe ser en el futuro",
+                }
+
             # Obtener vehículo
             try:
                 vehiculo = Vehiculo.objects.get(id=vehiculo_id)
@@ -58,21 +86,16 @@ class ReservaService:
                 return {"success": False, "error": "Vehículo no encontrado"}
 
             # Calcular días de reserva
-            if isinstance(fecha_recogida, str):
-                fecha_recogida = datetime.fromisoformat(fecha_recogida.replace("Z", "+00:00"))
-            if isinstance(fecha_devolucion, str):
-                fecha_devolucion = datetime.fromisoformat(fecha_devolucion.replace("Z", "+00:00"))
-
             dias = (fecha_devolucion - fecha_recogida).days
             if dias < 1:
                 dias = 1  # Mínimo 1 día
 
             logger.info(f"Días de reserva: {dias}")
 
-            # 1. Calcular precio base del vehículo
+            # 1. Calcular precio base del vehículo (YA INCLUYE IVA)
             precio_base = precio_dia_base * dias
             
-            # 2. Obtener y calcular tarifa de política de pago
+            # 2. Obtener y calcular tarifa de política de pago (YA INCLUYE IVA)
             tarifa_politica = Decimal("0.00")
             if politica_pago_id:
                 try:
@@ -83,7 +106,7 @@ class ReservaService:
                 except PoliticaPago.DoesNotExist:
                     logger.warning(f"Política de pago {politica_pago_id} no encontrada")
 
-            # 3. Calcular precio de extras
+            # 3. Calcular precio de extras (YA INCLUYEN IVA)
             precio_extras = Decimal("0.00")
             extras_detalle = []
 
@@ -116,45 +139,40 @@ class ReservaService:
                     logger.warning(f"Error procesando extra {extra_data}: {str(e)}")
                     continue
 
-            # 4. Calcular subtotal (base + tarifa política + extras)
-            subtotal_sin_iva = precio_base + tarifa_politica + precio_extras
+            # 4. PRECIO TOTAL = SUMA DIRECTA (todos los precios ya incluyen IVA)
+            precio_total = precio_base + tarifa_politica + precio_extras
 
-            # IVA siempre incluido en el precio final según las nuevas especificaciones
-            # El precio final ES el subtotal (IVA ya incluido)
-            precio_total_con_iva = subtotal_sin_iva
-
-            # 5. IVA siempre incluido en el precio final
-            # La tasa de IVA se usa solo para mostrar desglose, no para cálculo
-            tasa_iva_referencia = Decimal("0.21")  # 21% como referencia para desglose
+            # 5. CALCULAR IVA SIMBÓLICO PARA DESGLOSE
+            # Obtener porcentaje IVA de configuración
+            iva_percentage = getattr(settings, 'IVA_PERCENTAGE', 0.10)  # 10% por defecto
             
-            # Para el desglose, extraer el IVA del total usando la fórmula inversa
-            # Si precio_con_iva = precio_sin_iva * (1 + tasa_iva)
-            # Entonces precio_sin_iva = precio_con_iva / (1 + tasa_iva)
-            precio_sin_iva_calculado = precio_total_con_iva / (1 + tasa_iva_referencia)
-            iva_calculado = precio_total_con_iva - precio_sin_iva_calculado
+            # Extraer IVA del precio total para mostrarlo
+            # Fórmula: IVA = precio_total * iva_percentage / (1 + iva_percentage)
+            iva_simbolico = precio_total * Decimal(str(iva_percentage)) / (Decimal("1") + Decimal(str(iva_percentage)))
+            precio_sin_iva = precio_total - iva_simbolico
 
             # Redondear a 2 decimales
-            precio_total_con_iva = precio_total_con_iva.quantize(Decimal('0.01'))
-            precio_sin_iva_calculado = precio_sin_iva_calculado.quantize(Decimal('0.01'))
-            iva_calculado = iva_calculado.quantize(Decimal('0.01'))
+            precio_total = precio_total.quantize(Decimal('0.01'))
+            iva_simbolico = iva_simbolico.quantize(Decimal('0.01'))
+            precio_sin_iva = precio_sin_iva.quantize(Decimal('0.01'))
 
-            logger.info(f"Precio calculado para reserva: {precio_total_con_iva} "
-                    f"(base: {precio_base}, tarifa_politica: {tarifa_politica}, "
-                    f"extras: {precio_extras}, IVA incluido: {iva_calculado})")
+            logger.info(f"Precio calculado para reserva: {precio_total} "
+                    f"(días: {dias}, base: {precio_base}, política: {tarifa_politica}, "
+                    f"extras: {precio_extras}, IVA simbólico: {iva_simbolico})")
 
             return {
                 "success": True,
-                "precio_total": float(precio_total_con_iva),
+                "precio_total": float(precio_total),
                 "dias_alquiler": dias,
                 "desglose": {
                     "precio_base": float(precio_base),
                     "precio_extras": float(precio_extras),
                     "tarifa_politica": float(tarifa_politica),
-                    "subtotal_sin_iva": float(precio_sin_iva_calculado),
-                    "iva": float(iva_calculado),
-                    "total_con_iva": float(precio_total_con_iva),
+                    "precio_sin_iva": float(precio_sin_iva),
+                    "iva_simbolico": float(iva_simbolico),
+                    "total": float(precio_total),
                     "dias": dias,
-                    "tasa_iva": float(tasa_iva_referencia),
+                    "iva_percentage": float(iva_percentage),
                     "extras_detalle": extras_detalle,
                 },
             }

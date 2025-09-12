@@ -1,16 +1,17 @@
 // src/utils/placeholderGenerator.js
-import { createServiceLogger } from '../config/appConfig';
+import { createServiceLogger, MEDIA_CONFIG } from '../config/appConfig';
 
 const logger = createServiceLogger('PLACEHOLDER_GENERATOR');
 
 /**
- * Generador de placeholders para imágenes
- * Proporciona URLs de placeholders locales y remotos
+ * Generador de placeholders unificado para imágenes
+ * Usa Backblaze B2 en lugar de servicios externos
  */
 class PlaceholderGenerator {
   constructor() {
-    this.baseUrl = 'https://via.placeholder.com';
-    this.fallbackUrl = 'https://placehold.co';
+    // Usar B2 en lugar de via.placeholder
+    this.baseUrl = MEDIA_CONFIG.BASE_URL + MEDIA_CONFIG.PATHS.PLACEHOLDERS;
+    logger.info('PlaceholderGenerator inicializado con B2:', this.baseUrl);
   }
 
   /**

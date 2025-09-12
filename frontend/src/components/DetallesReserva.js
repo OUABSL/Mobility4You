@@ -37,6 +37,7 @@ import {
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import '../css/DetallesReserva.css';
+import '../css/PrintStyles.css';
 
 import carDoorLeft from '../assets/img/icons/car-door-left.svg';
 
@@ -48,8 +49,13 @@ import {
   deleteReservation,
   editReservation,
   findReservation,
+  findReservationByNumber,
 } from '../services/reservationServices';
-import { formatTaxRate } from '../utils/financialUtils';
+import { formatIvaRate } from '../utils/financialUtils';
+import {
+  isValidReservationNumber,
+  normalizeReservationNumber,
+} from '../utils/reservationNumberUtils';
 
 import DeleteReservationModal from './Modals/DeleteReservationModal';
 import EditReservationModal from './Modals/EditReservationModal';
@@ -160,6 +166,53 @@ const DetallesReserva = ({ isMobile = false }) => {
   const [showDriverModal, setShowDriverModal] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
 
+  // Función mejorada para imprimir/descargar PDF
+  const handlePrint = () => {
+    // Debug: verificar datos antes de imprimir
+    if (DEBUG_MODE) {
+      console.log('🖨️ [DEBUG] Preparando impresión con datos:', datos);
+      console.log('🖨️ [DEBUG] Vehículo:', datos?.vehiculo);
+      console.log('🖨️ [DEBUG] Conductores:', datos?.conductores);
+    }
+
+    // Agregar clase de impresión al body
+    document.body.classList.add('printing');
+
+    // Abrir todos los acordeones antes de imprimir
+    setOpenAccordions({
+      important: true,
+      deposit: true,
+      cancel: true,
+      changes: true,
+      station: true,
+    });
+
+    // Ocultar elementos innecesarios para impresión
+    const elementsToHide = document.querySelectorAll(
+      '.btn, .navbar, .back-button, .edit-button, .delete-button',
+    );
+    elementsToHide.forEach((el) => (el.style.display = 'none'));
+
+    // Dar tiempo para que se actualice el DOM antes de imprimir
+    setTimeout(() => {
+      // Configurar título de impresión
+      const originalTitle = document.title;
+      document.title = `Reserva ${
+        datos?.numero_reserva || datos?.id
+      } - Mobility for You`;
+
+      // Ejecutar impresión
+      window.print();
+
+      // Restaurar estado después de imprimir
+      setTimeout(() => {
+        document.title = originalTitle;
+        document.body.classList.remove('printing');
+        elementsToHide.forEach((el) => (el.style.display = ''));
+      }, 500);
+    }, 100);
+  };
+
   // Cálculo de días de la reserva (solo si tenemos datos)
   const calcularDiasReserva = () => {
     if (!datos) return 0;
@@ -210,7 +263,25 @@ const DetallesReserva = ({ isMobile = false }) => {
 
   // Función para mostrar modal de conductor
   const handleShowDriverDetails = (driver) => {
-    setSelectedDriver(driver);
+    // Debug temporal para ver qué datos tiene el conductor
+    console.log('🔍 [DEBUG] Datos del conductor para modal:', driver);
+
+    // Verificar si hay datos de conductor_detail dentro del objeto
+    if (driver.conductor_detail) {
+      console.log(
+        '🔍 [DEBUG] Usando conductor_detail:',
+        driver.conductor_detail,
+      );
+      const enrichedDriver = {
+        ...driver.conductor_detail,
+        ...driver, // Mantener propiedades del nivel superior como rol y email
+        esSegundoConductor: driver.esSegundoConductor || false,
+      };
+      setSelectedDriver(enrichedDriver);
+    } else {
+      setSelectedDriver(driver);
+    }
+
     setShowDriverModal(true);
   };
 
@@ -299,8 +370,23 @@ const DetallesReserva = ({ isMobile = false }) => {
 
         logger.info(`🔍 Consultando reserva ${reservaId} para email ${email}`);
 
+        // Detectar si es un número de reserva (formato M4Y) o un ID numérico
+        const normalizedInput = normalizeReservationNumber(reservaId);
+        const isReservationNumber = isValidReservationNumber(normalizedInput);
+
+        let responseData;
+        if (isReservationNumber) {
+          // Buscar por número de reserva personalizado
+          logger.info(`🔍 Buscando por número de reserva: ${normalizedInput}`);
+          responseData = await findReservationByNumber(normalizedInput, email);
+        } else {
+          // Buscar por ID numérico interno
+          logger.info(`🔍 Buscando por ID interno: ${reservaId}`);
+          responseData = await findReservation(reservaId, email);
+        }
+
         // Obtener datos de la reserva (usa cache automáticamente)
-        const responseData = await findReservation(reservaId, email);
+        // const responseData = await findReservation(reservaId, email);
 
         // Verificar si el fetch fue cancelado o reemplazado
         if (!fetchInProgressRef.current) {
@@ -315,13 +401,9 @@ const DetallesReserva = ({ isMobile = false }) => {
           throw new Error('No se encontraron datos de la reserva');
         }
 
-        // Mapear datos usando el universal mapper
-        const { default: universalMapper } = await import(
-          '../services/universalDataMapper'
-        );
-        const mappedData = await universalMapper.mapReservationFromBackend(
-          reservaData,
-        );
+        // Los datos ya vienen mapeados desde reservationServices.js
+        // No necesitamos mapear nuevamente
+        const mappedData = reservaData;
 
         // Verificar nuevamente si el fetch sigue siendo válido
         if (!fetchInProgressRef.current) {
@@ -339,6 +421,25 @@ const DetallesReserva = ({ isMobile = false }) => {
             context: 'detalles-reserva',
           });
         }
+
+        // Debug temporal: ver datos mapeados
+        console.log('🔍 Datos mapeados completos:', mappedData);
+        console.log('🔍 Lugar recogida:', mappedData?.lugarRecogida);
+        console.log('🔍 Lugar devolución:', mappedData?.lugarDevolucion);
+        console.log('🔍 Política pago:', mappedData?.politicaPago);
+
+        // LOGGING FINAL ANTES DE SETEAR ESTADO
+        logger.info(
+          '🔄 [DETALLES_RESERVA] FINAL - Datos que se van a setear en estado:',
+          {
+            precioTotal: mappedData.precioTotal,
+            precioBase: mappedData.precioBase,
+            precioExtras: mappedData.precioExtras,
+            extras: mappedData.extras,
+            diasAlquiler: mappedData.diasAlquiler,
+            iva: mappedData.iva,
+          },
+        );
 
         // Actualizar estado solo si el fetch sigue siendo el actual
         setDatos(mappedData);
@@ -468,6 +569,32 @@ const DetallesReserva = ({ isMobile = false }) => {
     );
   }
 
+  // Verificar que tenemos datos válidos antes de renderizar
+  if (!datos || !datos.id) {
+    return (
+      <Container className="detalles-reserva my-5 text-center">
+        <Card className="p-3 shadow-sm">
+          <Card.Body>
+            <FontAwesomeIcon
+              icon={faExclamationTriangle}
+              className="me-2 text-warning"
+              size="lg"
+            />
+            <span>No se pudieron cargar los datos de la reserva.</span>
+            <div className="mt-3">
+              <Button
+                variant="outline-primary"
+                onClick={() => window.location.reload()}
+              >
+                Intentar de nuevo
+              </Button>
+            </div>
+          </Card.Body>
+        </Card>
+      </Container>
+    );
+  }
+
   // Formatear fechas/horas para mostrar
   const recogida = formatDateTime(datos.fechaRecogida);
   const devolucion = formatDateTime(datos.fechaDevolucion);
@@ -487,26 +614,42 @@ const DetallesReserva = ({ isMobile = false }) => {
           </tr>
           <tr>
             <th>Importe pagado inicial</th>
-            <td>{formatCurrency(datos.importe_pagado_inicial || 0)}</td>
+            <td>
+              {datos.importe_pagado_inicial !== undefined
+                ? formatCurrency(datos.importe_pagado_inicial)
+                : '-'}
+            </td>
           </tr>
           <tr>
             <th>Importe pendiente inicial</th>
-            <td>{formatCurrency(datos.importe_pendiente_inicial || 0)}</td>
+            <td>
+              {datos.importe_pendiente_inicial !== undefined
+                ? formatCurrency(datos.importe_pendiente_inicial)
+                : '-'}
+            </td>
           </tr>
           <tr>
             <th>Importe pagado extra</th>
-            <td>{formatCurrency(datos.importe_pagado_extra || 0)}</td>
+            <td>
+              {datos.importe_pagado_extra !== undefined
+                ? formatCurrency(datos.importe_pagado_extra)
+                : '-'}
+            </td>
           </tr>
           <tr>
             <th>Importe pendiente extra</th>
-            <td>{formatCurrency(datos.importe_pendiente_extra || 0)}</td>
+            <td>
+              {datos.importe_pendiente_extra !== undefined
+                ? formatCurrency(datos.importe_pendiente_extra)
+                : '-'}
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
   );
 
-  // --- NUEVO: Estado de pago de diferencia ---
+  // --- Estado de pago de diferencia ---
   const mostrarPagoDiferencia =
     typeof datos.diferenciaPendiente === 'number' &&
     datos.diferenciaPendiente > 0;
@@ -530,7 +673,7 @@ const DetallesReserva = ({ isMobile = false }) => {
         {isMobile && (
           <Button
             variant="link"
-            onClick={() => window.print()}
+            onClick={handlePrint}
             title="Imprimir/Guardar como PDF"
           >
             <FontAwesomeIcon icon={faDownload} className="me-1" /> Descargar
@@ -568,7 +711,7 @@ const DetallesReserva = ({ isMobile = false }) => {
           {!isMobile && (
             <Button
               variant="link"
-              onClick={() => window.print()}
+              onClick={handlePrint}
               title="Imprimir/Guardar como PDF"
             >
               <FontAwesomeIcon icon={faDownload} className="me-1" /> Descargar
@@ -583,7 +726,7 @@ const DetallesReserva = ({ isMobile = false }) => {
           <div className="d-flex justify-content-between align-items-center">
             <h4 className="mb-0">
               <FontAwesomeIcon icon={faCarSide} className="me-2" />
-              Reserva #{datos.id}
+              Reserva #{datos.numero_reserva}
             </h4>
             <Badge
               bg={
@@ -675,7 +818,7 @@ const DetallesReserva = ({ isMobile = false }) => {
                               icon={faShieldAlt}
                               className="me-1 text-success"
                             />
-                            {datos.politicaPago.titulo}
+                            {datos.politicaPago?.titulo || 'No especificada'}
                           </span>
                         )}
                       </div>
@@ -700,10 +843,11 @@ const DetallesReserva = ({ isMobile = false }) => {
                         {datos.lugarRecogida.nombre}
                       </p>
                       <p className="location-address">
-                        {datos.lugarRecogida.direccion.calle},{' '}
-                        {datos.lugarRecogida.direccion.codigo_postal},
-                        {datos.lugarRecogida.direccion.ciudad},{' '}
-                        {datos.lugarRecogida.direccion.provincia}
+                        {datos.lugarRecogida.direccion?.calle ||
+                          'Dirección no disponible'}
+                        , {datos.lugarRecogida.direccion?.codigo_postal || ''},
+                        {datos.lugarRecogida.direccion?.ciudad || ''},{' '}
+                        {datos.lugarRecogida.direccion?.provincia || ''}
                       </p>
                       <div className="date-time mt-3">
                         <div className="d-flex mb-1">
@@ -739,10 +883,11 @@ const DetallesReserva = ({ isMobile = false }) => {
                         {datos.lugarDevolucion.nombre}
                       </p>
                       <p className="location-address">
-                        {datos.lugarDevolucion.direccion.calle},{' '}
-                        {datos.lugarDevolucion.direccion.codigo_postal},
-                        {datos.lugarDevolucion.direccion.ciudad},{' '}
-                        {datos.lugarDevolucion.direccion.provincia}
+                        {datos.lugarDevolucion.direccion?.calle ||
+                          'Dirección no disponible'}
+                        , {datos.lugarDevolucion.direccion?.codigo_postal || ''}
+                        ,{datos.lugarDevolucion.direccion?.ciudad || ''},{' '}
+                        {datos.lugarDevolucion.direccion?.provincia || ''}
                       </p>
                       <div className="date-time mt-3">
                         <div className="d-flex mb-1">
@@ -777,20 +922,26 @@ const DetallesReserva = ({ isMobile = false }) => {
                       icon={faShieldAlt}
                       className="me-2 text-success"
                     />
-                    Protección: {datos.politicaPago.titulo}
+                    Protección:{' '}
+                    {datos.politicaPago?.titulo || 'No especificada'}
                   </h5>
-                  {datos.politicaPago.deductible === 0 ? (
+                  {datos.politicaPago?.deductible === 0 ? (
                     <Badge bg="success">Sin franquicia</Badge>
                   ) : (
                     <Badge bg="warning" text="dark">
                       Franquicia:{' '}
-                      {formatCurrency(datos.politicaPago.deductible)}
+                      {datos.politicaPago?.deductible !== undefined &&
+                      datos.politicaPago?.deductible !== null
+                        ? formatCurrency(datos.politicaPago.deductible)
+                        : 'No disponible'}
                     </Badge>
                   )}
                 </Card.Header>
                 <ListGroup variant="flush">
-                  {datos.politicaPago.items
-                    .filter((item) => item.incluye === 1)
+                  {(datos.politicaPago?.items || [])
+                    .filter(
+                      (item) => item.incluye === true || item.incluye === 1,
+                    )
                     .map((item, i) => (
                       <ListGroup.Item key={i} className="py-3">
                         <FontAwesomeIcon
@@ -804,7 +955,9 @@ const DetallesReserva = ({ isMobile = false }) => {
               </Card>
 
               {/* Sección opcional: Lo que NO incluye */}
-              {datos.politicaPago.items.some((item) => item.incluye === 0) && (
+              {(datos.politicaPago?.items || []).some(
+                (item) => item.incluye === false || item.incluye === 0,
+              ) && (
                 <Card className="mb-4 not-included-card">
                   <Card.Header>
                     <h5 className="mb-0 text-start">
@@ -816,8 +969,10 @@ const DetallesReserva = ({ isMobile = false }) => {
                     </h5>
                   </Card.Header>
                   <ListGroup variant="flush">
-                    {datos.politicaPago.items
-                      .filter((item) => item.incluye === 0)
+                    {(datos.politicaPago?.items || [])
+                      .filter(
+                        (item) => item.incluye === false || item.incluye === 0,
+                      )
                       .map((item, i) => (
                         <ListGroup.Item key={i} className="py-3">
                           <FontAwesomeIcon
@@ -864,9 +1019,35 @@ const DetallesReserva = ({ isMobile = false }) => {
                             />
                             {extra.nombre}
                           </span>
-                          <Badge bg="light" text="dark" className="price-badge">
-                            {formatCurrency(extra.precio)}
-                          </Badge>
+                          <div className="text-end">
+                            <Badge
+                              bg="light"
+                              text="dark"
+                              className="price-badge"
+                            >
+                              {extra.precio !== undefined &&
+                              extra.precio !== null ? (
+                                // Mostrar precio por día y total
+                                datos.diasAlquiler ? (
+                                  <div>
+                                    <div>
+                                      {formatCurrency(extra.precio)}/día
+                                    </div>
+                                    <small className="text-muted">
+                                      Total:{' '}
+                                      {formatCurrency(
+                                        extra.precio * datos.diasAlquiler,
+                                      )}
+                                    </small>
+                                  </div>
+                                ) : (
+                                  formatCurrency(extra.precio)
+                                )
+                              ) : (
+                                'No disponible'
+                              )}
+                            </Badge>
+                          </div>
                         </ListGroup.Item>
                       ))}
                     {/* Si no hay extras válidos, mostrar mensaje */}
@@ -902,10 +1083,12 @@ const DetallesReserva = ({ isMobile = false }) => {
                     {datos.conductores && datos.conductores.length > 0 ? (
                       datos.conductores
                         .map((conductorRelacion, index) => {
-                          // Protección triple: verificar que conductorRelacion existe y tiene conductor
                           if (!conductorRelacion) return null;
 
-                          const conductor = conductorRelacion.conductor || {};
+                          const conductor =
+                            conductorRelacion.conductor ||
+                            conductorRelacion.conductor_detail ||
+                            {};
                           const esPrincipal =
                             conductorRelacion.rol === 'principal';
 
@@ -928,16 +1111,22 @@ const DetallesReserva = ({ isMobile = false }) => {
                                 <Button
                                   variant="outline-primary"
                                   size="sm"
-                                  onClick={() =>
-                                    handleShowDriverDetails({
+                                  onClick={() => {
+                                    const driverData = {
                                       ...conductor,
+                                      ...conductorRelacion, // Incluir datos de la relación (rol, etc.)
                                       email:
                                         conductorRelacion.email ||
                                         conductor.email ||
                                         '',
                                       esSegundoConductor: !esPrincipal,
-                                    })
-                                  }
+                                    };
+                                    console.log(
+                                      '🔍 [DEBUG] Enviando datos del conductor:',
+                                      driverData,
+                                    );
+                                    handleShowDriverDetails(driverData);
+                                  }}
                                 >
                                   Ver detalles
                                 </Button>
@@ -952,7 +1141,9 @@ const DetallesReserva = ({ isMobile = false }) => {
                                     />
                                     <span>
                                       {conductor.nombre || 'Conductor'}{' '}
-                                      {conductor.apellido || ''}
+                                      {conductor.apellidos ||
+                                        conductor.apellido ||
+                                        ''}
                                     </span>
                                   </div>
                                 </Col>
@@ -963,9 +1154,14 @@ const DetallesReserva = ({ isMobile = false }) => {
                                       className="me-2 text-muted"
                                     />
                                     <span>
-                                      {conductor.documento ||
-                                        conductor.numero_documento ||
-                                        'No disponible'}
+                                      {conductor.tipo_documento &&
+                                      conductor.documento
+                                        ? `${conductor.tipo_documento.toUpperCase()}: ${
+                                            conductor.documento
+                                          }`
+                                        : conductor.documento ||
+                                          conductor.numero_documento ||
+                                          'No disponible'}
                                     </span>
                                   </div>
                                 </Col>
@@ -982,7 +1178,7 @@ const DetallesReserva = ({ isMobile = false }) => {
                                     </span>
                                   </div>
                                 </Col>
-                                <Col md={6}>
+                                <Col md={6} className="mb-2">
                                   <div className="d-flex align-items-center">
                                     <FontAwesomeIcon
                                       icon={faPhone}
@@ -993,6 +1189,20 @@ const DetallesReserva = ({ isMobile = false }) => {
                                     </span>
                                   </div>
                                 </Col>
+                                {conductor.nacionalidad && (
+                                  <Col md={6} className="mb-2">
+                                    <div className="d-flex align-items-center">
+                                      <FontAwesomeIcon
+                                        icon={faInfoCircle}
+                                        className="me-2 text-muted"
+                                      />
+                                      <span>
+                                        <strong>Nacionalidad:</strong>{' '}
+                                        {conductor.nacionalidad}
+                                      </span>
+                                    </div>
+                                  </Col>
+                                )}
                               </Row>
 
                               {datos.conductores &&
@@ -1007,7 +1217,9 @@ const DetallesReserva = ({ isMobile = false }) => {
                     ) : (
                       <div className="text-center text-muted py-3">
                         <FontAwesomeIcon icon={faUser} className="me-2" />
-                        No hay información de conductores disponible
+                        {datos.conductores !== undefined
+                          ? 'No hay información de conductores disponible'
+                          : 'Cargando información de conductores...'}
                       </div>
                     )}
                   </Card.Body>
@@ -1039,43 +1251,66 @@ const DetallesReserva = ({ isMobile = false }) => {
                   </div>
 
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span>Precio base:</span>
-                    <span>{formatCurrency(datos.precioBase)}</span>
+                    <span>Precio total:</span>
+                    <span>
+                      {datos.precioBase !== undefined &&
+                      datos.precioBase !== null
+                        ? formatCurrency(datos.precioBase)
+                        : 'No disponible'}
+                    </span>
                   </div>
 
                   {datos.extras && datos.extras.length > 0 && (
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <span>Extras:</span>
-                      <span>{formatCurrency(datos.precioExtras)}</span>
+                      <span>
+                        {datos.precioExtras !== undefined &&
+                        datos.precioExtras !== null
+                          ? formatCurrency(datos.precioExtras)
+                          : 'No disponible'}
+                      </span>
                     </div>
                   )}
 
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span>
-                      Impuestos (IVA{formatTaxRate(datos.tasaImpuesto)}):
+                      IVA incluida{formatIvaRate(datos.tasaIva || 10)}:
                     </span>
-                    <span>{formatCurrency(datos.precioImpuestos)}</span>
+                    <span>
+                      {(() => {
+                        // Calcular IVA simbólicamente como 10% del total
+                        const ivaCalculado = datos.precioTotal
+                          ? datos.precioTotal * 0.1
+                          : 0;
+                        return formatCurrency(ivaCalculado);
+                      })()}
+                    </span>
                   </div>
 
-                  {datos.promocion && (
-                    <div className="d-flex justify-content-between align-items-center mb-2 text-success">
-                      <span>Descuento promoción:</span>
-                      <span>-{formatCurrency(datos.descuentoPromocion)}</span>
-                    </div>
-                  )}
+                  {datos.promocion &&
+                    datos.descuentoPromocion !== undefined &&
+                    datos.descuentoPromocion !== null && (
+                      <div className="d-flex justify-content-between align-items-center mb-2 text-success">
+                        <span>Descuento promoción:</span>
+                        <span>-{formatCurrency(datos.descuentoPromocion)}</span>
+                      </div>
+                    )}
 
                   <hr />
 
                   <div className="d-flex justify-content-between align-items-center">
                     <h5>Total:</h5>
                     <h4 className="text-primary">
-                      {formatCurrency(datos.precioTotal)}
+                      {datos.precioTotal !== undefined &&
+                      datos.precioTotal !== null
+                        ? formatCurrency(datos.precioTotal)
+                        : 'No disponible'}
                     </h4>
                   </div>
 
                   <div className="text-end">
                     <small className="text-muted">
-                      {datos.politicaPago.deductible > 0
+                      {(datos.politicaPago?.deductible || 0) > 0
                         ? `Requiere depósito: ${formatCurrency(
                             datos.politicaPago.deductible,
                           )}`
@@ -1095,7 +1330,10 @@ const DetallesReserva = ({ isMobile = false }) => {
                   <Card.Body>
                     <div className="mb-2">
                       <strong>Importe pendiente:</strong>{' '}
-                      {formatCurrency(datos.diferenciaPendiente)}
+                      {datos.diferenciaPendiente !== undefined &&
+                      datos.diferenciaPendiente !== null
+                        ? formatCurrency(datos.diferenciaPendiente)
+                        : 'No disponible'}
                     </div>
                     <div className="mb-2">
                       <strong>Método elegido:</strong>{' '}
@@ -1328,7 +1566,9 @@ const DetallesReserva = ({ isMobile = false }) => {
               <strong>Concepto</strong>
             </Col>
             <Col xs={4} className="text-end">
-              {formatCurrency(datos.precioBase)}
+              {datos.precioBase !== undefined && datos.precioBase !== null
+                ? formatCurrency(datos.precioBase)
+                : 'No disponible'}
             </Col>
           </Row>
 
@@ -1344,9 +1584,24 @@ const DetallesReserva = ({ isMobile = false }) => {
 
               {datos.extras.map((extra, idx) => (
                 <Row key={idx} className="mb-2">
-                  <Col xs={8}>· {extra.nombre}</Col>
+                  <Col xs={8}>
+                    · {extra.nombre}
+                    {datos.diasAlquiler && extra.precio && (
+                      <small className="text-muted">
+                        {' '}
+                        ({formatCurrency(extra.precio)}/día ×{' '}
+                        {datos.diasAlquiler} días)
+                      </small>
+                    )}
+                  </Col>
                   <Col xs={4} className="text-end">
-                    {formatCurrency(extra.precio)}
+                    {extra.precio !== undefined &&
+                    extra.precio !== null &&
+                    datos.diasAlquiler
+                      ? formatCurrency(extra.precio * datos.diasAlquiler)
+                      : extra.precio !== undefined && extra.precio !== null
+                      ? formatCurrency(extra.precio)
+                      : 'No disponible'}
                   </Col>
                 </Row>
               ))}
@@ -1356,37 +1611,57 @@ const DetallesReserva = ({ isMobile = false }) => {
                   <strong>Subtotal extras</strong>
                 </Col>
                 <Col xs={4} className="text-end">
-                  {formatCurrency(datos.precioExtras)}
+                  {datos.precioExtras !== undefined &&
+                  datos.precioExtras !== null
+                    ? formatCurrency(datos.precioExtras)
+                    : 'No disponible'}
                 </Col>
               </Row>
             </>
           )}
 
           <Row className="mb-2">
-            <Col xs={8}>Subtotal antes de impuestos</Col>
+            <Col xs={8}>Subtotal sin IVA (extraído)</Col>
             <Col xs={4} className="text-end">
-              {formatCurrency(datos.precioBase + datos.precioExtras)}
+              {(() => {
+                // Calcular subtotal sin IVA (90% del total ya que IVA está incluido)
+                const subtotalSinIva = datos.precioTotal
+                  ? datos.precioTotal * 0.9
+                  : 0;
+                return formatCurrency(subtotalSinIva);
+              })()}
             </Col>
           </Row>
 
           <Row className="mb-2">
-            <Col xs={8}>IVA{formatTaxRate(datos.tasaImpuesto)}</Col>
+            <Col xs={8}>IVA incluida{formatIvaRate(datos.tasaIva || 10)}</Col>
             <Col xs={4} className="text-end">
-              {formatCurrency(datos.precioImpuestos)}
+              {(() => {
+                // Calcular IVA simbólicamente como 10% del total
+                const ivaCalculado = datos.precioTotal
+                  ? datos.precioTotal * 0.1
+                  : 0;
+                return formatCurrency(ivaCalculado);
+              })()}
             </Col>
           </Row>
 
-          {datos.promocion && (
-            <Row className="mb-2 text-success">
-              <Col xs={8}>
-                Descuento promoción "{datos.promocion.nombre}" (
-                {datos.promocion.descuentoPct}%)
-              </Col>
-              <Col xs={4} className="text-end">
-                -{formatCurrency(datos.descuentoPromocion)}
-              </Col>
-            </Row>
-          )}
+          {datos.promocion &&
+            datos.descuentoPromocion !== undefined &&
+            datos.descuentoPromocion !== null && (
+              <Row className="mb-2 text-success">
+                <Col xs={8}>
+                  Descuento promoción "{datos.promocion.nombre}" (
+                  {datos.promocion.descuentoPct}%)
+                </Col>
+                <Col xs={4} className="text-end">
+                  {datos.descuentoPromocion !== undefined &&
+                  datos.descuentoPromocion !== null
+                    ? `-${formatCurrency(datos.descuentoPromocion)}`
+                    : 'No disponible'}
+                </Col>
+              </Row>
+            )}
 
           <Row className="mt-3 pt-2 border-top">
             <Col xs={8}>
@@ -1394,7 +1669,9 @@ const DetallesReserva = ({ isMobile = false }) => {
             </Col>
             <Col xs={4} className="text-end">
               <h5 className="text-primary">
-                {formatCurrency(datos.precioTotal)}
+                {datos.precioTotal !== undefined && datos.precioTotal !== null
+                  ? formatCurrency(datos.precioTotal)
+                  : 'No disponible'}
               </h5>
             </Col>
           </Row>
@@ -1406,10 +1683,10 @@ const DetallesReserva = ({ isMobile = false }) => {
                 icon={faInfoCircle}
                 className="me-2 text-primary"
               />
-              {datos.politicaPago.deductible === 0
+              {(datos.politicaPago?.deductible || 0) === 0
                 ? 'Tu reserva incluye protección All Inclusive sin franquicia ni depósitos.'
                 : `Se requiere un depósito de seguridad de ${formatCurrency(
-                    datos.politicaPago.deductible,
+                    datos.politicaPago?.deductible || 0,
                   )} que será bloqueado en tu tarjeta.`}
             </p>
             <p className="mb-0">
@@ -1425,7 +1702,7 @@ const DetallesReserva = ({ isMobile = false }) => {
           <Button variant="secondary" onClick={() => setShowPriceModal(false)}>
             Cerrar
           </Button>
-          <Button variant="primary" onClick={() => window.print()}>
+          <Button variant="primary" onClick={handlePrint}>
             <FontAwesomeIcon icon={faDownload} className="me-2" />
             Guardar como PDF
           </Button>
@@ -1445,7 +1722,7 @@ const DetallesReserva = ({ isMobile = false }) => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {selectedDriver && (
+          {selectedDriver ? (
             <>
               <Row className="mb-4">
                 <Col xs={12} className="text-center mb-3">
@@ -1457,7 +1734,8 @@ const DetallesReserva = ({ isMobile = false }) => {
                     />
                   </div>
                   <h4 className="mt-2">
-                    {selectedDriver.nombre} {selectedDriver.apellido}
+                    {selectedDriver.nombre || 'Nombre no disponible'}{' '}
+                    {selectedDriver.apellidos || selectedDriver.apellido || ''}
                   </h4>
                   <Badge
                     bg={selectedDriver.esSegundoConductor ? 'info' : 'primary'}
@@ -1489,47 +1767,53 @@ const DetallesReserva = ({ isMobile = false }) => {
                 <Col xs={4} className="text-muted">
                   Email:
                 </Col>
-                <Col xs={8}>{selectedDriver.email}</Col>
+                <Col xs={8}>{selectedDriver.email || 'No disponible'}</Col>
               </Row>
 
               <Row className="mb-3">
                 <Col xs={4} className="text-muted">
                   Teléfono:
                 </Col>
-                <Col xs={8}>{selectedDriver.telefono}</Col>
+                <Col xs={8}>{selectedDriver.telefono || 'No disponible'}</Col>
               </Row>
 
-              <Row className="mb-3">
-                <Col xs={4} className="text-muted">
-                  Dirección:
-                </Col>
-                <Col xs={8}>
-                  {selectedDriver.direccion.calle}
-                  <br />
-                  {selectedDriver.direccion.codigo_postal}{' '}
-                  {selectedDriver.direccion.ciudad}
-                  <br />
-                  {selectedDriver.direccion.provincia},{' '}
-                  {selectedDriver.direccion.pais}
-                </Col>
-              </Row>
+              {selectedDriver.direccion && (
+                <Row className="mb-3">
+                  <Col xs={4} className="text-muted">
+                    Dirección:
+                  </Col>
+                  <Col xs={8}>
+                    {selectedDriver.direccion?.calle || 'No disponible'}
+                    <br />
+                    {selectedDriver.direccion?.codigo_postal || ''}{' '}
+                    {selectedDriver.direccion?.ciudad || ''}
+                    <br />
+                    {selectedDriver.direccion?.provincia || ''},{' '}
+                    {selectedDriver.direccion?.pais || ''}
+                  </Col>
+                </Row>
+              )}
 
-              <Row className="mb-3">
-                <Col xs={4} className="text-muted">
-                  Fecha Nacimiento:
-                </Col>
-                <Col xs={8}>
-                  {new Date(selectedDriver.fecha_nacimiento).toLocaleDateString(
-                    'es-ES',
-                  )}
-                </Col>
-              </Row>
+              {selectedDriver.fecha_nacimiento && (
+                <Row className="mb-3">
+                  <Col xs={4} className="text-muted">
+                    Fecha Nacimiento:
+                  </Col>
+                  <Col xs={8}>
+                    {new Date(
+                      selectedDriver.fecha_nacimiento,
+                    ).toLocaleDateString('es-ES')}
+                  </Col>
+                </Row>
+              )}
 
               <Row className="mb-3">
                 <Col xs={4} className="text-muted">
                   Nacionalidad:
                 </Col>
-                <Col xs={8}>{selectedDriver.nacionalidad}</Col>
+                <Col xs={8}>
+                  {selectedDriver.nacionalidad || 'No especificada'}
+                </Col>
               </Row>
 
               <div className="driver-license p-3 bg-light rounded mt-3">
@@ -1547,6 +1831,11 @@ const DetallesReserva = ({ isMobile = false }) => {
                 </p>
               </div>
             </>
+          ) : (
+            <div className="text-center text-muted py-4">
+              <FontAwesomeIcon icon={faUser} className="me-2" />
+              No hay datos del conductor disponibles
+            </div>
           )}
         </Modal.Body>
         <Modal.Footer>
@@ -1563,6 +1852,7 @@ const DetallesReserva = ({ isMobile = false }) => {
           onHide={() => setShowEditModal(false)}
           reservationData={datos}
           onSave={handleEditReservationCentral}
+          isMobile={isMobile}
         />
       )}
 
@@ -1572,6 +1862,7 @@ const DetallesReserva = ({ isMobile = false }) => {
           show={showDeleteModal}
           onHide={() => setShowDeleteModal(false)}
           reservationId={datos.id}
+          reservationNumber={datos.numero_reserva}
           onConfirm={handleDeleteReservationCentral}
           loading={isProcessing}
           error={error}

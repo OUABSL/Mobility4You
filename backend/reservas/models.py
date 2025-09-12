@@ -1,4 +1,5 @@
 # reservas/models.py
+import logging
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -6,6 +7,10 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+from .services import ReservaService
+
+logger = logging.getLogger(__name__)
 
 
 class Reserva(models.Model):
@@ -19,6 +24,17 @@ class Reserva(models.Model):
         ("tarjeta", _("Tarjeta")),
         ("efectivo", _("Efectivo")),
     ]
+
+    # Número de reserva único
+    numero_reserva = models.CharField(
+        _("Número de reserva"),
+        max_length=15,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text=_("Número único de reserva con formato M4Y + 6 dígitos"),
+        db_index=True,
+    )
 
     # Relaciones con otras aplicaciones    
     usuario = models.ForeignKey(
@@ -85,12 +101,14 @@ class Reserva(models.Model):
         null=False,
         validators=[MinValueValidator(Decimal("0.01"))],
     )
-    precio_impuestos = models.DecimalField(
-        _("Precio impuestos"),
+    iva = models.DecimalField(
+        _("IVA (simbólico)"),
         max_digits=10,
         decimal_places=2,
-        null=False,
+        null=True,
+        blank=True,
         validators=[MinValueValidator(Decimal("0.00"))],
+        help_text=_("IVA incluido en el precio total (solo para visualización)")
     )
     precio_total = models.DecimalField(
         _("Precio total"),
@@ -160,30 +178,65 @@ class Reserva(models.Model):
                 fields=["fecha_recogida", "fecha_devolucion"], name="idx_reserva_fechas"
             ),
             models.Index(fields=["estado", "created_at"]),
+            models.Index(fields=["numero_reserva"], name="idx_reserva_numero"),
         ]
 
     def __str__(self):
-        return f"Reserva {self.pk} - {self.vehiculo}"
+        numero = self.numero_reserva or f"ID-{self.pk}"
+        return f"Reserva {numero} - {self.vehiculo}"
 
     def save(self, *args, **kwargs):
-        """Sobrescribe save con validaciones y cálculo automático de precios"""
+        """Override save para generar número de reserva automáticamente y validar datos"""
+        is_new = self.pk is None
+
+        # Actualizar timestamps
+        if is_new:
+            self.created_at = timezone.now()
+        self.updated_at = timezone.now()
+        
         # Calcular precio total si no está establecido
         if not self.precio_total and self.precio_dia:
             self.precio_total = self.calcular_precio_total()
-
-        # Actualizar timestamps
-        if not self.id:
-            self.created_at = timezone.now()
-        self.updated_at = timezone.now()
-
+        
+        # Calcular IVA simbólico si no está establecido
+        if self.iva is None and self.precio_total:
+            self.iva = self.calcular_iva_simbolico()
+        
+        # Generar número de reserva para nuevas reservas
+        if is_new and not self.numero_reserva:
+            try:
+                from .utils import generar_numero_reserva_unico
+                self.numero_reserva = generar_numero_reserva_unico()
+                logger.info(f"Número de reserva generado: {self.numero_reserva}")
+            except Exception as e:
+                logger.error(f"Error generando número de reserva: {str(e)}")
+                # Continuamos sin número, se puede generar manualmente
+        
         # Validar antes de guardar
         self.full_clean()
-
+        
+        # GUARDAR UNA SOLA VEZ - Después de todas las operaciones preparatorias
         super().save(*args, **kwargs)
+        
+        # Operaciones post-save (solo logging, sin saves adicionales)
+        if is_new:
+            logger.info(f"Reserva {self.pk} creada con número: {self.numero_reserva}")
+            
+            # Si no se pudo generar el número antes del save, intentar ahora con el ID disponible
+            if not self.numero_reserva:
+                try:
+                    from .utils import generar_numero_reserva_unico
+                    self.numero_reserva = generar_numero_reserva_unico()
+                    # Actualizar solo el campo numero_reserva sin full_clean() para evitar recursión
+                    super().save(update_fields=['numero_reserva'])
+                    logger.info(f"Número de reserva generado post-save: {self.numero_reserva}")
+                except Exception as e:
+                    logger.error(f"Error generando número de reserva post-save: {str(e)}")
 
     def summary(self):
         return {
             "id": self.pk,
+            "numero_reserva": self.numero_reserva,
             "usuario": str(self.usuario),
             "vehiculo": str(self.vehiculo),
             "politica_pago": str(self.politica_pago),
@@ -218,6 +271,32 @@ class Reserva(models.Model):
             return dias if dias > 0 else 1
         return 1
 
+    def calcular_iva_simbolico(self):
+        """
+        Calcula el IVA simbólico basado en el precio total
+        IVA SIMBÓLICO: Simplemente 10% del precio total para mostrar al cliente
+        """
+        from django.conf import settings
+        
+        if not self.precio_total:
+            return Decimal("0.00")
+            
+        # Obtener porcentaje IVA de configuración
+        iva_percentage = getattr(settings, 'IVA_PERCENTAGE', 0.10)
+        
+        # IVA SIMBÓLICO: Simplemente el porcentaje del precio total
+        iva_amount = self.precio_total * Decimal(str(iva_percentage))
+        
+        return iva_amount.quantize(Decimal('0.01'))
+
+    def get_iva_display(self):
+        """
+        Retorna el IVA para mostrar: el calculado automáticamente o el almacenado
+        """
+        if self.iva is not None:
+            return self.iva
+        return self.calcular_iva_simbolico()
+
     def verificar_disponibilidad_vehiculo(self):
         """Verifica si el vehículo está disponible para las fechas de la reserva"""
         if not self.vehiculo or not self.fecha_recogida or not self.fecha_devolucion:
@@ -237,92 +316,113 @@ class Reserva(models.Model):
         return not reservas_conflicto.exists()
 
     def calcular_precio_total(self):
-        """Calcula el precio total de la reserva incluyendo extras"""
+        """
+        Calcula el precio total usando el servicio centralizado
+        Evita duplicación de lógica
+        """
         if not self.precio_dia or not self.fecha_recogida or not self.fecha_devolucion:
             return Decimal("0.00")
-
-        # Precio base
-        dias = self.dias_alquiler()
-        precio_base = self.precio_dia * dias
-
-        # Precio extras
-        precio_extras = Decimal("0.00")
-        for reserva_extra in self.extras.all():
-            precio_extras += reserva_extra.extra.precio * reserva_extra.cantidad * dias
-
-        # Aplicar descuento de promoción si existe
-        descuento = Decimal("0.00")
-        if self.promocion:
-            if hasattr(self.promocion, "descuento_pct"):
-                descuento = (precio_base + precio_extras) * (
-                    self.promocion.descuento_pct / 100
-                )
-
-        # Subtotal
-        subtotal = precio_base + precio_extras - descuento
-
-        # Impuestos (IVA 21%)
-        impuestos = subtotal * Decimal("0.21")
-
-        # Total
-        total = subtotal + impuestos
-
-        return total
+        
+        try:            
+            # Preparar datos para el servicio
+            data = {
+                "vehiculo_id": self.vehiculo.id if self.vehiculo else None,
+                "fecha_recogida": self.fecha_recogida,
+                "fecha_devolucion": self.fecha_devolucion,
+                "politica_pago_id": self.politica_pago.id if self.politica_pago else None,
+                "extras": [
+                    {"extra_id": re.extra.id, "cantidad": re.cantidad}
+                    for re in self.extras.all()
+                ]
+            }
+            
+            # Usar servicio centralizado
+            service = ReservaService()
+            resultado = service.calcular_precio_reserva(data)
+            
+            if resultado.get("success"):
+                return Decimal(str(resultado.get("precio_total", 0)))
+            else:
+                logger.warning(f"Error calculando precio para reserva {self.pk}: {resultado.get('error')}")
+                return self.precio_total or Decimal("0.00")
+                
+        except Exception as e:
+            logger.error(f"Error en calcular_precio_total para reserva {self.pk}: {str(e)}")
+            # Fallback a cálculo simple
+            dias = self.dias_alquiler()
+            precio_base = self.precio_dia * dias
+            return precio_base
 
     def clean(self):
-        """Validaciones personalizadas del modelo"""
+        """Validaciones unificadas con frontend """
         super().clean()
 
         try:
+            # Validar número de reserva si existe
+            if self.numero_reserva:
+                from .utils import validar_numero_reserva
+                try:
+                    validar_numero_reserva(self.numero_reserva)
+                except ValidationError as e:
+                    raise ValidationError({"numero_reserva": str(e)})
+
             # Validar fechas
             if self.fecha_recogida and self.fecha_devolucion:
+                # 1. Validar orden de fechas
                 if self.fecha_recogida >= self.fecha_devolucion:
-                    raise ValidationError(
-                        {
-                            "fecha_devolucion": "La fecha de devolución debe ser posterior a la fecha de recogida"
-                        }
-                    )
+                    raise ValidationError({
+                        "fecha_devolucion": "La fecha de devolución debe ser posterior a la fecha de recogida"
+                    })
 
-                if not self.pk:  # Solo para nuevas reservas
-                    from django.utils import timezone
+                # 2. Validar duración (1-30 días)
+                duracion = (self.fecha_devolucion - self.fecha_recogida).days
+                if duracion < 1:
+                    raise ValidationError({
+                        "fechas": "El período de alquiler debe ser de al menos 1 día"
+                    })
 
-                    now = timezone.now()
-                    margen = timezone.timedelta(minutes=30)
-                    limite_minimo = now - margen
+                # 3. Validar fechas futuras según contexto
+                from django.utils import timezone
+                now = timezone.now()
+                is_new_reservation = not self.pk
+                is_edit = self.pk and hasattr(self, '_state') and not self._state.adding
 
-                    if self.fecha_recogida < limite_minimo:
-                        raise ValidationError(
-                            {
-                                "fecha_recogida": "La fecha de recogida debe ser futura (con margen de 30 minutos para procesamiento)"
-                            }
-                        )
+                if is_new_reservation:
+                    # ✅ NUEVA RESERVA: Margen de 30 minutos (IDÉNTICO AL FRONTEND)
+                    margin_time = now - timezone.timedelta(minutes=30)
+                    if self.fecha_recogida <= margin_time:
+                        raise ValidationError({
+                            "fecha_recogida": "La fecha de recogida debe ser al menos 30 minutos en el futuro"
+                        })
+                elif is_edit:
+                    # ✅ EDICIÓN: Margen de 2 horas (IDÉNTICO AL FRONTEND)
+                    edit_limit = now + timezone.timedelta(hours=2)
+                    if self.fecha_recogida <= edit_limit:
+                        raise ValidationError({
+                            "fecha_recogida": "No se puede editar una reserva que comienza en menos de 2 horas"
+                        })
 
             # Validar disponibilidad del vehículo
             if self.vehiculo and self.fecha_recogida and self.fecha_devolucion:
                 if not self.pk or self._state.adding:
                     if not self.verificar_disponibilidad_vehiculo():
-                        raise ValidationError(
-                            {
-                                "vehiculo": "El vehículo no está disponible para las fechas seleccionadas"
-                            }
-                        )
+                        raise ValidationError({
+                            "vehiculo": "El vehículo no está disponible para las fechas seleccionadas"
+                        })
 
             # Validar importes
             if self.precio_total and self.precio_total <= 0:
-                raise ValidationError(
-                    {"precio_total": "El precio total debe ser mayor que cero"}
-                )
+                raise ValidationError({
+                    "precio_total": "El precio total debe ser mayor que cero"
+                })
 
         except ValidationError:
             raise
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.error(f"Error en validación de reserva: {str(e)}")
-            raise ValidationError(
-                {"validacion_general": f"Error en validación: {str(e)}"}
-            )
+            raise ValidationError({
+                "validacion_general": f"Error en validación: {str(e)}"
+            })
 
 
 class ReservaConductor(models.Model):

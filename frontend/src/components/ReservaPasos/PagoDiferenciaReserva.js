@@ -30,13 +30,18 @@ import '../../css/PagoDiferenciaReserva.css';
 import {
   editReservation,
   findReservation,
+  findReservationByNumber,
   processPayment,
 } from '../../services/reservationServices';
 import {
   debugBackendData,
   debugSessionStorage,
-  formatTaxRate,
+  formatIvaRate,
 } from '../../utils';
+import {
+  isValidReservationNumber,
+  normalizeReservationNumber,
+} from '../../utils/reservationNumberUtils';
 import ReservaClientePago from './ReservaClientePago';
 
 // Crear logger para el componente
@@ -202,7 +207,25 @@ const PagoDiferenciaReserva = () => {
           if (!originalEmail) {
             throw new Error('Email requerido para consultar la reserva');
           }
-          data = await findReservation(id, originalEmail);
+
+          // Detectar si es un número de reserva (formato M4Y) o un ID numérico
+          const normalizedInput = normalizeReservationNumber(id);
+          const isReservationNumber = isValidReservationNumber(normalizedInput);
+
+          if (isReservationNumber) {
+            // Buscar por número de reserva personalizado
+            logger.info(
+              `🔍 Buscando por número de reserva: ${normalizedInput}`,
+            );
+            data = await findReservationByNumber(
+              normalizedInput,
+              originalEmail,
+            );
+          } else {
+            // Buscar por ID numérico interno
+            logger.info(`🔍 Buscando por ID interno: ${id}`);
+            data = await findReservation(id, originalEmail);
+          }
         }
 
         // Extraer datos de reserva si vienen en formato del backend
@@ -593,7 +616,7 @@ const PagoDiferenciaReserva = () => {
 
                             {priceEstimate.breakdown.precio_base && (
                               <div className="row text-muted small">
-                                <div className="col-6">• Precio base:</div>
+                                <div className="col-6">• Precio total:</div>
                                 <div className="col-6 text-end">
                                   €
                                   {priceEstimate.breakdown.precio_base.toFixed(
@@ -640,21 +663,18 @@ const PagoDiferenciaReserva = () => {
                               </div>
                             )}
 
-                            {priceEstimate.breakdown.impuestos &&
-                              priceEstimate.breakdown.impuestos > 0 && (
+                            {priceEstimate.breakdown.iva &&
+                              priceEstimate.breakdown.iva > 0 && (
                                 <div className="row text-muted small">
                                   <div className="col-6">
                                     • IVA
-                                    {formatTaxRate(
-                                      priceEstimate.breakdown.tasa_impuesto,
+                                    {formatIvaRate(
+                                      priceEstimate.breakdown.tasa_iva,
                                     )}
                                     :
                                   </div>
                                   <div className="col-6 text-end">
-                                    €
-                                    {priceEstimate.breakdown.impuestos.toFixed(
-                                      2,
-                                    )}
+                                    €{priceEstimate.breakdown.iva.toFixed(2)}
                                   </div>
                                 </div>
                               )}

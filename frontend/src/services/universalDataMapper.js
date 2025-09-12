@@ -44,13 +44,11 @@ import {
 } from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import {
-  calculateTaxAmount,
   extractByPath,
   extractFromJsonField,
   getPlaceholder,
   prepareImageData,
   processImageUrl,
-  roundToDecimals,
   formatCurrency as utilsFormatCurrency,
   withTimeout,
 } from '../utils';
@@ -188,67 +186,6 @@ const nonNegativeNumberValidator = (v) => typeof v === 'number' && v >= 0;
  * @returns {boolean} - true si es válido
  */
 const positiveNumberValidator = (v) => typeof v === 'number' && v > 0;
-
-/**
- * Función para redondear números a dos decimales de forma precisa
- * Evita problemas de precisión de JavaScript con números flotantes
- * @param {number|string} value - El valor a redondear
- * @param {number} decimals - Número de decimales (por defecto 2)
- * @returns {number} - El valor redondeado
- * @deprecated Usar roundToDecimals desde utils en su lugar
- */
-const roundToDecimalsLegacy = (value, decimals = 2) => {
-  const numValue = safeNumberTransformer(value, 0);
-  if (numValue === 0) return 0;
-
-  // Usar Math.round con multiplicación para evitar problemas de precisión
-  const factor = Math.pow(10, decimals);
-  return Math.round((numValue + Number.EPSILON) * factor) / factor;
-};
-
-/**
- * Función específica para calcular impuestos redondeados
- * @param {number|string} baseAmount - El monto base
- * @param {number} taxRate - La tasa de impuesto (debe venir del backend, sin valor por defecto)
- * @returns {number} - Los impuestos calculados y redondeados
- * @deprecated Usar calculateTaxAmount desde utils en su lugar
- */
-const calculateTaxAmountLegacy = (baseAmount, taxRate) => {
-  if (taxRate === undefined || taxRate === null) {
-    throw new Error(
-      'La tasa de impuesto debe ser proporcionada desde el backend',
-    );
-  }
-
-  const base = safeNumberTransformer(baseAmount, 0);
-  const tax = base * taxRate;
-  return roundToDecimals(tax, 2);
-};
-
-/**
- * Función para calcular el precio total con impuestos
- * @param {number|string} baseAmount - El monto base
- * @param {number} taxRate - La tasa de impuesto (debe venir del backend, sin valor por defecto)
- * @returns {object} - Objeto con base, impuestos y total redondeados
- * @deprecated Usar calculatePriceWithTax desde utils en su lugar
- */
-const calculatePriceWithTaxLegacy = (baseAmount, taxRate) => {
-  if (taxRate === undefined || taxRate === null) {
-    throw new Error(
-      'La tasa de impuesto debe ser proporcionada desde el backend',
-    );
-  }
-
-  const base = roundToDecimals(baseAmount, 2);
-  const tax = calculateTaxAmount(base, taxRate);
-  const total = roundToDecimals(base + tax, 2);
-
-  return {
-    base,
-    impuestos: tax,
-    total,
-  };
-};
 
 // ========================================
 // ESQUEMAS DE MAPEO DECLARATIVOS
@@ -499,28 +436,52 @@ const MAPPING_SCHEMAS = {
   reservations: {
     toBackend: {
       vehiculo: {
-        sources: ['car.id', 'vehiculo.id', 'vehiculo_id'],
+        sources: ['car.id', 'vehiculo.id', 'vehiculo_id', 'car', 'vehiculo'],
         required: true,
         validator: positiveNumberValidator,
-        transformer: (item, value) => safeNumberTransformer(value, null),
+        transformer: (item, value) => {
+          if (typeof value === 'object' && value?.id)
+            return safeNumberTransformer(value.id, null);
+          return safeNumberTransformer(value, null);
+        },
         error: 'ID de vehículo inválido o no seleccionado',
       },
       lugar_recogida: {
-        sources: ['lugar_recogida_id', 'pickupLocation.id', 'lugar_recogida'],
+        sources: [
+          'fechas.pickupLocation.id',
+          'lugar_recogida_id',
+          'pickupLocation.id',
+          'lugar_recogida',
+          'fechas.pickupLocation',
+          'lugarRecogida.id',
+          'lugarRecogida',
+        ],
         required: true,
         validator: positiveNumberValidator,
-        transformer: (item, value) => safeNumberTransformer(value, null),
+        transformer: (item, value) => {
+          if (typeof value === 'object' && value?.id)
+            return safeNumberTransformer(value.id, null);
+          return safeNumberTransformer(value, null);
+        },
         error: 'El lugar de recogida es requerido',
       },
       lugar_devolucion: {
         sources: [
+          'fechas.dropoffLocation.id',
           'lugar_devolucion_id',
           'dropoffLocation.id',
           'lugar_devolucion',
+          'fechas.dropoffLocation',
+          'lugarDevolucion.id',
+          'lugarDevolucion',
         ],
         required: true,
         validator: positiveNumberValidator,
-        transformer: (item, value) => safeNumberTransformer(value, null),
+        transformer: (item, value) => {
+          if (typeof value === 'object' && value?.id)
+            return safeNumberTransformer(value.id, null);
+          return safeNumberTransformer(value, null);
+        },
         error: 'El lugar de devolución es requerido',
       },
       fecha_recogida: {
@@ -540,7 +501,7 @@ const MAPPING_SCHEMAS = {
         validator: (v) => {
           if (!v) return false;
           const date = new Date(v);
-          return !isNaN(date.getTime()); // Remover validación de fecha futura temporalmente
+          return !isNaN(date.getTime());
         },
         error: 'Fecha de recogida inválida',
       },
@@ -561,13 +522,18 @@ const MAPPING_SCHEMAS = {
         validator: (v) => {
           if (!v) return false;
           const date = new Date(v);
-          return !isNaN(date.getTime()); // Remover validación de fecha futura temporalmente
+          return !isNaN(date.getTime());
         },
         error: 'Fecha de devolución inválida',
       },
 
       politica_pago: {
-        sources: ['politica_pago_id', 'politica_pago', 'paymentOption'],
+        sources: [
+          'politica_pago_id',
+          'politica_pago',
+          'paymentOption.id',
+          'paymentOption',
+        ],
         required: true,
         transformer: (item, value) => {
           if (typeof value === 'number') return value;
@@ -662,7 +628,7 @@ const MAPPING_SCHEMAS = {
         transformer: (item, value) => safeNumberTransformer(value, 0),
       },
       iva_incluido: {
-        sources: ['desglose.iva', 'breakdown.iva', 'iva', 'impuestos'],
+        sources: ['desglose.iva', 'breakdown.iva', 'iva'],
         default: 0,
         validator: nonNegativeNumberValidator,
         transformer: (item, value) => safeNumberTransformer(value, 0),
@@ -714,6 +680,21 @@ const MAPPING_SCHEMAS = {
         required: false, // Se puede calcular automáticamente
         validator: (v) => !v || nonNegativeNumberValidator(v),
         transformer: (item, value) => safeNumberTransformer(value, null),
+      },
+      // ✅ AGREGAR: Campos de conductor (mapeado por procesador separado)
+      conductor_principal: {
+        sources: ['conductor', 'conductorPrincipal'],
+        required: false, // Se procesa por separado en driversProcessor
+        transformer: (item, value) => {
+          if (!value) return null;
+          // Estructura básica para validación
+          return {
+            nombre: value.nombre || '',
+            apellidos: value.apellidos || '',
+            email: value.email || '',
+            telefono: value.telefono || '',
+          };
+        },
       },
     },
     fromBackend: {
@@ -846,24 +827,40 @@ const MAPPING_SCHEMAS = {
         },
       },
       lugarRecogida: {
-        sources: ['lugar_recogida_detail', 'lugar_recogida'],
+        sources: ['lugar_recogida_detail'],
         transformer: (item, value) => {
           if (!value) {
+            // Fallback solo si no hay lugar_recogida_detail
             return {
               id: item.lugar_recogida,
-              nombre: item.lugar_recogida_nombre || 'Ubicación',
+              nombre: item.lugar_recogida_nombre || 'Ubicación de recogida',
+              direccion: {
+                calle: '',
+                ciudad: '',
+                provincia: '',
+                pais: '',
+                codigo_postal: '',
+              },
             };
           }
           return value;
         },
       },
       lugarDevolucion: {
-        sources: ['lugar_devolucion_detail', 'lugar_devolucion'],
+        sources: ['lugar_devolucion_detail'],
         transformer: (item, value) => {
           if (!value) {
+            // Fallback solo si no hay lugar_devolucion_detail
             return {
               id: item.lugar_devolucion,
-              nombre: item.lugar_devolucion_nombre || 'Ubicación',
+              nombre: item.lugar_devolucion_nombre || 'Ubicación de devolución',
+              direccion: {
+                calle: '',
+                ciudad: '',
+                provincia: '',
+                pais: '',
+                codigo_postal: '',
+              },
             };
           }
           return value;
@@ -875,19 +872,51 @@ const MAPPING_SCHEMAS = {
           if (!value) {
             return {
               id: item.politica_pago,
-              titulo: item.politica_pago_titulo || 'Política de Pago',
+              titulo: item.politica_pago_titulo,
             };
           }
           return value;
         },
       },
       usuario: {
-        sources: ['usuario'],
-        transformer: (item, value) => ({
-          id: value || item.usuario,
-          nombre: item.usuario_nombre || '',
-          email: item.usuario_email || '',
-        }),
+        sources: ['usuario_detail', 'usuario'],
+        transformer: (item, value) => {
+          // Si tenemos datos detallados del usuario, usarlos
+          if (value && typeof value === 'object') {
+            return {
+              id: value.id || item.usuario,
+              nombre: value.nombre || item.usuario_nombre || '',
+              apellidos: value.apellidos || value.apellido || '',
+              email: value.email || item.usuario_email || '',
+              documento: value.documento || value.numero_documento || '',
+              numero_documento: value.numero_documento || value.documento || '',
+              telefono: value.telefono || '',
+              nacionalidad: value.nacionalidad || '',
+              tipo_documento: value.tipo_documento || '',
+              fecha_nacimiento: value.fecha_nacimiento || '',
+              nombre_completo:
+                item.usuario_nombre_completo ||
+                `${value.nombre || ''} ${
+                  value.apellidos || value.apellido || ''
+                }`.trim(),
+            };
+          }
+
+          // Fallback usando campos planos del backend
+          return {
+            id: value || item.usuario,
+            nombre: item.usuario_nombre || '',
+            apellidos: item.usuario_apellidos || '',
+            email: item.usuario_email || '',
+            documento: item.usuario_documento || '',
+            numero_documento: item.usuario_numero_documento || '',
+            telefono: item.usuario_telefono || '',
+            nacionalidad: item.usuario_nacionalidad || '',
+            tipo_documento: item.usuario_tipo_documento || '',
+            fecha_nacimiento: item.usuario_fecha_nacimiento || '',
+            nombre_completo: item.usuario_nombre_completo || '',
+          };
+        },
       },
       extras: {
         sources: ['extras_detail', 'extras'],
@@ -932,14 +961,17 @@ const MAPPING_SCHEMAS = {
         },
       },
       conductores: {
-        sources: ['conductores'],
+        sources: ['conductores', 'conductores_detail'],
         default: [],
         transformer: (item, value) => {
           if (!value || !Array.isArray(value)) return [];
 
           return value.map((conductorRelacion) => {
-            // El backend devuelve información completa del conductor en conductorRelacion.conductor
-            const conductorData = conductorRelacion.conductor || {};
+            // El backend devuelve información completa del conductor en conductorRelacion.conductor_detail o conductorRelacion.conductor
+            const conductorData =
+              conductorRelacion.conductor_detail ||
+              conductorRelacion.conductor ||
+              {};
 
             const conductor = {
               id:
@@ -984,79 +1016,33 @@ const MAPPING_SCHEMAS = {
         sources: ['precio_dia', 'precio_base'],
         transformer: (item, value) => safeNumberTransformer(value, 0),
       },
-      precioImpuestos: {
-        sources: ['precio_impuestos'],
-        transformer: (item, value) => safeNumberTransformer(value, 0),
+      iva: {
+        sources: ['iva', 'precio_iva', 'iva_display'],
+        transformer: (item, value) => {
+          // Si tenemos el valor directo, usarlo
+          if (value !== undefined && value !== null && !isNaN(value)) {
+            return safeNumberTransformer(value, 0);
+          }
+
+          // Si no tenemos iva pero tenemos iva_percentage y precio_base, calcularlo
+          const ivaPercentage = item.iva_percentage || item.tasa_iva;
+          const precioBase = item.precio_base || item.precio_dia;
+
+          if (ivaPercentage && precioBase) {
+            const calculatedIva = precioBase * ivaPercentage;
+            return safeNumberTransformer(calculatedIva, 0);
+          }
+
+          return 0;
+        },
       },
-      tasaImpuesto: {
-        sources: ['tasa_impuesto'],
-        transformer: (item, value) => safeNumberTransformer(value, 0),
+      tasaIva: {
+        sources: ['tasa_iva', 'iva_percentage'],
+        transformer: (item, value) => safeNumberTransformer(value, 0.1), // Fallback de 10% solo si no viene del backend
       },
       metodoPago: {
         sources: ['metodo_pago'],
         default: 'tarjeta',
-      },
-      vehiculo_id: {
-        sources: ['vehiculo', 'vehiculo_id'],
-        transformer: (item, value) => {
-          // Si tenemos un objeto vehiculo, extraer su ID
-          if (typeof value === 'object' && value?.id) {
-            return value.id;
-          }
-          // Si es directamente un número, devolverlo
-          if (typeof value === 'number') {
-            return value;
-          }
-          // Fallback a buscar en vehiculo_id
-          return item.vehiculo_id || null;
-        },
-      },
-    },
-  },
-
-  // TESTIMONIOS: Backend -> Frontend
-  testimonials: {
-    fromBackend: {
-      id: {
-        sources: ['id'],
-        required: true,
-        validator: (v) => typeof v === 'number' && v > 0,
-      },
-      nombre: {
-        sources: ['nombre', 'apellido'],
-        default: 'Usuario',
-        transformer: (item) =>
-          `${item.nombre || ''} ${item.apellido || ''}`.trim() || 'Usuario',
-      },
-      ubicacion: {
-        sources: ['direccion'],
-        default: 'Ubicación',
-        transformer: (item) => {
-          if (!item.direccion) return 'Ubicación';
-          const ciudad = item.direccion.ciudad || '';
-          const pais = item.direccion.pais || '';
-          return (
-            `${ciudad}, ${pais}`.replace(/^,\s*|,\s*$/g, '') || 'Ubicación'
-          );
-        },
-      },
-      rating: {
-        sources: ['info_adicional'],
-        default: 5,
-        transformer: (item) =>
-          extractFromJsonField(item.info_adicional, 'rating', 5),
-        validator: (v) => typeof v === 'number' && v >= 1 && v <= 5,
-      },
-      comentario: {
-        sources: ['info_adicional'],
-        default: '',
-        transformer: (item) =>
-          extractFromJsonField(item.info_adicional, 'comentario', ''),
-      },
-      avatar: {
-        sources: ['avatar_url'],
-        default: null,
-        transformer: () => null, // Avatar temporalmente deshabilitado
       },
     },
   },
@@ -1388,9 +1374,9 @@ const MAPPING_SCHEMAS = {
 // Se mantiene aquí solo un alias para compatibilidad hacia atrás
 
 const ImageUtils = {
-  processImageUrl: processImageUrl,
-  getPlaceholder: getPlaceholder,
-  prepareImageData: prepareImageData,
+  processImageUrl,
+  getPlaceholder,
+  prepareImageData,
 };
 
 // ========================================
@@ -2433,10 +2419,10 @@ export const mapContactFromBackend = (data) =>
 export const clearMappingCaches = () => universalMapper.clearAllCaches();
 export const getMappingStats = () => universalMapper.getStats();
 
-// Exports de funciones de redondeo y cálculo de impuestos (migradas a utils)
+// Exports de funciones de redondeo y cálculo de IVA (desde utils)
 export {
-  calculatePriceWithTax,
-  calculateTaxAmount,
+  calculateIvaAmount,
+  calculatePriceWithIva,
   roundToDecimals,
 } from '../utils';
 

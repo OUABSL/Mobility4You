@@ -24,7 +24,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { DEBUG_MODE } from '../assets/testingData/testingData';
 import { createServiceLogger } from '../config/appConfig';
 import '../css/ConsultarReservaCliente.css';
-import { findReservation } from '../services/reservationServices';
+import {
+  findReservation,
+  findReservationByNumber,
+} from '../services/reservationServices';
+import {
+  isValidReservationNumber,
+  normalizeReservationNumber,
+} from '../utils/reservationNumberUtils';
 
 // Crear logger para el componente
 const logger = createServiceLogger('CONSULTAR_RESERVA_CLIENTE');
@@ -97,8 +104,19 @@ const ConsultarReservaCliente = ({ isMobile = false }) => {
     setSuccess(null);
 
     try {
-      // Intentar buscar la reserva
-      await findReservation(reservaId, email);
+      // Detectar si es un número de reserva (formato M4Y) o un ID numérico
+      const normalizedInput = normalizeReservationNumber(reservaId);
+      const isReservationNumber = isValidReservationNumber(normalizedInput);
+
+      if (isReservationNumber) {
+        // Buscar por número de reserva personalizado
+        logger.info(`🔍 Buscando por número de reserva: ${normalizedInput}`);
+        await findReservationByNumber(normalizedInput, email);
+      } else {
+        // Buscar por ID numérico interno
+        logger.info(`🔍 Buscando por ID interno: ${reservaId}`);
+        await findReservation(reservaId, email);
+      }
 
       // Si llegamos aquí, la reserva existe
       setLoading(false);

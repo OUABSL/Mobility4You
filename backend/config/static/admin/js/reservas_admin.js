@@ -162,8 +162,6 @@
         "#id_fecha_fin",
         "La reserva debe tener al menos 1 hora de duración"
       );
-    } else if (duracionDias > 30) {
-      showFieldError("#id_fecha_fin", "La reserva no puede exceder 30 días");
     } else {
       clearFieldError("#id_fecha_fin");
     }
@@ -345,19 +343,20 @@
   }
 
   function displayPriceBreakdown(breakdown) {
-    var html = '<div class="price-breakdown"><h6>Desglose de precio:</h6><ul>';
+    var html =
+      '<div class="price-breakdown"><h6>Desglose de precio (IVA incluido):</h6><ul>';
 
     html +=
-      "<li>Precio base: $" + breakdown.precio_base.toLocaleString() + "</li>";
+      "<li>Precio total: $" + breakdown.precio_base.toLocaleString() + "</li>";
 
     if (breakdown.descuentos > 0) {
       html +=
         "<li>Descuentos: -$" + breakdown.descuentos.toLocaleString() + "</li>";
     }
 
-    if (breakdown.impuestos > 0) {
+    if (breakdown.iva > 0) {
       html +=
-        "<li>Impuestos: $" + breakdown.impuestos.toLocaleString() + "</li>";
+        "<li>IVA (10% INCLUIDO): $" + breakdown.iva.toLocaleString() + "</li>";
     }
 
     if (breakdown.seguros > 0) {
@@ -365,9 +364,11 @@
     }
 
     html +=
-      "<li><strong>Total: $" +
+      "<li><strong>Total (con IVA incluido): $" +
       breakdown.total.toLocaleString() +
       "</strong></li>";
+    html +=
+      "<li><small><em>Nota: El IVA mostrado es simbólico. Los precios ya incluyen IVA.</em></small></li>";
     html += "</ul></div>";
 
     $("#price-breakdown-container").html(html);

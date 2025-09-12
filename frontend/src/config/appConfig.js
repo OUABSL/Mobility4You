@@ -28,6 +28,8 @@ export const DEBUG_MODE =
   process.env.NODE_ENV === 'development' &&
   process.env.REACT_APP_DEBUG_MODE === 'true';
 
+console.log('DEBUG_MODE:', DEBUG_MODE);
+
 /**
  * URLs de APIs principales - Completamente parametrizadas
  */
@@ -47,15 +49,27 @@ export const FRONTEND_URL =
   process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
 
 /**
- * Configuración de media files (Backblaze B2 o local)
+ * Configuración de media files unificada - Backblaze B2
  */
 export const MEDIA_CONFIG = {
+  // URL base siempre desde B2 en producción, local en desarrollo
   BASE_URL:
     process.env.NODE_ENV === 'production'
-      ? process.env.REACT_APP_MEDIA_BASE_URL ||
-        process.env.REACT_APP_B2_MEDIA_URL ||
+      ? process.env.REACT_APP_B2_MEDIA_URL ||
         'https://s3.eu-central-003.backblazeb2.com/mobility4you-media-prod/media/'
       : `${BACKEND_URL}/media/`,
+
+  // Estructura de carpetas en B2
+  PATHS: {
+    VEHICLES: 'vehicles/',
+    EXTRAS: 'extras/',
+    USERS: 'users/',
+    PLACEHOLDERS: 'placeholders/',
+    CONTRACTS: 'contracts/',
+    INVOICES: 'invoices/',
+    AVATARS: 'avatars/',
+    LOGOS: 'logos/',
+  },
 
   getMediaUrl: (relativePath) => {
     if (!relativePath) return null;
@@ -67,62 +81,42 @@ export const MEDIA_CONFIG = {
 
   // Función específica para imágenes de vehículos
   getVehicleImageUrl: (relativePath) => {
-    if (!relativePath) return null;
+    if (!relativePath) return MEDIA_CONFIG.getPlaceholderUrl('vehicle');
     if (relativePath.startsWith('http')) return relativePath;
 
-    // Si ya incluye 'vehicles/' en la ruta, usar tal como está
+    // Asegurar que use la estructura correcta de B2
     const cleanPath = relativePath.replace(/^\/+/, '');
-    if (cleanPath.startsWith('vehicles/')) {
-      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
-    }
+    const finalPath = cleanPath.startsWith(MEDIA_CONFIG.PATHS.VEHICLES)
+      ? cleanPath
+      : `${MEDIA_CONFIG.PATHS.VEHICLES}${cleanPath}`;
 
-    // Si no incluye 'vehicles/', agregarlo
-    return `${MEDIA_CONFIG.BASE_URL}vehicles/${cleanPath}`;
+    return `${MEDIA_CONFIG.BASE_URL}${finalPath}`;
   },
 
   // Función específica para imágenes de extras
   getExtraImageUrl: (relativePath) => {
-    if (!relativePath) return null;
+    if (!relativePath) return MEDIA_CONFIG.getPlaceholderUrl('extra');
     if (relativePath.startsWith('http')) return relativePath;
 
-    // Si ya incluye 'extras/' en la ruta, usar tal como está
     const cleanPath = relativePath.replace(/^\/+/, '');
-    if (cleanPath.startsWith('extras/')) {
-      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
-    }
+    const finalPath = cleanPath.startsWith(MEDIA_CONFIG.PATHS.EXTRAS)
+      ? cleanPath
+      : `${MEDIA_CONFIG.PATHS.EXTRAS}${cleanPath}`;
 
-    // Si no incluye 'extras/', agregarlo
-    return `${MEDIA_CONFIG.BASE_URL}extras/${cleanPath}`;
+    return `${MEDIA_CONFIG.BASE_URL}${finalPath}`;
   },
 
-  // Función específica para imágenes de carnets
-  getCarnetImageUrl: (relativePath) => {
-    if (!relativePath) return null;
+  // Función para avatares de usuarios
+  getUserAvatarUrl: (relativePath) => {
+    if (!relativePath) return MEDIA_CONFIG.getPlaceholderUrl('user');
     if (relativePath.startsWith('http')) return relativePath;
 
-    // Si ya incluye 'carnets/' en la ruta, usar tal como está
     const cleanPath = relativePath.replace(/^\/+/, '');
-    if (cleanPath.startsWith('carnets/')) {
-      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
-    }
+    const finalPath = cleanPath.startsWith(MEDIA_CONFIG.PATHS.AVATARS)
+      ? cleanPath
+      : `${MEDIA_CONFIG.PATHS.AVATARS}${cleanPath}`;
 
-    // Si no incluye 'carnets/', agregarlo
-    return `${MEDIA_CONFIG.BASE_URL}carnets/${cleanPath}`;
-  },
-
-  // Función específica para documentos de reservaciones (contratos y facturas)
-  getReservationDocumentUrl: (relativePath) => {
-    if (!relativePath) return null;
-    if (relativePath.startsWith('http')) return relativePath;
-
-    // Si ya incluye 'reservations/' en la ruta, usar tal como está
-    const cleanPath = relativePath.replace(/^\/+/, '');
-    if (cleanPath.startsWith('reservations/')) {
-      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
-    }
-
-    // Si no incluye 'reservations/', agregarlo
-    return `${MEDIA_CONFIG.BASE_URL}reservations/${cleanPath}`;
+    return `${MEDIA_CONFIG.BASE_URL}${finalPath}`;
   },
 
   // Función específica para contratos
@@ -131,11 +125,11 @@ export const MEDIA_CONFIG = {
     if (relativePath.startsWith('http')) return relativePath;
 
     const cleanPath = relativePath.replace(/^\/+/, '');
-    if (cleanPath.startsWith('reservations/contratos/')) {
-      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
-    }
+    const finalPath = cleanPath.startsWith(MEDIA_CONFIG.PATHS.CONTRACTS)
+      ? cleanPath
+      : `${MEDIA_CONFIG.PATHS.CONTRACTS}${cleanPath}`;
 
-    return `${MEDIA_CONFIG.BASE_URL}reservations/contratos/${cleanPath}`;
+    return `${MEDIA_CONFIG.BASE_URL}${finalPath}`;
   },
 
   // Función específica para facturas
@@ -144,11 +138,25 @@ export const MEDIA_CONFIG = {
     if (relativePath.startsWith('http')) return relativePath;
 
     const cleanPath = relativePath.replace(/^\/+/, '');
-    if (cleanPath.startsWith('reservations/facturas/')) {
-      return `${MEDIA_CONFIG.BASE_URL}${cleanPath}`;
-    }
+    const finalPath = cleanPath.startsWith(MEDIA_CONFIG.PATHS.INVOICES)
+      ? cleanPath
+      : `${MEDIA_CONFIG.PATHS.INVOICES}${cleanPath}`;
 
-    return `${MEDIA_CONFIG.BASE_URL}reservations/facturas/${cleanPath}`;
+    return `${MEDIA_CONFIG.BASE_URL}${finalPath}`;
+  },
+
+  // Función unificada para placeholders desde B2
+  getPlaceholderUrl: (type, width = 300, height = 200) => {
+    const placeholderMap = {
+      vehicle: 'vehicle-placeholder.jpg',
+      extra: 'extra-placeholder.jpg',
+      user: 'user-placeholder.jpg',
+      location: 'location-placeholder.jpg',
+      default: 'default-placeholder.jpg',
+    };
+
+    const filename = placeholderMap[type] || placeholderMap.default;
+    return `${MEDIA_CONFIG.BASE_URL}${MEDIA_CONFIG.PATHS.PLACEHOLDERS}${filename}`;
   },
 };
 

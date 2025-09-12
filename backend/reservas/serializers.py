@@ -1,6 +1,7 @@
 # reservas/serializers.py
 import logging
 
+from django.conf import settings
 from lugares.models import Direccion
 from lugares.serializers import LugarSerializer
 from politicas.serializers import PoliticaPagoSerializer, PromocionSerializer
@@ -15,49 +16,48 @@ logger = logging.getLogger(__name__)
 
 
 class ReservaConductorSerializer(serializers.ModelSerializer):
-    conductor_id = serializers.IntegerField(write_only=True)
-    
-    # Datos completos del conductor para el frontend
-    conductor = serializers.SerializerMethodField()
+    conductor_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = ReservaConductor
-        fields = [
-            "id",
-            "reserva",
-            "conductor_id",
-            "conductor",
-            "rol",
-        ]
+        fields = ['id', 'rol', 'conductor_detail']
     
-    def get_conductor(self, obj):
-        """Obtener datos completos del conductor desde el usuario relacionado"""
+    def get_conductor_detail(self, obj):
+        """✅ SIN QUERY ADICIONAL: Conductor ya cargado con prefetch_related"""
         if not obj.conductor:
             return None
             
         conductor = obj.conductor
-        return {
+        
+        # Formatear datos completos del conductor
+        conductor_data = {
             "id": conductor.id,
-            "nombre": conductor.first_name,
-            "apellido": conductor.last_name,
-            "apellidos": conductor.last_name,  # Compatibilidad con frontend
-            "email": conductor.email,
+            "nombre": conductor.first_name or "",
+            "apellidos": conductor.last_name or "",
+            "apellido": conductor.last_name or "",  # Alias para compatibilidad
+            "email": conductor.email or "",
             "telefono": conductor.telefono or "",
-            "fecha_nacimiento": conductor.fecha_nacimiento,
-            "sexo": conductor.sexo,
+            "documento": conductor.numero_documento or "",
+            "numero_documento": conductor.numero_documento or "",  # Alias para compatibilidad
+            "tipo_documento": conductor.tipo_documento or "",
             "nacionalidad": conductor.nacionalidad or "",
-            "tipo_documento": conductor.tipo_documento,
-            "numero_documento": conductor.numero_documento or "",
-            "documento": conductor.numero_documento or "",  # Compatibilidad con frontend
-            "rol_usuario": conductor.rol,
-            "direccion": {
-                "calle": conductor.direccion.calle if conductor.direccion else "",
-                "ciudad": conductor.direccion.ciudad if conductor.direccion else "",
-                "provincia": conductor.direccion.provincia if conductor.direccion else "",
-                "codigo_postal": conductor.direccion.codigo_postal if conductor.direccion else "",
-                "pais": conductor.direccion.pais if conductor.direccion else "España"
-            } if conductor.direccion else None
+            "fecha_nacimiento": conductor.fecha_nacimiento.isoformat() if conductor.fecha_nacimiento else None,
+            "sexo": conductor.sexo or "",
         }
+        
+        # Incluir datos de dirección si existe
+        if conductor.direccion:
+            conductor_data["direccion"] = {
+                "calle": conductor.direccion.calle or "",
+                "ciudad": conductor.direccion.ciudad or "",
+                "provincia": conductor.direccion.provincia or "",
+                "codigo_postal": conductor.direccion.codigo_postal or "",
+                "pais": conductor.direccion.pais or "",
+            }
+        else:
+            conductor_data["direccion"] = None
+            
+        return conductor_data
 
 
 class PenalizacionSerializer(serializers.ModelSerializer):
@@ -136,109 +136,161 @@ class ReservaExtraSerializer(serializers.ModelSerializer):
 
 
 class ReservaSerializer(serializers.ModelSerializer):
-    extras = ReservaExtraSerializer(many=True, read_only=True)
-    conductores = ReservaConductorSerializer(many=True, read_only=True)
-    penalizaciones = PenalizacionSerializer(many=True, read_only=True)
-
-    # Campos calculados
-    importe_pendiente_total = serializers.SerializerMethodField()
+    # Campos básicos del vehículo para listados (evitar joins innecesarios)
+    vehiculo_marca = serializers.CharField(source='vehiculo.marca', read_only=True)
+    vehiculo_modelo = serializers.CharField(source='vehiculo.modelo', read_only=True)
+    vehiculo_categoria = serializers.CharField(source='vehiculo.categoria.nombre', read_only=True)
+    
+    # Campos básicos de ubicaciones para listados
+    lugar_recogida_nombre = serializers.CharField(source='lugar_recogida.nombre', read_only=True)
+    lugar_devolucion_nombre = serializers.CharField(source='lugar_devolucion.nombre', read_only=True)
+    
+    # Datos básicos del usuario para listados
+    usuario_email = serializers.CharField(source='usuario.email', read_only=True)
+    usuario_nombre_completo = serializers.SerializerMethodField()
+    
+    # Política de pago básica
+    politica_pago_titulo = serializers.CharField(source='politica_pago.titulo', read_only=True)
+    
+    # Contadores optimizados usando prefetch_related
+    total_extras = serializers.SerializerMethodField()
+    conductores_count = serializers.SerializerMethodField()
+    
+    # IVA simbólico para mostrar al cliente
+    iva_display = serializers.SerializerMethodField()
+    iva_percentage = serializers.SerializerMethodField()
 
     class Meta:
         model = Reserva
         fields = [
-            "id",
-            "usuario",
-            "promocion",
-            "politica_pago",
-            "vehiculo",
-            "lugar_recogida",
-            "lugar_devolucion",
-            "fecha_recogida",
-            "fecha_devolucion",
-            "estado",
-            "precio_dia",
-            "precio_impuestos",
-            "precio_total",
-            "metodo_pago",
-            "importe_pagado_inicial",
-            "importe_pendiente_inicial",
-            "importe_pagado_extra",
-            "importe_pendiente_extra",
-            "importe_pendiente_total",
-            "notas_internas",
-            "created_at",
-            "updated_at",
-            "extras",
-            "conductores",
-            "penalizaciones",
+            'id', 'numero_reserva', 'estado', 'metodo_pago',
+            'fecha_recogida', 'fecha_devolucion', 'precio_total',
+            'created_at', 'updated_at',
+            'vehiculo_marca', 'vehiculo_modelo', 'vehiculo_categoria',
+            'lugar_recogida_nombre', 'lugar_devolucion_nombre',
+            'usuario_email', 'usuario_nombre_completo',
+            'politica_pago_titulo',
+            'total_extras', 'conductores_count',
+            'iva_display', 'iva_percentage'
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "importe_pendiente_total"]
+    
+    def get_usuario_nombre_completo(self, obj):
+        """Nombre completo del usuario titular"""
+        if obj.usuario:
+            return f"{obj.usuario.first_name} {obj.usuario.last_name}".strip()
+        return ""
+    
+    def get_total_extras(self, obj):
+        """Cantidad total de extras contratados"""
+        return obj.extras.count()
 
-    def get_importe_pendiente_total(self, obj):
-        """Calcula el importe pendiente total"""
-        return (obj.importe_pendiente_inicial or 0) + (obj.importe_pendiente_extra or 0)
+    def get_conductores_count(self, obj):
+        """Cantidad de conductores registrados"""
+        return obj.conductores.count()
+    
+    def get_iva_display(self, obj):
+        """IVA simbólico para mostrar al cliente (ya incluido en precios)"""
+        return float(obj.get_iva_display())
+    
+    def get_iva_percentage(self, obj):
+        """Porcentaje de IVA configurado"""
+        from django.conf import settings
+        return getattr(settings, 'IVA_PERCENTAGE', 0.10)
+
 
 
 class ReservaDetailSerializer(ReservaSerializer):
-    # Serializers anidados completos para detalles principales
-    vehiculo_detail = VehiculoDetailSerializer(source="vehiculo", read_only=True)
-    lugar_recogida_detail = LugarSerializer(source="lugar_recogida", read_only=True)
-    lugar_devolucion_detail = LugarSerializer(source="lugar_devolucion", read_only=True)
-    politica_pago_detail = PoliticaPagoSerializer(source="politica_pago", read_only=True)
-    promocion_detail = PromocionSerializer(source="promocion", read_only=True)
+    vehiculo_detail = VehiculoDetailSerializer(source='vehiculo', read_only=True)
+    lugar_recogida_detail = LugarSerializer(source='lugar_recogida', read_only=True)
+    lugar_devolucion_detail = LugarSerializer(source='lugar_devolucion', read_only=True)
+    politica_pago_detail = PoliticaPagoSerializer(source='politica_pago', read_only=True)
     
-    # Solo campos esenciales para compatibilidad con frontend
-    vehiculo_marca = serializers.CharField(source="vehiculo.marca", read_only=True)
-    vehiculo_modelo = serializers.CharField(source="vehiculo.modelo", read_only=True)
-    vehiculo_matricula = serializers.CharField(source="vehiculo.matricula", read_only=True)
-    vehiculo_imagen_principal = serializers.SerializerMethodField()
+    # Usuario/titular de la reserva - solo incluir datos básicos
+    usuario_detail = serializers.SerializerMethodField()
     
-    lugar_recogida_nombre = serializers.CharField(source="lugar_recogida.nombre", read_only=True)
-    lugar_devolucion_nombre = serializers.CharField(source="lugar_devolucion.nombre", read_only=True)
+    # Relaciones optimizadas
+    extras_detail = ReservaExtraSerializer(source='extras', many=True, read_only=True)
+    conductores_detail = ReservaConductorSerializer(source='conductores', many=True, read_only=True)
+    penalizaciones_detail = PenalizacionSerializer(source='penalizaciones', many=True, read_only=True)
     
-    politica_pago_titulo = serializers.CharField(source="politica_pago.titulo", read_only=True)
-    promocion_nombre = serializers.CharField(source="promocion.nombre", read_only=True)
+    # Campos de desglose de precios para la vista de éxito
+    precio_base = serializers.SerializerMethodField()
+    precio_extras = serializers.SerializerMethodField()
+    tarifa_politica = serializers.SerializerMethodField()
+    importe_pagado_inicial = serializers.SerializerMethodField()
+    importe_pendiente_inicial = serializers.SerializerMethodField()
     
-    # Datos del usuario principal
-    usuario_nombre = serializers.CharField(source="usuario.first_name", read_only=True)
-    usuario_email = serializers.EmailField(source="usuario.email", read_only=True)
-
-    def get_vehiculo_imagen_principal(self, obj):
-        """Obtener URL absoluta de la imagen principal del vehículo"""
-        if obj.vehiculo:
-            # Buscar la imagen principal (portada=True) del vehículo
-            imagen_principal = obj.vehiculo.imagenes.filter(portada=True).first()
-            
-            if imagen_principal and imagen_principal.imagen:
-                from django.conf import settings
-                
-                request = self.context.get("request")
-                if request:
-                    return request.build_absolute_uri(imagen_principal.imagen.url)
-                else:
-                    # Fallback cuando no hay request
-                    base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
-                    return f"{base_url}{imagen_principal.imagen.url}"
-        return None
+    # Campos optimizados para el frontend
+    dias_alquiler = serializers.SerializerMethodField()
 
     class Meta(ReservaSerializer.Meta):
         fields = ReservaSerializer.Meta.fields + [
-            "vehiculo_detail",
-            "lugar_recogida_detail", 
-            "lugar_devolucion_detail",
-            "politica_pago_detail",
-            "promocion_detail",
-            "vehiculo_marca",
-            "vehiculo_modelo", 
-            "vehiculo_matricula",
-            "vehiculo_imagen_principal",
-            "lugar_recogida_nombre",
-            "lugar_devolucion_nombre",
-            "politica_pago_titulo",
-            "promocion_nombre",
-            "usuario_nombre",
-            "usuario_email",
+            'vehiculo_detail', 'lugar_recogida_detail', 'lugar_devolucion_detail',
+            'politica_pago_detail', 'usuario_detail', 'extras_detail', 'conductores_detail',
+            'penalizaciones_detail', 'notas_internas',
+            'precio_base', 'precio_extras', 'tarifa_politica',
+            'importe_pagado_inicial', 'importe_pendiente_inicial', 'dias_alquiler'
         ]
+    
+    def get_usuario_detail(self, obj):
+        """Datos básicos del usuario titular de la reserva"""
+        if not obj.usuario:
+            return None
+        
+        usuario = obj.usuario
+        return {
+            "id": usuario.id,
+            "nombre": usuario.first_name or "",
+            "apellidos": usuario.last_name or "",
+            "email": usuario.email or "",
+            "telefono": usuario.telefono or "",
+            "documento": usuario.numero_documento or "",
+            "tipo_documento": usuario.tipo_documento or "",
+            "nacionalidad": usuario.nacionalidad or "",
+        }
+    
+    def get_dias_alquiler(self, obj):
+        """Calcular días de alquiler"""
+        if obj.fecha_recogida and obj.fecha_devolucion:
+            dias = (obj.fecha_devolucion.date() - obj.fecha_recogida.date()).days
+            return max(dias, 1)  # Mínimo 1 día
+        return 1
+    
+    def get_precio_base(self, obj):
+        """Precio del vehículo (ya incluye IVA)"""
+        if obj.vehiculo and obj.fecha_recogida and obj.fecha_devolucion:
+            dias = self.get_dias_alquiler(obj)
+            precio_dia = obj.vehiculo.precio_dia_actual or 0
+            return float(precio_dia * dias)
+        return 0.0
+    
+    def get_precio_extras(self, obj):
+        """Precio total de extras (ya incluye IVA)"""
+        from decimal import Decimal
+        total_extras = Decimal('0.00')
+        dias = self.get_dias_alquiler(obj)
+        for reserva_extra in obj.extras.all():
+            if reserva_extra.extra and reserva_extra.extra.precio:
+                total_extras += reserva_extra.extra.precio * reserva_extra.cantidad * dias
+        return float(total_extras)
+    
+    def get_tarifa_politica(self, obj):
+        """Tarifa de la política de pago (ya incluye IVA)"""
+        if obj.politica_pago and obj.fecha_recogida and obj.fecha_devolucion:
+            dias = self.get_dias_alquiler(obj)
+            if obj.politica_pago.tarifa:
+                return float(obj.politica_pago.tarifa * dias)
+        return 0.0
+    
+    def get_importe_pagado_inicial(self, obj):
+        """Importe pagado inicial (implementar según lógica de pagos)"""
+        # Por ahora retornamos el precio total ya que se paga todo inicial
+        return float(obj.precio_total or 0)
+    
+    def get_importe_pendiente_inicial(self, obj):
+        """Importe pendiente inicial (implementar según lógica de pagos)"""
+        # Por ahora retornamos 0 ya que se paga todo inicial
+        return 0.0
 
 
 class ReservaCreateSerializer(serializers.ModelSerializer):
@@ -261,11 +313,12 @@ class ReservaCreateSerializer(serializers.ModelSerializer):
             "fecha_recogida",
             "fecha_devolucion",
             "precio_dia",
-            "precio_impuestos",
+            "iva",
             "precio_total",
             "metodo_pago",
             "importe_pagado_inicial",
-            "importe_pendiente_inicial",            "importe_pagado_extra",
+            "importe_pendiente_inicial",
+            "importe_pagado_extra",
             "importe_pendiente_extra",
             "extras",
             "conductores",
@@ -275,6 +328,9 @@ class ReservaCreateSerializer(serializers.ModelSerializer):
         """Sobreescribir para aplicar redondeo antes de la validación"""
         import logging
         logger = logging.getLogger(__name__)
+        
+        # Log de datos recibidos para debugging
+        logger.info(f"🔍 Datos recibidos en serializer: {data}")
         
         # Redondear campos monetarios para evitar problemas de precisión
         from decimal import ROUND_HALF_UP, Decimal
@@ -287,19 +343,50 @@ class ReservaCreateSerializer(serializers.ModelSerializer):
             return decimal_value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         
         # Log del valor original
-        if 'precio_impuestos' in data:
-            logger.info(f"ANTES redondeo - precio_impuestos: {data['precio_impuestos']} (tipo: {type(data['precio_impuestos'])})")
+        if 'iva' in data:
+            logger.info(f"ANTES redondeo - iva: {data['iva']} (tipo: {type(data['iva'])})")
+        else:
+            data['iva'] = 0.0 
         
         # Aplicar redondeo a campos monetarios antes de la validación
-        for field in ['precio_dia', 'precio_impuestos', 'precio_total', 
+        for field in ['precio_dia', 'iva', 'precio_total', 
                       'importe_pagado_inicial', 'importe_pendiente_inicial',
                       'importe_pagado_extra', 'importe_pendiente_extra']:
             if field in data and data[field] is not None:
                 original_value = data[field]
                 rounded_value = round_currency(original_value)
                 data[field] = float(rounded_value)
-                if field == 'precio_impuestos':
-                    logger.info(f"DESPUÉS redondeo - precio_impuestos: {data[field]} (original: {original_value})")
+                if field == 'iva':
+                    logger.info(f"DESPUÉS redondeo - iva: {data[field]} (original: {original_value})")
+        
+        # Calcular precio_dia automáticamente si no se proporciona
+        if 'precio_dia' not in data or data['precio_dia'] is None:
+            if data.get('precio_total') and data.get('fecha_recogida') and data.get('fecha_devolucion'):
+                from datetime import datetime
+                from decimal import Decimal
+                
+                precio_total = Decimal(str(data['precio_total']))
+                
+                # Manejar fechas que pueden venir como strings o datetime
+                fecha_recogida = data['fecha_recogida']
+                fecha_devolucion = data['fecha_devolucion']
+                
+                if isinstance(fecha_recogida, str):
+                    fecha_recogida = datetime.fromisoformat(fecha_recogida.replace('Z', '+00:00'))
+                if isinstance(fecha_devolucion, str):
+                    fecha_devolucion = datetime.fromisoformat(fecha_devolucion.replace('Z', '+00:00'))
+                
+                # Calcular días de alquiler
+                dias_totales = (fecha_devolucion - fecha_recogida).total_seconds() / (24 * 3600)
+                if dias_totales <= 0:
+                    dias_totales = 1  # Mínimo 1 día
+                
+                # Calcular precio por día
+                precio_dia_calculado = precio_total / Decimal(str(dias_totales))
+                data['precio_dia'] = float(precio_dia_calculado)
+                logger.info(f"Precio por día calculado automáticamente: {data['precio_dia']}")
+            else:
+                logger.warning("No se puede calcular precio_dia: faltan datos de precio_total o fechas")
         
         return super().to_internal_value(data)
 
@@ -457,7 +544,7 @@ class ReservaUpdateSerializer(serializers.ModelSerializer):
             return decimal_value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         
         # Aplicar redondeo a campos monetarios
-        for field in ['precio_dia', 'precio_impuestos', 'precio_total', 
+        for field in ['precio_dia', 'iva', 'precio_total', 
                       'importe_pagado_inicial', 'importe_pendiente_inicial',
                       'importe_pagado_extra', 'importe_pendiente_extra']:
             if field in validated_data:

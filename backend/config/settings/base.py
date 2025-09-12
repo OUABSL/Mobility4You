@@ -15,13 +15,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Initialize environment and load .env file
 env = environ.Env()
 
-# Load .env file from backend directory
-env_file = BASE_DIR / '.env'
+# Verificar si se debe deshabilitar la carga de archivos .env (para contenedores)
+# IMPORTANTE: Verificar esto ANTES de cargar cualquier archivo .env
+# Load .env file from backend directory - Priorizar entorno específico
+env_name = os.environ.get('DJANGO_ENV', 'development')
+env_file = BASE_DIR / f'.env-{env_name}'
+
+# Si no existe el archivo específico, buscar .env genérico
+if not env_file.exists():
+    env_file = BASE_DIR / '.env'
+
 if env_file.exists():
     environ.Env.read_env(env_file)
     print(f"[CONFIG] Archivo .env cargado desde: {env_file}")
+    print(f"[CONFIG] Entorno detectado: {env_name}")
 else:
     print(f"[WARNING] No se encontró archivo .env en: {env_file}")
+    print(f"[WARNING] Variables de entorno se cargarán desde el sistema")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY", default="claveprivadatemporal")
@@ -35,12 +45,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "corsheaders",  # Para CORS
+    "corsheaders",
     "django_filters",
-    "storages",  # Para Backblaze B2 Storage
-    # Aplicaciones modulares
+    "storages",
     "config",
-    "utils",  # Utilidades del sistema (comandos, middleware, etc.)
+    "utils",
     "usuarios",
     "lugares",
     "vehiculos",
@@ -53,8 +62,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # Para servir archivos estáticos en producción
-    "corsheaders.middleware.CorsMiddleware",  # CORS - Debe ir al principio
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "config.middleware.RequestTrackingMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -65,7 +74,6 @@ MIDDLEWARE = [
     "config.middleware.SecurityHeadersMiddleware",
     "config.middleware.RequestSizeMiddleware",
     "config.middleware.HealthCheckMiddleware",
-    "config.middleware.GlobalExceptionMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -201,3 +209,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "http://127.0.0.1",
 ]
+
+# === CONFIGURACIÓN DE IVA ===
+# Porcentaje de IVA para mostrar en facturas y reservas (simbólico)
+IVA_PERCENTAGE = float(env("IVA_PERCENTAGE", default="0.10"))  # 10% por defecto

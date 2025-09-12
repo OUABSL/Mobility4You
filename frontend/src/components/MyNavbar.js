@@ -76,7 +76,7 @@ const MyNavbar = ({isMobile = false}) => {
                   alt="Mobility 4 You" 
                   className="navbar-logo" 
                   style={{
-                    maxWidth: '120px',
+                    maxWidth: '200px',
                     filter: 'brightness(0) invert(1)',
                     transition: 'all 0.3s ease'
                   }}
@@ -131,7 +131,7 @@ const MyNavbar = ({isMobile = false}) => {
               src={logo} 
               alt="Mobility 4 You" 
               className="offcanvas-logo"
-              style={{ maxWidth: '150px' }}
+              style={{ width: '200px' }}
             />
           </Offcanvas.Title>
         </Offcanvas.Header>

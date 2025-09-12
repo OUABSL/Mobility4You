@@ -151,6 +151,7 @@ const ImageManager = ({
     ...style,
     width: width || style.width,
     height: height || style.height,
+    minHeight: '250px',
     display: 'inline-block',
     overflow: 'hidden',
     position: 'relative',

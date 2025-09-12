@@ -226,6 +226,25 @@ const ReservaClienteExito = () => {
             .badge { background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px; }
             .card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; }
             .shadow-lg { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+            /* Estilos específicos para iconos FontAwesome en impresión */
+            .fa, .fas, .far, .fal, .fab, [data-icon] {
+              font-size: 16px !important;
+              width: 16px !important;
+              height: 16px !important;
+              max-width: 16px !important;
+              max-height: 16px !important;
+            }
+            svg[data-icon] {
+              width: 16px !important;
+              height: 16px !important;
+              max-width: 16px !important;
+              max-height: 16px !important;
+            }
+            .btn .fa, .btn .fas, .btn svg[data-icon] {
+              font-size: 14px !important;
+              width: 14px !important;
+              height: 14px !important;
+            }
           }
           @media screen {
             body { font-family: Arial, sans-serif; margin: 20px; }
@@ -290,7 +309,8 @@ const ReservaClienteExito = () => {
 
       // Crear un objeto con los datos formateados para descarga
       const reservaParaDescarga = {
-        id: reservaCompletada.id,
+        id: reservaCompletada.numero_reserva || reservaCompletada.id,
+        id_interno: reservaCompletada.id,
         fecha_creacion: new Date().toISOString(),
         vehiculo: getVehicleInfo(),
         fechas: {
@@ -332,9 +352,11 @@ const ReservaClienteExito = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `reserva_${reservaCompletada.id || 'mobility4you'}_${
-        new Date().toISOString().split('T')[0]
-      }.json`;
+      a.download = `reserva_${
+        reservaCompletada.numero_reserva ||
+        reservaCompletada.id ||
+        'mobility4you'
+      }_${new Date().toISOString().split('T')[0]}.json`;
       a.style.display = 'none';
 
       document.body.appendChild(a);
@@ -746,9 +768,9 @@ const ReservaClienteExito = () => {
     const precioBase = reservaCompletada.precio_base || 0;
     const precioExtras = reservaCompletada.precio_extras || 0;
     const tarifaPolitica = reservaCompletada.tarifa_politica || 0;
-    const impuestos = reservaCompletada.precio_impuestos || 0;
+    const iva = reservaCompletada.iva || 0;
 
-    return precioBase + precioExtras + tarifaPolitica + impuestos;
+    return precioBase + precioExtras + tarifaPolitica + iva;
   };
 
   const getConductorInfo = () => {
@@ -972,7 +994,9 @@ const ReservaClienteExito = () => {
                     <th>ID Reserva</th>
                     <td>
                       <Badge bg="success">
-                        {reservaCompletada.id || 'N/A'}
+                        {reservaCompletada.numero_reserva ||
+                          reservaCompletada.id ||
+                          'N/A'}
                       </Badge>
                     </td>
                   </tr>
@@ -1061,7 +1085,7 @@ const ReservaClienteExito = () => {
 
                   <tr>
                     <th>
-                      <strong>Precio base</strong>
+                      <strong>Precio total del vehículo</strong>
                     </th>
                     <td>
                       <strong>
@@ -1106,9 +1130,11 @@ const ReservaClienteExito = () => {
                     <td>
                       <strong>
                         {formatCurrency(
-                          reservaCompletada.precio_impuestos ||
+                          reservaCompletada.iva_display ||
                             reservaCompletada.iva ||
-                            0,
+                            (reservaCompletada.precio_total
+                              ? (reservaCompletada.precio_total * 0.1) / 1.1
+                              : 0),
                         )}
                       </strong>
                     </td>
@@ -1120,7 +1146,7 @@ const ReservaClienteExito = () => {
                     </th>
                     <td>
                       <strong style={{ fontSize: '1.2em' }}>
-                        {formatCurrency(getTotalPagado())}
+                        {formatCurrency(reservaCompletada.precio_total || 0)}
                       </strong>
                     </td>
                   </tr>
@@ -1203,7 +1229,7 @@ const ReservaClienteExito = () => {
                   </Card.Body>
                 </Card>
               )}
-              <div className="d-flex justify-content-between">
+              <div className="d-flex justify-content-between no-print">
                 <Button
                   variant="outline-primary"
                   onClick={handleImprimirReserva}
@@ -1213,14 +1239,23 @@ const ReservaClienteExito = () => {
                 <Button
                   variant="outline-success"
                   onClick={handleDescargarReserva}
+                  className="no-print"
                 >
                   <FontAwesomeIcon icon={faDownload} className="me-2" />{' '}
                   Descargar
                 </Button>
-                <Button variant="secondary" onClick={handleGestionReservas}>
+                <Button
+                  variant="secondary"
+                  onClick={handleGestionReservas}
+                  className="no-print"
+                >
                   Gestionar mis reservas
                 </Button>
-                <Button variant="primary" onClick={handleVolverInicio}>
+                <Button
+                  variant="primary"
+                  onClick={handleVolverInicio}
+                  className="no-print"
+                >
                   Volver al inicio
                 </Button>
               </div>

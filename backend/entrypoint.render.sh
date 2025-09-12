@@ -48,32 +48,38 @@ else:
     print('✅ Superusuario ya existe')
 "
 
-# Recopilar archivos estáticos
-echo "📁 Recopilando archivos estáticos..."
-python manage.py collectstatic --noinput
-echo "✅ Archivos estáticos recopilados"
+# Configurar archivos estáticos
+echo "📁 Configurando archivos estáticos..."
 
-# Versionado automático de archivos estáticos
-echo "🔄 Ejecutando versionado automático de archivos estáticos..."
-if python manage.py version_static_assets; then
-    echo "✅ Versionado automático completado"
-else
-    echo "⚠️ Versionado automático falló, usando fallbacks"
-    # Crear mapeo de fallback
-    python -c "
-import os
-import django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.render')
-django.setup()
+# Crear directorio media si no existe (separado de staticfiles)
+mkdir -p /app/media/vehiculos
+chmod -R 755 /app/media
+echo "✅ Directorio media creado: /app/media"
 
-try:
-    from utils.static_hooks import StaticVersioningHooks
-    StaticVersioningHooks.ensure_fallback_mapping()
-    print('✅ Mapeo de fallback creado')
-except Exception as e:
-    print(f'⚠️ Error creando fallback: {e}')
-"
+# Verificar build info para cache invalidation
+if [ -f "/app/build_info.txt" ]; then
+    echo "🔍 Build Info:"
+    cat /app/build_info.txt
 fi
+
+# Forzar limpieza completa de static files
+echo "🧹 Limpiando static files anteriores..."
+rm -rf /app/staticfiles/*
+
+python manage.py collectstatic --noinput --clear
+echo "✅ Archivos estáticos recolectados ($(ls -1 /app/staticfiles/ | wc -l) directorios)"
+
+# Verificar que admin static files estén presentes
+if [ -d "/app/staticfiles/admin/" ]; then
+    admin_files=$(find /app/staticfiles/admin/ -name "*.css" -o -name "*.js" | wc -l)
+    echo "✅ Django Admin files: $admin_files archivos encontrados"
+else
+    echo "⚠️ Directorio admin static files no encontrado"
+fi
+
+# Configurar sistema de versionado optimizado
+echo "🔧 Configurando sistema de archivos estáticos..."
+python manage.py setup_static_assets 2>/dev/null || echo "⚠️ Usando configuración automática en startup"
 
 echo "🚀 Iniciando servidor Django..."
 exec "$@"

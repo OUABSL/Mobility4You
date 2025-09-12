@@ -11,7 +11,6 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
-from utils.static_mapping import get_versioned_asset
 
 from .models import (Categoria, GrupoCoche, ImagenVehiculo, Mantenimiento,
                      TarifaVehiculo, Vehiculo)
@@ -61,20 +60,56 @@ class ImagenVehiculoInline(admin.TabularInline):
     
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
+            'all': ('admin/css/custom_admin.css',)
         }
-
+    
     def imagen_preview(self, obj):
         """Mostrar una vista previa de la imagen en el admin"""
         if obj.imagen:
+            import logging
+
+            from django.conf import settings
             from django.utils.safestring import mark_safe
+            
+            logger = logging.getLogger(__name__)
 
             # Construir URL de la imagen
-            imagen_url = obj.imagen.url
-            
-            return mark_safe(
-                f'<img src="{imagen_url}" style="max-width: 100px; max-height: 100px; object-fit: cover;" />'
-            )
+            try:
+                imagen_url = obj.imagen.url
+                logger.info(f"[ADMIN] Imagen URL generada: {imagen_url}")
+                
+                # Para desarrollo local, verificar si necesitamos construir URL completa
+                if not imagen_url.startswith(('http://', 'https://')):
+                    # Si es desarrollo y MEDIA_URL es relativa, construir URL completa
+                    if settings.DEBUG and settings.MEDIA_URL.startswith('/'):
+                        # Usar la URL del request actual si está disponible
+                        imagen_url = f"http://localhost:8000{imagen_url}"
+                        logger.info(f"[ADMIN] URL ajustada para desarrollo: {imagen_url}")
+                
+                return mark_safe(f'''
+                    <div style="position: relative;">
+                        <img src="{imagen_url}" 
+                             style="max-width: 100px; max-height: 100px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px;" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div style="display: none; width: 100px; height: 100px; background: #f8f9fa; border: 1px dashed #dee2e6; 
+                                    border-radius: 4px; align-items: center; justify-content: center; color: #6c757d; font-size: 12px; flex-direction: column;">
+                            <span>⚠️</span>
+                            <span>Error imagen</span>
+                            <small style="margin-top: 4px; font-size: 10px; color: #999;">{imagen_url[-30:]}</small>
+                        </div>
+                    </div>
+                ''')
+            except Exception as e:
+                logger.error(f"[ADMIN] Error generando preview de imagen: {str(e)}")
+                return mark_safe(f'''
+                    <div style="width: 100px; height: 100px; background: #f8f9fa; border: 1px dashed #dee2e6; 
+                                border-radius: 4px; display: flex; align-items: center; justify-content: center; 
+                                color: #dc3545; font-size: 12px; flex-direction: column;">
+                        <span>❌</span>
+                        <span>Error</span>
+                        <small style="margin-top: 4px; font-size: 10px;">{str(e)[:20]}</small>
+                    </div>
+                ''')
         return "Sin imagen"
     
     imagen_preview.short_description = "Vista previa"
@@ -89,7 +124,7 @@ class TarifaVehiculoInline(admin.TabularInline):
     
     class Media:
         css = {
-            'all': ('admin/css/custom_admin.c5880bb26f05.css',)
+            'all': ('admin/css/custom_admin.css',)
         }
 
 
@@ -104,7 +139,7 @@ class MantenimientoInline(admin.TabularInline):
     
     class Media:
         css = {
-            'all': ('admin/css/custom_admin.c5880bb26f05.css',)
+            'all': ('admin/css/custom_admin.css',)
         }
 
 
@@ -340,16 +375,52 @@ class VehiculoAdmin(admin.ModelAdmin):
         """Muestra solo la imagen de portada del vehículo"""
         imagen_portada = obj.imagenes.filter(portada=True).first()
         if imagen_portada and imagen_portada.imagen:
-            return format_html(
-                '<img src="{}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #dee2e6;" alt="Portada">',
-                imagen_portada.imagen.url
-            )
+            import logging
+
+            from django.conf import settings
+            
+            logger = logging.getLogger(__name__)
+            
+            try:
+                imagen_url = imagen_portada.imagen.url
+                logger.info(f"[ADMIN Portada] Imagen URL generada: {imagen_url}")
+                
+                # Para desarrollo local, verificar si necesitamos construir URL completa
+                if not imagen_url.startswith(('http://', 'https://')):
+                    if settings.DEBUG and settings.MEDIA_URL.startswith('/'):
+                        imagen_url = f"http://localhost:8000{imagen_url}"
+                        logger.info(f"[ADMIN Portada] URL ajustada para desarrollo: {imagen_url}")
+                
+                return format_html('''
+                    <div style="position: relative;">
+                        <img src="{}" 
+                             style="width: 80px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #dee2e6;" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" 
+                             alt="Portada">
+                        <div style="display: none; width: 80px; height: 60px; background: #f8f9fa; border: 2px dashed #dee2e6; 
+                                    border-radius: 8px; align-items: center; justify-content: center; color: #dc3545; font-size: 11px; flex-direction: column;">
+                            <span>❌</span>
+                            <span>Error</span>
+                        </div>
+                    </div>
+                ''', imagen_url)
+            except Exception as e:
+                logger.error(f"[ADMIN Portada] Error generando preview: {str(e)}")
+                return format_html('''
+                    <div style="width: 80px; height: 60px; background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; 
+                                display: flex; align-items: center; justify-content: center; color: #dc3545; font-size: 11px; flex-direction: column;">
+                        <span>❌</span>
+                        <span>Error</span>
+                    </div>
+                ''')
         else:
-            return format_html(
-                '<div style="width: 80px; height: 60px; background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #6c757d; font-size: 12px;">'
-                '📷<br>Sin portada'
-                '</div>'
-            )
+            return format_html('''
+                <div style="width: 80px; height: 60px; background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; 
+                            display: flex; align-items: center; justify-content: center; color: #6c757d; font-size: 12px; flex-direction: column;">
+                    <span>📷</span>
+                    <span>Sin portada</span>
+                </div>
+            ''')
 
     def categoria_grupo(self, obj):
         """Categoría y grupo del vehículo"""
@@ -621,9 +692,9 @@ class VehiculoAdmin(admin.ModelAdmin):
             return JsonResponse({'error': str(e)}, status=500)
 
     class Media:
-        js = (get_versioned_asset("js_vehiculos", "admin/js/vehiculos_admin_vfd3d29f9.js"),)
+        js = ("admin/js/vehiculos_admin.js",)
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
+            "all": ('admin/css/custom_admin.css',)
         }
 
 
@@ -650,11 +721,47 @@ class ImagenVehiculoAdmin(admin.ModelAdmin):
         )
 
     def imagen_preview(self, obj):
+        """Mostrar una vista previa de la imagen en el admin"""
         if obj.imagen:
-            return format_html(
-                '<img src="{}" style="width: 100px; height: 70px; object-fit: cover; border-radius: 5px;" alt="Imagen">',
-                obj.imagen.url
-            )
+            import logging
+
+            from django.conf import settings
+            
+            logger = logging.getLogger(__name__)
+
+            try:
+                imagen_url = obj.imagen.url
+                logger.info(f"[ADMIN ImagenVehiculo] Imagen URL generada: {imagen_url}")
+                
+                # Para desarrollo local, verificar si necesitamos construir URL completa
+                if not imagen_url.startswith(('http://', 'https://')):
+                    if settings.DEBUG and settings.MEDIA_URL.startswith('/'):
+                        imagen_url = f"http://localhost:8000{imagen_url}"
+                        logger.info(f"[ADMIN ImagenVehiculo] URL ajustada para desarrollo: {imagen_url}")
+                
+                return format_html('''
+                    <div style="position: relative;">
+                        <img src="{}" 
+                             style="width: 100px; height: 70px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd;" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" 
+                             alt="Imagen">
+                        <div style="display: none; width: 100px; height: 70px; background: #f8f9fa; border: 1px dashed #dee2e6; 
+                                    border-radius: 5px; align-items: center; justify-content: center; color: #6c757d; font-size: 11px; flex-direction: column;">
+                            <span>⚠️</span>
+                            <span>Error</span>
+                        </div>
+                    </div>
+                ''', imagen_url)
+            except Exception as e:
+                logger.error(f"[ADMIN ImagenVehiculo] Error generando preview: {str(e)}")
+                return format_html('''
+                    <div style="width: 100px; height: 70px; background: #f8f9fa; border: 1px dashed #dee2e6; 
+                                border-radius: 5px; display: flex; align-items: center; justify-content: center; 
+                                color: #dc3545; font-size: 11px; flex-direction: column;">
+                        <span>❌</span>
+                        <span>Error</span>
+                    </div>
+                ''')
         return "Sin imagen"
 
     @admin.display(description="Portada")

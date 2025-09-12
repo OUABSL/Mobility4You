@@ -13,7 +13,6 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
-from utils.static_mapping import get_versioned_asset
 
 from .models import (Extras, Penalizacion, Reserva, ReservaConductor,
                      ReservaExtra)
@@ -107,6 +106,7 @@ class ReservaAdmin(admin.ModelAdmin):
         "lugar_recogida__nombre",
     )
     search_fields = (
+        "numero_reserva",
         "id",
         "usuario__email", 
         "usuario__first_name",
@@ -131,6 +131,7 @@ class ReservaAdmin(admin.ModelAdmin):
             "🔍 Información de la Reserva",
             {
                 "fields": (
+                    "numero_reserva",
                     ("created_at", "updated_at"),
                     "usuario",
                     "estado",
@@ -162,7 +163,7 @@ class ReservaAdmin(admin.ModelAdmin):
             "💰 Precios y Cálculos",
             {
                 "fields": (
-                    ("precio_dia", "precio_impuestos"),
+                    ("precio_dia", "iva"),
                     "precio_total_calculado",
                     "precio_total",
                 )
@@ -195,12 +196,14 @@ class ReservaAdmin(admin.ModelAdmin):
         ).prefetch_related("extras", "penalizaciones", "conductores")
 
     def numero_reserva_link(self, obj):
-        """Link directo a la reserva"""
+        """Link directo a la reserva con número personalizado"""
         url = reverse("admin:reservas_reserva_change", args=[obj.pk])
+        numero_display = obj.numero_reserva or f"ID-{obj.pk}"
         return format_html(
             '<a href="{}" style="font-weight: bold; color: #007bff;">#{}</a>',
-            url, obj.pk
+            url, numero_display
         )
+    numero_reserva_link.short_description = "Número de Reserva"
 
     def usuario_info(self, obj):
         """Información del usuario"""
@@ -534,9 +537,9 @@ class ReservaAdmin(admin.ModelAdmin):
             raise
 
     class Media:
-        js = (get_versioned_asset("js_reservas", "admin/js/reservas_admin_v74440271.js"),)
+        js = ("admin/js/reservas_admin.js",)
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
+            "all": ('admin/css/custom_admin.css',)
         }
 
 

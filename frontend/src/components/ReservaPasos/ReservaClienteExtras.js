@@ -23,7 +23,7 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { createServiceLogger } from '../../config/appConfig';
+import { createServiceLogger, MEDIA_CONFIG } from '../../config/appConfig';
 import '../../css/ReservaClienteExtras.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
 import { getExtrasDisponibles } from '../../services/reservationServices';
@@ -32,7 +32,7 @@ import {
   getReservationStorageService,
 } from '../../services/reservationStorageService';
 import { getImageForExtra, roundToDecimals } from '../../utils';
-import { extractTaxFromPrice } from '../../utils/financialUtils';
+import { extractIvaFromPrice } from '../../utils/financialUtils';
 import ReservationTimerIndicator from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
 
@@ -355,18 +355,18 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       ? roundToDecimals(Number(reservaData.paymentOption.tarifa) * diasAlquiler)
       : 0;
 
-    // Calcular IVA extraído del total (ya que los precios incluyen IVA)
+    // Calcular IVA simbólico extraído del total (nueva lógica)
     const subtotalSinIva =
       precioCocheBase + tarifaPolitica + roundToDecimals(totalExtras);
-    const ivaExtraido = extractTaxFromPrice(subtotalSinIva, 0.21);
+    const ivaExtraido = extractIvaFromPrice(subtotalSinIva, null); // Usar tasa del sistema
 
     const detalles = {
       precioCocheBase,
       tarifaPolitica,
-      iva: ivaExtraido.taxAmount,
+      iva: ivaExtraido.ivaAmount,
       precioExtras: roundToDecimals(totalExtras),
-      total: subtotalSinIva, // El total ya incluye IVA
-      tasaImpuesto: 0.21,
+      total: subtotalSinIva,
+      tasaIva: 0.1, // IVA del sistema (10% desde .env)
     };
 
     setDetallesReserva(detalles);
@@ -609,14 +609,14 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                         car.imagenPrincipal?.original ||
                         car.imagenPrincipal?.placeholder ||
                         car.imagen ||
-                        'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo'
+                        MEDIA_CONFIG.getVehicleImageUrl(null) // Placeholder desde B2
                       }
                       alt={`${car.marca} ${car.modelo}`}
                       className="reserva-car-img me-3"
                       onError={(e) => {
                         e.target.src =
                           car.imagenPrincipal?.placeholder ||
-                          'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo';
+                          MEDIA_CONFIG.getVehicleImageUrl(null); // Placeholder desde B2
                       }}
                     />
                     <div>
@@ -689,7 +689,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                   {detallesReserva && (
                     <div className="detalles-precio">
                       <div className="d-flex justify-content-between mb-2">
-                        <span>Precio base ({diasAlquiler} días):</span>
+                        <span>Precio total ({diasAlquiler} días):</span>
                         <span>
                           {(
                             Number(detallesReserva.precioCocheBase) || 0
@@ -721,7 +721,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                       )}
 
                       <div className="d-flex justify-content-between mb-2">
-                        <span>IVA (21% incluido):</span>
+                        <span>IVA (10% incluido):</span>
                         <span>
                           {(Number(detallesReserva.iva) || 0).toFixed(2)}€
                         </span>
@@ -775,7 +775,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                               className="extra-img"
                               onError={(e) => {
                                 e.target.src =
-                                  'https://via.placeholder.com/80x80/f3e5f5/7b1fa2.png?text=Extra';
+                                  MEDIA_CONFIG.getExtraImageUrl(null); // Placeholder desde B2
                               }}
                             />
                             <div className="extra-check">

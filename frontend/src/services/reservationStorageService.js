@@ -337,12 +337,8 @@ class ReservationStorageService {
             precio_extras: roundToDecimals(
               detallesReserva.precioExtras || detallesReserva.extras || 0,
             ),
-            precioImpuestos: roundToDecimals(
-              detallesReserva.iva || detallesReserva.impuestos || 0,
-            ),
-            precio_impuestos: roundToDecimals(
-              detallesReserva.iva || detallesReserva.impuestos || 0,
-            ),
+            iva: roundToDecimals(detallesReserva.iva || 0),
+            precio_iva: roundToDecimals(detallesReserva.iva || 0),
             precioTotal: roundToDecimals(detallesReserva.total || 0),
             precio_total: roundToDecimals(detallesReserva.total || 0),
           };
@@ -356,7 +352,7 @@ class ReservationStorageService {
             total: detallesReserva.total,
             base: detallesReserva.precioCocheBase || detallesReserva.base,
             extras: detallesReserva.precioExtras || detallesReserva.extras,
-            iva: detallesReserva.iva || detallesReserva.impuestos,
+            iva: detallesReserva.iva,
           });
         } catch (parseError) {
           logError(
@@ -564,19 +560,18 @@ class ReservationStorageService {
         const precioExtras = extras.reduce((total, extra) => {
           return total + (extra.precio || 0) * (extra.cantidad || 1);
         }, 0);
-        const precioImpuestos =
-          baseData.precioImpuestos || baseData.precio_impuestos || 0;
+        const iva = baseData.iva || baseData.precio_iva || 0;
         const descuentoPromocion =
           baseData.descuentoPromocion || baseData.descuento_promocion || 0;
         const total =
           baseData.precioTotal ||
           baseData.precio_total ||
-          precioBase + precioExtras + precioImpuestos - descuentoPromocion;
+          precioBase + precioExtras + iva - descuentoPromocion;
 
         detallesReserva = {
           base: precioBase,
           extras: precioExtras,
-          impuestos: precioImpuestos,
+          iva: iva,
           descuento: descuentoPromocion,
           total: total,
         };
@@ -598,11 +593,7 @@ class ReservationStorageService {
           baseData.precio_base ||
           0,
         precioExtras: detallesReserva?.extras || 0,
-        precioImpuestos:
-          detallesReserva?.impuestos ||
-          baseData.precioImpuestos ||
-          baseData.precio_impuestos ||
-          0,
+        iva: detallesReserva?.iva || baseData.iva || baseData.precio_iva || 0,
         descuentoPromocion:
           detallesReserva?.descuento ||
           baseData.descuentoPromocion ||

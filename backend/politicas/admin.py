@@ -11,7 +11,6 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
-from utils.static_mapping import get_versioned_asset
 
 from .models import (PoliticaIncluye, PoliticaPago, PoliticaPenalizacion,
                      Promocion, TipoPenalizacion)
@@ -132,9 +131,9 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
+            'all': ("admin/css/custom_admin.css",)
         }
-        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
+        js = ("admin/js/politicas_admin.js",)
 
     list_display = (
         "titulo_display",
@@ -526,9 +525,9 @@ class TipoPenalizacionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
+            'all': ("admin/css/custom_admin.css",)
         }
-        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
+        js = ("admin/js/politicas_admin.js",)
 
     list_display = (
         "nombre_display",
@@ -714,9 +713,9 @@ class PromocionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
+            'all': ("admin/css/custom_admin.css",)
         }
-        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
+        js = ("admin/js/politicas_admin.js",)
 
     list_display = (
         "nombre_display",

@@ -32,12 +32,24 @@ export function isValidDate(dateValue) {
 /**
  * Valida que una fecha sea futura
  * @param {string|Date} dateValue - Valor de fecha
+ * @param {boolean} isNewReservation - Si es nueva reserva (aplica margen de 30 min)
  * @returns {boolean} True si la fecha es válida y futura
  */
-export function isValidFutureDate(dateValue) {
+export function isValidFutureDate(dateValue, isNewReservation = true) {
   try {
+    if (!dateValue) return false;
+
     const date = new Date(dateValue);
-    return !isNaN(date.getTime()) && date > new Date();
+    if (isNaN(date.getTime())) return false;
+
+    const now = new Date();
+
+    if (isNewReservation) {
+      const marginTime = new Date(now.getTime() - 30 * 60 * 1000);
+      return date > marginTime;
+    } else {
+      return date > now;
+    }
   } catch {
     return false;
   }
@@ -105,112 +117,86 @@ export function validateDateRange(startDate, endDate) {
 }
 
 /**
- * Valida que las fechas de reserva cumplan con las reglas de negocio
+ * Valida fechas de reserva con criterios unificados frontend/backend
  * @param {string|Date} pickupDate - Fecha de recogida
  * @param {string|Date} dropoffDate - Fecha de devolución
- * @param {number} minHours - Mínimo de horas de reserva (por defecto 24)
- * @returns {object} Resultado de validación con detalles
+ * @param {string} context - 'new'|'edit'|'cancel' - Contexto de validación
+ * @returns {object} Resultado de validación detallado
  */
 export function validateReservationDates(
   pickupDate,
   dropoffDate,
-  minHours = 24,
+  context = 'new',
 ) {
   const result = {
     isValid: false,
     errors: [],
     warnings: [],
-    pickupDateValid: false,
-    dropoffDateValid: false,
-    rangeValid: false,
-    durationValid: false,
-    hoursDifference: 0,
+    duration: 0,
   };
 
   try {
-    // Validar fecha de recogida
-    if (!isValidDate(pickupDate)) {
+    const pickup = new Date(pickupDate);
+    const dropoff = new Date(dropoffDate);
+    const now = new Date();
+
+    // 1. Validar que las fechas sean válidas
+    if (!isValidDate(pickup)) {
       result.errors.push('Fecha de recogida inválida');
-    } else {
-      const pickup = new Date(pickupDate);
-      const now = new Date();
-
-      if (pickup <= now) {
-        result.errors.push('La fecha de recogida debe ser futura');
-      } else {
-        result.pickupDateValid = true;
-
-        // Advertencia si la fecha es muy próxima (menos de 2 horas)
-        const hoursUntilPickup =
-          (pickup.getTime() - now.getTime()) / (1000 * 60 * 60);
-        if (hoursUntilPickup < 2) {
-          result.warnings.push(
-            'La fecha de recogida es muy próxima. Contacta con nosotros para confirmar disponibilidad.',
-          );
-        }
-      }
+      return result;
     }
 
-    // Validar fecha de devolución
-    if (!isValidDate(dropoffDate)) {
+    if (!isValidDate(dropoff)) {
       result.errors.push('Fecha de devolución inválida');
-    } else {
-      result.dropoffDateValid = true;
+      return result;
     }
 
-    // Validar rango y duración si ambas fechas son válidas
-    if (result.pickupDateValid && result.dropoffDateValid) {
-      const pickup = new Date(pickupDate);
-      const dropoff = new Date(dropoffDate);
-
-      if (pickup >= dropoff) {
-        result.errors.push(
-          'La fecha de devolución debe ser posterior a la fecha de recogida',
-        );
-      } else {
-        result.rangeValid = true;
-
-        // Calcular diferencia en horas
-        const timeDiff = dropoff.getTime() - pickup.getTime();
-        const hoursDiff = timeDiff / (1000 * 60 * 60);
-        result.hoursDifference = hoursDiff;
-
-        if (hoursDiff < minHours) {
-          result.errors.push(
-            `La duración mínima del alquiler es de ${minHours} horas`,
-          );
-        } else {
-          result.durationValid = true;
-        }
-
-        // Advertencias para duraciones muy largas
-        if (hoursDiff > 24 * 30) {
-          // Más de 30 días
-          result.warnings.push(
-            'Reservas de más de 30 días pueden requerir condiciones especiales',
-          );
-        }
-      }
-    }
-
-    // La validación es exitosa si no hay errores
-    result.isValid = result.errors.length === 0;
-
-    if (result.isValid) {
-      logger.info(
-        `✅ Fechas de reserva válidas: ${pickupDate} - ${dropoffDate} (${result.hoursDifference.toFixed(
-          1,
-        )}h)`,
+    // 2. Validar orden de fechas
+    if (pickup >= dropoff) {
+      result.errors.push(
+        'La fecha de devolución debe ser posterior a la de recogida',
       );
-    } else {
-      logger.warn(`❌ Fechas de reserva inválidas:`, result.errors);
+      return result;
     }
+
+    // 3. Calcular duración
+    const duration = (dropoff - pickup) / (1000 * 60 * 60 * 24);
+    result.duration = Math.ceil(duration);
+
+    // 4. Validar duración mínima y máxima
+    if (result.duration < 1) {
+      result.errors.push('El período de alquiler debe ser de al menos 1 día');
+    }
+
+    // 5. Validar fechas futuras según contexto (UNIFICADO CON BACKEND)
+    if (context === 'new') {
+      // Nueva reserva: margen de 30 minutos
+      const marginTime = new Date(now.getTime() - 30 * 60 * 1000);
+      if (pickup <= marginTime) {
+        result.errors.push(
+          'La fecha de recogida debe ser al menos 30 minutos en el futuro',
+        );
+      }
+    } else if (context === 'edit') {
+      // Edición: margen de 2 horas
+      const editLimit = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      if (pickup <= editLimit) {
+        result.errors.push(
+          'No se puede editar una reserva que comienza en menos de 2 horas',
+        );
+      }
+    } else if (context === 'cancel') {
+      // Cancelación: SIEMPRE PERMITIDA sin advertencias ni penalizaciones
+      // No agregamos ninguna advertencia porque se puede cancelar libremente
+    }
+
+    result.isValid = result.errors.length === 0;
+    return result;
   } catch (error) {
     logger.error('Error validando fechas de reserva:', error);
-    result.errors.push('Error interno validando las fechas');
+    result.errors.push('Error interno al validar fechas');
+    return result;
   }
-
-  return result;
 }
 
 /**

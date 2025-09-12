@@ -11,7 +11,6 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
-from utils.static_mapping import get_versioned_asset
 
 from .forms import LugarForm
 from .models import Direccion, Lugar
@@ -40,7 +39,7 @@ class DireccionAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
+            'all': ("admin/css/custom_admin.css",)
         }
 
     list_display = (
@@ -167,10 +166,10 @@ class LugarAdmin(admin.ModelAdmin):
     # Media para archivos CSS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),)
+            'all': ("admin/css/custom_admin.css",)
         }
         js = (
-            get_versioned_asset("js_lugares", "admin/js/lugares_admin_v24eafaad.js"),
+            "admin/js/lugares_admin.js",
         )
     
     list_display = (

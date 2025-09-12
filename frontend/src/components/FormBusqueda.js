@@ -1139,7 +1139,7 @@ const FormBusqueda = ({
         initialValues={{ pickupDate, dropoffDate, pickupTime, dropoffTime }}
         availableTimes={availableTimes}
         onSave={handleSaveDates}
-        isMobile={isMobile} // Prop para determinar si es móvil o no
+        isMobile={isMobile}
       />
     </div>
   );

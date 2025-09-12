@@ -22,10 +22,9 @@ class MobilityAdminSite(AdminSite):
         Agregar contexto adicional para todos los templates del admin
         """
         context = super().each_context(request)
-        from utils.static_mapping import get_versioned_asset
         
         context.update({
-            'custom_css': get_versioned_asset("css", "admin/css/custom_admin.c5880bb26f05.css"),
+            'custom_css': "admin/css/custom_admin.css",
             'logo_url': "admin/img/logo_home_horizontal.png",
             'site_logo_title': _("Mobility4You"),
         })

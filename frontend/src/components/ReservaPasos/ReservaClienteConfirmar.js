@@ -27,7 +27,7 @@ import {
 } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import CardLogo from '../../assets/img/general/logo_visa_mastercard.png';
-import { createServiceLogger } from '../../config/appConfig';
+import { createServiceLogger, MEDIA_CONFIG } from '../../config/appConfig';
 import '../../css/ReservaClienteConfirmar.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
 import {
@@ -40,7 +40,7 @@ import {
   updateConductorData,
   updateConductorDataIntermediate,
 } from '../../services/reservationStorageService';
-import { formatTaxRate } from '../../utils/financialUtils';
+import { formatIvaRate } from '../../utils/financialUtils';
 import { ReservationTimerBadge } from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
 
@@ -350,8 +350,7 @@ const ReservaClienteConfirmar = () => {
           detallesReserva: reservaData.detallesReserva || {
             base: reservaData.precioBase || reservaData.precio_base || 0,
             extras: reservaData.precioExtras || reservaData.precio_extras || 0,
-            impuestos:
-              reservaData.precioImpuestos || reservaData.precio_impuestos || 0,
+            iva: reservaData.iva || 0,
             descuento:
               reservaData.descuentoPromocion ||
               reservaData.descuento_promocion ||
@@ -964,14 +963,14 @@ const ReservaClienteConfirmar = () => {
                         car?.imagen ||
                         car?.imagenPrincipal?.original ||
                         car?.imagenPrincipal?.placeholder ||
-                        'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo'
+                        MEDIA_CONFIG.getVehicleImageUrl(null) // Placeholder desde B2
                       }
                       alt={`${car?.marca} ${car?.modelo}`}
                       className="reserva-car-img me-3"
                       onError={(e) => {
                         e.target.src =
                           car?.imagenPrincipal?.placeholder ||
-                          'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo';
+                          MEDIA_CONFIG.getVehicleImageUrl(null); // Placeholder desde B2
                       }}
                     />
                     <div>
@@ -1065,7 +1064,7 @@ const ReservaClienteConfirmar = () => {
                     typeof detallesReserva.precioCocheBase === 'number' && (
                       <div className="detalles-precio">
                         <div className="d-flex justify-content-between mb-2">
-                          <span>Precio base:</span>
+                          <span>Precio total:</span>
                           <span>
                             {typeof detallesReserva.precioCocheBase === 'number'
                               ? detallesReserva.precioCocheBase.toFixed(2)
@@ -1075,7 +1074,7 @@ const ReservaClienteConfirmar = () => {
                         </div>
                         <div className="d-flex justify-content-between mb-2">
                           <span>
-                            IVA{formatTaxRate(detallesReserva.tasaImpuesto)}:
+                            IVA{formatIvaRate(detallesReserva.tasaIva)}:
                           </span>
                           <span>
                             {typeof detallesReserva.iva === 'number'
