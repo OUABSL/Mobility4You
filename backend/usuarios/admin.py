@@ -643,79 +643,6 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
         """Optimizar consultas con select_related"""
         return super().get_queryset(request).select_related("direccion")
 
-    def save_model(self, request, obj, form, change):
-        """Manejar usuarios según tipo con validaciones simplificadas para admin"""
-        try:
-            if not change:  # Nuevo usuario
-                
-                # Generar username para clientes si no tienen
-                if obj.rol == "cliente" and not obj.username:
-                    # Generar username único basado en email
-                    base_username = obj.email.split("@")[0]
-                    username = base_username
-                    counter = 1
-                    while Usuario.objects.filter(username=username).exists():
-                        username = f"{base_username}{counter}"
-                        counter += 1
-                    obj.username = username
-                
-                if obj.rol in ["admin", "empresa"]:
-                    # Usuarios admin/empresa necesitan contraseña
-                    if not obj.password:
-                        # Generar contraseña temporal si no se proporciona
-                        temp_password = BaseUserManager().make_random_password()
-                        obj.set_password(temp_password)
-                        messages.warning(
-                            request,
-                            f"Usuario {obj.rol.upper()} creado. Contraseña temporal para {obj.username}: {temp_password} "
-                            f"(Se recomienda cambiarla en el primer acceso)",
-                        )
-                        logger.info(
-                            f"Contraseña temporal generada para usuario {obj.rol}: {obj.username}"
-                        )
-                    else:
-                        # Encriptar contraseña proporcionada
-                        obj.set_password(obj.password)
-                        messages.success(
-                            request,
-                            f"Usuario {obj.rol.upper()} creado exitosamente: {obj.username}",
-                        )
-
-                    # Configurar permisos según rol
-                    if obj.rol == "admin":
-                        obj.is_staff = True
-                        obj.is_superuser = True
-                    else:  # empresa
-                        obj.is_staff = True
-                        obj.is_superuser = False
-
-                else:  # rol == 'cliente'
-                    # Clientes no necesitan contraseña
-                    obj.set_unusable_password()
-                    obj.is_staff = False
-                    obj.is_superuser = False
-                    
-                    # Marcar como registrado y activo por defecto para clientes creados por admin
-                    obj.registrado = True
-                    if obj.is_active is None:
-                        obj.is_active = True
-                    
-                    messages.success(
-                        request,
-                        f"Usuario CLIENTE creado exitosamente: {obj.username} ({obj.email}). "
-                        f"Podrá acceder a sus reservas con email + número de reserva.",
-                    )
-                    logger.info(
-                        f"Usuario cliente creado sin contraseña: {obj.username} - Email: {obj.email}"
-                    )
-
-            super().save_model(request, obj, form, change)
-
-        except Exception as e:
-            logger.error(f"Error creando usuario: {str(e)}")
-            messages.error(request, f"Error creando usuario: {str(e)}")
-            raise
-
     def get_form(self, request, obj=None, **kwargs):
         """Usar formulario específico según si es creación o edición y tipo de usuario"""
         if obj is None:  # Creando nuevo usuario
@@ -831,20 +758,6 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
                 },
             ),
         )
-
-    def response_add(self, request, obj, post_url_continue=None):
-        """Personalizar respuesta después de agregar usuario"""
-        response = super().response_add(request, obj, post_url_continue)
-        
-        # Agregar mensaje informativo adicional para clientes
-        if obj.rol == 'cliente':
-            messages.info(
-                request,
-                f"💡 Consejo: El cliente {obj.first_name} {obj.last_name} puede acceder a sus reservas "
-                f"usando su email ({obj.email}) + número de reserva. No necesita contraseña."
-            )
-        
-        return response
 
     def get_readonly_fields(self, request, obj=None):
         """Campos de solo lectura dinámicos"""

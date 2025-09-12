@@ -239,8 +239,6 @@ def auto_configure_on_startup():
     Auto-configuración del sistema al inicio
     Solo se ejecuta en el proceso principal y en producción
     """
-    import os
-
     # Solo ejecutar en el proceso principal
     if os.environ.get('RUN_MAIN', None) != 'true':
         return

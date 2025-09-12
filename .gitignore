@@ -102,9 +102,9 @@ ssl/
 # ---------------------------------------------------------------
 # Ignore all documentation except essential files
 documentation/
-!documentation/README.md
-!documentation/API.md
-!documentation/DEPLOYMENT.md
+!documentation/ENVIRONMENT_CONFIGURATION.md
+!documentation/MIGRACION_B2_RESUMEN.md
+!documentation/MEDIA_STRUCTURE_REPORT.md
 
 # Specific ignored patterns within documentation (if needed)
 documentation/generated/

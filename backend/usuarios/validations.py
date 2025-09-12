@@ -8,6 +8,9 @@ import re
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
+# Constantes para tipos de documento válidos
+TIPOS_DOCUMENTO_VALIDOS = ['pasaporte', 'dni', 'nif', 'nie']
+
 
 def validate_documento_flexible(value):
     """
@@ -85,9 +88,10 @@ def validate_tipo_documento_flexible(value):
     if not value or value.strip() == "":
         return  # Campo vacío es válido
     
-    if value not in ['pasaporte', 'dni', 'nif', 'nie']:
+    if value not in TIPOS_DOCUMENTO_VALIDOS:
+        tipos_mostrar = ', '.join([tipo.upper() for tipo in TIPOS_DOCUMENTO_VALIDOS])
         raise ValidationError(
-            _('Tipo de documento inválido. Opciones válidas: DNI, NIF, NIE, Pasaporte')
+            _('Tipo de documento inválido. Opciones válidas: %(tipos)s') % {'tipos': tipos_mostrar}
         )
 
 
