@@ -18,27 +18,27 @@ logger = logging.getLogger(__name__)
 def imagen_vehiculo_upload_path(instance: Any, filename: str) -> str:
     """
     Genera la ruta de carga para las imágenes de vehículos
-    Formato: vehiculos/{vehiculo_id}_{imagenvehiculo_id}.{ext}
-    
-    Esta función se ejecuta ANTES de guardar, por lo que usamos 
-    un timestamp temporal si no hay ID aún
+    Usa un sistema de nombrado predecible y único que permite recuperación
     """
-    # Extraer la extensión del archivo
-    ext = filename.split(".")[-1] if "." in filename else "jpg"
-    
-    # Si tenemos el ID de la imagen, lo usamos
-    if hasattr(instance, 'id') and instance.id:
-        image_id = instance.id
-    else:
-        # Si no tenemos ID aún, usar timestamp para evitar colisiones
-        import time
-        image_id = f"tmp_{int(time.time() * 1000)}"
-    
-    # Crear el nombre del archivo
-    filename = f"{instance.vehiculo.id}_{image_id}.{ext}"
+    import uuid
+    from datetime import datetime
 
-    # Retornar la ruta completa
-    return os.path.join("vehiculos", filename)
+    # Extraer la extensión del archivo original
+    ext = filename.split(".")[-1].lower() if "." in filename else "jpg"
+    
+    # Generar un nombre único pero recuperable
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = str(uuid.uuid4())[:8]
+    
+    # ID del vehículo para organización y recuperación
+    vehiculo_id = getattr(instance.vehiculo, 'id', 'new') if hasattr(instance, 'vehiculo') and instance.vehiculo else 'new'
+    
+    # Crear un nombre estructurado: vehiculo_ID_timestamp_uuid.ext
+    filename = f"vehiculo_{vehiculo_id}_{timestamp}_{unique_id}.{ext}"
+
+    # Retornar la ruta organizada por año/mes para mejor estructura
+    year_month = datetime.now().strftime("%Y/%m")
+    return os.path.join("vehiculos", year_month, filename)
 
 
 # ======================
@@ -286,59 +286,24 @@ class ImagenVehiculo(models.Model):
             self.created_at = timezone.now()
         self.updated_at = timezone.now()
 
-        # Para nuevas instancias con archivos temporales, renombrar después del guardado
-        is_new = not self.id
-        old_file_name = None
-        
-        if is_new and self.imagen:
-            old_file_name = self.imagen.name
-        
-        # Guardar la instancia primero
+        # Si esta imagen se marca como portada, desmarcar las demás portadas del mismo vehículo
+        if self.portada and self.vehiculo_id:
+            ImagenVehiculo.objects.filter(
+                vehiculo=self.vehiculo, portada=True
+            ).exclude(id=self.id).update(portada=False)
+
+        # Guardar directamente - el upload_path genera nombres únicos
         super().save(*args, **kwargs)
         
-        # Si es una nueva instancia y el archivo tiene nombre temporal, renombrarlo
-        if is_new and self.imagen and old_file_name and "tmp_" in old_file_name:
-            try:
-                logger = logging.getLogger(__name__)
-                
-                # Extraer la extensión
-                ext = old_file_name.split(".")[-1] if "." in old_file_name else "jpg"
-                
-                # Crear el nuevo nombre con el ID real
-                new_filename = f"{self.vehiculo.id}_{self.id}.{ext}"
-                new_path = os.path.join("vehiculos", new_filename)
-                
-                # Solo renombrar si es diferente
-                if old_file_name != new_path:
-                    logger.info(f"[IMAGEN] Renombrando: {old_file_name} -> {new_path}")
-                    
-                    # Verificar que el archivo existe antes de intentar moverlo
-                    if default_storage.exists(old_file_name):
-                        # Obtener el contenido
-                        with default_storage.open(old_file_name, 'rb') as old_file:
-                            content = old_file.read()
-                        
-                        # Guardar con el nuevo nombre
-                        default_storage.save(new_path, ContentFile(content))
-                        
-                        # Eliminar el archivo anterior solo si el nuevo se guardó correctamente
-                        if default_storage.exists(new_path):
-                            default_storage.delete(old_file_name)
-                            
-                            # Actualizar el campo imagen en la base de datos
-                            self.imagen.name = new_path
-                            super().save(update_fields=["imagen", "updated_at"])
-                            
-                            logger.info(f"[IMAGEN] Renombrado exitoso: {new_path}")
-                        else:
-                            logger.error(f"[IMAGEN] Error: no se pudo crear {new_path}")
-                    else:
-                        logger.warning(f"[IMAGEN] Archivo temporal no encontrado: {old_file_name}")
-                        
-            except Exception as e:
-                logger.error(f"[IMAGEN] Error al renombrar archivo: {str(e)}")
-                # En caso de error, mantener el archivo temporal
-                logger.info(f"[IMAGEN] Manteniendo archivo temporal: {old_file_name}")
+        # Extraer dimensiones de la imagen si está disponible
+        if self.imagen and hasattr(self.imagen, 'width') and hasattr(self.imagen, 'height'):
+            if not self.ancho or not self.alto:
+                self.ancho = self.imagen.width
+                self.alto = self.imagen.height
+                # Guardar solo los campos de dimensiones para evitar loop infinito
+                ImagenVehiculo.objects.filter(id=self.id).update(
+                    ancho=self.ancho, alto=self.alto
+                )
 
 
 class TarifaVehiculo(models.Model):

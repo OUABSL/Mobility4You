@@ -49,10 +49,10 @@ if all([
     AWS_STORAGE_BUCKET_NAME = os.environ.get('B2_BUCKET_NAME')
     AWS_S3_ENDPOINT_URL = f'https://{os.environ.get("B2_S3_ENDPOINT")}'
     
-    # Configuración de storages
+    # Configuración de storages con backend personalizado para B2
     STORAGES = {
         "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "BACKEND": "config.storage_backends.B2Storage",
         },
         "staticfiles": {
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
@@ -60,15 +60,25 @@ if all([
     }
     
     # Configuración específica de S3/B2
-    AWS_S3_FILE_OVERWRITE = False
+    AWS_S3_FILE_OVERWRITE = True  # Evita HEAD_OBJECT para verificar existencia
     AWS_DEFAULT_ACL = 'public-read'
     AWS_S3_CUSTOM_DOMAIN = None
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',
+        'ContentDisposition': 'inline',
     }
+    
+    # Configuración de región y SSL
     AWS_S3_REGION_NAME = 'eu-central-003'
     AWS_S3_USE_SSL = True
     AWS_S3_VERIFY = True
+    
+    # Configuraciones para optimizar B2 operations
+    AWS_QUERYSTRING_AUTH = False  # URLs públicas sin autenticación
+    AWS_S3_MAX_MEMORY_SIZE = 1024 * 1024 * 50  # 50MB en memoria máximo
+    AWS_S3_SIGNATURE_VERSION = 's3v4'  # Signature version 4
+    AWS_S3_ADDRESSING_STYLE = 'virtual'  # Virtual-hosted style URLs
+    AWS_S3_USE_SSL = True
     
     # URL para archivos media en B2
     MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
@@ -127,6 +137,10 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
         'console': {
@@ -142,6 +156,26 @@ LOGGING = {
         'django': {
             'handlers': ['console'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'config.storage_backends': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'storages': {
+            'handlers': ['console'],
+            'level': 'WARNING',  # Solo warnings y errores de storages
+            'propagate': False,
+        },
+        'botocore': {
+            'handlers': ['console'],
+            'level': 'WARNING',  # Reducir ruido de boto3
+            'propagate': False,
+        },
+        'boto3': {
+            'handlers': ['console'],
+            'level': 'WARNING',
             'propagate': False,
         },
     },
