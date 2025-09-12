@@ -1,7 +1,7 @@
 /**
  * 💰 UTILIDADES DE FORMATEO Y CÁLCULOS FINANCIEROS
  *
- * Funciones para formatear monedas, calcular impuestos,
+ * Funciones para formatear monedas, calcular IVA,
  * redondear valores monetarios y manejar cálculos financieros.
  *
  * @author OUAEL BOUSSIALI
@@ -33,38 +33,38 @@ export function roundToDecimals(value, decimals = 2) {
 }
 
 /**
- * Calcula el monto de impuestos
- * @param {number} baseAmount - Monto base sin impuestos
- * @param {number} taxRate - Tasa de impuesto (como decimal, ej: 0.21 para 21%)
- * @returns {number} Monto de impuestos calculado
+ * Calcula el monto de IVA
+ * @param {number} baseAmount - Monto base sin IVA
+ * @param {number} ivaRate - Tasa de IVA (como decimal, ej: 0.10 para 10%)
+ * @returns {number} Monto de IVA calculado
  */
-export function calculateTaxAmount(baseAmount, taxRate) {
+export function calculateIvaAmount(baseAmount, ivaRate) {
   if (typeof baseAmount !== 'number' || isNaN(baseAmount)) {
     if (DEBUG_MODE) {
-      logger.warn('Monto base inválido para cálculo de impuestos:', baseAmount);
+      logger.warn('Monto base inválido para cálculo de IVA:', baseAmount);
     }
     return 0;
   }
 
-  if (typeof taxRate !== 'number' || isNaN(taxRate) || taxRate < 0) {
+  if (typeof ivaRate !== 'number' || isNaN(ivaRate) || ivaRate < 0) {
     if (DEBUG_MODE) {
-      logger.warn('Tasa de impuesto inválida:', taxRate);
+      logger.warn('Tasa de IVA inválida:', ivaRate);
     }
     return 0;
   }
 
-  return roundToDecimals(baseAmount * taxRate, 2);
+  return roundToDecimals(baseAmount * ivaRate, 2);
 }
 
 /**
- * Calcula el precio con impuestos incluidos
- * @param {number} baseAmount - Monto base sin impuestos
- * @param {number} taxRate - Tasa de impuesto (como decimal)
- * @returns {number} Precio total con impuestos
+ * Calcula el precio con IVA incluido
+ * @param {number} baseAmount - Monto base sin IVA
+ * @param {number} ivaRate - Tasa de IVA (como decimal)
+ * @returns {number} Precio total con IVA
  */
-export function calculatePriceWithTax(baseAmount, taxRate) {
-  const taxAmount = calculateTaxAmount(baseAmount, taxRate);
-  return roundToDecimals(baseAmount + taxAmount, 2);
+export function calculatePriceWithIva(baseAmount, ivaRate) {
+  const ivaAmount = calculateIvaAmount(baseAmount, ivaRate);
+  return roundToDecimals(baseAmount + ivaAmount, 2);
 }
 
 /**
@@ -109,7 +109,7 @@ export function formatCurrency(value, options = {}) {
 
 /**
  * Formatea un porcentaje
- * @param {number} value - Valor decimal (ej: 0.21 para 21%)
+ * @param {number} value - Valor decimal (ej: 0.10 para 10%)
  * @param {object} options - Opciones de formateo
  * @returns {string} Porcentaje formateado
  */
@@ -301,17 +301,17 @@ export function parseMonetaryValue(value) {
 /**
  * Helper para calcular impuestos para mostrar en UI (sin valores hardcodeados)
  * @param {number} baseAmount - Monto base
- * @param {number|null} taxRate - Tasa de impuesto del backend
+ * @param {number|null} ivaRate - Tasa de IVA del backend
  * @returns {number} - Monto de impuestos calculado
  */
-export function calculateDisplayTaxAmount(baseAmount, taxRate = null) {
+export function calculateDisplayIvaAmount(baseAmount, ivaRate = null) {
   if (!baseAmount || isNaN(baseAmount)) {
     return 0;
   }
 
   // Si tenemos la tasa del backend, usarla
-  if (taxRate !== null && taxRate !== undefined && !isNaN(taxRate)) {
-    return calculateTaxAmount(baseAmount, taxRate);
+  if (ivaRate !== null && ivaRate !== undefined && !isNaN(ivaRate)) {
+    return calculateIvaAmount(baseAmount, ivaRate);
   }
 
   // Sin fallback hardcodeado - debe venir del backend
@@ -319,11 +319,11 @@ export function calculateDisplayTaxAmount(baseAmount, taxRate = null) {
 }
 
 /**
- * Helper para formatear el porcentaje de impuesto
- * @param {number|null} rate - Tasa de impuesto (como decimal, ej: 0.21)
+ * Helper para formatear el porcentaje de IVA
+ * @param {number|null} rate - Tasa de IVA (como decimal, ej: 0.10)
  * @returns {string} - Porcentaje formateado o cadena vacía
  */
-export function formatTaxRate(rate = null) {
+export function formatIvaRate(rate = null) {
   if (rate !== null && rate !== undefined && !isNaN(rate)) {
     return ` (${(rate * 100).toFixed(0)}%)`;
   }
@@ -332,28 +332,72 @@ export function formatTaxRate(rate = null) {
 }
 
 /**
- * Calcula el desglose de un precio con impuestos
- * @param {number} totalPrice - Precio total con impuestos
- * @param {number} taxRate - Tasa de impuesto
+ * Calcula el desglose de un precio con IVA
+ * @param {number} totalPrice - Precio total con IVA
+ * @param {number} ivaRate - Tasa de IVA
  * @returns {object} Desglose del precio
  */
-export function calculatePriceBreakdown(totalPrice, taxRate) {
-  if (typeof totalPrice !== 'number' || typeof taxRate !== 'number') {
+export function calculatePriceBreakdown(totalPrice, ivaRate) {
+  if (typeof totalPrice !== 'number' || typeof ivaRate !== 'number') {
     return {
       basePrice: 0,
-      taxAmount: 0,
+      ivaAmount: 0,
       totalPrice: 0,
-      taxRate: 0,
+      ivaRate: 0,
     };
   }
 
-  const basePrice = totalPrice / (1 + taxRate);
-  const taxAmount = totalPrice - basePrice;
+  const basePrice = totalPrice / (1 + ivaRate);
+  const ivaAmount = totalPrice - basePrice;
 
   return {
     basePrice: roundToDecimals(basePrice, 2),
-    taxAmount: roundToDecimals(taxAmount, 2),
+    ivaAmount: roundToDecimals(ivaAmount, 2),
     totalPrice: roundToDecimals(totalPrice, 2),
-    taxRate: taxRate,
+    ivaRate: ivaRate,
   };
 }
+
+/**
+ * Extrae el IVA de un precio que ya lo incluye (NUEVA LÓGICA SIMBÓLICA)
+ * @param {number} priceWithIva - Precio con IVA incluido
+ * @param {number} ivaRate - Tasa de IVA del sistema (por defecto desde env: 10%)
+ * @returns {object} - Objeto con precio sin IVA e IVA extraído
+ */
+export function extractIvaFromPrice(priceWithIva, ivaRate = null) {
+  if (typeof priceWithIva !== 'number' || priceWithIva <= 0) {
+    return {
+      priceWithoutIva: 0,
+      ivaAmount: 0,
+      priceWithIva: 0,
+    };
+  }
+
+  // Usar tasa de IVA del sistema (10% por defecto) o la proporcionada
+  const systemIvaRate = ivaRate || 0.1; // 10% configurado en .env
+
+  // Fórmula: iva_amount = precio_con_iva * iva_rate / (1 + iva_rate)
+  const ivaAmount = (priceWithIva * systemIvaRate) / (1 + systemIvaRate);
+  const priceWithoutIva = priceWithIva - ivaAmount;
+
+  return {
+    priceWithoutIva: roundToDecimals(priceWithoutIva, 2),
+    ivaAmount: roundToDecimals(ivaAmount, 2),
+    priceWithIva: roundToDecimals(priceWithIva, 2),
+  };
+}
+
+/**
+ * Calcula precio total con tarifa de política incluida
+ * @param {number} basePrice - Precio base por día
+ * @param {number} policyFee - Tarifa de política por día
+ * @param {number} days - Número de días
+ * @returns {number} - Precio total (IVA ya incluido)
+ */
+export function calculateTotalWithPolicy(basePrice, policyFee = 0, days = 1) {
+  const pricePerDay = basePrice + policyFee;
+  const totalPrice = pricePerDay * days;
+  return roundToDecimals(totalPrice, 2);
+}
+
+// === Fin de las funciones de IVA ===

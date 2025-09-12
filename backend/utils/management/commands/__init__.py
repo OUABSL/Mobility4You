@@ -1,1 +1,1 @@
-# Archivo init para comandos de Django
+# utils/management/commands/__init__.py

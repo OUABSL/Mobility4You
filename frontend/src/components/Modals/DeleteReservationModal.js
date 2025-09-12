@@ -10,6 +10,7 @@ const DeleteReservationModal = ({
   show,
   onHide,
   reservationId,
+  reservationNumber,
   onConfirm,
   loading = false,
   error = null,
@@ -40,7 +41,7 @@ const DeleteReservationModal = ({
           </Alert>
         )}
 
-        <p>¿Está seguro que desea cancelar la reserva #{reservationId}?</p>
+        <p>¿Está seguro que desea cancelar la reserva #{reservationNumber}?</p>
         <p>
           Esta acción no se puede deshacer y puede estar sujeta a penalizaciones
           según la política de cancelación.

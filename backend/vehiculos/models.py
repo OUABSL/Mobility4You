@@ -1,13 +1,18 @@
 # vehiculos/models.py
+import logging
 import os
 from decimal import Decimal
 from typing import Any, Optional
 
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.validators import (MaxValueValidator, MinValueValidator,
                                     RegexValidator)
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+logger = logging.getLogger(__name__)
 
 
 def imagen_vehiculo_upload_path(instance: Any, filename: str) -> str:
@@ -191,7 +196,6 @@ class Vehiculo(models.Model):
         except Exception as e:
             import logging
             
-            logger = logging.getLogger(__name__)
             logger.error(
                 f"Error obteniendo precio actual para vehículo {self.id}: {str(e)}"
             )
@@ -284,19 +288,44 @@ class ImagenVehiculo(models.Model):
 
             # Ahora renombrar el archivo con el ID correcto
             if self.imagen:
-                old_name = self.imagen.name
-
-                # Extraer la extensión
-                ext = old_name.split(".")[-1] if "." in old_name else "jpg"
-                # Crear el nuevo nombre
-                new_filename = f"{self.vehiculo.id}_{self.id}.{ext}"
-                new_path = os.path.join("vehiculos", new_filename)
-
-                # Actualizar el campo imagen con el nuevo nombre
-                self.imagen.name = new_path
-
-                # Guardar nuevamente con el nombre correcto
-                super().save(update_fields=["imagen", "updated_at"])
+                try:
+                    
+                    logger = logging.getLogger(__name__)
+                    old_name = self.imagen.name
+                    
+                    # Extraer la extensión
+                    ext = old_name.split(".")[-1] if "." in old_name else "jpg"
+                    # Crear el nuevo nombre
+                    new_filename = f"{self.vehiculo.id}_{self.id}.{ext}"
+                    new_path = os.path.join("vehiculos", new_filename)
+                    
+                    logger.info(f"[IMAGEN] Renombrando: {old_name} -> {new_path}")
+                    
+                    # Verificar si el archivo temporal existe
+                    if default_storage.exists(old_name):
+                        # Leer el contenido del archivo temporal
+                        file_content = default_storage.open(old_name).read()
+                        
+                        # Guardar con el nuevo nombre
+                        default_storage.save(new_path, ContentFile(file_content))
+                        
+                        # Eliminar el archivo temporal
+                        default_storage.delete(old_name)
+                        
+                        # Actualizar el campo imagen con el nuevo nombre
+                        self.imagen.name = new_path
+                        
+                        # Guardar nuevamente con el nombre correcto
+                        super().save(update_fields=["imagen", "updated_at"])
+                        
+                        logger.info(f"[IMAGEN] Renombrado exitoso: {new_path}")
+                    else:
+                        logger.warning(f"[IMAGEN] Archivo temporal no encontrado: {old_name}")
+                        
+                except Exception as e:
+                    logger.error(f"[IMAGEN] Error al renombrar archivo: {str(e)}")
+                    # Si falla el renombrado, al menos guardar con el nombre temporal
+                    pass
         else:
             super().save(*args, **kwargs)
 

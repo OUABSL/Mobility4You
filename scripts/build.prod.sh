@@ -20,7 +20,7 @@ echo "Project root: $PROJECT_ROOT"
 cd "$PROJECT_ROOT"
 
 # Build and start production containers
-docker compose --env-file ./docker/.env.prod -f ./docker/docker-compose.prod.yml up --build --remove-orphans -d
+docker compose -f ./docker/docker-compose.prod.yml up --build --remove-orphans -d
 
 echo "✅ Production environment started successfully!"
 echo "🌐 Application: https://localhost"

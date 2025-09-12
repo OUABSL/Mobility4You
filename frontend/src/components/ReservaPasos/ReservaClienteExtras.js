@@ -23,7 +23,7 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { createServiceLogger } from '../../config/appConfig';
+import { createServiceLogger, MEDIA_CONFIG } from '../../config/appConfig';
 import '../../css/ReservaClienteExtras.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
 import { getExtrasDisponibles } from '../../services/reservationServices';
@@ -31,12 +31,8 @@ import {
   autoRecoverReservation,
   getReservationStorageService,
 } from '../../services/reservationStorageService';
-import {
-  calculateDisplayTaxAmount,
-  formatTaxRate,
-  getImageForExtra,
-  roundToDecimals,
-} from '../../utils';
+import { getImageForExtra, roundToDecimals } from '../../utils';
+import { extractIvaFromPrice } from '../../utils/financialUtils';
 import ReservationTimerIndicator from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
 
@@ -100,7 +96,9 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
     if (reservaExtrasRef.current) {
       reservaExtrasRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, []); // Cargar datos de reserva del storage al iniciar
+  }, []);
+
+  // Cargar datos de reserva del storage al iniciar
   useEffect(() => {
     const loadReservationData = async () => {
       try {
@@ -230,6 +228,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
 
     loadReservationData();
   }, [storageService, startTimer, timerActive]);
+
   // Cargar extras disponibles desde la API
   useEffect(() => {
     const cargarExtras = async () => {
@@ -251,7 +250,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       }
     };
     cargarExtras();
-  }, []); // Solo cargar una vez al montar el componente
+  }, []);
 
   // Convertir extras seleccionados de IDs a objetos completos cuando se cargan los extras disponibles
   useEffect(() => {
@@ -322,7 +321,9 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
           new Date(reservaData.fechas.pickupDate)) /
           (1000 * 60 * 60 * 24),
       )
-    : 3; // Valor por defecto  // Efecto para calcular y actualizar el total de extras
+    : 3;
+
+  // Valor por defecto  // Efecto para calcular y actualizar el total de extras
   useEffect(() => {
     const total = extrasSeleccionados.reduce((sum, extra) => {
       // Manejar tanto objetos completos como IDs legacy
@@ -339,25 +340,38 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
       return sum;
     }, 0);
     setTotalExtras(total);
-  }, [extrasSeleccionados, extrasDisponibles, diasAlquiler]); // Efecto para calcular los detalles de la reserva
+  }, [extrasSeleccionados, extrasDisponibles, diasAlquiler]);
+
+  // Efecto para calcular los detalles de la reserva
   useEffect(() => {
     if (!reservaData) return;
 
     const precioCocheBase = roundToDecimals(
       Number(reservaData.car.precio_dia) * diasAlquiler,
     );
-    const iva = calculateDisplayTaxAmount(
-      precioCocheBase,
-      reservaData.car?.tasaImpuesto,
-    );
+
+    // Incluir tarifa de política en el cálculo
+    const tarifaPolitica = reservaData.paymentOption?.tarifa
+      ? roundToDecimals(Number(reservaData.paymentOption.tarifa) * diasAlquiler)
+      : 0;
+
+    // Calcular IVA simbólico extraído del total (nueva lógica)
+    const subtotalSinIva =
+      precioCocheBase + tarifaPolitica + roundToDecimals(totalExtras);
+    const ivaExtraido = extractIvaFromPrice(subtotalSinIva, null); // Usar tasa del sistema
+
     const detalles = {
       precioCocheBase,
-      iva,
+      tarifaPolitica,
+      iva: ivaExtraido.ivaAmount,
       precioExtras: roundToDecimals(totalExtras),
-      total: roundToDecimals(precioCocheBase + iva + totalExtras),
+      total: subtotalSinIva,
+      tasaIva: 0.1, // IVA del sistema (10% desde .env)
     };
+
     setDetallesReserva(detalles);
   }, [reservaData, diasAlquiler, totalExtras]);
+
   // Manejador para seleccionar/deseleccionar extras
   const toggleExtra = (extraId) => {
     setExtrasSeleccionados((prev) => {
@@ -595,14 +609,14 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                         car.imagenPrincipal?.original ||
                         car.imagenPrincipal?.placeholder ||
                         car.imagen ||
-                        'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo'
+                        MEDIA_CONFIG.getVehicleImageUrl(null) // Placeholder desde B2
                       }
                       alt={`${car.marca} ${car.modelo}`}
                       className="reserva-car-img me-3"
                       onError={(e) => {
                         e.target.src =
                           car.imagenPrincipal?.placeholder ||
-                          'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo';
+                          MEDIA_CONFIG.getVehicleImageUrl(null); // Placeholder desde B2
                       }}
                     />
                     <div>
@@ -674,9 +688,8 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                   <hr />
                   {detallesReserva && (
                     <div className="detalles-precio">
-                      {' '}
                       <div className="d-flex justify-content-between mb-2">
-                        <span>Precio base ({diasAlquiler} días):</span>
+                        <span>Precio total ({diasAlquiler} días):</span>
                         <span>
                           {(
                             Number(detallesReserva.precioCocheBase) || 0
@@ -684,20 +697,36 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                           €
                         </span>
                       </div>
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>
-                          IVA{formatTaxRate(detallesReserva.tasaImpuesto)}:
-                        </span>
-                        <span>
-                          {(Number(detallesReserva.iva) || 0).toFixed(2)}€
-                        </span>
-                      </div>
+
+                      {/* ✅ FIX: Mostrar tarifa de política si existe */}
+                      {detallesReserva.tarifaPolitica > 0 && (
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>
+                            Tarifa de protección ({diasAlquiler} días):
+                          </span>
+                          <span>
+                            {(
+                              Number(detallesReserva.tarifaPolitica) || 0
+                            ).toFixed(2)}
+                            €
+                          </span>
+                        </div>
+                      )}
+
                       {totalExtras > 0 && (
                         <div className="d-flex justify-content-between mb-2">
                           <span>Extras:</span>
                           <span>{(Number(totalExtras) || 0).toFixed(2)}€</span>
                         </div>
                       )}
+
+                      <div className="d-flex justify-content-between mb-2">
+                        <span>IVA (10% incluido):</span>
+                        <span>
+                          {(Number(detallesReserva.iva) || 0).toFixed(2)}€
+                        </span>
+                      </div>
+
                       <hr />
                       <div className="d-flex justify-content-between fw-bold">
                         <span>Total:</span>
@@ -746,7 +775,7 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
                               className="extra-img"
                               onError={(e) => {
                                 e.target.src =
-                                  'https://via.placeholder.com/80x80/f3e5f5/7b1fa2.png?text=Extra';
+                                  MEDIA_CONFIG.getExtraImageUrl(null); // Placeholder desde B2
                               }}
                             />
                             <div className="extra-check">
@@ -860,4 +889,3 @@ const ReservaClienteExtras = ({ isMobile = false }) => {
 };
 
 export default ReservaClienteExtras;
-

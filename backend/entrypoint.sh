@@ -40,14 +40,9 @@ echo "📁 Recopilando archivos estáticos..."
 python manage.py collectstatic --noinput --clear
 echo "✅ Archivos estáticos recopilados"
 
-# Versionar archivos estáticos
-echo "🏷️ Versionando archivos estáticos..."
-if [ -f "utils/static_versioning.py" ]; then
-    python manage.py version_static_assets
-    echo "✅ Archivos estáticos versionados exitosamente"
-else
-    echo "⚠️ Sistema de versionado no disponible"
-fi
+# Configurar sistema de versionado optimizado
+echo "🔧 Configurando sistema de archivos estáticos..."
+python manage.py setup_static_assets 2>/dev/null || echo "⚠️ Usando configuración automática en startup"
 
 echo "🚀 Configuración completada - Iniciando servidor"
 

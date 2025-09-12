@@ -1,10 +1,7 @@
 // src/services/contactService.js
-import axios from 'axios';
 import { BACKEND_URL, createServiceLogger } from '../config/appConfig';
-import {
-  mapContactFromBackend,
-  mapContactToBackend,
-} from './universalDataMapper';
+import axios from '../config/axiosConfig';
+import { mapContactFromBackend, mapContactToBackend } from './dataMapper';
 
 // Configuración del backend
 const API_BASE_URL = `${BACKEND_URL}/api/comunicacion`;
@@ -12,46 +9,44 @@ const API_BASE_URL = `${BACKEND_URL}/api/comunicacion`;
 // Crear logger para el servicio de contacto
 const logger = createServiceLogger('CONTACT_SERVICE');
 
-// Configuración de axios para el servicio de contacto
-const contactAPI = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000, // 30 segundos timeout
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Interceptor para manejo de errores
-contactAPI.interceptors.response.use(
+// Interceptor específico para el servicio de contacto
+axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Log del error para debugging
-    logger.error('Contact API Error:', error);
+    // Solo procesar errores del servicio de contacto
+    if (
+      error.config &&
+      error.config.url &&
+      error.config.url.includes('/comunicacion/')
+    ) {
+      // Log del error para debugging
+      logger.error('Contact API Error:', error);
 
-    // Personalizar mensajes de error
-    if (error.code === 'ECONNABORTED') {
-      error.userMessage =
-        'La solicitud tardó demasiado tiempo. Por favor, inténtalo de nuevo.';
-    } else if (!error.response) {
-      error.userMessage =
-        'No se puede conectar con el servidor. Verifica tu conexión a internet.';
-    } else {
-      switch (error.response.status) {
-        case 400:
-          error.userMessage =
-            'Datos inválidos. Por favor, revisa la información ingresada.';
-          break;
-        case 429:
-          error.userMessage =
-            'Demasiadas solicitudes. Por favor, espera un momento antes de intentar de nuevo.';
-          break;
-        case 500:
-          error.userMessage =
-            'Error interno del servidor. Inténtalo de nuevo más tarde.';
-          break;
-        default:
-          error.userMessage =
-            'Ha ocurrido un error inesperado. Inténtalo de nuevo.';
+      // Personalizar mensajes de error
+      if (error.code === 'ECONNABORTED') {
+        error.userMessage =
+          'La solicitud tardó demasiado tiempo. Por favor, inténtalo de nuevo.';
+      } else if (!error.response) {
+        error.userMessage =
+          'No se puede conectar con el servidor. Verifica tu conexión a internet.';
+      } else {
+        switch (error.response.status) {
+          case 400:
+            error.userMessage =
+              'Datos inválidos. Por favor, revisa la información ingresada.';
+            break;
+          case 429:
+            error.userMessage =
+              'Demasiadas solicitudes. Por favor, espera un momento antes de intentar de nuevo.';
+            break;
+          case 500:
+            error.userMessage =
+              'Error interno del servidor. Inténtalo de nuevo más tarde.';
+            break;
+          default:
+            error.userMessage =
+              'Ha ocurrido un error inesperado. Inténtalo de nuevo.';
+        }
       }
     }
 
@@ -62,8 +57,8 @@ contactAPI.interceptors.response.use(
 /**
  * Servicio para enviar mensajes de contacto
  *
- * INTEGRACIÓN CON UNIVERSAL DATA MAPPER:
- * Este servicio ahora utiliza el universalDataMapper para:
+ * INTEGRACIÓN CON DATA MAPPER:
+ * Este servicio ahora utiliza el DataMapper para:
  * - Mapear datos del formulario frontend al formato esperado por el backend (toBackend)
  * - Mapear respuestas del backend al formato frontend (fromBackend)
  * - Validación automática de campos usando esquemas declarativos
@@ -89,11 +84,14 @@ class ContactService {
       // Validación básica antes de enviar
       this.validateFormData(formData);
 
-      // Usar el universalDataMapper para mapear campos al formato esperado por el backend
-      const dataToSend = await mapContactToBackend(formData);
+      // Mapear datos al formato del backend
+      const dataToSend = mapContactToBackend(formData);
 
       // Realizar petición
-      const response = await contactAPI.post('/contacto/', dataToSend);
+      const response = await axios.post(
+        `${API_BASE_URL}/contacto/`,
+        dataToSend,
+      );
 
       // Validar respuesta
       if (response.data && response.data.success) {
@@ -216,7 +214,7 @@ class ContactService {
    */
   async getServiceStatus() {
     try {
-      const response = await contactAPI.get('/contacto/', {
+      const response = await axios.get(`${API_BASE_URL}/contacto/`, {
         timeout: 5000,
         params: { status: 'check' },
       });
@@ -291,11 +289,11 @@ class ContactService {
    */
   async getContacts(params = {}) {
     try {
-      const response = await contactAPI.get('/contacto/', { params });
+      const response = await axios.get(`${API_BASE_URL}/contacto/`, { params });
 
       if (response.data) {
-        // Usar el universalDataMapper para mapear los datos desde el backend
-        const mappedContacts = await mapContactFromBackend(response.data);
+        // Mapear los datos desde el backend
+        const mappedContacts = mapContactFromBackend(response.data);
 
         return {
           success: true,
@@ -324,11 +322,13 @@ class ContactService {
    */
   async getContactById(contactId) {
     try {
-      const response = await contactAPI.get(`/contacto/${contactId}/`);
+      const response = await axios.get(
+        `${API_BASE_URL}/contacto/${contactId}/`,
+      );
 
       if (response.data) {
-        // Usar el universalDataMapper para mapear los datos desde el backend
-        const mappedContact = await mapContactFromBackend(response.data);
+        // Mapear los datos desde el backend
+        const mappedContact = mapContactFromBackend(response.data);
 
         return {
           success: true,

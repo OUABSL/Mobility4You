@@ -15,23 +15,16 @@ class ReservaService:
 
     def calcular_precio_reserva(self, data):
         """
-        Calcula el precio total de una reserva
-
-        Args:
-            data (dict): Datos de la reserva incluyendo:
-                - vehiculo_id: ID del vehículo
-                - fecha_recogida: Fecha de Recogida
-                - fecha_devolucion: Fecha de Devolución
-                - lugar_recogida_id: ID del lugar de recogida
-                - lugar_devolucion_id: ID del lugar de entrega
-                - extras: Lista de extras con cantidad
-
-        Returns:
-            dict: Resultado del cálculo con precio_total y desglose
+        Calcula el precio total de una reserva.
+        NUEVA LÓGICA IVA SIMBÓLICO:
+        - Todos los precios YA INCLUYEN IVA
+        - El IVA es solo para mostrar al cliente (simbólico)
+        - No se añade IVA al cálculo, solo se extrae para desglose
         """
         try:
             # Importaciones lazy para evitar problemas circulares
-            from vehiculos.models import TarifaVehiculo, Vehiculo
+            from politicas.models import PoliticaPago
+            from vehiculos.models import Vehiculo
 
             from .models import Extras
 
@@ -39,10 +32,12 @@ class ReservaService:
             vehiculo_id = data.get("vehiculo_id")
             fecha_recogida = data.get("fecha_recogida") or data.get("fechaRecogida")
             fecha_devolucion = data.get("fecha_devolucion") or data.get("fechaDevolucion")
+            politica_pago_id = data.get("politica_pago_id") or data.get("politicaPago_id")
             extras_data = data.get("extras", [])
 
             logger.info(f"Calculando precio - vehiculo: {vehiculo_id}, inicio: {fecha_recogida}, fin: {fecha_devolucion}")
 
+            # Validación de datos requeridos
             if not all([vehiculo_id, fecha_recogida, fecha_devolucion]):
                 missing_fields = []
                 if not vehiculo_id:
@@ -57,44 +52,70 @@ class ReservaService:
                     "error": f"Faltan datos requeridos: {', '.join(missing_fields)}",
                 }
 
-            # Obtener vehículo y sus tarifas
+            # Convertir fechas y validar
+            if isinstance(fecha_recogida, str):
+                fecha_recogida = datetime.fromisoformat(fecha_recogida.replace("Z", "+00:00"))
+            if isinstance(fecha_devolucion, str):
+                fecha_devolucion = datetime.fromisoformat(fecha_devolucion.replace("Z", "+00:00"))
+
+            # 🔍 VALIDAR FECHAS ANTES DE PROCEDER
+            from django.utils import timezone
+            now = timezone.now()
+            
+            # Validar que las fechas sean lógicas
+            if fecha_recogida >= fecha_devolucion:
+                return {
+                    "success": False,
+                    "error": "La fecha de devolución debe ser posterior a la fecha de recogida",
+                }
+            
+            # Validar que las fechas no sean en el pasado (con margen de 30 min para ediciones)
+            margin_time = now - timezone.timedelta(minutes=30)
+            if fecha_recogida <= margin_time:
+                return {
+                    "success": False,
+                    "error": "La fecha de recogida debe ser en el futuro",
+                }
+
+            # Obtener vehículo
             try:
                 vehiculo = Vehiculo.objects.get(id=vehiculo_id)
-                # Usar el precio por día del vehículo directamente si no hay tarifas específicas
-                precio_dia_base = vehiculo.precio_dia if hasattr(vehiculo, 'precio_dia') else Decimal("50.00")
+                precio_dia_base = vehiculo.precio_dia
                 logger.info(f"Vehículo encontrado: {vehiculo.marca} {vehiculo.modelo}, precio: {precio_dia_base}")
             except Vehiculo.DoesNotExist:
                 return {"success": False, "error": "Vehículo no encontrado"}
 
             # Calcular días de reserva
-            if isinstance(fecha_recogida, str):
-                fecha_recogida = datetime.fromisoformat(
-                    fecha_recogida.replace("Z", "+00:00")
-                )
-            if isinstance(fecha_devolucion, str):
-                fecha_devolucion = datetime.fromisoformat(fecha_devolucion.replace("Z", "+00:00"))
-
             dias = (fecha_devolucion - fecha_recogida).days
             if dias < 1:
                 dias = 1  # Mínimo 1 día
 
             logger.info(f"Días de reserva: {dias}")
 
-            # Calcular precio base del vehículo
+            # 1. Calcular precio base del vehículo (YA INCLUYE IVA)
             precio_base = precio_dia_base * dias
+            
+            # 2. Obtener y calcular tarifa de política de pago (YA INCLUYE IVA)
+            tarifa_politica = Decimal("0.00")
+            if politica_pago_id:
+                try:
+                    politica = PoliticaPago.objects.get(id=politica_pago_id)
+                    if politica.tarifa and politica.tarifa > 0:
+                        tarifa_politica = politica.tarifa * dias
+                        logger.info(f"Tarifa política aplicada: {politica.tarifa} x {dias} días = {tarifa_politica}")
+                except PoliticaPago.DoesNotExist:
+                    logger.warning(f"Política de pago {politica_pago_id} no encontrada")
 
-            # Calcular precio de extras
+            # 3. Calcular precio de extras (YA INCLUYEN IVA)
             precio_extras = Decimal("0.00")
             extras_detalle = []
 
             for extra_data in extras_data:
                 try:
-                    # Manejar diferentes formatos de extras
                     if isinstance(extra_data, dict):
                         extra_id = extra_data.get("extra_id") or extra_data.get("id")
                         cantidad = int(extra_data.get("cantidad", 1))
                     else:
-                        # Si es solo el ID del extra
                         extra_id = extra_data
                         cantidad = 1
                         
@@ -105,47 +126,53 @@ class ReservaService:
                     precio_extra = extra.precio * cantidad * dias
                     precio_extras += precio_extra
 
-                    extras_detalle.append(
-                        {
-                            "id": extra.id,
-                            "nombre": extra.nombre,
-                            "precio_unitario": str(extra.precio),
-                            "cantidad": cantidad,
-                            "dias": dias,
-                            "subtotal": str(precio_extra),
-                        }
-                    )
+                    extras_detalle.append({
+                        "id": extra.id,
+                        "nombre": extra.nombre,
+                        "precio_unitario": str(extra.precio),
+                        "cantidad": cantidad,
+                        "dias": dias,
+                        "subtotal": str(precio_extra),
+                    })
                     logger.info(f"Extra agregado: {extra.nombre} x{cantidad} = {precio_extra}")
                 except (Extras.DoesNotExist, ValueError, TypeError) as e:
                     logger.warning(f"Error procesando extra {extra_data}: {str(e)}")
                     continue
 
-            # Calcular total
-            subtotal = precio_base + precio_extras
+            # 4. PRECIO TOTAL = SUMA DIRECTA (todos los precios ya incluyen IVA)
+            precio_total = precio_base + tarifa_politica + precio_extras
 
-            # Aplicar impuestos si están configurados (redondeo a 2 decimales)
-            tasa_impuesto = getattr(
-                settings, "TASA_IMPUESTO", Decimal("0.21")
-            )  # 21% por defecto
-            impuestos = (subtotal * tasa_impuesto).quantize(Decimal('0.01'))
-            total_con_impuestos = (subtotal + impuestos).quantize(Decimal('0.01'))
+            # 5. CALCULAR IVA SIMBÓLICO PARA DESGLOSE
+            # Obtener porcentaje IVA de configuración
+            iva_percentage = getattr(settings, 'IVA_PERCENTAGE', 0.10)  # 10% por defecto
+            
+            # Extraer IVA del precio total para mostrarlo
+            # Fórmula: IVA = precio_total * iva_percentage / (1 + iva_percentage)
+            iva_simbolico = precio_total * Decimal(str(iva_percentage)) / (Decimal("1") + Decimal(str(iva_percentage)))
+            precio_sin_iva = precio_total - iva_simbolico
 
-            logger.info(f"Precio calculado para reserva: {total_con_impuestos} "
-                       f"(base: {precio_base}, extras: {precio_extras}, "
-                       f"subtotal: {subtotal}, impuestos: {impuestos})")
+            # Redondear a 2 decimales
+            precio_total = precio_total.quantize(Decimal('0.01'))
+            iva_simbolico = iva_simbolico.quantize(Decimal('0.01'))
+            precio_sin_iva = precio_sin_iva.quantize(Decimal('0.01'))
+
+            logger.info(f"Precio calculado para reserva: {precio_total} "
+                    f"(días: {dias}, base: {precio_base}, política: {tarifa_politica}, "
+                    f"extras: {precio_extras}, IVA simbólico: {iva_simbolico})")
 
             return {
                 "success": True,
-                "precio_total": float(total_con_impuestos),
+                "precio_total": float(precio_total),
                 "dias_alquiler": dias,
                 "desglose": {
                     "precio_base": float(precio_base),
                     "precio_extras": float(precio_extras),
-                    "subtotal": float(subtotal),
-                    "impuestos": float(impuestos),
-                    "total": float(total_con_impuestos),
+                    "tarifa_politica": float(tarifa_politica),
+                    "precio_sin_iva": float(precio_sin_iva),
+                    "iva_simbolico": float(iva_simbolico),
+                    "total": float(precio_total),
                     "dias": dias,
-                    "tasa_impuesto": float(tasa_impuesto),
+                    "iva_percentage": float(iva_percentage),
                     "extras_detalle": extras_detalle,
                 },
             }
@@ -153,7 +180,7 @@ class ReservaService:
         except Exception as e:
             logger.error(f"Error calculando precio de reserva: {str(e)}")
             return {"success": False, "error": f"Error en el cálculo: {str(e)}"}
-
+    
     def validar_disponibilidad(
         self, vehiculo_id, fecha_recogida, fecha_devolucion, reserva_id=None
     ):

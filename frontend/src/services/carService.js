@@ -7,11 +7,11 @@ import {
 import axios from '../config/axiosConfig';
 import { withTimeout } from '../utils';
 import { withCache } from './cacheService';
+import simpleMapper from './dataMapper';
 import {
   extractFilterOptions,
   searchAvailableVehicles,
 } from './searchServices';
-import universalMapper from './universalDataMapper';
 
 // Crear logger para el servicio de carros
 const logger = createServiceLogger('CAR_SERVICE');
@@ -77,7 +77,7 @@ export const fetchCarsService = async (filterValues = {}) => {
         }
 
         // Usar el mapper universal para transformar los datos de vehículos
-        const mappedCars = await universalMapper.mapVehicles(rawCars);
+        const mappedCars = simpleMapper.mapVehicles(rawCars);
         const filterOptions =
           data.filterOptions || extractFilterOptions(mappedCars);
 
@@ -111,9 +111,7 @@ export const fetchCarsService = async (filterValues = {}) => {
           );
 
           // Usar el mapper universal para mapear los datos de testing
-          const mappedTestingCars = await universalMapper.mapVehicles(
-            testingCars,
-          );
+          const mappedTestingCars = simpleMapper.mapVehicles(testingCars);
           let filteredCars = [...mappedTestingCars];
 
           // Aplicar filtros

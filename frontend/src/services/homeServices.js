@@ -9,7 +9,7 @@ import {
 import axios from '../config/axiosConfig';
 import { logError, logInfo, withTimeout } from '../utils';
 import { withCache } from './cacheService';
-import universalMapper from './universalDataMapper';
+import simpleMapper from './dataMapper';
 
 // ========================================
 // CONFIGURACIÓN Y CONSTANTES
@@ -56,7 +56,7 @@ const fetchLocations = async () => {
       }
 
       // Usar el mapper universal
-      const mappedData = await universalMapper.mapLocations(
+      const mappedData = simpleMapper.mapLocations(
         dataArray.filter((item) => item && item.activo !== false),
       );
 
@@ -74,7 +74,7 @@ const fetchLocations = async () => {
         logInfo(
           'DEBUG_MODE activo - usando ubicaciones de testing como fallback',
         );
-        return await universalMapper.mapLocations(testingLocationsData);
+        return simpleMapper.mapLocations(testingLocationsData);
       }
 
       // EN PRODUCCIÓN: Error sin fallback
@@ -117,7 +117,7 @@ const fetchEstadisticas = async () => {
       }
 
       // Usar el mapper universal
-      const mappedData = await universalMapper.mapStatistics(
+      const mappedData = simpleMapper.mapStatistics(
         dataArray.filter((item) => item && item.activo),
       );
 
@@ -135,7 +135,7 @@ const fetchEstadisticas = async () => {
         logInfo(
           'DEBUG_MODE activo - usando estadísticas de testing como fallback',
         );
-        return await universalMapper.mapStatistics(testingEstadisticas);
+        return simpleMapper.mapStatistics(testingEstadisticas);
       }
 
       // EN PRODUCCIÓN: Error sin fallback
@@ -180,7 +180,7 @@ const fetchCaracteristicas = async () => {
       }
 
       // Usar el mapper universal
-      const mappedData = await universalMapper.mapFeatures(
+      const mappedData = simpleMapper.mapFeatures(
         dataArray.filter((item) => item && item.activo),
       );
 
@@ -196,7 +196,7 @@ const fetchCaracteristicas = async () => {
         logInfo(
           'DEBUG_MODE activo - usando características de testing como fallback',
         );
-        return await universalMapper.mapFeatures(testingCaracteristicas);
+        return simpleMapper.mapFeatures(testingCaracteristicas);
       }
 
       // EN PRODUCCIÓN: Error sin fallback
@@ -227,9 +227,8 @@ const fetchTestimonios = async () => {
       );
 
       // Usar el mapper universal para mapear testimonios
-      const mappedTestimonios = await universalMapper.mapTestimonials(
-        testingTestimonios,
-      );
+      const mappedTestimonios =
+        simpleMapper.mapTestimonials(testingTestimonios);
 
       logInfo('Testimonios mapeados con mapper universal', {
         count: mappedTestimonios.length,
@@ -285,7 +284,7 @@ const fetchDestinos = async () => {
       }
 
       // Usar el mapper universal
-      const mappedData = await universalMapper.mapDestinations(dataArray);
+      const mappedData = simpleMapper.mapDestinations(dataArray);
 
       logInfo('Destinos populares cargados desde BD', {
         count: mappedData.length,
@@ -300,7 +299,7 @@ const fetchDestinos = async () => {
           'DEBUG_MODE activo - usando destinos de testing como fallback',
           logger,
         );
-        return await universalMapper.mapDestinations(testingDestinos);
+        return simpleMapper.mapDestinations(testingDestinos);
       }
 
       // EN PRODUCCIÓN: Error sin fallback

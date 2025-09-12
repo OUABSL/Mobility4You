@@ -86,9 +86,9 @@ if os.environ.get('USE_S3') == 'TRUE':
     print(f"[B2] Media URL: {MEDIA_URL}")
     
 else:
-    # Configuración local por defecto
+    # Configuración local por defecto - SEPARAR media de staticfiles
     MEDIA_URL = "/media/"
-    MEDIA_ROOT = os.path.join(BASE_DIR, "staticfiles", "media")
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # Directorio separado para evitar conflictos de volúmenes
     print("[DEVELOPMENT LOCAL] Usando almacenamiento local para media")
 
 # Email backend para desarrollo

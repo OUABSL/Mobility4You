@@ -551,14 +551,14 @@ if DEBUG:
 # ========================================
 
 # Configuración básica de Stripe
-STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="pk_test_placeholder")
-STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="sk_test_placeholder")
-STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="whsec_placeholder")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="pk_test_51RU9X8IzmhVfLDlXZjXdeFtxx83YIFwTJjrGKEhnMBCTItLEkshgYrCepmrjHAcNO6rvzblYEPOrzUPeM0KIbPol00GOVuxqWU")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="sk_test_51RU9X8IzmhVfLDlXmoLNNsMvYzSjbtAUVA7khWwVnnqNxdkwqIUZQxWYbdeywOAxl4r4iCelrK3DPseUSQpNDuXr00SnsdVqmK")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="whsec_12345678901234567890123456789012")
 
 # Validación de configuración en producción
 if DJANGO_ENV == "production":
-    if STRIPE_SECRET_KEY == "sk_test_placeholder":
-        raise ValueError("STRIPE_SECRET_KEY debe configurarse en producción")
+    if "sk_test_" in STRIPE_SECRET_KEY:
+        raise ValueError("STRIPE_SECRET_KEY debe ser una clave de producción, no de prueba")
     if STRIPE_WEBHOOK_SECRET == "whsec_placeholder":
         raise ValueError("STRIPE_WEBHOOK_SECRET debe configurarse en producción")
 
@@ -578,9 +578,7 @@ STRIPE_CONFIG = {
         "allow_redirects": "never",  # Mantener flujo en la app
     },
     "capture_method": "automatic",  # Captura automática
-    "confirmation_method": "automatic",  # Confirmación automática desde frontend
     "currency": "eur",
-    "payment_method_types": ["card"],
     "statement_descriptor": "MOBILITY4YOU",  # Máximo 22 caracteres
     "statement_descriptor_suffix": "RENTAL",  # Suffix descriptivo
     "application_fee_amount": None,  # Para pagos conectados si aplica

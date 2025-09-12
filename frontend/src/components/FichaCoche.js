@@ -33,15 +33,11 @@ import { useNavigate } from 'react-router-dom';
 import autoGear from '../assets/img/icons/automatic-gear.svg';
 import carDoorLeft from '../assets/img/icons/car-door-left.svg';
 
-import { createServiceLogger } from '../config/appConfig';
+import { createServiceLogger, MEDIA_CONFIG } from '../config/appConfig';
 import '../css/FichaCoche.css';
 import { fetchPoliticasPago } from '../services/reservationServices';
 import { getStoredSearchParams } from '../services/searchServices';
 import { roundToDecimals } from '../utils';
-import {
-  calculateDisplayTaxAmount,
-  formatTaxRate,
-} from '../utils/financialUtils';
 
 // Crear logger para el componente
 const logger = createServiceLogger('FICHA_COCHE');
@@ -78,6 +74,7 @@ const FichaCoche = ({ car, onClose }) => {
             id: 'emergency-fallback',
             title: 'Opción Básica',
             deductible: 0,
+            tarifa: 0,
             descripcion: 'Opción de emergencia - contacte con soporte',
             incluye: ['Cobertura básica'],
             noIncluye: ['Servicios adicionales limitados'],
@@ -220,7 +217,7 @@ const FichaCoche = ({ car, onClose }) => {
                         onError={(e) => {
                           e.target.src =
                             car.imagenPrincipal?.placeholder ||
-                            'https://via.placeholder.com/600x400/e3f2fd/1976d2.png?text=Vehículo';
+                            MEDIA_CONFIG.getVehicleImageUrl(null); // Placeholder desde B2
                         }}
                       />
                     </div>
@@ -239,13 +236,13 @@ const FichaCoche = ({ car, onClose }) => {
                         car.imagen_principal ||
                         car.imagenPrincipal?.original ||
                         car.imagenPrincipal?.placeholder ||
-                        'https://via.placeholder.com/600x400/e3f2fd/1976d2.png?text=Vehículo'
+                        MEDIA_CONFIG.getVehicleImageUrl(null) // Placeholder desde B2
                       }
                       alt={`${car.marca} ${car.modelo}`}
                       onError={(e) => {
                         e.target.src =
                           car.imagenPrincipal?.placeholder ||
-                          'https://via.placeholder.com/600x400/e3f2fd/1976d2.png?text=Vehículo';
+                          MEDIA_CONFIG.getVehicleImageUrl(null); // Placeholder desde B2
                       }}
                     />
                   </div>
@@ -519,32 +516,59 @@ const FichaCoche = ({ car, onClose }) => {
 
             <div className="price-breakdown-content">
               <div className="d-flex justify-content-between mb-2 price-item">
-                <span>Precio base por día:</span>
+                <span>Precio total por día:</span>
                 <span>{car.precio_dia}€</span>
-              </div>{' '}
-              <div className="d-flex justify-content-between mb-2 price-item">
-                <span>IVA {formatTaxRate(car.tasaImpuesto)}:</span>
+              </div>
+
+              {/* Mostrar tarifa de política si existe */}
+              {selectedPayment && selectedPayment.tarifa > 0 && (
+                <div className="d-flex justify-content-between mb-2 price-item">
+                  <span>Tarifa de protección por día:</span>
+                  <span>{selectedPayment.tarifa}€</span>
+                </div>
+              )}
+
+              {/* <div className="d-flex justify-content-between mb-2 price-item">
+                <span>IVA {formatIvaRate(car.tasaIva)}:</span>
                 <span>
-                  {calculateDisplayTaxAmount(
+                  {calculateDisplayIvaAmount(
                     Number(car.precio_dia) || 0,
-                    car.tasaImpuesto,
+                    car.tasaIva,
                   ).toFixed(2)}
                   €
                 </span>
-              </div>
+              </div> */}
+
               <hr />
               <div className="d-flex justify-content-between price-total">
                 <span>Total por día:</span>
                 <span>
-                  {roundToDecimals(
-                    (Number(car.precio_dia) || 0) +
-                      calculateDisplayTaxAmount(
-                        Number(car.precio_dia) || 0,
-                        car.tasaImpuesto,
-                      ),
-                  ).toFixed(2)}
+                  {(() => {
+                    const precioBase = Number(car.precio_dia) || 0;
+                    const tarifaPolitica = selectedPayment?.tarifa || 0;
+                    // El precio ya incluye IVA según las nuevas especificaciones
+                    const totalConIva = precioBase + tarifaPolitica;
+                    return roundToDecimals(totalConIva).toFixed(2);
+                  })()}
                   €
                 </span>
+              </div>
+
+              {/* Mostrar desglose IVA solo informativamente */}
+              <div className="mt-2">
+                <small className="text-muted">
+                  (IVA 10% incluido:{' '}
+                  {(() => {
+                    const precioBase = Number(car.precio_dia) || 0;
+                    const tarifaPolitica = selectedPayment?.tarifa || 0;
+                    const totalConIva = precioBase + tarifaPolitica;
+                    // Extraer IVA del precio que ya lo incluye usando nueva fórmula (10%)
+                    const precioSinIva = totalConIva / 1.1;
+                    const iva = totalConIva - precioSinIva;
+                    return roundToDecimals(iva).toFixed(2);
+                  })()}
+                  €)
+                </small>
               </div>
             </div>
 

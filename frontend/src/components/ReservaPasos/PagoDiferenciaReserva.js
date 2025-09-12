@@ -30,13 +30,18 @@ import '../../css/PagoDiferenciaReserva.css';
 import {
   editReservation,
   findReservation,
+  findReservationByNumber,
   processPayment,
 } from '../../services/reservationServices';
 import {
   debugBackendData,
   debugSessionStorage,
-  formatTaxRate,
+  formatIvaRate,
 } from '../../utils';
+import {
+  isValidReservationNumber,
+  normalizeReservationNumber,
+} from '../../utils/reservationNumberUtils';
 import ReservaClientePago from './ReservaClientePago';
 
 // Crear logger para el componente
@@ -202,7 +207,25 @@ const PagoDiferenciaReserva = () => {
           if (!originalEmail) {
             throw new Error('Email requerido para consultar la reserva');
           }
-          data = await findReservation(id, originalEmail);
+
+          // Detectar si es un número de reserva (formato M4Y) o un ID numérico
+          const normalizedInput = normalizeReservationNumber(id);
+          const isReservationNumber = isValidReservationNumber(normalizedInput);
+
+          if (isReservationNumber) {
+            // Buscar por número de reserva personalizado
+            logger.info(
+              `🔍 Buscando por número de reserva: ${normalizedInput}`,
+            );
+            data = await findReservationByNumber(
+              normalizedInput,
+              originalEmail,
+            );
+          } else {
+            // Buscar por ID numérico interno
+            logger.info(`🔍 Buscando por ID interno: ${id}`);
+            data = await findReservation(id, originalEmail);
+          }
         }
 
         // Extraer datos de reserva si vienen en formato del backend
@@ -274,8 +297,8 @@ const PagoDiferenciaReserva = () => {
         // Preparar datos para el pago
         const paymentData = {
           metodo_pago: 'tarjeta',
-          importe: diferencia,
-          vehiculo_id: vehiculoId, // Incluir ID del vehículo
+          importe: Math.abs(diferencia), // ✅ FIX: Usar valor absoluto
+          vehiculo_id: vehiculoId,
           datos_pago: {
             titular:
               conductorPrincipal?.nombre && conductorPrincipal?.apellidos
@@ -296,7 +319,7 @@ const PagoDiferenciaReserva = () => {
         // Si el pago no es exitoso, lanzar error
         if (!paymentResult || !paymentResult.success) {
           throw new Error(
-            paymentResult?.error || 'Error al procesar el pago con tarjeta',
+            paymentResult?.error || 'Error procesando pago con tarjeta',
           );
         }
 
@@ -305,25 +328,56 @@ const PagoDiferenciaReserva = () => {
         logger.info('💵 Confirmando pago en efectivo');
       }
 
-      // Actualizar campos de pago extra con cálculos seguros
+      // ✅ FIX: Manejar correctamente diferencias negativas (descuentos)
       const currentImportePagadoExtra =
         parseFloat(reservaData.importe_pagado_extra) || 0;
       const diferenciaNumerica = parseFloat(diferencia) || 0;
-      const nuevoImportePagadoExtra = Number(
-        (currentImportePagadoExtra + diferenciaNumerica).toFixed(2),
+
+      // Para diferencias positivas: sumar al pagado extra
+      // Para diferencias negativas: restar del pendiente o ajustar el pagado
+      let nuevoImportePagadoExtra = currentImportePagadoExtra;
+      let nuevoImportePendienteExtra =
+        parseFloat(reservaData.importe_pendiente_extra) || 0;
+
+      if (diferenciaNumerica > 0) {
+        // Diferencia positiva: cliente debe pagar más
+        nuevoImportePagadoExtra += diferenciaNumerica;
+      } else if (diferenciaNumerica < 0) {
+        // Diferencia negativa: descuento para el cliente
+        const descuento = Math.abs(diferenciaNumerica);
+
+        // Si hay importe pendiente, primero reducir de ahí
+        if (nuevoImportePendienteExtra >= descuento) {
+          nuevoImportePendienteExtra -= descuento;
+        } else {
+          // Si el descuento es mayor que el pendiente, ajustar el pagado
+          const descuentoRestante = descuento - nuevoImportePendienteExtra;
+          nuevoImportePendienteExtra = 0;
+          nuevoImportePagadoExtra = Math.max(
+            0,
+            nuevoImportePagadoExtra - descuentoRestante,
+          );
+        }
+      }
+
+      // Redondear a 2 decimales
+      nuevoImportePagadoExtra = Number(nuevoImportePagadoExtra.toFixed(2));
+      nuevoImportePendienteExtra = Number(
+        nuevoImportePendienteExtra.toFixed(2),
       );
 
       logger.info('🧮 Cálculo de importes:', {
-        currentImportePagadoExtra,
         diferenciaNumerica,
+        currentImportePagadoExtra,
         nuevoImportePagadoExtra,
+        nuevoImportePendienteExtra,
       });
 
       const updatedReserva = {
         ...reservaData,
-        vehiculo_id: vehiculoId, // Asegurar que se mantenga el ID del vehículo
+        vehiculo_id: vehiculoId,
         importe_pagado_extra: nuevoImportePagadoExtra,
-        importe_pendiente_extra: 0,
+        importe_pendiente_extra: nuevoImportePendienteExtra,
         metodo_pago_extra: paymentMethod,
         diferenciaPagada: true,
         metodoPagoDiferencia: paymentMethod,
@@ -343,8 +397,10 @@ const PagoDiferenciaReserva = () => {
 
       setSuccess(true);
     } catch (err) {
-      logger.error('❌ Error en proceso de pago:', err);
-      setError(err.message || 'Error al procesar el pago de la diferencia.');
+      logger.error('❌ Error procesando pago de diferencia:', err);
+      setError(
+        err.message || 'Error procesando el pago. Por favor, intenta de nuevo.',
+      );
     } finally {
       setLoading(false);
     }
@@ -560,7 +616,7 @@ const PagoDiferenciaReserva = () => {
 
                             {priceEstimate.breakdown.precio_base && (
                               <div className="row text-muted small">
-                                <div className="col-6">• Precio base:</div>
+                                <div className="col-6">• Precio total:</div>
                                 <div className="col-6 text-end">
                                   €
                                   {priceEstimate.breakdown.precio_base.toFixed(
@@ -607,21 +663,18 @@ const PagoDiferenciaReserva = () => {
                               </div>
                             )}
 
-                            {priceEstimate.breakdown.impuestos &&
-                              priceEstimate.breakdown.impuestos > 0 && (
+                            {priceEstimate.breakdown.iva &&
+                              priceEstimate.breakdown.iva > 0 && (
                                 <div className="row text-muted small">
                                   <div className="col-6">
                                     • IVA
-                                    {formatTaxRate(
-                                      priceEstimate.breakdown.tasa_impuesto,
+                                    {formatIvaRate(
+                                      priceEstimate.breakdown.tasa_iva,
                                     )}
                                     :
                                   </div>
                                   <div className="col-6 text-end">
-                                    €
-                                    {priceEstimate.breakdown.impuestos.toFixed(
-                                      2,
-                                    )}
+                                    €{priceEstimate.breakdown.iva.toFixed(2)}
                                   </div>
                                 </div>
                               )}

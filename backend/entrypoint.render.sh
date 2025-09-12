@@ -48,10 +48,38 @@ else:
     print('✅ Superusuario ya existe')
 "
 
-# Recopilar archivos estáticos
-echo "📁 Recopilando archivos estáticos..."
-python manage.py collectstatic --noinput
-echo "✅ Archivos estáticos recopilados"
+# Configurar archivos estáticos
+echo "📁 Configurando archivos estáticos..."
+
+# Crear directorio media si no existe (separado de staticfiles)
+mkdir -p /app/media/vehiculos
+chmod -R 755 /app/media
+echo "✅ Directorio media creado: /app/media"
+
+# Verificar build info para cache invalidation
+if [ -f "/app/build_info.txt" ]; then
+    echo "🔍 Build Info:"
+    cat /app/build_info.txt
+fi
+
+# Forzar limpieza completa de static files
+echo "🧹 Limpiando static files anteriores..."
+rm -rf /app/staticfiles/*
+
+python manage.py collectstatic --noinput --clear
+echo "✅ Archivos estáticos recolectados ($(ls -1 /app/staticfiles/ | wc -l) directorios)"
+
+# Verificar que admin static files estén presentes
+if [ -d "/app/staticfiles/admin/" ]; then
+    admin_files=$(find /app/staticfiles/admin/ -name "*.css" -o -name "*.js" | wc -l)
+    echo "✅ Django Admin files: $admin_files archivos encontrados"
+else
+    echo "⚠️ Directorio admin static files no encontrado"
+fi
+
+# Configurar sistema de versionado optimizado
+echo "🔧 Configurando sistema de archivos estáticos..."
+python manage.py setup_static_assets 2>/dev/null || echo "⚠️ Usando configuración automática en startup"
 
 echo "🚀 Iniciando servidor Django..."
 exec "$@"

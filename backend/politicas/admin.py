@@ -11,7 +11,6 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
-from utils.static_mapping import get_versioned_asset
 
 from .models import (PoliticaIncluye, PoliticaPago, PoliticaPenalizacion,
                      Promocion, TipoPenalizacion)
@@ -132,9 +131,9 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
+            'all': ("admin/css/custom_admin.css",)
         }
-        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
+        js = ("admin/js/politicas_admin.js",)
 
     list_display = (
         "titulo_display",
@@ -240,7 +239,15 @@ class PoliticaPagoAdmin(admin.ModelAdmin):
             color, "{}".format(float(obj.deductible)), nivel
         )
 
-
+    @admin.display(description="Tarifa adicional por día sumada al importe de la reserva del clienta")
+    def tarifa_display(self, obj):
+        return format_html(
+            '<div class="tarifa-display">'
+            '<p> style="color: #7f8c8d;>{} € Por día</p`>'
+            '</div>', "{}".format(float(obj.tarifa))
+        )
+    
+    
     @admin.display(description="Items Incluidos")
     def items_incluidos_display(self, obj):
         """Muestra resumen de items incluidos"""
@@ -518,9 +525,9 @@ class TipoPenalizacionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
+            'all': ("admin/css/custom_admin.css",)
         }
-        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
+        js = ("admin/js/politicas_admin.js",)
 
     list_display = (
         "nombre_display",
@@ -706,9 +713,9 @@ class PromocionAdmin(admin.ModelAdmin):
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            'all': (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
+            'all': ("admin/css/custom_admin.css",)
         }
-        js = (get_versioned_asset("js_politicas", "admin/js/politicas_admin_v0d04259b.js"),)
+        js = ("admin/js/politicas_admin.js",)
 
     list_display = (
         "nombre_display",

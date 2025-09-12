@@ -59,13 +59,19 @@ WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = False
 
 # CONFIGURACIÓN DE BACKBLAZE B2 PARA ARCHIVOS MEDIA
-# Solo para archivos subidos por el admin (imágenes de vehículos, avatares, etc.)
-if os.environ.get('USE_S3') == 'TRUE':
+# En producción, usar B2 por defecto
+if os.environ.get('USE_S3', 'TRUE') == 'TRUE':
     # Credenciales de B2 para archivos media
     AWS_ACCESS_KEY_ID = os.environ.get('B2_APPLICATION_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('B2_APPLICATION_KEY')
-    AWS_STORAGE_BUCKET_NAME = os.environ.get('B2_BUCKET_NAME')
-    AWS_S3_ENDPOINT_URL = f'https://{os.environ.get("B2_S3_ENDPOINT")}'
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('B2_BUCKET_NAME', 'mobility4you-media-prod')
+    B2_S3_ENDPOINT = os.environ.get('B2_S3_ENDPOINT', 's3.eu-central-003.backblazeb2.com')
+    AWS_S3_ENDPOINT_URL = f'https://{B2_S3_ENDPOINT}'
+    
+    print(f"[B2] Configurando Backblaze B2:")
+    print(f"[B2] Bucket: {AWS_STORAGE_BUCKET_NAME}")
+    print(f"[B2] Endpoint: {AWS_S3_ENDPOINT_URL}")
+    print(f"[B2] Key ID: {AWS_ACCESS_KEY_ID[:8]}...")
     
     # Configuración para Django 4.2+ - Solo configurar el almacenamiento de media
     STORAGES = {
@@ -88,9 +94,10 @@ if os.environ.get('USE_S3') == 'TRUE':
     AWS_S3_USE_SSL = True
     AWS_S3_VERIFY = True
     
-    # URL para archivos media en B2
-    MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
+    # URL para archivos media en B2 - estructura unificada
+    MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
     
+    print(f"[B2] Media URL: {MEDIA_URL}")
     
 else:
     # Fallback: archivos media locales
@@ -190,16 +197,20 @@ print(f"[ALLOWED_HOSTS]: {ALLOWED_HOSTS}")
 print(f"[DATABASE]: {'Yes' if DATABASE_URL else 'No (using SQLite)'}")
 print(f"[CORS CONFIG] CORS Origins: {len(CORS_ALLOWED_ORIGINS)} configurados")
 print(f"[CORS CONFIG] CSRF Origins: {len(CSRF_TRUSTED_ORIGINS)} configurados")
+print(f"[SSL CONFIG] SECURE_SSL_REDIRECT: {SECURE_SSL_REDIRECT}")
+print(f"[SSL CONFIG] SESSION_COOKIE_SECURE: {env.bool('SESSION_COOKIE_SECURE', default=True)}")
+print(f"[SSL CONFIG] CSRF_COOKIE_SECURE: {env.bool('CSRF_COOKIE_SECURE', default=True)}")
 # ========================================
 # CONFIGURACIÓN DE SEGURIDAD
 # ========================================
 
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_SSL_REDIRECT = True
-SECURE_HSTS_SECONDS = 31536000  # 1 año
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+# Configuración de seguridad que respeta variables de entorno
+SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
+# SECURE_SSL_REDIRECT ya está configurado arriba con env.bool()
+SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)  # 1 año
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
+SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=True)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True

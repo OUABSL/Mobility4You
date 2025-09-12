@@ -59,15 +59,14 @@ LABEL description="Movility for You - Frontend Production"
 # Instalar curl para health checks
 RUN apk add --no-cache curl
 
-# Crear usuario nginx no-root
-RUN addgroup -g 101 -S nginx && \
-    adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
+# El usuario nginx ya existe en la imagen base nginx:1.25-alpine
+# Solo necesitamos verificar que tenga los permisos correctos
 
 # Copiar archivos construidos desde la etapa de build
 COPY --from=build --chown=nginx:nginx /app/build /usr/share/nginx/html
 
-# Nota: La configuración nginx está centralizada en docker/nginx/
-# No copiar configuración local ya que se maneja desde docker-compose
+# Copiar configuración personalizada de nginx
+COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
 
 # Establecer permisos correctos
 RUN chown -R nginx:nginx /usr/share/nginx/html && \

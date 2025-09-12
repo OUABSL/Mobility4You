@@ -5,6 +5,7 @@ import {
   faCheckCircle,
   faClock,
   faDownload,
+  faInfoCircle,
   faMapMarkerAlt,
   faPrint,
   faShieldAlt,
@@ -37,6 +38,7 @@ const ReservaClienteExito = () => {
   const [error, setError] = useState(null);
   // Estado para activar modo debug (útil para solucionar problemas)
   const [debugMode, setDebugMode] = useState(false);
+
   useEffect(() => {
     try {
       logger.info('[ReservaClienteExito] Cargando datos de reserva completada');
@@ -186,6 +188,7 @@ const ReservaClienteExito = () => {
       );
     }
   }, [location.state, storageService]);
+
   // Imprimir la reserva
   const handleImprimirReserva = () => {
     try {
@@ -223,6 +226,25 @@ const ReservaClienteExito = () => {
             .badge { background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px; }
             .card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; }
             .shadow-lg { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+            /* Estilos específicos para iconos FontAwesome en impresión */
+            .fa, .fas, .far, .fal, .fab, [data-icon] {
+              font-size: 16px !important;
+              width: 16px !important;
+              height: 16px !important;
+              max-width: 16px !important;
+              max-height: 16px !important;
+            }
+            svg[data-icon] {
+              width: 16px !important;
+              height: 16px !important;
+              max-width: 16px !important;
+              max-height: 16px !important;
+            }
+            .btn .fa, .btn .fas, .btn svg[data-icon] {
+              font-size: 14px !important;
+              width: 14px !important;
+              height: 14px !important;
+            }
           }
           @media screen {
             body { font-family: Arial, sans-serif; margin: 20px; }
@@ -287,7 +309,8 @@ const ReservaClienteExito = () => {
 
       // Crear un objeto con los datos formateados para descarga
       const reservaParaDescarga = {
-        id: reservaCompletada.id,
+        id: reservaCompletada.numero_reserva || reservaCompletada.id,
+        id_interno: reservaCompletada.id,
         fecha_creacion: new Date().toISOString(),
         vehiculo: getVehicleInfo(),
         fechas: {
@@ -329,9 +352,11 @@ const ReservaClienteExito = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `reserva_${reservaCompletada.id || 'mobility4you'}_${
-        new Date().toISOString().split('T')[0]
-      }.json`;
+      a.download = `reserva_${
+        reservaCompletada.numero_reserva ||
+        reservaCompletada.id ||
+        'mobility4you'
+      }_${new Date().toISOString().split('T')[0]}.json`;
       a.style.display = 'none';
 
       document.body.appendChild(a);
@@ -362,7 +387,9 @@ const ReservaClienteExito = () => {
     } catch (err) {
       setError('No se pudo acceder a la gestión de reservas.');
     }
-  }; // Activar modo debug con tecla secreta (presionar 'd' cinco veces seguidas)
+  };
+
+  // Activar modo debug con tecla secreta (presionar 'd' cinco veces seguidas)
   useEffect(() => {
     let keyPresses = [];
     const keyListener = (e) => {
@@ -725,7 +752,7 @@ const ReservaClienteExito = () => {
   };
 
   const getTotalPagado = () => {
-    // Campo directo del backend
+    // Cálculo correcto del total incluyendo tarifa de política
     if (typeof reservaCompletada.precio_total === 'number') {
       return reservaCompletada.precio_total;
     }
@@ -737,13 +764,13 @@ const ReservaClienteExito = () => {
     if (precioTotal) return precioTotal;
     if (total) return total;
 
-    // Sumar pagado y pendiente si están disponibles
-    const pagadoInicial = reservaCompletada.importe_pagado_inicial || 0;
-    const pendienteInicial = reservaCompletada.importe_pendiente_inicial || 0;
-    const pagadoExtra = reservaCompletada.importe_pagado_extra || 0;
-    const pendienteExtra = reservaCompletada.importe_pendiente_extra || 0;
+    // Cálculo completo incluyendo todos los componentes
+    const precioBase = reservaCompletada.precio_base || 0;
+    const precioExtras = reservaCompletada.precio_extras || 0;
+    const tarifaPolitica = reservaCompletada.tarifa_politica || 0;
+    const iva = reservaCompletada.iva || 0;
 
-    return pagadoInicial + pendienteInicial + pagadoExtra + pendienteExtra;
+    return precioBase + precioExtras + tarifaPolitica + iva;
   };
 
   const getConductorInfo = () => {
@@ -815,11 +842,15 @@ const ReservaClienteExito = () => {
               extra.extra_nombre || extra.nombre || `Extra ${idx + 1}`;
             const precio = extra.extra_precio || extra.precio || 0;
             const cantidad = extra.cantidad || 1;
+            // Obtener días de la reserva para calcular precio total del extra
+            const dias = reservaCompletada.dias_alquiler || 1;
+            const precioTotal = precio * cantidad * dias;
 
             return (
               <li key={idx}>
                 {cantidad > 1 ? `${cantidad}x ` : ''}
-                {nombre} ({formatCurrency(precio * cantidad)})
+                {nombre} ({formatCurrency(precio)}/día × {dias} días ={' '}
+                {formatCurrency(precioTotal)})
               </li>
             );
           })}
@@ -910,35 +941,32 @@ const ReservaClienteExito = () => {
   };
 
   const getPaymentOption = () => {
-    // Campo del backend ReservaDetailSerializer
+    // Mostrar información completa de la política
     if (reservaCompletada.politica_pago_titulo) {
-      return reservaCompletada.politica_pago_titulo;
+      const titulo = reservaCompletada.politica_pago_titulo;
+      const deductible = reservaCompletada.politica_pago_deductible || 0;
+      const tarifa = reservaCompletada.tarifa_politica || 0;
+
+      let descripcion = titulo;
+      if (deductible > 0) {
+        descripcion += ` (Franquicia: €${deductible})`;
+      } else {
+        descripcion += ' (Sin franquicia)';
+      }
+
+      if (tarifa > 0) {
+        descripcion += ` + €${tarifa}/día`;
+      }
+
+      return descripcion;
     }
 
-    // Campos alternativos por compatibilidad
-    if (reservaCompletada.payment_policy_title) {
-      return reservaCompletada.payment_policy_title;
+    // Campos alternativos
+    if (reservaCompletada.politica_pago_detail?.titulo) {
+      return reservaCompletada.politica_pago_detail.titulo;
     }
 
-    // Métodos alternativos por compatibilidad (desde frontend)
-    if (paymentOption) {
-      if (typeof paymentOption === 'string') return paymentOption;
-      if (paymentOption.nombre) return paymentOption.nombre;
-      if (paymentOption.titulo) return paymentOption.titulo;
-      if (paymentOption.descripcion) return paymentOption.descripcion;
-    }
-
-    if (opcion_pago) {
-      if (typeof opcion_pago === 'string') return opcion_pago;
-      if (opcion_pago.nombre) return opcion_pago.nombre;
-      if (opcion_pago.titulo) return opcion_pago.titulo;
-    }
-
-    return (
-      reservaCompletada.payment_option ||
-      reservaCompletada.opcion_pago ||
-      'No especificada'
-    );
+    return 'No especificada';
   };
 
   // Renderizado principal
@@ -966,7 +994,9 @@ const ReservaClienteExito = () => {
                     <th>ID Reserva</th>
                     <td>
                       <Badge bg="success">
-                        {reservaCompletada.id || 'N/A'}
+                        {reservaCompletada.numero_reserva ||
+                          reservaCompletada.id ||
+                          'N/A'}
                       </Badge>
                     </td>
                   </tr>
@@ -1045,35 +1075,87 @@ const ReservaClienteExito = () => {
                     <th>Extras incluidos</th>
                     <td>{getExtrasInfo()}</td>
                   </tr>
+
+                  {/* Desglose completo de precios */}
+                  <tr>
+                    <th colSpan="2" className="bg-light">
+                      <strong>Desglose de Precios</strong>
+                    </th>
+                  </tr>
+
                   <tr>
                     <th>
-                      <strong>Precio por día</strong>
+                      <strong>Precio total del vehículo</strong>
                     </th>
                     <td>
                       <strong>
-                        {formatCurrency(reservaCompletada.precio_dia || 0)}
+                        {formatCurrency(reservaCompletada.precio_base || 0)}
                       </strong>
                     </td>
                   </tr>
+
+                  {/* Mostrar tarifa de política si existe */}
+                  {reservaCompletada.tarifa_politica > 0 && (
+                    <tr>
+                      <th>
+                        <strong>Tarifa de protección</strong>
+                      </th>
+                      <td>
+                        <strong>
+                          {formatCurrency(
+                            reservaCompletada.tarifa_politica || 0,
+                          )}
+                        </strong>
+                      </td>
+                    </tr>
+                  )}
+
+                  {reservaCompletada.precio_extras > 0 && (
+                    <tr>
+                      <th>
+                        <strong>Extras</strong>
+                      </th>
+                      <td>
+                        <strong>
+                          {formatCurrency(reservaCompletada.precio_extras || 0)}
+                        </strong>
+                      </td>
+                    </tr>
+                  )}
+
                   <tr>
                     <th>
-                      <strong>Impuestos</strong>
+                      <strong>IVA (incluido)</strong>
                     </th>
                     <td>
                       <strong>
                         {formatCurrency(
-                          reservaCompletada.precio_impuestos || 0,
+                          reservaCompletada.iva_display ||
+                            reservaCompletada.iva ||
+                            (reservaCompletada.precio_total
+                              ? (reservaCompletada.precio_total * 0.1) / 1.1
+                              : 0),
                         )}
                       </strong>
                     </td>
                   </tr>
-                  <tr>
+
+                  <tr className="table-success">
                     <th>
-                      <strong>Total de la reserva</strong>
+                      <strong>TOTAL DE LA RESERVA</strong>
                     </th>
                     <td>
-                      <strong>{formatCurrency(getTotalPagado())}</strong>
+                      <strong style={{ fontSize: '1.2em' }}>
+                        {formatCurrency(reservaCompletada.precio_total || 0)}
+                      </strong>
                     </td>
+                  </tr>
+
+                  {/* Separador para estado de pagos */}
+                  <tr>
+                    <th colSpan="2" className="bg-light">
+                      <strong>Estado de Pagos</strong>
+                    </th>
                   </tr>
                   <tr>
                     <th>Importe pagado inicial</th>
@@ -1114,7 +1196,40 @@ const ReservaClienteExito = () => {
                   )}
                 </tbody>
               </Table>
-              <div className="d-flex justify-content-between">
+              {/* Información adicional */}
+              {(reservaCompletada.dias_alquiler ||
+                reservaCompletada.observaciones) && (
+                <Card className="mb-4 bg-light">
+                  <Card.Body>
+                    <h6 className="mb-3">
+                      <FontAwesomeIcon icon={faInfoCircle} className="me-2" />
+                      Información adicional
+                    </h6>
+
+                    {reservaCompletada.dias_alquiler && (
+                      <p className="mb-2">
+                        <strong>Duración del alquiler:</strong>{' '}
+                        {reservaCompletada.dias_alquiler} días
+                      </p>
+                    )}
+
+                    {reservaCompletada.observaciones && (
+                      <p className="mb-2">
+                        <strong>Observaciones:</strong>{' '}
+                        {reservaCompletada.observaciones}
+                      </p>
+                    )}
+
+                    <p className="mb-0 text-muted">
+                      <small>
+                        Todos los precios incluyen IVA. La tarifa de protección
+                        se aplica por día de alquiler.
+                      </small>
+                    </p>
+                  </Card.Body>
+                </Card>
+              )}
+              <div className="d-flex justify-content-between no-print">
                 <Button
                   variant="outline-primary"
                   onClick={handleImprimirReserva}
@@ -1124,14 +1239,23 @@ const ReservaClienteExito = () => {
                 <Button
                   variant="outline-success"
                   onClick={handleDescargarReserva}
+                  className="no-print"
                 >
                   <FontAwesomeIcon icon={faDownload} className="me-2" />{' '}
                   Descargar
                 </Button>
-                <Button variant="secondary" onClick={handleGestionReservas}>
+                <Button
+                  variant="secondary"
+                  onClick={handleGestionReservas}
+                  className="no-print"
+                >
                   Gestionar mis reservas
                 </Button>
-                <Button variant="primary" onClick={handleVolverInicio}>
+                <Button
+                  variant="primary"
+                  onClick={handleVolverInicio}
+                  className="no-print"
+                >
                   Volver al inicio
                 </Button>
               </div>

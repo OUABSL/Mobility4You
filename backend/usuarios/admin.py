@@ -1,10 +1,13 @@
 # usuarios/admin.py
 import logging
+import re
 from typing import Any, List, Optional, Union
 
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import BaseUserManager
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import DatabaseError, IntegrityError, transaction
@@ -13,12 +16,294 @@ from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from utils.static_mapping import get_versioned_asset
 
 from .models import Usuario
+from .validations import (generar_username_desde_email, limpiar_documento,
+                          limpiar_telefono, validate_documento_flexible,
+                          validate_telefono_flexible)
 
 # Configuración del logger para el panel de administración
 logger = logging.getLogger("admin_operations")
+
+
+class ClienteAdminForm(forms.ModelForm):
+    """
+    Formulario simplificado para crear usuarios cliente desde el admin
+    Facilita la tarea del administrador al hacer opcionales campos innecesarios
+    """
+    
+    # Campo de teléfono más flexible (override completo del modelo)
+    telefono = forms.CharField(
+        label=_("Teléfono"),
+        max_length=20,
+        required=False,
+        help_text=_("Formato flexible: +34 123 456 789, 123456789, etc."),
+        widget=forms.TextInput(attrs={
+            'placeholder': '123 456 789',
+            'class': 'vTextField'
+        })
+    )
+    
+    # Campo de número de documento opcional (override completo del modelo)
+    numero_documento = forms.CharField(
+        label=_("Número de documento"),
+        max_length=20,
+        required=False,
+        help_text=_("Opcional para usuarios creados por admin. Formato: 12345678A, AB123456, etc."),
+        widget=forms.TextInput(attrs={
+            'placeholder': '12345678A',
+            'class': 'vTextField'
+        })
+    )
+
+    # Tipo de documento opcional
+    tipo_documento = forms.ChoiceField(
+        label=_("Tipo de documento"),
+        choices=[('', '--------')] + Usuario.TIPO_DOCUMENTO_CHOICES,
+        required=False,
+        help_text=_("Opcional para usuarios creados por admin."),
+        widget=forms.Select(attrs={'class': 'vTextField'})
+    )
+
+    class Meta:
+        model = Usuario
+        fields = [
+            'email', 'first_name', 'last_name', 'fecha_nacimiento', 
+            'sexo', 'nacionalidad', 'tipo_documento', 'numero_documento',
+            'telefono', 'rol', 'is_active', 'registrado', 'verificado',
+            'acepta_recibir_ofertas'
+        ]
+        widgets = {
+            'fecha_nacimiento': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'vDateField'
+            }),
+            'email': forms.EmailInput(attrs={
+                'placeholder': 'cliente@ejemplo.com',
+                'class': 'vTextField',
+                'required': True
+            }),
+            'first_name': forms.TextInput(attrs={
+                'placeholder': 'Nombre',
+                'class': 'vTextField'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'placeholder': 'Apellidos',
+                'class': 'vTextField'
+            }),
+            'nacionalidad': forms.TextInput(attrs={
+                'placeholder': 'España',
+                'class': 'vTextField'
+            }),
+        }
+
+    def clean_telefono(self):
+        """Validación flexible para el teléfono usando validaciones centralizadas"""
+        telefono = self.cleaned_data.get('telefono', '').strip()
+        
+        if not telefono:
+            return ''  # Campo opcional, devolver string vacío
+        
+        # Usar función auxiliar para limpiar
+        telefono_limpio = limpiar_telefono(telefono)
+        
+        # Validar usando el validador centralizado
+        try:
+            validate_telefono_flexible(telefono_limpio)
+        except ValidationError as e:
+            raise forms.ValidationError(e.message)
+        
+        return telefono_limpio
+
+    def clean_numero_documento(self):
+        """Validación flexible para el número de documento usando validaciones centralizadas"""
+        numero = self.cleaned_data.get('numero_documento', '').strip()
+        
+        if not numero:
+            return ''  # Campo opcional para admin, devolver string vacío
+        
+        # Usar función auxiliar para limpiar
+        numero_limpio = limpiar_documento(numero)
+        
+        # Validar usando el validador centralizado
+        try:
+            validate_documento_flexible(numero_limpio)
+        except ValidationError as e:
+            raise forms.ValidationError(e.message)
+        
+        # Verificar unicidad si se proporciona
+        if self.instance.pk:
+            # Editando usuario existente
+            if Usuario.objects.filter(numero_documento=numero_limpio).exclude(pk=self.instance.pk).exists():
+                raise forms.ValidationError(_("Este número de documento ya está en uso."))
+        else:
+            # Creando nuevo usuario
+            if Usuario.objects.filter(numero_documento=numero_limpio).exists():
+                raise forms.ValidationError(_("Este número de documento ya está en uso."))
+        
+        return numero_limpio
+
+    def clean(self):
+        """Validación del formulario completo"""
+        cleaned_data = super().clean()
+        
+        # Asegurar que el rol esté establecido para clientes
+        if not cleaned_data.get('rol'):
+            cleaned_data['rol'] = 'cliente'
+        
+        # Si se especifica tipo_documento, se recomienda numero_documento
+        tipo_documento = cleaned_data.get('tipo_documento')
+        numero_documento = cleaned_data.get('numero_documento')
+        
+        if tipo_documento and not numero_documento:
+            self.add_error('numero_documento', 
+                          _("Se recomienda especificar el número si se selecciona un tipo de documento."))
+        
+        return cleaned_data
+
+
+class ClienteAdminCreationForm(forms.ModelForm):
+    """Formulario específico para crear SOLO clientes (sin contraseña)"""
+    
+    # Campo de teléfono flexible
+    telefono = forms.CharField(
+        label=_("Teléfono"),
+        max_length=20,
+        required=False,
+        help_text=_("Formato flexible: 123456789, +34123456789, etc."),
+        widget=forms.TextInput(attrs={
+            'placeholder': '123456789',
+            'class': 'vTextField'
+        })
+    )
+    
+    # Campo de número de documento opcional
+    numero_documento = forms.CharField(
+        label=_("Número de documento"),
+        max_length=20,
+        required=False,
+        help_text=_("Opcional. Formato: 12345678A, AB123456, etc."),
+        widget=forms.TextInput(attrs={
+            'placeholder': '12345678A',
+            'class': 'vTextField'
+        })
+    )
+
+    class Meta:
+        model = Usuario
+        fields = [
+            'email', 'first_name', 'last_name', 'telefono', 'numero_documento',
+            'fecha_nacimiento', 'sexo', 'nacionalidad', 'tipo_documento',
+            'is_active', 'registrado', 'verificado', 'acepta_recibir_ofertas'
+        ]
+        widgets = {
+            'email': forms.EmailInput(attrs={
+                'placeholder': 'cliente@ejemplo.com',
+                'class': 'vTextField',
+                'required': True
+            }),
+            'first_name': forms.TextInput(attrs={
+                'placeholder': 'Nombre',
+                'class': 'vTextField'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'placeholder': 'Apellidos',  
+                'class': 'vTextField'
+            }),
+            'fecha_nacimiento': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'vDateField'
+            }),
+            'nacionalidad': forms.TextInput(attrs={
+                'placeholder': 'España',
+                'class': 'vTextField'
+            }),
+        }
+
+    def clean_telefono(self):
+        """Validación muy flexible para teléfono usando validaciones centralizadas"""
+        telefono = self.cleaned_data.get('telefono', '').strip()
+        
+        if not telefono:
+            return ''
+        
+        # Usar función auxiliar para limpiar
+        telefono_limpio = limpiar_telefono(telefono)
+        
+        # Validar usando el validador centralizado
+        try:
+            validate_telefono_flexible(telefono_limpio)
+        except ValidationError as e:
+            raise forms.ValidationError(
+                _("Formato inválido. Use solo números: 123456789 o +34123456789")
+            )
+        
+        return telefono_limpio
+
+    def clean_numero_documento(self):
+        """Validación muy flexible para documento usando validaciones centralizadas"""
+        numero = self.cleaned_data.get('numero_documento', '').strip()
+        
+        if not numero:
+            return ''
+        
+        # Usar función auxiliar para limpiar
+        numero_limpio = limpiar_documento(numero)
+        
+        # Validar usando el validador centralizado
+        try:
+            validate_documento_flexible(numero_limpio)
+        except ValidationError as e:
+            raise forms.ValidationError(
+                _("Formato inválido. Use 6-20 caracteres: 12345678A")
+            )
+        
+        return numero_limpio
+
+    def save(self, commit=True):
+        """Guardar cliente sin contraseña"""
+        user = super().save(commit=False)
+        user.rol = 'cliente'
+        user.set_unusable_password()  # Sin contraseña para clientes
+        user.is_staff = False
+        user.is_superuser = False
+        
+        if commit:
+            user.save()
+        return user
+
+
+class AdminUsuarioCreationForm(forms.ModelForm):
+    """Formulario para crear usuarios admin/empresa con contraseña"""
+    
+    password1 = forms.CharField(
+        label=_("Contraseña"),
+        widget=forms.PasswordInput,
+        help_text=_("Debe contener al menos 8 caracteres.")
+    )
+    password2 = forms.CharField(
+        label=_("Confirmar contraseña"),
+        widget=forms.PasswordInput,
+        help_text=_("Ingrese la misma contraseña para verificación.")
+    )
+    
+    class Meta:
+        model = Usuario
+        fields = ('username', 'email', 'first_name', 'last_name', 'rol')
+
+    def clean_password2(self):
+        password1 = self.cleaned_data.get("password1")
+        password2 = self.cleaned_data.get("password2")
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError(_("Las contraseñas no coinciden."))
+        return password2
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password1"])
+        if commit:
+            user.save()
+        return user
 
 
 def admin_log_action(action_type: str):
@@ -176,12 +461,16 @@ class DateRangeFilter(SimpleListFilter):
 class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
     """Administrador avanzado para el modelo Usuario"""
     
+    # Usar formularios específicos según el contexto
+    form = ClienteAdminForm  # Para editar usuarios existentes
+    add_form = ClienteAdminCreationForm  # Para crear usuarios (principalmente clientes)
+    
     # Media para archivos CSS y JS personalizados
     class Media:
         css = {
-            "all": (get_versioned_asset("css", "admin/css/custom_admin_veeb3cfb9.css"),)
+            "all": ('admin/css/custom_admin.css',)
         }
-        js = (get_versioned_asset("js_usuarios", "admin/js/usuarios_admin_vc5b6f7e1.js"),)
+        js = ("admin/js/usuarios_admin.js",)
 
     # Campos de lista
     list_display = (
@@ -215,25 +504,18 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
     )
     ordering = ("-date_joined",)
     readonly_fields = ("date_joined", "last_login", "password")
-    # Fieldsets personalizados
+    
+    # Fieldsets simplificados para edición
     fieldsets = (
         (
-            "Información de cuenta",
+            "Información básica",
             {
                 "fields": ("username", "email"),
-                "description": "Para usuarios admin: username y email obligatorios. Para clientes: solo email.",
+                "description": "Email obligatorio. Username se genera automáticamente para clientes.",
             },
         ),
         (
-            "Contraseña",
-            {
-                "fields": ("password",),
-                "classes": ("collapse",),
-                "description": "Solo para usuarios admin y empresa. Clientes acceden sin contraseña.",
-            },
-        ),
-        (
-            "Información personal (solo clientes/empresa)",
+            "Información personal",
             {
                 "fields": (
                     ("first_name", "last_name"),
@@ -241,12 +523,9 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
                     "sexo",
                     "nacionalidad",
                     ("tipo_documento", "numero_documento"),
-                    "imagen_carnet",
                     "telefono",
-                    "direccion",
                 ),
-                "classes": ("collapse",),
-                "description": "Solo necesario para usuarios cliente/empresa, no para admin.",
+                "description": "Campos opcionales para usuarios creados por admin. Facilita la creación rápida de clientes.",
             },
         ),
         (
@@ -255,7 +534,7 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
                 "fields": (
                     "rol",
                     "is_active",
-                    "registrado",
+                    "registrado", 
                     "verificado",
                     "acepta_recibir_ofertas",
                 )
@@ -280,59 +559,44 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
     )
 
     # Fieldsets para creación
+    # Fieldsets simplificados para creación de clientes
     add_fieldsets = (
         (
-            "Tipo de usuario",
+            "Información básica (obligatoria)",
             {
                 "classes": ("wide",),
-                "fields": (),
-                "description": "ADMIN: Solo username, email y contraseña. CLIENTE/EMPRESA: Datos personales sin username.",
+                "fields": ("email", "first_name", "last_name"),
+                "description": "Email obligatorio. Nombres recomendados. Username se generará automáticamente.",
             },
         ),
         (
-            "Información básica",
+            "Información de contacto (opcional)",
             {
                 "classes": ("wide",),
-                "fields": ("email", "username"),
-                "description": "Email obligatorio para todos. Username solo para admin.",
+                "fields": ("telefono",),
+                "description": "Teléfono opcional. Formato flexible: 123456789, +34123456789, etc.",
             },
         ),
         (
-            "Contraseña (admin/empresa)",
-            {
-                "classes": ("wide",),
-                "fields": ("password1", "password2"),
-                "description": "Solo necesario para admin y empresa. Clientes no requieren contraseña.",
-            },
-        ),
-        (
-            "Permisos básicos",
-            {
-                "classes": ("wide",),
-                "fields": ("is_superuser", "is_staff", "rol"),
-                "description": "Admin: marcar is_superuser. Empresa: marcar is_staff + rol=empresa. Cliente: solo rol=cliente.",
-            },
-        ),
-        (
-            "Información personal (opcional para admin)",
+            "Información personal (opcional)",
             {
                 "classes": ("wide", "collapse"),
                 "fields": (
-                    "first_name",
-                    "last_name",
                     "fecha_nacimiento",
                     "sexo",
                     "nacionalidad",
-                    "tipo_documento",
-                    "numero_documento",
-                    "telefono",
+                    ("tipo_documento", "numero_documento"),
                 ),
-                "description": "Opcional para admin. Obligatorio para cliente/empresa según sea necesario.",
+                "description": "Todos los campos son opcionales para facilitar la creación rápida.",
             },
         ),
         (
-            "Configuración inicial",
-            {"classes": ("wide",), "fields": ("is_active", "registrado", "verificado")},
+            "Configuración de cuenta",
+            {
+                "classes": ("wide",),
+                "fields": ("is_active", "registrado", "verificado", "acepta_recibir_ofertas"),
+                "description": "Configuración básica del usuario cliente.",
+            },
         ),
     )
 
@@ -379,46 +643,71 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
         """Optimizar consultas con select_related"""
         return super().get_queryset(request).select_related("direccion")
 
+    def get_form(self, request, obj=None, **kwargs):
+        """Usar formulario específico según si es creación o edición y tipo de usuario"""
+        if obj is None:  # Creando nuevo usuario
+            # Para la mayoría de casos (clientes), usar formulario simplificado
+            kwargs['form'] = ClienteAdminCreationForm
+        else:
+            # Para edición, usar formulario general
+            kwargs['form'] = ClienteAdminForm
+        
+        return super().get_form(request, obj, **kwargs)
+
+    def get_fieldsets(self, request, obj=None):
+        """Fieldsets dinámicos según si es creación o edición"""
+        if obj is None:  # Creando nuevo usuario
+            return self.add_fieldsets
+        else:  # Editando usuario existente
+            return self.fieldsets
+
     def save_model(self, request, obj, form, change):
-        """Manejar contraseñas según tipo de usuario"""
+        """Manejar usuarios según tipo con validaciones simplificadas para admin"""
         try:
             if not change:  # Nuevo usuario
-                if obj.rol in ["admin", "empresa"]:
-                    # Usuarios admin/empresa necesitan contraseña
-                    if not obj.password:
-                        # Generar contraseña temporal si no se proporciona
-                        temp_password = BaseUserManager().make_random_password()
-                        obj.set_password(temp_password)
-                        messages.warning(
-                            request,
-                            f"Usuario ADMIN creado. Contraseña temporal para {obj.username}: {temp_password} "
-                            f"(Se recomienda cambiarla en el primer acceso)",
-                        )
-                        logger.info(
-                            f"Contraseña temporal generada para usuario admin/empresa {obj.username}"
-                        )
-                    else:
-                        # Encriptar contraseña proporcionada
-                        obj.set_password(obj.password)
-                        messages.success(
-                            request,
-                            f"Usuario ADMIN creado exitosamente: {obj.username}",
-                        )
-
-                    obj.is_staff = True  # Permitir acceso al admin
-
-                else:  # rol == 'cliente'
-                    # Clientes no necesitan contraseña
+                
+                # Para clientes: generar username automáticamente y configurar sin contraseña
+                if not hasattr(obj, 'rol') or obj.rol == 'cliente' or obj.rol is None:
+                    obj.rol = 'cliente'
+                    
+                    # Generar username único basado en email usando función auxiliar
+                    if not obj.username:
+                        base_username = generar_username_desde_email(obj.email)
+                        username = base_username
+                        counter = 1
+                        while Usuario.objects.filter(username=username).exists():
+                            username = f"{base_username}{counter}"
+                            counter += 1
+                        obj.username = username
+                    
+                    # Configurar cliente sin contraseña
                     obj.set_unusable_password()
                     obj.is_staff = False
+                    obj.is_superuser = False
+                    
+                    # Marcar como registrado y activo por defecto para clientes creados por admin
+                    if not obj.registrado:
+                        obj.registrado = True
+                    if not obj.is_active:
+                        obj.is_active = True
+                    
                     messages.success(
                         request,
-                        f"Usuario CLIENTE creado exitosamente: {obj.username}. "
-                        f"Podrá acceder a sus reservas con email + número de reserva.",
+                        f"✅ Usuario CLIENTE creado exitosamente: {obj.username} ({obj.email}). "
+                        f"Podrá acceder con email + número de reserva."
                     )
-                    logger.info(
-                        f"Usuario cliente creado sin contraseña: {obj.username}"
-                    )
+                    logger.info(f"Usuario cliente creado: {obj.username} - Email: {obj.email}")
+
+                else:
+                    # Usuarios admin/empresa (casos especiales)
+                    if obj.rol == "admin":
+                        obj.is_staff = True
+                        obj.is_superuser = True
+                    elif obj.rol == "empresa":
+                        obj.is_staff = True
+                        obj.is_superuser = False
+                    
+                    messages.success(request, f"Usuario {obj.rol.upper()} creado: {obj.username}")
 
             super().save_model(request, obj, form, change)
 
@@ -427,12 +716,55 @@ class UsuarioAdmin(BaseUserAdmin, BaseAdvancedAdmin):
             messages.error(request, f"Error creando usuario: {str(e)}")
             raise
 
+    def response_add(self, request, obj, post_url_continue=None):
+        """Personalizar respuesta después de agregar usuario"""
+        response = super().response_add(request, obj, post_url_continue)
+        
+        # Agregar mensaje informativo adicional para clientes
+        if obj.rol == 'cliente':
+            messages.info(
+                request,
+                f"💡 El cliente {obj.first_name} {obj.last_name} puede acceder a sus reservas "
+                f"usando su email ({obj.email}) + número de reserva. No necesita contraseña."
+            )
+        
+        return response
+
+    def _get_admin_add_fieldsets(self):
+        """Fieldsets para crear admin/empresa (con campos de contraseña)"""
+        return (
+            (
+                "Información básica",
+                {
+                    "classes": ("wide",),
+                    "fields": ("username", "email", "first_name", "last_name"),
+                    "description": "Información básica del usuario administrador/empresa.",
+                },
+            ),
+            (
+                "Contraseña",
+                {
+                    "classes": ("wide",),
+                    "fields": ("password1", "password2"),
+                    "description": "Contraseña requerida para usuarios admin/empresa.",
+                },
+            ),
+            (
+                "Configuración de cuenta",
+                {
+                    "classes": ("wide",),
+                    "fields": ("rol", "is_active", "registrado", "verificado"),
+                    "description": "Configuración del usuario administrador/empresa.",
+                },
+            ),
+        )
+
     def get_readonly_fields(self, request, obj=None):
         """Campos de solo lectura dinámicos"""
         readonly = list(self.readonly_fields)
 
         if obj:  # Editando objeto existente
-            readonly.extend(["username"])  # Username no se puede cambiar
+            readonly.extend(["username"])  # Username no se puede cambiar después de crear
 
         return readonly
 

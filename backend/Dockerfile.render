@@ -4,13 +4,19 @@
 # Usa una imagen oficial de Python como base
 FROM python:3.10-slim-bullseye AS base
 
+# Argumentos de build para invalidar cache
+ARG REBUILD_CACHE
+ARG BUILD_DATE
+
 # Establecer variables de entorno
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=random \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100
+    PIP_DEFAULT_TIMEOUT=100 \
+    REBUILD_CACHE=${REBUILD_CACHE} \
+    BUILD_DATE=${BUILD_DATE}
 
 # Instalar dependencias del sistema necesarias para Django y PostgreSQL
 RUN apt-get update && apt-get install -y \
@@ -33,6 +39,9 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
+
+# Cache invalidation layer - Force rebuild of Django admin static files
+RUN echo "Build cache invalidation: ${REBUILD_CACHE} at ${BUILD_DATE}" > /app/build_info.txt
 
 # Copiar código de aplicación
 COPY . /app/

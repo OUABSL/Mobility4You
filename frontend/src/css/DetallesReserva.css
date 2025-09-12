@@ -202,29 +202,74 @@
 
 /* Estilos para impresión */
 @media print {
-  .detalles-reserva {
-    width: 100%;
-    padding: 0;
-    margin: 0;
+  /* Configuración general de página */
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    font-size: 12px !important;
+  }
+
+  .detalles-reserva {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 10px !important;
+    margin: 0 !important;
+    background: white !important;
+  }
+
+  /* Ocultar elementos no necesarios para impresión */
+  .botonera-superior,
   button,
   .btn,
-  .nav-tabs {
+  .nav-tabs,
+  .navbar,
+  .navigation,
+  .footer,
+  .modal,
+  .modal-backdrop,
+  .alert,
+  [role='button'],
+  input[type='button'],
+  input[type='submit'],
+  .form-control,
+  .form-select,
+  .accordion-button::after {
     display: none !important;
   }
 
+  /* Mostrar todo el contenido de las cards */
   .card {
     break-inside: avoid;
-    border: 1px solid #ddd !important;
+    border: 1px solid #333 !important;
     box-shadow: none !important;
+    margin-bottom: 10px !important;
+    page-break-inside: avoid;
+    background: white !important;
   }
 
   .card-header {
     background-color: #f8f9fa !important;
     color: #000 !important;
+    border-bottom: 1px solid #333 !important;
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    font-weight: bold !important;
   }
 
+  .card-body {
+    padding: 12px !important;
+    background: white !important;
+    color: #000 !important;
+  }
+
+  /* Ajustar columnas para impresión */
   .col-md-4,
   .col-md-8,
   .col-lg-4,
@@ -232,6 +277,237 @@
     width: 100% !important;
     max-width: 100% !important;
     flex: 0 0 100% !important;
+    float: none !important;
+  }
+
+  /* Asegurar que el texto sea visible */
+  .text-muted {
+    color: #666 !important;
+  }
+
+  /* Mostrar contenido de acordeones expandido */
+  .accordion-collapse,
+  .accordion-body {
+    display: block !important;
+    padding: 10px !important;
+    border: none !important;
+  }
+
+  /* Formatear texto importante */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: #000 !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Formato de tabla para datos de reserva */
+  .table {
+    width: 100% !important;
+    margin-bottom: 1rem !important;
+    border-collapse: collapse !important;
+  }
+
+  .table td,
+  .table th {
+    padding: 6px !important;
+    border: 1px solid #ddd !important;
+    color: #000 !important;
+    font-size: 11px !important;
+  }
+
+  /* Iconos para impresión - Tamaño fijo y legible */
+  .fa-solid,
+  .fas,
+  .far,
+  .fab,
+  .fa,
+  [class*='fa-'] {
+    font-size: 12px !important;
+    color: #333 !important;
+    width: 14px !important;
+    height: 14px !important;
+    display: inline-block !important;
+    text-align: center !important;
+    margin-right: 6px !important;
+  }
+
+  /* Iconos específicos más pequeños */
+  .fa-xs {
+    font-size: 10px !important;
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  /* Iconos en headers más grandes */
+  .card-header .fa-solid,
+  .card-header .fas,
+  .card-header .far,
+  .card-header .fab,
+  .card-header .fa {
+    font-size: 14px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Asegurar que las imágenes se impriman con tamaño controlado */
+  img {
+    max-width: 120px !important;
+    max-height: 80px !important;
+    height: auto !important;
+    width: auto !important;
+    display: block !important;
+    margin: 5px auto !important;
+    object-fit: contain !important;
+  }
+
+  /* Imagen del vehículo específicamente */
+  .car-img,
+  .vehicle-card img {
+    max-width: 150px !important;
+    max-height: 100px !important;
+    margin: 10px auto !important;
+  }
+
+  /* Logo o imágenes pequeñas */
+  .logo,
+  .small-img {
+    max-width: 50px !important;
+    max-height: 30px !important;
+  }
+
+  /* Evitar saltos de página en medio de elementos importantes */
+  .vehicle-card,
+  .reservation-details-card,
+  .price-summary-card,
+  .drivers-card,
+  .locations-card,
+  .user-card,
+  .extras-card,
+  .protection-card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 8px !important;
+  }
+
+  /* Evitar páginas huérfanas */
+  .card-header {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Controlar espaciado para evitar páginas en blanco */
+  .container,
+  .container-fluid {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Eliminar márgenes excesivos */
+  .mb-4,
+  .mb-3,
+  .mb-2,
+  .my-4,
+  .my-3 {
+    margin-bottom: 8px !important;
+  }
+
+  .mt-4,
+  .mt-3,
+  .mt-2,
+  .my-4,
+  .my-3 {
+    margin-top: 8px !important;
+  }
+
+  /* Compactar contenido */
+  .row {
+    margin: 0 !important;
+  }
+
+  .col,
+  [class*='col-'] {
+    padding: 2px !important;
+  }
+
+  /* Ajustar tamaño de fuente para mejor legibilidad */
+  body,
+  p,
+  div,
+  span {
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+  }
+
+  h4 {
+    font-size: 14px !important;
+  }
+
+  h5 {
+    font-size: 13px !important;
+  }
+
+  h6 {
+    font-size: 12px !important;
+  }
+
+  /* Badges y elementos destacados */
+  .badge {
+    border: 1px solid #333 !important;
+    background: white !important;
+    color: #000 !important;
+    padding: 2px 6px !important;
+  }
+
+  /* Listas */
+  .list-group-item {
+    border: 1px solid #ddd !important;
+    padding: 6px 10px !important;
+    background: white !important;
+    color: #000 !important;
+  }
+
+  /* Elementos específicos de la reserva */
+  .vehicle-title {
+    font-size: 16px !important;
+    font-weight: bold !important;
+    color: #000 !important;
+  }
+
+  .location-name {
+    font-weight: bold !important;
+    color: #000 !important;
+  }
+
+  .date-time {
+    font-size: 11px !important;
+  }
+
+  /* Forzar visibilidad de contenido importante */
+  .reservation-details-card *,
+  .vehicle-card *,
+  .locations-card *,
+  .price-summary-card *,
+  .drivers-card * {
+    visibility: visible !important;
+    display: block !important;
+    color: #000 !important;
+  }
+
+  /* Grid de Bootstrap visible en impresión */
+  .row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+  }
+
+  .col,
+  [class*='col-'] {
+    position: relative !important;
+    width: 100% !important;
+    min-height: 1px !important;
   }
 }
 

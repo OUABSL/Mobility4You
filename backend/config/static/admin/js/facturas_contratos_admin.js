@@ -556,7 +556,7 @@
     $("#id_base_imponible").attr("title", "Importe sin IVA incluido");
     $("#id_iva").attr(
       "title",
-      "Impuesto sobre el Valor Añadido (normalmente 21%)"
+      "Impuesto sobre el Valor Añadido (normalmente 10%)"
     );
     $("#id_total").attr("title", "Importe total con IVA incluido");
   }

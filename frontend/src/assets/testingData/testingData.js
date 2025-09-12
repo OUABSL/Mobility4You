@@ -1092,7 +1092,7 @@ export const datosReservaPrueba = {
   precio_dia: 79.0,
   precioBase: 316.0,
   precioExtras: 40.0,
-  precioImpuestos: 74.76,
+  iva: 74.76,
   descuentoPromocion: 35.6,
   precioTotal: 395.16,
   diferenciaPendiente: 0,

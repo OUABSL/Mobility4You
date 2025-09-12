@@ -51,13 +51,14 @@ export {
 // Utilidades financieras
 export {
   calculateDiscount,
-  calculateDisplayTaxAmount,
+  calculateDisplayIvaAmount,
+  calculateIvaAmount,
   calculatePriceBreakdown,
-  calculatePriceWithTax,
-  calculateTaxAmount,
+  calculatePriceWithIva,
+  extractIvaFromPrice,
   formatCurrency,
+  formatIvaRate,
   formatPercentage,
-  formatTaxRate,
   parseMonetaryValue,
   roundToDecimals,
   sumMonetaryValues,
@@ -77,6 +78,21 @@ export {
   processImageUrl,
   validateImageUrl,
 } from './imageUtils';
+
+// Utilidades de números de reserva
+export {
+  ReservationNumberUtils,
+  compareReservationNumbers,
+  extractSequenceNumber,
+  findReservationNumbersInText,
+  formatReservationNumber,
+  getExampleReservationNumber,
+  getReservationDisplayName,
+  identifyReservationIdentifier,
+  isValidReservationNumber,
+  normalizeReservationNumber,
+  validateReservationNumberInput,
+} from './reservationNumberUtils';
 
 // Utilidades generales
 export {

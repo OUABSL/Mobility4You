@@ -19,6 +19,13 @@ class PoliticaPago(models.Model):
     )    
     descripcion = models.TextField(_("Descripción"), null=True, blank=True)
     activo = models.BooleanField(_("Activo"), default=True, null=False)
+    tarifa = models.DecimalField(
+        max_digits= 5,
+        decimal_places=2,
+        null=False,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))]
+    )
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(default=timezone.now)
 

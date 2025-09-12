@@ -20,6 +20,10 @@ else
     echo "📁 Collecting static files..."
     python manage.py collectstatic --noinput
 
+    # Version static files for development
+    echo "🏷️ Versioning admin static files..."
+    python manage.py version_static_assets --force || echo "⚠️ Static versioning failed, but continuing..."
+
     # Run migrations
     echo "🔄 Running database migrations..."
     python manage.py makemigrations --noinput || echo "No new migrations needed"

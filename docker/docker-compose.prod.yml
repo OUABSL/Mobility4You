@@ -52,6 +52,7 @@ services:
     environment:
       # Django Core
       - DJANGO_ENV=production
+      - DJANGO_SETTINGS_MODULE=config.settings.render
       - DEBUG=False
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}

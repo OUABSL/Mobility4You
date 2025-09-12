@@ -26,7 +26,11 @@ import {
   Spinner,
 } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { createServiceLogger, DEBUG_MODE } from '../../config/appConfig';
+import {
+  createServiceLogger,
+  DEBUG_MODE,
+  MEDIA_CONFIG,
+} from '../../config/appConfig';
 import '../../css/ReservaClientePago.css';
 import useReservationTimer from '../../hooks/useReservationTimer';
 import {
@@ -34,7 +38,7 @@ import {
   editReservation,
 } from '../../services/reservationServices';
 import { getReservationStorageService } from '../../services/reservationStorageService';
-import { formatTaxRate, logError, logInfo } from '../../utils';
+import { formatIvaRate, logError, logInfo } from '../../utils';
 import StripePaymentForm from '../StripePayment/StripePaymentForm';
 import { ReservationTimerBadge } from './ReservationTimerIndicator';
 import ReservationTimerModal from './ReservationTimerModal';
@@ -734,14 +738,14 @@ const ReservaClientePago = ({
                         car?.imagen ||
                         car?.imagenPrincipal?.original ||
                         car?.imagenPrincipal?.placeholder ||
-                        'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo'
+                        MEDIA_CONFIG.getVehicleImageUrl(null) // Placeholder desde B2
                       }
                       alt={`${car?.marca} ${car?.modelo}`}
                       className="reserva-car-img me-3"
                       onError={(e) => {
                         e.target.src =
                           car?.imagenPrincipal?.placeholder ||
-                          'https://via.placeholder.com/150x100/e3f2fd/1976d2.png?text=Vehículo';
+                          MEDIA_CONFIG.getVehicleImageUrl(null); // Placeholder desde B2
                       }}
                     />
                     <div>
@@ -813,14 +817,14 @@ const ReservaClientePago = ({
                   {detallesReserva && (
                     <div className="detalles-precio">
                       <div className="d-flex justify-content-between mb-2">
-                        <span>Precio base:</span>
+                        <span>Precio total:</span>
                         <span>
                           {(detallesReserva.precioCocheBase || 0).toFixed(2)}€
                         </span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
                         <span>
-                          IVA{formatTaxRate(detallesReserva.tasaImpuesto)}:
+                          IVA{formatIvaRate(detallesReserva.tasaIva)}:
                         </span>
                         <span>{(detallesReserva.iva || 0).toFixed(2)}€</span>
                       </div>

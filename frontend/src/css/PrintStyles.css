@@ -1,0 +1,479 @@
+/* PrintStyles.css - Estilos optimizados para impresión PDF */
+
+@media print {
+  /* ===============================
+     CONFIGURACIÓN GENERAL DE PÁGINA
+     =============================== */
+  @page {
+    size: A4;
+    margin: 1.5cm 1cm 2cm 1cm;
+    background: white;
+  }
+
+  /* ===============================
+     ELEMENTOS A OCULTAR EN IMPRESIÓN
+     =============================== */
+  .no-print,
+  .navbar,
+  .footer,
+  .btn,
+  button,
+  .modal-header .btn-close,
+  .print-hide,
+  .sidebar,
+  .navigation,
+  .back-button,
+  .edit-button,
+  .delete-button,
+  .action-buttons {
+    display: none !important;
+  }
+
+  /* ===============================
+     CONFIGURACIÓN GENERAL DEL BODY
+     =============================== */
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    font-size: 12pt !important;
+    line-height: 1.4 !important;
+    color: #333 !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ===============================
+     CONTENEDOR PRINCIPAL
+     =============================== */
+  .detalles-reserva-container,
+  .container,
+  .container-fluid {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* ===============================
+     HEADER DE LA RESERVA
+     =============================== */
+  .reservation-header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
+    color: white !important;
+    padding: 20pt !important;
+    margin-bottom: 15pt !important;
+    border-radius: 0 !important;
+    page-break-inside: avoid !important;
+  }
+
+  .reservation-title {
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    margin-bottom: 5pt !important;
+    color: white !important;
+  }
+
+  .reservation-number {
+    font-size: 14pt !important;
+    color: #e5e7eb !important;
+    margin-bottom: 0 !important;
+  }
+
+  .reservation-status {
+    display: inline-block !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    padding: 4pt 8pt !important;
+    border-radius: 4pt !important;
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    margin-top: 5pt !important;
+  }
+
+  /* ===============================
+     TARJETAS Y SECCIONES
+     =============================== */
+  .card {
+    border: 1pt solid #e5e7eb !important;
+    border-radius: 6pt !important;
+    margin-bottom: 12pt !important;
+    background: white !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+  }
+
+  .card-header {
+    background: #f8fafc !important;
+    border-bottom: 1pt solid #e5e7eb !important;
+    padding: 10pt 12pt !important;
+    font-weight: bold !important;
+    font-size: 12pt !important;
+    color: #374151 !important;
+  }
+
+  .card-body {
+    padding: 12pt !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+  }
+
+  /* ===============================
+     INFORMACIÓN DEL VEHÍCULO
+     =============================== */
+  .vehicle-info {
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 15pt !important;
+    page-break-inside: avoid !important;
+  }
+
+  .vehicle-image {
+    width: 120pt !important;
+    height: 80pt !important;
+    object-fit: cover !important;
+    border-radius: 4pt !important;
+    margin-right: 15pt !important;
+    border: 1pt solid #e5e7eb !important;
+  }
+
+  .vehicle-details h4 {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    margin-bottom: 5pt !important;
+    color: #1f2937 !important;
+  }
+
+  .vehicle-specs {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8pt !important;
+    margin-top: 10pt !important;
+  }
+
+  .spec-item {
+    font-size: 10pt !important;
+    color: #6b7280 !important;
+  }
+
+  /* ===============================
+     FECHAS Y UBICACIONES
+     =============================== */
+  .date-location-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 15pt !important;
+    margin-bottom: 15pt !important;
+  }
+
+  .date-location-item {
+    border: 1pt solid #e5e7eb !important;
+    border-radius: 4pt !important;
+    padding: 10pt !important;
+    background: #f9fafb !important;
+  }
+
+  .date-location-label {
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: #374151 !important;
+    margin-bottom: 5pt !important;
+  }
+
+  .date-location-value {
+    font-size: 11pt !important;
+    color: #1f2937 !important;
+  }
+
+  /* ===============================
+     CONDUCTOR Y CONTACTO
+     =============================== */
+  .driver-contact-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 15pt !important;
+    margin-bottom: 15pt !important;
+  }
+
+  .info-item {
+    margin-bottom: 8pt !important;
+  }
+
+  .info-label {
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: #6b7280 !important;
+    margin-bottom: 2pt !important;
+  }
+
+  .info-value {
+    font-size: 11pt !important;
+    color: #1f2937 !important;
+  }
+
+  /* ===============================
+     EXTRAS Y SERVICIOS
+     =============================== */
+  .extras-list {
+    margin-bottom: 15pt !important;
+  }
+
+  .extra-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8pt 0 !important;
+    border-bottom: 1pt solid #f3f4f6 !important;
+    font-size: 11pt !important;
+  }
+
+  .extra-name {
+    color: #374151 !important;
+  }
+
+  .extra-price {
+    font-weight: bold !important;
+    color: #1f2937 !important;
+  }
+
+  /* ===============================
+     RESUMEN DE PRECIOS
+     =============================== */
+  .price-summary {
+    background: #f8fafc !important;
+    border: 1pt solid #e5e7eb !important;
+    border-radius: 6pt !important;
+    padding: 15pt !important;
+    margin: 15pt 0 !important;
+    page-break-inside: avoid !important;
+  }
+
+  .price-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 8pt !important;
+    font-size: 11pt !important;
+  }
+
+  .price-row:last-child {
+    margin-bottom: 0 !important;
+    border-top: 1pt solid #d1d5db !important;
+    padding-top: 8pt !important;
+    font-weight: bold !important;
+    font-size: 12pt !important;
+  }
+
+  .price-label {
+    color: #6b7280 !important;
+  }
+
+  .price-value {
+    color: #1f2937 !important;
+    font-weight: 500 !important;
+  }
+
+  .price-total {
+    color: #1e40af !important;
+    font-size: 14pt !important;
+    font-weight: bold !important;
+  }
+
+  /* ===============================
+     ACORDEONES/INFORMACIÓN ADICIONAL
+     =============================== */
+  .accordion {
+    margin-bottom: 15pt !important;
+  }
+
+  .accordion-item {
+    border: 1pt solid #e5e7eb !important;
+    margin-bottom: 5pt !important;
+    border-radius: 4pt !important;
+    page-break-inside: avoid !important;
+  }
+
+  .accordion-header {
+    background: #f1f5f9 !important;
+    padding: 8pt 12pt !important;
+    font-weight: bold !important;
+    font-size: 11pt !important;
+    color: #334155 !important;
+    border-bottom: 1pt solid #e5e7eb !important;
+  }
+
+  .accordion-body {
+    padding: 10pt 12pt !important;
+    font-size: 10pt !important;
+    line-height: 1.6 !important;
+  }
+
+  .accordion-body ul {
+    margin: 0 !important;
+    padding-left: 15pt !important;
+  }
+
+  .accordion-body li {
+    margin-bottom: 4pt !important;
+    color: #4b5563 !important;
+  }
+
+  /* ===============================
+     ICONOS Y ELEMENTOS VISUALES
+     =============================== */
+  .fa-icon,
+  .icon {
+    display: none !important;
+  }
+
+  .badge {
+    background: #e5e7eb !important;
+    color: #374151 !important;
+    padding: 2pt 6pt !important;
+    border-radius: 3pt !important;
+    font-size: 9pt !important;
+    font-weight: normal !important;
+  }
+
+  /* ===============================
+     FOOTER DE IMPRESIÓN
+     =============================== */
+  .print-footer {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: white !important;
+    border-top: 1pt solid #e5e7eb !important;
+    padding: 8pt 15pt !important;
+    font-size: 9pt !important;
+    color: #6b7280 !important;
+    text-align: center !important;
+    z-index: 1000 !important;
+  }
+
+  /* ===============================
+     CONTROL DE SALTOS DE PÁGINA
+     =============================== */
+  .page-break-before {
+    page-break-before: always !important;
+  }
+
+  .page-break-after {
+    page-break-after: always !important;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid !important;
+  }
+
+  /* ===============================
+     ELEMENTOS ESPECÍFICOS
+     =============================== */
+  .list-group-item {
+    border: none !important;
+    border-bottom: 1pt solid #f3f4f6 !important;
+    padding: 6pt 0 !important;
+    background: transparent !important;
+    font-size: 10pt !important;
+  }
+
+  .list-group-item:last-child {
+    border-bottom: none !important;
+  }
+
+  /* ===============================
+     TABLAS (si las hay)
+     =============================== */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 15pt !important;
+    font-size: 10pt !important;
+  }
+
+  th,
+  td {
+    border: 1pt solid #e5e7eb !important;
+    padding: 6pt 8pt !important;
+    text-align: left !important;
+  }
+
+  th {
+    background: #f8fafc !important;
+    font-weight: bold !important;
+    color: #374151 !important;
+  }
+
+  /* ===============================
+     RESPONSIVE PARA IMPRESIÓN
+     =============================== */
+  .row,
+  .col-md-6,
+  .col-lg-4,
+  .col-sm-12 {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ===============================
+     MEJORAS ESPECÍFICAS PARA MODAL
+     =============================== */
+  .modal-dialog {
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  .modal-content {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .modal-body {
+    padding: 0 !important;
+  }
+}
+
+/* ===============================
+   CLASES AUXILIARES PARA IMPRESIÓN
+   =============================== */
+.print-only {
+  display: none;
+}
+
+@media print {
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* Header especial para impresión */
+.print-header {
+  display: none;
+}
+
+@media print {
+  .print-header {
+    display: block !important;
+    text-align: center !important;
+    margin-bottom: 20pt !important;
+    padding-bottom: 10pt !important;
+    border-bottom: 2pt solid #1e40af !important;
+  }
+
+  .print-header h1 {
+    font-size: 16pt !important;
+    color: #1e40af !important;
+    margin-bottom: 5pt !important;
+  }
+
+  .print-header p {
+    font-size: 10pt !important;
+    color: #6b7280 !important;
+    margin: 0 !important;
+  }
+}

@@ -1,31 +1,36 @@
 /**
- * 🖼️ UTILIDADES DE GESTIÓN DE IMÁGENES
+ * 🖼️ UTILIDADES DE GESTIÓN DE IMÁGENES UNIFICADAS
  *
- * Funciones para procesar URLs de imágenes, generar placeholders,
- * optimizar imágenes y manejar fallbacks.
+ * Sistema unificado para gestión de imágenes usando Backblaze B2
+ * Elimina dependencia de servicios externos como via.placeholder
  *
  * @author OUAEL BOUSSIALI
- * @version 1.0.0
- * @created 2025-06-30
+ * @version 2.0.0
+ * @updated 2025-09-12
  */
 
-import { createServiceLogger, DEBUG_MODE } from '../config/appConfig';
+import {
+  createServiceLogger,
+  DEBUG_MODE,
+  MEDIA_CONFIG,
+} from '../config/appConfig';
 
 // Crear logger para las utilidades de imágenes
 const logger = createServiceLogger('IMAGE_UTILS');
 
 /**
- * Procesa una URL de imagen y genera la URL absoluta
+ * Procesa una URL de imagen y genera la URL absoluta usando B2
  * @param {string} imageUrl - URL de la imagen (puede ser relativa o absoluta)
  * @param {string} baseUrl - URL base del backend (opcional)
- * @returns {string} URL absoluta de la imagen o placeholder
+ * @returns {string} URL absoluta de la imagen
  */
 export function processImageUrl(imageUrl, baseUrl = null) {
-  // Si no hay URL de imagen, retornar placeholder
   if (!imageUrl || typeof imageUrl !== 'string') {
-    return getDefaultPlaceholder();
+    logger.warn('URL de imagen inválida proporcionada:', imageUrl);
+    return MEDIA_CONFIG.getPlaceholderUrl('default');
   }
 
+  // Limpiar la URL
   const cleanUrl = imageUrl.trim();
 
   // Si ya es una URL absoluta válida, retornarla
@@ -33,31 +38,11 @@ export function processImageUrl(imageUrl, baseUrl = null) {
     return cleanUrl;
   }
 
-  // Si es una URL de placeholder conocida
-  if (
-    cleanUrl.includes('placeholder.com') ||
-    cleanUrl.includes('via.placeholder')
-  ) {
-    return cleanUrl.startsWith('https://') ? cleanUrl : `https://${cleanUrl}`;
-  }
-
-  // Construir URL absoluta usando baseUrl
-  const backendBaseUrl =
-    baseUrl ||
-    process.env.REACT_APP_BACKEND_URL ||
-    process.env.REACT_APP_API_URL?.replace('/api', '') ||
-    window.location.origin;
-
-  // Asegurar que la URL base no termine con /
-  const cleanBaseUrl = backendBaseUrl.replace(/\/$/, '');
-
-  // Si la imagen comienza con /, agregarla directamente
-  if (cleanUrl.startsWith('/')) {
-    return `${cleanBaseUrl}${cleanUrl}`;
-  }
-
-  // Si no comienza con /, asumir que es una ruta de media
-  return `${cleanBaseUrl}/media/${cleanUrl}`;
+  // Usar MEDIA_CONFIG para construir URLs
+  return (
+    MEDIA_CONFIG.getMediaUrl(cleanUrl) ||
+    MEDIA_CONFIG.getPlaceholderUrl('default')
+  );
 }
 
 /**
@@ -96,19 +81,16 @@ export function getPlaceholder(type = 'default', width = 300, height = 200) {
     },
   };
 
-  const config = placeholderConfigs[type] || placeholderConfigs.default;
-
-  return `https://via.placeholder.com/${width}x${height}/${config.bgColor}/${
-    config.textColor
-  }.png?text=${encodeURIComponent(config.text)}`;
+  // Usar MEDIA_CONFIG en lugar de via.placeholder
+  return MEDIA_CONFIG.getPlaceholderUrl(type, width, height);
 }
 
 /**
- * Obtiene un placeholder por defecto
+ * Obtiene un placeholder por defecto desde B2
  * @returns {string} URL del placeholder por defecto
  */
 export function getDefaultPlaceholder() {
-  return getPlaceholder('default', 300, 200);
+  return MEDIA_CONFIG.getPlaceholderUrl('default', 300, 200);
 }
 
 /**
@@ -178,11 +160,8 @@ export function prepareImageData(imageUrl, type = 'default', dimensions = {}) {
 export function getOptimizedImageUrl(imageUrl, context = 'default') {
   const processedUrl = processImageUrl(imageUrl);
 
-  // Si es un placeholder, no necesita optimización
-  if (
-    processedUrl.includes('placeholder.com') ||
-    processedUrl.includes('via.placeholder')
-  ) {
+  // Si es un placeholder de B2, no necesita optimización
+  if (processedUrl.includes(MEDIA_CONFIG.PATHS.PLACEHOLDERS)) {
     return processedUrl;
   }
 
@@ -197,7 +176,13 @@ export function getOptimizedImageUrl(imageUrl, context = 'default') {
 
   const optimization = optimizations[context] || optimizations.default;
 
-  // Solo aplicar optimización si es una imagen del propio servidor
+  // Para imágenes de B2, aplicar optimización si el CDN lo soporta
+  if (processedUrl.includes('backblazeb2.com')) {
+    // B2 no soporta optimización automática, retornar imagen original
+    return processedUrl;
+  }
+
+  // Solo aplicar optimización si es una imagen del propio servidor local
   if (
     processedUrl.includes(window.location.origin) ||
     processedUrl.includes(process.env.REACT_APP_BACKEND_URL)

@@ -9,13 +9,13 @@ from .models import PoliticaPago, Promocion, TipoPenalizacion
 from .serializers import (PoliticaPagoSerializer, PromocionSerializer,
                           TipoPenalizacionSerializer)
 
-
+# TODO: VERIFICAR EL CORRECTO USO DE TARIFA.
 class PoliticaPagoViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet para políticas de pago"""
     queryset = PoliticaPago.objects.all()
     serializer_class = PoliticaPagoSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['deductible']
+    filterset_fields = ['deductible', 'tarifa']
     search_fields = ['titulo', 'descripcion']
     ordering_fields = ['created_at', 'deductible']
     ordering = ['-created_at']

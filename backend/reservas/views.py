@@ -4,7 +4,10 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -64,14 +67,13 @@ class ExtrasViewSet(viewsets.ModelViewSet):
 
 class ReservaViewSet(viewsets.ModelViewSet):
     """
-    ViewSet mejorado para manejo de reservas con logging completo,
+    ViewSet para manejo de reservas con logging completo,
     validación robusta y separación clara entre cálculo y creación.
     Soporta creación dinámica de usuarios sin sesiones autenticadas.
     """
 
     queryset = Reserva.objects.all()
     serializer_class = ReservaSerializer
-    # Eliminar autenticación requerida para permitir reservas sin login
     permission_classes = []
 
     def __init__(self, *args, **kwargs):
@@ -82,40 +84,27 @@ class ReservaViewSet(viewsets.ModelViewSet):
         logger.info("ReservaViewSet inicializado con servicios")
 
     def get_queryset(self):
-        """Filtra las reservas según el usuario con logging completo"""
-        logger.info(f"Solicitando reservas")
-
-        # Si no hay usuario autenticado, devolver queryset vacío para GET requests
-        if not hasattr(self.request, 'user') or not self.request.user.is_authenticated:
-            return Reserva.objects.none()
-
-        user = self.request.user
-        queryset = super().get_queryset()
-
-        try:
-            # Con el modelo Usuario unificado, filtramos directamente por usuario
-            if user.is_staff or user.is_superuser:
-                # Admins ven todas las reservas
-                logger.info(f"Admin {user.id} accediendo a todas las reservas")
-                return queryset.select_related(
-                    "usuario", "vehiculo", "lugar_recogida", "lugar_devolucion"
-                ).prefetch_related("extras", "conductores", "penalizaciones")
-            else:
-                # Usuarios normales solo ven sus reservas
-                user_reservas = (
-                    queryset.filter(usuario=user)
-                    .select_related(
-                        "usuario", "vehiculo", "lugar_recogida", "lugar_devolucion"
-                    )
-                    .prefetch_related("extras", "conductores", "penalizaciones")
-                )
-
-                logger.info(f"Usuario {user.id} tiene {user_reservas.count()} reservas")
-                return user_reservas
-
-        except Exception as e:
-            logger.error(f"Error filtrando reservas para usuario {user.id}: {str(e)}")
-            return queryset.none()
+        queryset = Reserva.objects.select_related(
+            'usuario',
+            'vehiculo',          
+            'vehiculo__categoria',
+            'vehiculo__grupo',      
+            'lugar_recogida',         
+            'lugar_devolucion',
+            'politica_pago',
+            'promocion',         
+            'lugar_recogida__direccion', 
+            'lugar_devolucion__direccion'
+        ).prefetch_related(
+            'extras',                    
+            'extras__extra',             
+            'conductores',               
+            'conductores__conductor',
+            'penalizaciones',
+            'penalizaciones__tipo_penalizacion' 
+        ).order_by('-created_at')
+        
+        return queryset
 
     def get_serializer_class(self):
         """Determinar serializer según la acción"""
@@ -163,19 +152,6 @@ class ReservaViewSet(viewsets.ModelViewSet):
         try:
             reserva = self.get_object()
             logger.info(f"Reserva encontrada - Estado actual: {reserva.estado}")
-            
-            # Verificar usuario autenticado o permitir cancelación pública
-            if request.user.is_authenticated:
-                # Usuario autenticado - verificar permisos
-                if not (reserva.usuario == request.user or request.user.is_staff):
-                    logger.warning(f"Usuario {request.user.id} intentó cancelar reserva de otro usuario")
-                    return Response(
-                        {
-                            "success": False,
-                            "error": "No tienes permisos para cancelar esta reserva",
-                        },
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
             
             # Verificar estado actual
             if reserva.estado in ["cancelada", "completada"]:
@@ -242,9 +218,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
                 reserva.estado = "confirmada"
                 reserva.save()
 
-                logger.info(
-                    f"Reserva {reserva.id} confirmada por usuario {request.user.id}"
-                )
+                logger.info(f"Reserva {reserva.id} confirmada exitosamente")
 
                 return Response(
                     {"success": True, "message": "Reserva confirmada exitosamente"}
@@ -272,8 +246,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
                     "dias_reserva": (
                         reserva.fecha_devolucion - reserva.fecha_recogida
                     ).days,
-                    "puede_cancelar": reserva.estado in ["pendiente", "confirmada"]
-                    and reserva.fecha_recogida > timezone.now(),
+                    "puede_cancelar": reserva.estado in ["pendiente", "confirmada"],
                     "puede_modificar": reserva.estado == "pendiente",
                 }
             )
@@ -288,7 +261,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Crear una nueva reserva con validación completa y creación dinámica de usuarios"""
-        logger.info(f"Creando nueva reserva sin autenticación de usuario")
+        logger.info("Creando nueva reserva")
 
         try:
             with transaction.atomic():
@@ -356,7 +329,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
             reserva_data = {
                 'id': reserva.id,
                 'usuario_email': reserva.usuario.email,
-                'usuario_nombre': f"{reserva.usuario.nombre} {reserva.usuario.apellidos}".strip(),
+                'usuario_nombre': f"{reserva.usuario.first_name} {reserva.usuario.last_name}".strip(),
                 'vehiculo_nombre': f"{reserva.vehiculo.marca} {reserva.vehiculo.modelo}",
                 'fecha_recogida': reserva.fecha_recogida,
                 'fecha_devolucion': reserva.fecha_devolucion,
@@ -385,6 +358,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
             # No queremos que un error en el email impida la creación de la reserva
             logger.error(f"Error inesperado enviando emails para reserva {reserva.id}: {str(e)}")
 
+    @method_decorator(csrf_exempt, name='dispatch')
     @action(detail=True, methods=["post"])
     def buscar(self, request, pk=None):
         """
@@ -458,6 +432,97 @@ class ReservaViewSet(viewsets.ModelViewSet):
                 
         except Exception as e:
             logger.error(f"Error buscando reserva {pk}: {str(e)}")
+            return Response(
+                {"success": False, "error": "Error interno del servidor"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @method_decorator(csrf_exempt, name='dispatch')
+    @action(detail=False, methods=["post"])
+    def buscar_por_numero(self, request, numero_reserva=None):
+        """
+        Buscar una reserva específica por número de reserva y email.
+        Endpoint público para consulta de reservas sin autenticación.
+        """
+        try:
+            # Obtener datos del request
+            if hasattr(request, 'data') and request.data:
+                email = request.data.get('email', '').strip().lower()
+            else:
+                # Fallback para requests que no tienen data
+                import json
+                try:
+                    data = json.loads(request.body) if request.body else {}
+                    email = data.get('email', '').strip().lower()
+                except (json.JSONDecodeError, AttributeError):
+                    email = ''
+            
+            if not email:
+                return Response(
+                    {"success": False, "error": "Email es requerido"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+                
+            if not numero_reserva:
+                return Response(
+                    {"success": False, "error": "Número de reserva es requerido"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            logger.info(f"Buscando reserva {numero_reserva} para email {email}")
+            
+            # Query optimizada con select_related y prefetch_related específicos
+            try:
+                reserva = Reserva.objects.select_related(
+                    "usuario",
+                    "vehiculo", 
+                    "vehiculo__categoria", 
+                    "vehiculo__grupo",
+                    "lugar_recogida", 
+                    "lugar_recogida__direccion",
+                    "lugar_devolucion", 
+                    "lugar_devolucion__direccion",
+                    "politica_pago"
+                ).prefetch_related(
+                    "extras__extra",
+                    "conductores__conductor",
+                    "conductores__conductor__direccion",
+                    "vehiculo__imagenes",
+                    "politica_pago__items",
+                    "penalizaciones__tipo_penalizacion"
+                ).get(numero_reserva=numero_reserva)
+                
+                # Verificar que el email del usuario coincida
+                if reserva.usuario.email.lower() != email:
+                    logger.warning(f"Email {email} no coincide para reserva {numero_reserva}")
+                    return Response(
+                        {"success": False, "error": "Reserva no encontrada o email incorrecto"},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+                
+                # Usar el serializer de detalle existente y optimizado
+                from .serializers import ReservaDetailSerializer
+                serializer = ReservaDetailSerializer(reserva, context={"request": request})
+                
+                logger.info(f"Reserva {numero_reserva} encontrada exitosamente")
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Reserva encontrada",
+                        "reserva": serializer.data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+                
+            except Reserva.DoesNotExist:
+                logger.warning(f"Reserva {numero_reserva} no encontrada")
+                return Response(
+                    {"success": False, "error": "Reserva no encontrada"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+                
+        except Exception as e:
+            logger.error(f"Error buscando reserva {numero_reserva}: {str(e)}")
             return Response(
                 {"success": False, "error": "Error interno del servidor"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -537,6 +602,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
                 "fecha_devolucion": request.data.get("fechaDevolucion") or request.data.get("fecha_devolucion"),
                 "lugar_recogida_id": request.data.get("lugarRecogida_id") or request.data.get("lugar_recogida_id"),
                 "lugar_devolucion_id": request.data.get("lugarDevolucion_id") or request.data.get("lugar_devolucion_id"),
+                "politica_pago_id": request.data.get("politica_pago_id") or request.data.get("politicaPago_id"),
                 "extras": request.data.get("extras", [])
             }
             
@@ -565,25 +631,32 @@ class ReservaViewSet(viewsets.ModelViewSet):
             
             vehiculo_cambiado = reserva.vehiculo.id != vehiculo_id_nuevo
             
+            # Verificar si cambió la política de pago
+            politica_actual_id = reserva.politica_pago.id if reserva.politica_pago else None
+            politica_nueva_id = data_calculo.get("politica_pago_id")
+            politica_cambiada = politica_actual_id != politica_nueva_id
+            
             logger.info(f"Análisis de cambios - Fechas: {fechas_cambiadas}, "
-                       f"Extras: {extras_cambiados}, Vehículo: {vehiculo_cambiado}")
+                       f"Extras: {extras_cambiados}, Vehículo: {vehiculo_cambiado}, "
+                       f"Política: {politica_cambiada}")
             logger.info(f"Extras actuales: {extras_actuales}, Extras nuevos: {extras_nuevos}")
+            logger.info(f"Política actual: {politica_actual_id}, Política nueva: {politica_nueva_id}")
             
             # Si no hay cambios reales, la diferencia debe ser 0
-            if not (fechas_cambiadas or extras_cambiados or vehiculo_cambiado):
+            if not (fechas_cambiadas or extras_cambiados or vehiculo_cambiado or politica_cambiada):
                 precio_original = float(reserva.precio_total)
                 logger.info(f"No hay cambios detectados - manteniendo precio original: {precio_original}")
                 
                 response_data = {
                     "success": True,
-                    "originalPrice": precio_original,
-                    "newPrice": precio_original,
-                    "difference": 0.0,
-                    "breakdown": {
+                    "precio_original": precio_original,
+                    "precio_nuevo": precio_original,
+                    "diferencia": 0.0,
+                    "desglose": {
                         "precio_base": precio_original,
                         "precio_extras": 0.0,
                         "subtotal": precio_original,
-                        "impuestos": 0.0,
+                        "iva": 0.0,
                         "total": precio_original,
                     },
                     "dias_alquiler": (reserva.fecha_devolucion - reserva.fecha_recogida).days,
@@ -603,14 +676,13 @@ class ReservaViewSet(viewsets.ModelViewSet):
             precio_original = float(reserva.precio_total)
             diferencia = nuevo_precio - precio_original
             
-            # Preparar respuesta con formato esperado por el frontend
+            # Preparar respuesta con formato homogéneo en español
             response_data = {
                 "success": True,
-                "originalPrice": precio_original,
-                "newPrice": nuevo_precio,
-                "difference": diferencia,
-                "breakdown": resultado_nuevo.get("desglose", {}),
-                "desglose": resultado_nuevo.get("desglose", {}),  # Compatibilidad
+                "precio_original": precio_original,
+                "precio_nuevo": nuevo_precio,
+                "diferencia": diferencia,
+                "desglose": resultado_nuevo.get("desglose", {}),
                 "dias_alquiler": resultado_nuevo.get("dias_alquiler", 1),
             }
             
