@@ -32,9 +32,58 @@ DATABASES = {
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Configuración de archivos media
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'mediafiles')
+# ===========================================
+# CONFIGURACIÓN DE STORAGE - B2 (BACKBLAZE)
+# ===========================================
+
+# Verificar si están configuradas las credenciales de B2
+if all([
+    os.environ.get('B2_APPLICATION_KEY_ID'),
+    os.environ.get('B2_APPLICATION_KEY'),
+    os.environ.get('B2_BUCKET_NAME'),
+    os.environ.get('B2_S3_ENDPOINT')
+]):
+    # Configuración de B2 para archivos media
+    AWS_ACCESS_KEY_ID = os.environ.get('B2_APPLICATION_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('B2_APPLICATION_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('B2_BUCKET_NAME')
+    AWS_S3_ENDPOINT_URL = f'https://{os.environ.get("B2_S3_ENDPOINT")}'
+    
+    # Configuración de storages
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+    
+    # Configuración específica de S3/B2
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_S3_CUSTOM_DOMAIN = None
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
+    AWS_S3_REGION_NAME = 'eu-central-003'
+    AWS_S3_USE_SSL = True
+    AWS_S3_VERIFY = True
+    
+    # URL para archivos media en B2
+    MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
+    
+    print(f"[PRODUCTION B2] Configuración de media en B2:")
+    print(f"[B2] Bucket: {AWS_STORAGE_BUCKET_NAME}")
+    print(f"[B2] Media URL: {MEDIA_URL}")
+    
+else:
+    # Fallback: Configuración local de archivos media
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'mediafiles')
+    
+    print("[PRODUCTION] Usando almacenamiento local para archivos media")
+    print("[WARNING] Variables B2 no configuradas - revisa las variables de entorno")
 
 # Configuración de archivos estáticos adicional
 STATICFILES_DIRS = [
@@ -47,8 +96,6 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise para archivos estáticos
 ] + MIDDLEWARE[1:]  # Agregar el resto del middleware existente
 
-# Configuración de WhiteNoise
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Configuración de seguridad para producción
 SECURE_BROWSER_XSS_FILTER = True
