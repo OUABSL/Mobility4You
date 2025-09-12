@@ -18,21 +18,26 @@ logger = logging.getLogger(__name__)
 def imagen_vehiculo_upload_path(instance: Any, filename: str) -> str:
     """
     Genera la ruta de carga para las imágenes de vehículos
-    Formato: vehiculos/{vehiculo_id}_{imagenvehiculo_id}.jpg
+    Formato: vehiculos/{vehiculo_id}_{imagenvehiculo_id}.{ext}
     
-    Nota: Las imágenes se almacenan en staticfiles/media/vehiculos/
-    ya que MEDIA_ROOT apunta a staticfiles/media/
+    Esta función se ejecuta ANTES de guardar, por lo que usamos 
+    un timestamp temporal si no hay ID aún
     """
     # Extraer la extensión del archivo
     ext = filename.split(".")[-1] if "." in filename else "jpg"
-
-    # Si no tenemos el ID de la imagen aún (primera creación), usamos un placeholder
-    image_id = instance.id if instance.id else "temp"
-
+    
+    # Si tenemos el ID de la imagen, lo usamos
+    if hasattr(instance, 'id') and instance.id:
+        image_id = instance.id
+    else:
+        # Si no tenemos ID aún, usar timestamp para evitar colisiones
+        import time
+        image_id = f"tmp_{int(time.time() * 1000)}"
+    
     # Crear el nombre del archivo
     filename = f"{instance.vehiculo.id}_{image_id}.{ext}"
 
-    # Retornar la ruta completa - solo vehiculos/ ya que MEDIA_ROOT se añade automáticamente
+    # Retornar la ruta completa
     return os.path.join("vehiculos", filename)
 
 
@@ -276,58 +281,64 @@ class ImagenVehiculo(models.Model):
         return f"Imagen de {self.vehiculo}"
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        # Guardar primero para obtener el ID
+        # Actualizar timestamps
         if not self.id:
             self.created_at = timezone.now()
         self.updated_at = timezone.now()
 
-        # Si es una nueva instancia y tiene imagen
-        if not self.id and self.imagen:
-            # Guardar temporalmente para obtener el ID
-            super().save(*args, **kwargs)
-
-            # Ahora renombrar el archivo con el ID correcto
-            if self.imagen:
-                try:
+        # Para nuevas instancias con archivos temporales, renombrar después del guardado
+        is_new = not self.id
+        old_file_name = None
+        
+        if is_new and self.imagen:
+            old_file_name = self.imagen.name
+        
+        # Guardar la instancia primero
+        super().save(*args, **kwargs)
+        
+        # Si es una nueva instancia y el archivo tiene nombre temporal, renombrarlo
+        if is_new and self.imagen and old_file_name and "tmp_" in old_file_name:
+            try:
+                logger = logging.getLogger(__name__)
+                
+                # Extraer la extensión
+                ext = old_file_name.split(".")[-1] if "." in old_file_name else "jpg"
+                
+                # Crear el nuevo nombre con el ID real
+                new_filename = f"{self.vehiculo.id}_{self.id}.{ext}"
+                new_path = os.path.join("vehiculos", new_filename)
+                
+                # Solo renombrar si es diferente
+                if old_file_name != new_path:
+                    logger.info(f"[IMAGEN] Renombrando: {old_file_name} -> {new_path}")
                     
-                    logger = logging.getLogger(__name__)
-                    old_name = self.imagen.name
-                    
-                    # Extraer la extensión
-                    ext = old_name.split(".")[-1] if "." in old_name else "jpg"
-                    # Crear el nuevo nombre
-                    new_filename = f"{self.vehiculo.id}_{self.id}.{ext}"
-                    new_path = os.path.join("vehiculos", new_filename)
-                    
-                    logger.info(f"[IMAGEN] Renombrando: {old_name} -> {new_path}")
-                    
-                    # Verificar si el archivo temporal existe
-                    if default_storage.exists(old_name):
-                        # Leer el contenido del archivo temporal
-                        file_content = default_storage.open(old_name).read()
+                    # Verificar que el archivo existe antes de intentar moverlo
+                    if default_storage.exists(old_file_name):
+                        # Obtener el contenido
+                        with default_storage.open(old_file_name, 'rb') as old_file:
+                            content = old_file.read()
                         
                         # Guardar con el nuevo nombre
-                        default_storage.save(new_path, ContentFile(file_content))
+                        default_storage.save(new_path, ContentFile(content))
                         
-                        # Eliminar el archivo temporal
-                        default_storage.delete(old_name)
-                        
-                        # Actualizar el campo imagen con el nuevo nombre
-                        self.imagen.name = new_path
-                        
-                        # Guardar nuevamente con el nombre correcto
-                        super().save(update_fields=["imagen", "updated_at"])
-                        
-                        logger.info(f"[IMAGEN] Renombrado exitoso: {new_path}")
+                        # Eliminar el archivo anterior solo si el nuevo se guardó correctamente
+                        if default_storage.exists(new_path):
+                            default_storage.delete(old_file_name)
+                            
+                            # Actualizar el campo imagen en la base de datos
+                            self.imagen.name = new_path
+                            super().save(update_fields=["imagen", "updated_at"])
+                            
+                            logger.info(f"[IMAGEN] Renombrado exitoso: {new_path}")
+                        else:
+                            logger.error(f"[IMAGEN] Error: no se pudo crear {new_path}")
                     else:
-                        logger.warning(f"[IMAGEN] Archivo temporal no encontrado: {old_name}")
+                        logger.warning(f"[IMAGEN] Archivo temporal no encontrado: {old_file_name}")
                         
-                except Exception as e:
-                    logger.error(f"[IMAGEN] Error al renombrar archivo: {str(e)}")
-                    # Si falla el renombrado, al menos guardar con el nombre temporal
-                    pass
-        else:
-            super().save(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"[IMAGEN] Error al renombrar archivo: {str(e)}")
+                # En caso de error, mantener el archivo temporal
+                logger.info(f"[IMAGEN] Manteniendo archivo temporal: {old_file_name}")
 
 
 class TarifaVehiculo(models.Model):
