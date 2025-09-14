@@ -465,22 +465,39 @@ class VehiculoAdmin(admin.ModelAdmin):
 
     def tarifa_actual(self, obj):
         """Tarifa actual del vehículo"""
-        tarifa_activa = obj.tarifas.filter(
-            fecha_inicio__lte=timezone.now().date(),
-            fecha_fin__gte=timezone.now().date()
-        ).first()
+        hoy = timezone.now().date()
         
-        if tarifa_activa:
+        # Buscar tarifa específica activa (con fecha_fin)
+        tarifa_especifica = obj.tarifas.filter(
+            fecha_inicio__lte=hoy,
+            fecha_fin__gte=hoy,
+            fecha_fin__isnull=False
+        ).order_by('-fecha_inicio').first()
+        
+        if tarifa_especifica:
             return format_html(
                 '<strong style="color: #007bff;">€{}/día</strong><br>'
                 '<small>Válida hasta {}</small>',
-                tarifa_activa.precio_dia,
-                tarifa_activa.fecha_fin.strftime("%d/%m/%Y")
+                tarifa_especifica.precio_dia,
+                tarifa_especifica.fecha_fin.strftime("%d/%m/%Y")
             )
-        else:
+        
+        # Si no hay tarifa específica, buscar tarifa por defecto (sin fecha_fin)
+        tarifa_defecto = obj.tarifas.filter(
+            fecha_inicio__lte=hoy,
+            fecha_fin__isnull=True
+        ).order_by('-fecha_inicio').first()
+        
+        if tarifa_defecto:
             return format_html(
-                '<span style="color: #dc3545;">❌ Sin tarifa</span>'
+                '<strong style="color: #28a745;">€{}/día</strong><br>'
+                '<small>Tarifa por defecto</small>',
+                tarifa_defecto.precio_dia
             )
+        
+        return format_html(
+            '<span style="color: #dc3545;">❌ Sin tarifa</span>'
+        )
 
     def estadisticas_uso(self, obj):
         """Estadísticas de uso del vehículo"""
@@ -830,13 +847,24 @@ class TarifaVehiculoAdmin(admin.ModelAdmin):
         )
 
     def periodo_vigencia(self, obj):
-        return format_html(
-            '<strong>📅 {}</strong><br>'
-            '<small>hasta</small><br>'
-            '<strong>📅 {}</strong>',
-            obj.fecha_inicio.strftime("%d/%m/%Y"),
-            obj.fecha_fin.strftime("%d/%m/%Y")
-        )
+        """Muestra el período de vigencia de la tarifa"""
+        if obj.fecha_fin:
+            # Tarifa con fecha de fin específica
+            return format_html(
+                '<strong>📅 {}</strong><br>'
+                '<small>hasta</small><br>'
+                '<strong>📅 {}</strong>',
+                obj.fecha_inicio.strftime("%d/%m/%Y"),
+                obj.fecha_fin.strftime("%d/%m/%Y")
+            )
+        else:
+            # Tarifa por defecto (sin fecha de fin)
+            return format_html(
+                '<strong>📅 {}</strong><br>'
+                '<small style="color: #28a745;">⚡ Tarifa por defecto</small><br>'
+                '<small style="color: #6c757d;">Sin fecha límite</small>',
+                obj.fecha_inicio.strftime("%d/%m/%Y")
+            )
 
     @admin.display(description="Precio")
     def precio_display(self, obj):
@@ -847,17 +875,38 @@ class TarifaVehiculoAdmin(admin.ModelAdmin):
         )
 
     def estado_vigencia(self, obj):
+        """Muestra el estado actual de la tarifa"""
         hoy = timezone.now().date()
-        if obj.fecha_inicio <= hoy <= obj.fecha_fin:
-            return format_html('<span style="color: #28a745; font-weight: bold;">✅ Activa</span>')
-        elif hoy < obj.fecha_inicio:
-            return format_html('<span style="color: #ffc107; font-weight: bold;">⏳ Futura</span>')
+        
+        if obj.fecha_fin:
+            # Tarifa con fecha de fin específica
+            if obj.fecha_inicio <= hoy <= obj.fecha_fin:
+                return format_html('<span style="color: #28a745; font-weight: bold;">✅ Activa</span>')
+            elif hoy < obj.fecha_inicio:
+                return format_html('<span style="color: #ffc107; font-weight: bold;">⏳ Futura</span>')
+            else:
+                return format_html('<span style="color: #6c757d; font-weight: bold;">⏹️ Expirada</span>')
         else:
-            return format_html('<span style="color: #6c757d; font-weight: bold;">⏹️ Expirada</span>')
+            # Tarifa por defecto (sin fecha de fin)
+            if obj.fecha_inicio <= hoy:
+                return format_html('<span style="color: #28a745; font-weight: bold;">✅ Por Defecto</span>')
+            else:
+                return format_html('<span style="color: #ffc107; font-weight: bold;">⏳ Futura</span>')
 
     def dias_vigencia(self, obj):
-        dias = (obj.fecha_fin - obj.fecha_inicio).days + 1
-        return f"{dias} días"
+        """Muestra los días de vigencia de la tarifa"""
+        if obj.fecha_fin:
+            # Tarifa con fecha de fin específica
+            dias = (obj.fecha_fin - obj.fecha_inicio).days + 1
+            return format_html(
+                '<span style="color: #007bff; font-weight: bold;">{} días</span>',
+                dias
+            )
+        else:
+            # Tarifa por defecto (sin fecha de fin)
+            return format_html(
+                '<span style="color: #28a745; font-weight: bold;">♾️ Ilimitado</span>'
+            )
 
 
 @admin.register(Mantenimiento)

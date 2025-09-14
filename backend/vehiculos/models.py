@@ -179,31 +179,51 @@ class Vehiculo(models.Model):
     @property
     def precio_dia_actual(self) -> Decimal:
         """
-        Obtiene el precio por día actual del vehículo desde las tarifas vigentes
+        Obtiene el precio por día actual del vehículo siguiendo la lógica de tarifas:
+        1. Si existe una tarifa específica activa (con fecha_fin), usar esa
+        2. Si no, usar la tarifa por defecto más reciente (sin fecha_fin)
+        3. Si existen múltiples tarifas por defecto, usar la más reciente
         """
-        from django.db.models import Q
         from django.utils import timezone
 
         try:
             today = timezone.now().date()
 
-            # Buscar tarifa vigente
-            tarifa = (
-                self.tarifas.filter(fecha_inicio__lte=today)
-                .filter(Q(fecha_fin__gte=today) | Q(fecha_fin__isnull=True))
-                .order_by("-fecha_inicio")
+            # 1. Buscar tarifa específica activa (con fecha_fin que incluya hoy)
+            tarifa_especifica = (
+                self.tarifas.filter(
+                    fecha_inicio__lte=today,
+                    fecha_fin__gte=today,
+                    fecha_fin__isnull=False
+                )
+                .order_by('-fecha_inicio')
                 .first()
             )
 
-            if tarifa and hasattr(tarifa, "precio_dia"):
-                return tarifa.precio_dia
-            return Decimal("0.00")
-        except Exception as e:
-            import logging
-            
-            logger.error(
-                f"Error obteniendo precio actual para vehículo {self.id}: {str(e)}"
+            if tarifa_especifica:
+                logger.debug(f"Vehículo {self.id}: Usando tarifa específica {tarifa_especifica.precio_dia}€")
+                return tarifa_especifica.precio_dia
+
+            # 2. Si no hay tarifa específica, buscar tarifa por defecto (sin fecha_fin)
+            tarifa_defecto = (
+                self.tarifas.filter(
+                    fecha_inicio__lte=today,
+                    fecha_fin__isnull=True
+                )
+                .order_by('-fecha_inicio')  # La más reciente primero
+                .first()
             )
+
+            if tarifa_defecto:
+                logger.debug(f"Vehículo {self.id}: Usando tarifa por defecto {tarifa_defecto.precio_dia}€")
+                return tarifa_defecto.precio_dia
+
+            # 3. Si no hay ninguna tarifa, devolver 0
+            logger.warning(f"Vehículo {self.id}: No se encontró ninguna tarifa válida")
+            return Decimal("0.00")
+
+        except Exception as e:
+            logger.error(f"Error obteniendo precio actual para vehículo {self.id}: {str(e)}")
             return Decimal("0.00")
 
     @property
@@ -215,9 +235,9 @@ class Vehiculo(models.Model):
         self, fecha_inicio: Any, fecha_fin: Optional[Any] = None
     ) -> Decimal:
         """
-        Obtiene el precio por día para un rango de fechas específico
+        Obtiene el precio por día para una fecha específica usando la misma lógica
+        que precio_dia_actual pero para cualquier fecha
         """
-        from django.db.models import Q
         from django.utils import timezone
 
         try:
@@ -228,24 +248,37 @@ class Vehiculo(models.Model):
             elif hasattr(fecha_inicio, "date"):
                 fecha_inicio = fecha_inicio.date()
 
-            # Buscar tarifa vigente para la fecha de inicio
-            tarifa = (
-                self.tarifas.filter(fecha_inicio__lte=fecha_inicio)
-                .filter(Q(fecha_fin__gte=fecha_inicio) | Q(fecha_fin__isnull=True))
-                .order_by("-fecha_inicio")
+            # 1. Buscar tarifa específica activa para esa fecha
+            tarifa_especifica = (
+                self.tarifas.filter(
+                    fecha_inicio__lte=fecha_inicio,
+                    fecha_fin__gte=fecha_inicio,
+                    fecha_fin__isnull=False
+                )
+                .order_by('-fecha_inicio')
                 .first()
             )
 
-            if tarifa and hasattr(tarifa, "precio_dia"):
-                return tarifa.precio_dia
-            return Decimal("0.00")
-        except Exception as e:
-            import logging
+            if tarifa_especifica:
+                return tarifa_especifica.precio_dia
 
-            logger = logging.getLogger(__name__)
-            logger.error(
-                f"Error obteniendo precio para fechas en vehículo {self.id}: {str(e)}"
+            # 2. Si no hay tarifa específica, buscar tarifa por defecto
+            tarifa_defecto = (
+                self.tarifas.filter(
+                    fecha_inicio__lte=fecha_inicio,
+                    fecha_fin__isnull=True
+                )
+                .order_by('-fecha_inicio')
+                .first()
             )
+
+            if tarifa_defecto:
+                return tarifa_defecto.precio_dia
+
+            return Decimal("0.00")
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo precio para fechas en vehículo {self.id}: {str(e)}")
             return Decimal("0.00")
 
 
@@ -340,7 +373,10 @@ class TarifaVehiculo(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.vehiculo} - {self.precio_dia}€/día ({self.fecha_inicio} a {self.fecha_fin})"
+        if self.fecha_fin:
+            return f"{self.vehiculo} - {self.precio_dia}€/día ({self.fecha_inicio} a {self.fecha_fin})"
+        else:
+            return f"{self.vehiculo} - {self.precio_dia}€/día (desde {self.fecha_inicio} - Tarifa por defecto)"
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if hasattr(self, "fecha") and isinstance(

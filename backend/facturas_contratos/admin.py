@@ -55,15 +55,11 @@ class EstadoFilter(SimpleListFilter):
         )
 
     def queryset(self, request, queryset):
-        if self.value() == "pendiente":
-            return queryset.filter(estado="pendiente")
-        elif self.value() == "completado":
-            if isinstance(queryset.model, Contrato):
-                return queryset.filter(estado="firmado")
-            else:  # Factura
-                return queryset.filter(estado="emitida")
-        elif self.value() == "problemas":
-            return queryset.filter(estado="anulado")
+        if self.value() == "contrato":
+            return queryset.filter(reserva__contrato__isnull=False)
+        elif self.value() == "factura":
+            return queryset.filter(reserva__facturas__isnull=False)
+        return queryset
 
 
 class FechaFilter(SimpleListFilter):
@@ -334,9 +330,12 @@ class ContratoAdmin(admin.ModelAdmin):
             except Exception:
                 pass
         
-        return mark_safe(
-            f'<div class="acciones-contrato">{"<br/><br/>".join(acciones)}</div>'
-        ) if acciones else format_html('<span style="color: #95a5a6;">Sin acciones</span>')    
+        return format_html(
+            '<div class="acciones-contrato">{}</div>',
+            mark_safe("<br/><br/>".join(acciones))
+        ) if acciones else format_html('<span style="color: #95a5a6;">Sin acciones</span>')
+    
+    acciones_display.allow_tags = True    
 
     @admin.display(description="Estadisticas")
     def estadisticas_display(self, obj):
@@ -365,28 +364,37 @@ class ContratoAdmin(admin.ModelAdmin):
         # Botón para generar PDF
         if not obj.archivo_pdf:
             actions_html.append(
-                f'<button type="button" onclick="generarContratoPDF({obj.id})" '
-                f'class="btn btn-primary btn-sm">📄 Generar PDF</button>'
+                format_html(
+                    '<button type="button" onclick="generarContratoPDF({})" '
+                    'class="btn btn-primary btn-sm">📄 Generar PDF</button>',
+                    obj.id
+                )
             )
         else:
             # Enlace para descargar PDF existente
             actions_html.append(
-                f'<a href="{obj.archivo_pdf.url}" target="_blank" '
-                f'class="btn btn-success btn-sm">📥 Descargar PDF</a>'
+                format_html(
+                    '<a href="{}" target="_blank" '
+                    'class="btn btn-success btn-sm">📥 Descargar PDF</a>',
+                    obj.archivo_pdf.url
+                )
             )
             
             # Botón para regenerar PDF
             actions_html.append(
-                f'<button type="button" onclick="generarContratoPDF({obj.id})" '
-                f'class="btn btn-warning btn-sm">🔄 Regenerar PDF</button>'
+                format_html(
+                    '<button type="button" onclick="generarContratoPDF({})" '
+                    'class="btn btn-warning btn-sm">🔄 Regenerar PDF</button>',
+                    obj.id
+                )
             )
         
         return format_html(
-            '<div class="pdf-actions" style="margin: 10px 0;">'
-            '{}'
-            '</div>',
-            ' '.join(actions_html)
+            '<div class="pdf-actions" style="margin: 10px 0;">{}</div>',
+            mark_safe(' '.join(str(action) for action in actions_html))
         )
+    
+    pdf_actions_display.allow_tags = True
 
     @admin.display(description="Reserva Detalle")
     def reserva_detalle_display(self, obj):
@@ -816,9 +824,12 @@ class FacturaAdmin(admin.ModelAdmin):
             except Exception:
                 pass
         
-        return mark_safe(
-            f'<div class="acciones-factura">{"<br/><br/>".join(acciones)}</div>'
+        return format_html(
+            '<div class="acciones-factura">{}</div>',
+            mark_safe("<br/><br/>".join(str(accion) for accion in acciones))
         ) if acciones else format_html('<span style="color: #95a5a6;">Sin acciones</span>')
+    
+    acciones_display.allow_tags = True
     
 
     @admin.display(description="Estadisticas")
@@ -875,28 +886,37 @@ class FacturaAdmin(admin.ModelAdmin):
         # Botón para generar PDF
         if not obj.archivo_pdf:
             actions_html.append(
-                f'<button type="button" onclick="generarFacturaPDF({obj.id})" '
-                f'class="btn btn-primary btn-sm">📄 Generar PDF</button>'
+                format_html(
+                    '<button type="button" onclick="generarFacturaPDF({})" '
+                    'class="btn btn-primary btn-sm">📄 Generar PDF</button>',
+                    obj.id
+                )
             )
         else:
             # Enlace para descargar PDF existente
             actions_html.append(
-                f'<a href="{obj.archivo_pdf.url}" target="_blank" '
-                f'class="btn btn-success btn-sm">📥 Descargar PDF</a>'
+                format_html(
+                    '<a href="{}" target="_blank" '
+                    'class="btn btn-success btn-sm">📥 Descargar PDF</a>',
+                    obj.archivo_pdf.url
+                )
             )
             
             # Botón para regenerar PDF
             actions_html.append(
-                f'<button type="button" onclick="generarFacturaPDF({obj.id})" '
-                f'class="btn btn-warning btn-sm">🔄 Regenerar PDF</button>'
+                format_html(
+                    '<button type="button" onclick="generarFacturaPDF({})" '
+                    'class="btn btn-warning btn-sm">🔄 Regenerar PDF</button>',
+                    obj.id
+                )
             )
         
         return format_html(
-            '<div class="pdf-actions" style="margin: 10px 0;">'
-            '{}'
-            '</div>',
-            ' '.join(actions_html)
+            '<div class="pdf-actions" style="margin: 10px 0;">{}</div>',
+            mark_safe(' '.join(str(action) for action in actions_html))
         )
+    
+    pdf_actions_display.allow_tags = True
 
     @admin.display(description="Reserva Detalle")
     def reserva_detalle_display(self, obj):

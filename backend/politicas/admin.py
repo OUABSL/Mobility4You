@@ -776,7 +776,11 @@ class PromocionAdmin(admin.ModelAdmin):
         """Muestra el nombre con indicador de estado"""
         now = timezone.now().date()
         
-        if obj.fecha_inicio <= now <= obj.fecha_fin and obj.activo:
+        # Verificar que las fechas no sean None
+        if not obj.fecha_inicio or not obj.fecha_fin:
+            icon = "❓"
+            color = "#95a5a6"
+        elif obj.fecha_inicio <= now <= obj.fecha_fin and obj.activo:
             icon = "✅"
             color = "#27ae60"
         elif obj.fecha_fin < now:
@@ -809,6 +813,13 @@ class PromocionAdmin(admin.ModelAdmin):
     @admin.display(description="Vigencia")
     def vigencia_display(self, obj):
         """Muestra el período de vigencia"""
+        if not obj.fecha_inicio or not obj.fecha_fin:
+            return format_html(
+                '<div class="vigencia-display" style="color: #e74c3c;">'
+                '<strong>Fechas no configuradas</strong>'
+                '</div>'
+            )
+        
         return format_html(
             '<div class="vigencia-display">'
             '<strong>{}</strong><br>'
@@ -824,7 +835,12 @@ class PromocionAdmin(admin.ModelAdmin):
         """Muestra el estado de la promoción"""
         now = timezone.now().date()
         
-        if obj.fecha_inicio <= now <= obj.fecha_fin and obj.activo:
+        # Verificar que las fechas no sean None
+        if not obj.fecha_inicio or not obj.fecha_fin:
+            return format_html(
+                '<span class="badge badge-warning" style="font-size: 11px;">❓ SIN FECHAS</span>'
+            )
+        elif obj.fecha_inicio <= now <= obj.fecha_fin and obj.activo:
             return format_html(
                 '<span class="badge badge-success" style="font-size: 11px;">✅ ACTIVA</span>'
             )
@@ -871,7 +887,7 @@ class PromocionAdmin(admin.ModelAdmin):
             )
         
         # Extender vigencia si está por vencer
-        if obj.fecha_fin - now <= timezone.timedelta(days=7) and obj.activo:
+        if (obj.fecha_fin and obj.fecha_fin - now <= timezone.timedelta(days=7) and obj.activo):
             acciones.append(
                 format_html(
                     '<a href="#" class="btn-extend-promo" data-promo-id="{}" '
@@ -894,6 +910,14 @@ class PromocionAdmin(admin.ModelAdmin):
         
         stats = []
         now = timezone.now().date()
+        
+        # Verificar que las fechas no sean None antes de comparar
+        if not obj.fecha_inicio or not obj.fecha_fin:
+            return format_html(
+                '<div class="estadisticas-promocion" style="font-size: 11px; color: #e74c3c;">'
+                'Fechas no configuradas'
+                '</div>'
+            )
         
         # Tiempo hasta inicio o desde inicio
         if obj.fecha_inicio > now:
@@ -922,7 +946,12 @@ class PromocionAdmin(admin.ModelAdmin):
         """Muestra el tiempo restante de la promoción"""
         now = timezone.now().date()
         
-        if obj.fecha_fin < now:
+        # Verificar que las fechas no sean None
+        if not obj.fecha_inicio or not obj.fecha_fin:
+            return format_html(
+                '<div style="color: #e74c3c; font-weight: bold;">❓ SIN FECHAS</div>'
+            )
+        elif obj.fecha_fin < now:
             return format_html(
                 '<div style="color: #95a5a6; font-weight: bold;">⏰ VENCIDA</div>'
             )

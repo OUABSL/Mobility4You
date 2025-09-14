@@ -83,7 +83,7 @@ class LugarService:
         # Aproximación simple usando diferencias de coordenadas
         # Para mayor precisión se podría usar la fórmula de Haversine
         delta_lat = Decimal(radio_km / 111)  # Aproximadamente 111 km por grado de latitud
-        delta_lon = Decimal(radio_km / (111 * float(latitud.cos()) if hasattr(latitud, 'cos') else 111))
+        delta_lon = Decimal(radio_km / 111)
         
         return (
             Lugar.objects.filter(
@@ -132,7 +132,7 @@ class LugarService:
             Exception: Si hay error en la creación
         """
         from django.db import transaction
-        
+
         # Validaciones previas
         if not direccion_data.get('ciudad'):
             raise ValueError("La ciudad es obligatoria para crear un lugar")
