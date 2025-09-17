@@ -77,9 +77,8 @@ else
     echo "⚠️ Directorio admin static files no encontrado"
 fi
 
-# Configurar sistema de versionado optimizado
-echo "🔧 Configurando sistema de archivos estáticos..."
-python manage.py setup_static_assets 2>/dev/null || echo "⚠️ Usando configuración automática en startup"
+# El sistema de archivos estáticos se maneja automáticamente por WhiteNoise
+echo "🔧 Sistema de archivos estáticos configurado automáticamente con WhiteNoise"
 
 echo "🚀 Iniciando servidor Django..."
 exec "$@"

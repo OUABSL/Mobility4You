@@ -59,7 +59,7 @@ class Direccion(models.Model):
 
 
 class Lugar(models.Model):
-    nombre = models.CharField(_("Nombre"), max_length=100, null=False, blank=False)
+    nombre = models.CharField(_("Nombre"), max_length=100, null=False, blank=False, unique=True)
     direccion = models.OneToOneField(
         Direccion, related_name="lugar", on_delete=models.RESTRICT, null=False
     )

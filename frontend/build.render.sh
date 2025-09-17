@@ -13,19 +13,24 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-# Limpiar cache de npm (solo si existe)
-if [ -d "$HOME/.npm" ]; then
-    echo "🧹 Cleaning npm cache..."
+# Limpiar cache de npm (solo si hay problemas)
+if [ "$CLEAN_INSTALL" = "true" ]; then
+    echo "🧹 Clean install requested - removing dependencies..."
+    rm -rf node_modules package-lock.json
     npm cache clean --force
+else
+    echo "� Using existing dependencies for faster build..."
 fi
 
-# Eliminar node_modules y package-lock.json para fresh install
-echo "🗑️ Removing existing dependencies..."
-rm -rf node_modules package-lock.json
-
-# Instalar dependencias con manejo de conflictos
-echo "📦 Installing dependencies with legacy peer deps..."
-npm install --legacy-peer-deps
+# Instalar dependencias de manera eficiente
+echo "📦 Installing dependencies..."
+if [ -f "package-lock.json" ]; then
+    # Usar npm ci para builds más rápidos y reproducibles
+    npm ci --legacy-peer-deps
+else
+    # Fallback a npm install si no hay lockfile
+    npm install --legacy-peer-deps
+fi
 
 # Verificar que todas las dependencias estén instaladas
 echo "🔍 Verifying installations..."

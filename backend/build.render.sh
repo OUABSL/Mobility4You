@@ -156,37 +156,6 @@ else
     exit 1
 fi
 
-# **VERSIONADO AUTOMÁTICO DE ARCHIVOS ESTÁTICOS DEL ADMIN**
-echo "🏷️ Versioning admin static files for cache-busting..."
-if python manage.py version_static_assets --force; then
-    echo "✅ Admin static files versioned successfully"
-else
-    echo "⚠️ Static file versioning failed, creating emergency fallback..."
-    python -c "
-import os, django
-from pathlib import Path
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.render')
-django.setup()
-from django.conf import settings
-utils_dir = Path(settings.BASE_DIR) / 'utils'
-utils_dir.mkdir(exist_ok=True)
-(utils_dir / '__init__.py').write_text('# utils\\n')
-(utils_dir / 'static_mapping.py').write_text('''
-VERSIONED_ASSETS = {
-    \"css\": \"admin/css/custom_admin.css\",
-    \"js_vehiculos\": \"admin/js/vehiculos_admin.js\",
-    \"js_politicas\": \"admin/js/politicas_admin.js\",
-    \"js_usuarios\": \"admin/js/usuarios_admin.js\",
-    \"js_payments\": \"admin/js/payments_admin.js\",
-    \"js_reservas\": \"admin/js/reservas_admin.js\",
-    \"js_comunicacion\": \"admin/js/comunicacion_admin.js\",
-    \"js_lugares\": \"admin/js/lugares_admin.js\",
-}
-def get_versioned_asset(k, f=None): return VERSIONED_ASSETS.get(k, f or k)
-''')
-print('✅ Emergency mapping created')
-"
-fi
 
 # **CONFIGURACIÓN DE SUPERUSUARIO ROBUSTO**
 echo "👤 Managing superuser..."
@@ -199,30 +168,30 @@ if [ "$DJANGO_SUPERUSER_USERNAME" ] && [ "$DJANGO_SUPERUSER_EMAIL" ] && [ "$DJAN
         
         # Fallback: método manual
         python manage.py shell -c "
-from django.contrib.auth import get_user_model
-import os
+        from django.contrib.auth import get_user_model
+        import os
 
-User = get_user_model()
-username = os.environ.get('DJANGO_SUPERUSER_USERNAME')
-email = os.environ.get('DJANGO_SUPERUSER_EMAIL') 
-password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
+        User = get_user_model()
+        username = os.environ.get('DJANGO_SUPERUSER_USERNAME')
+        email = os.environ.get('DJANGO_SUPERUSER_EMAIL') 
+        password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
 
-if username and email and password:
-    if User.objects.filter(username=username).exists():
-        user = User.objects.get(username=username)
-        user.email = email
-        user.set_password(password)
-        user.is_active = True
-        user.is_staff = True
-        user.is_superuser = True
-        user.save()
-        print(f'✅ Superuser {username} updated')
-    else:
-        User.objects.create_superuser(username, email, password)
-        print(f'✅ Superuser {username} created')
-else:
-    print('⚠️ Superuser environment variables not set')
-" || echo "⚠️ Superuser creation failed"
+        if username and email and password:
+            if User.objects.filter(username=username).exists():
+                user = User.objects.get(username=username)
+                user.email = email
+                user.set_password(password)
+                user.is_active = True
+                user.is_staff = True
+                user.is_superuser = True
+                user.save()
+                print(f'✅ Superuser {username} updated')
+            else:
+                User.objects.create_superuser(username, email, password)
+                print(f'✅ Superuser {username} created')
+        else:
+            print('⚠️ Superuser environment variables not set')
+        " || echo "⚠️ Superuser creation failed"
     }
 else
     echo "⚠️ Superuser environment variables not set, skipping..."

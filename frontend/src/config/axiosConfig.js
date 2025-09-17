@@ -1,6 +1,6 @@
 // frontend/src/config/axiosConfig.js
 import axios from 'axios';
-import { createServiceLogger } from './appConfig';
+import { BACKEND_URL, createServiceLogger } from './appConfig';
 
 // Crear logger para el config de axios
 const logger = createServiceLogger('AXIOS_CONFIG');
@@ -35,14 +35,24 @@ const ensureCSRFToken = async () => {
   }
 
   try {
-    // Hacer una petición GET simple para obtener el token CSRF
-    const API_URL =
-      process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-    const response = await axios.get(`${API_URL}/vehiculos/`, {
+    // Usar la URL centralizada del backend
+    const response = await fetch(`${BACKEND_URL}/api/csrf-token/`, {
+      method: 'GET',
+      credentials: 'include', // Importante para recibir cookies
       headers: {
         Accept: 'application/json',
+        'Content-Type': 'application/json',
       },
     });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.csrfToken) {
+        // Establecer la cookie manualmente si no se estableció automáticamente
+        document.cookie = `csrftoken=${data.csrfToken}; SameSite=None; Secure; Path=/`;
+      }
+    }
+
     return getCSRFToken();
   } catch (error) {
     logger.warn('Failed to obtain CSRF token:', error);
@@ -82,6 +92,14 @@ axios.interceptors.request.use(
 
     // Asegurar que las cookies se envíen
     config.withCredentials = true;
+
+    // En producción, asegurar que usamos el dominio correcto
+    if (
+      process.env.NODE_ENV === 'production' &&
+      config.url?.startsWith('/api/')
+    ) {
+      config.url = `https://mobility4you.onrender.com${config.url}`;
+    }
 
     // Log para debugging
     if (process.env.NODE_ENV === 'development') {
@@ -169,5 +187,15 @@ if (typeof window !== 'undefined') {
     ensureCSRFToken().catch(logger.warn);
   }, 100);
 }
+
+// Exportar función para inicializar CSRF token
+export const initializeCSRFToken = async () => {
+  try {
+    await ensureCSRFToken();
+    logger.info('CSRF token initialized successfully');
+  } catch (error) {
+    logger.error('Failed to initialize CSRF token:', error);
+  }
+};
 
 export default axios;

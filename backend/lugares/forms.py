@@ -181,6 +181,14 @@ class LugarForm(forms.ModelForm):
         # Validación de nombre del lugar
         if not nombre:
             errors['nombre'] = _('El nombre del lugar es obligatorio')
+        else:
+            # Verificar si ya existe un lugar con el mismo nombre (excepto si estamos editando)
+            existing_lugar = Lugar.objects.filter(nombre__iexact=nombre.strip())
+            if self.instance and self.instance.pk:
+                existing_lugar = existing_lugar.exclude(pk=self.instance.pk)
+            
+            if existing_lugar.exists():
+                errors['nombre'] = _('Ya existe un lugar con este nombre. Por favor, elija un nombre diferente.')
         
         # Validación de dirección
         if not codigo_postal:
@@ -220,6 +228,7 @@ class LugarForm(forms.ModelForm):
         telefono = telefono.strip() if telefono else ''
         if telefono:
             import re
+
             # Patrón básico para teléfonos (acepta + al inicio y números)
             if not re.match(r'^\+?[\d\s\-\(\)]{9,20}$', telefono):
                 errors['telefono'] = _('Formato de teléfono inválido')

@@ -187,7 +187,7 @@ STRIPE_CONFIG = {
     "statement_descriptor_suffix": "RENTAL",
 }
 
-# CORS configuración
+# CORS y CSRF configuración dev: Se extiende en settings/render.py y settings/development.py
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -196,7 +196,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1",
 ]
 
-# CSRF configuración
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"

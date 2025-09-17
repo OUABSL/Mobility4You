@@ -34,9 +34,9 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "build:prod": "set NODE_ENV=production && react-scripts build",
-    "build:render": "npm install --legacy-peer-deps && set NODE_ENV=production && npm run build",
-    "build:render-unix": "npm install --legacy-peer-deps && NODE_ENV=production npm run build",
+    "build:prod": "NODE_ENV=production react-scripts build",
+    "build:render": "npm ci --legacy-peer-deps && NODE_ENV=production npm run build",
+    "build:render-clean": "CLEAN_INSTALL=true npm run build:render",
     "test": "react-scripts test",
     "test:ci": "CI=true react-scripts test --coverage --silent --watchAll=false",
     "test:coverage": "react-scripts test --coverage --watchAll=false",

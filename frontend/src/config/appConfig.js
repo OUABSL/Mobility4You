@@ -31,33 +31,103 @@ export const DEBUG_MODE =
 console.log('DEBUG_MODE:', DEBUG_MODE);
 
 /**
- * URLs de APIs principales - Completamente parametrizadas
+ * URLs de APIs principales - Obtenidas de variables de entorno
+ * Las variables de entorno tienen prioridad total sobre cualquier fallback
  */
-export const API_URL =
-  process.env.REACT_APP_API_URL ||
-  `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api`;
 
-export const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+// Función helper para obtener URLs con fallbacks apropiados
+const getBackendUrl = () => {
+  // 1. Prioridad: Variable de entorno específica del backend
+  if (process.env.REACT_APP_BACKEND_URL) {
+    return process.env.REACT_APP_BACKEND_URL;
+  }
 
-export const NGINX_URL =
-  process.env.REACT_APP_NGINX_URL ||
-  process.env.REACT_APP_BACKEND_URL ||
-  'http://localhost';
+  // 2. Variable de entorno genérica (para Docker Compose)
+  if (process.env.REACT_APP_API_BASE_URL) {
+    return process.env.REACT_APP_API_BASE_URL.replace('/api', '');
+  }
 
-export const FRONTEND_URL =
-  process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
+  // 3. Fallbacks solo si no hay variables de entorno
+  if (process.env.NODE_ENV === 'production') {
+    console.warn(
+      '⚠️ REACT_APP_BACKEND_URL no configurada, usando fallback de producción',
+    );
+    return 'https://mobility4you.onrender.com';
+  } else {
+    console.warn(
+      '⚠️ REACT_APP_BACKEND_URL no configurada, usando fallback de desarrollo',
+    );
+    return 'http://localhost:8000';
+  }
+};
+
+const getFrontendUrl = () => {
+  // 1. Prioridad: Variable de entorno del frontend
+  if (process.env.REACT_APP_FRONTEND_URL) {
+    return process.env.REACT_APP_FRONTEND_URL;
+  }
+
+  // 2. Variable de entorno del dominio público
+  if (process.env.REACT_APP_PUBLIC_URL) {
+    return process.env.REACT_APP_PUBLIC_URL;
+  }
+
+  // 3. Fallbacks solo si no hay variables de entorno
+  if (process.env.NODE_ENV === 'production') {
+    console.warn(
+      '⚠️ REACT_APP_FRONTEND_URL no configurada, usando fallback de producción',
+    );
+    return 'https://mobility4you.es'; // Dominio principal de Ionos
+  } else {
+    console.warn(
+      '⚠️ REACT_APP_FRONTEND_URL no configurada, usando fallback de desarrollo',
+    );
+    return 'http://localhost:3000';
+  }
+};
+
+export const BACKEND_URL = getBackendUrl();
+export const API_URL = `${BACKEND_URL}/api`;
+export const FRONTEND_URL = getFrontendUrl();
+export const NGINX_URL = process.env.REACT_APP_NGINX_URL || BACKEND_URL;
 
 /**
- * Configuración de media files unificada - Backblaze B2
+ * Configuración de media files unificada - Obtenida de variables de entorno
  */
+const getMediaBaseUrl = () => {
+  // 1. Prioridad: Variable de entorno específica para media/B2
+  if (process.env.REACT_APP_MEDIA_BASE_URL) {
+    return process.env.REACT_APP_MEDIA_BASE_URL;
+  }
+
+  // 2. Variable de entorno específica para B2 (Backblaze)
+  if (process.env.REACT_APP_B2_MEDIA_URL) {
+    return process.env.REACT_APP_B2_MEDIA_URL;
+  }
+
+  // 3. Construir desde configuración de bucket B2
+  if (
+    process.env.REACT_APP_B2_BUCKET_NAME &&
+    process.env.REACT_APP_B2_ENDPOINT
+  ) {
+    return `https://${process.env.REACT_APP_B2_ENDPOINT}/${process.env.REACT_APP_B2_BUCKET_NAME}/media/`;
+  }
+
+  // 4. Fallbacks según entorno
+  if (process.env.NODE_ENV === 'production') {
+    console.warn(
+      '⚠️ Variables de B2/Media no configuradas, usando fallback de producción',
+    );
+    return 'https://s3.eu-central-003.backblazeb2.com/mobility4you-media-prod/media/';
+  } else {
+    // En desarrollo, usar siempre el backend local para media
+    return `${BACKEND_URL}/media/`;
+  }
+};
+
 export const MEDIA_CONFIG = {
-  // URL base siempre desde B2 en producción, local en desarrollo
-  BASE_URL:
-    process.env.NODE_ENV === 'production'
-      ? process.env.REACT_APP_B2_MEDIA_URL ||
-        'https://s3.eu-central-003.backblazeb2.com/mobility4you-media-prod/media/'
-      : `${BACKEND_URL}/media/`,
+  // URL base configurada dinámicamente desde variables de entorno
+  BASE_URL: getMediaBaseUrl(),
 
   // Estructura de carpetas en B2
   PATHS: {
@@ -335,16 +405,44 @@ export const ERROR_CONFIG = {
  */
 export const validateAppConfig = () => {
   const errors = [];
+  const warnings = [];
 
   // Validar URLs requeridas
   if (!API_URLS.BASE) {
-    errors.push('REACT_APP_API_URL no está configurada');
+    errors.push('API_URL no está disponible');
+  }
+
+  // Validar variables de entorno críticas en producción
+  if (process.env.NODE_ENV === 'production') {
+    const requiredEnvVars = ['REACT_APP_BACKEND_URL', 'REACT_APP_FRONTEND_URL'];
+
+    const optionalEnvVars = [
+      'REACT_APP_MEDIA_BASE_URL',
+      'REACT_APP_B2_MEDIA_URL',
+      'REACT_APP_STRIPE_PUBLISHABLE_KEY',
+    ];
+
+    // Verificar variables requeridas
+    requiredEnvVars.forEach((varName) => {
+      if (!process.env[varName]) {
+        warnings.push(
+          `${varName} no configurada en producción, usando fallback`,
+        );
+      }
+    });
+
+    // Verificar variables opcionales
+    optionalEnvVars.forEach((varName) => {
+      if (!process.env[varName]) {
+        warnings.push(`${varName} no configurada (opcional)`);
+      }
+    });
   }
 
   // Validar configuración de DEBUG_MODE
   if (DEBUG_MODE && process.env.NODE_ENV === 'production') {
-    console.warn(
-      '⚠️ DEBUG_MODE está activo en producción. Esto no es recomendado.',
+    warnings.push(
+      'DEBUG_MODE está activo en producción. Esto no es recomendado.',
     );
   }
 
@@ -355,6 +453,13 @@ export const validateAppConfig = () => {
     }
   });
 
+  // Mostrar warnings si existen
+  if (warnings.length > 0) {
+    console.warn('⚠️ Advertencias de configuración:');
+    warnings.forEach((warning) => console.warn(`  - ${warning}`));
+  }
+
+  // Mostrar errores críticos
   if (errors.length > 0) {
     console.error('❌ Errores de configuración detectados:', errors);
     throw new Error(`Configuración inválida: ${errors.join(', ')}`);
@@ -365,6 +470,11 @@ export const validateAppConfig = () => {
     console.log(
       '🔧 Modo DEBUG activo - datos de testing disponibles como fallback',
     );
+    console.log('📊 URLs configuradas:');
+    console.log(`  - BACKEND: ${BACKEND_URL}`);
+    console.log(`  - FRONTEND: ${FRONTEND_URL}`);
+    console.log(`  - API: ${API_URL}`);
+    console.log(`  - MEDIA: ${MEDIA_CONFIG.BASE_URL}`);
   }
 };
 
