@@ -119,6 +119,7 @@ class ReservaAdmin(admin.ModelAdmin):
         "created_at", 
         "updated_at",
         "precio_total_calculado",
+        "calcular_precio_button",
         "dias_alquiler_display",
         "resumen_pagos",
         "validacion_disponibilidad",
@@ -160,16 +161,6 @@ class ReservaAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "💰 Precios y Cálculos",
-            {
-                "fields": (
-                    ("precio_dia", "iva"),
-                    "precio_total_calculado",
-                    "precio_total",
-                )
-            },
-        ),
-        (
             "💳 Información de Pagos",
             {
                 "fields": (
@@ -181,7 +172,7 @@ class ReservaAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "📝 Notas",
+            "� Notas",
             {
                 "fields": ("notas_internas",),
                 "classes": ("collapse",),
@@ -194,6 +185,78 @@ class ReservaAdmin(admin.ModelAdmin):
             "usuario", "vehiculo", "vehiculo__categoria", "lugar_recogida", 
             "lugar_devolucion", "politica_pago", "promocion"
         ).prefetch_related("extras", "penalizaciones", "conductores")
+
+    def get_fieldsets(self, request, obj=None):
+        """Organizar campos con bloque de precios estratégicamente ubicado"""
+        # Fieldsets base sin el bloque de precios
+        base_fieldsets = [
+            (
+                "🔍 Información de la Reserva",
+                {
+                    "fields": (
+                        "numero_reserva",
+                        ("created_at", "updated_at"),
+                        "usuario",
+                        "estado",
+                    )
+                },
+            ),
+            (
+                "🚗 Vehículo y Política",
+                {
+                    "fields": (
+                        "vehiculo",
+                        "politica_pago",
+                        "promocion",
+                        "validacion_disponibilidad",
+                    )
+                },
+            ),
+            (
+                "📅 Fechas y Lugares",
+                {
+                    "fields": (
+                        ("fecha_recogida", "fecha_devolucion"),
+                        "dias_alquiler_display",
+                        ("lugar_recogida", "lugar_devolucion"),
+                    )
+                },
+            ),
+            (
+                "💳 Información de Pagos",
+                {
+                    "fields": (
+                        "metodo_pago",
+                        "resumen_pagos",
+                        ("importe_pagado_inicial", "importe_pendiente_inicial"),
+                        ("importe_pagado_extra", "importe_pendiente_extra"),
+                    )
+                },
+            ),
+            # NOTA: Los inlines (conductores y extras) aparecen aquí automáticamente
+            (
+                "💰 Precios y Cálculos",
+                {
+                    "fields": (
+                        "calcular_precio_button",
+                        "precio_total_calculado",
+                        ("precio_dia", "iva"),
+                        "precio_total",
+                    ),
+                    "description": "Los precios se calculan automáticamente considerando extras y conductores. Modifique extras/conductores primero, luego calcule el precio.",
+                    "classes": ("wide",),
+                },
+            ),
+            (
+                "📝 Notas",
+                {
+                    "fields": ("notas_internas",),
+                    "classes": ("collapse",),
+                },
+            ),
+        ]
+        
+        return base_fieldsets
 
     def numero_reserva_link(self, obj):
         """Link directo a la reserva con número personalizado"""
@@ -360,6 +423,24 @@ class ReservaAdmin(admin.ModelAdmin):
                 precio_calculado
             )
 
+    @admin.display(description="Calcular Precio")
+    def calcular_precio_button(self, obj):
+        """Botón para calcular precio usando datos del formulario"""
+        # Mostrar siempre el botón, usando ID temporal si no existe
+        reserva_id = obj.pk if obj.pk else 'new'
+        
+        return format_html(
+            '<button type="button" id="calcular-precio-btn" class="button" '
+            'onclick="calcularPrecioReserva({})" style="margin: 5px 0; background: #007cba; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">'
+            '💰 Calcular Precio</button>'
+            '<div id="precio-calculation-result" style="margin-top: 10px;"></div>'
+            '<small style="color: #6c757d; display: block; margin-top: 5px;">'
+            'Calcula automáticamente usando los datos del formulario</small>',
+            f"'{reserva_id}'"
+        )
+    
+    calcular_precio_button.allow_tags = True
+
     def resumen_pagos(self, obj):
         """Resumen detallado de pagos"""
         pagado_inicial = obj.importe_pagado_inicial
@@ -419,6 +500,11 @@ class ReservaAdmin(admin.ModelAdmin):
                 '<int:object_id>/cancel/',
                 self.admin_site.admin_view(self.cancel_reserva),
                 name='reservas_reserva_cancel',
+            ),
+            path(
+                '<object_id>/calcular-precio/',
+                self.admin_site.admin_view(self.calcular_precio_ajax),
+                name='reservas_reserva_calcular_precio',
             ),
         ]
         return custom_urls + urls
@@ -486,6 +572,83 @@ class ReservaAdmin(admin.ModelAdmin):
         except Exception as e:
             logger.error(f"Error en cancel_reserva: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
+
+    def calcular_precio_ajax(self, request, object_id):
+        """Vista AJAX para calcular precio usando datos del formulario"""
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Método no permitido'}, status=405)
+        
+        try:
+            # Obtener datos del formulario enviados vía AJAX
+            vehiculo_id = request.POST.get('vehiculo_id')
+            fecha_recogida = request.POST.get('fecha_recogida')
+            fecha_devolucion = request.POST.get('fecha_devolucion')
+            politica_pago_id = request.POST.get('politica_pago_id')
+            promocion_id = request.POST.get('promocion_id')
+            extras_json = request.POST.get('extras', '[]')
+            
+            # Validar datos mínimos
+            if not all([vehiculo_id, fecha_recogida, fecha_devolucion]):
+                return JsonResponse({
+                    'error': 'Faltan datos requeridos: vehículo, fecha de recogida y fecha de devolución'
+                }, status=400)
+            
+            # Preparar datos para el cálculo
+            data = {
+                'vehiculo_id': int(vehiculo_id),
+                'fecha_recogida': fecha_recogida,
+                'fecha_devolucion': fecha_devolucion,
+                'politica_pago_id': int(politica_pago_id) if politica_pago_id else None,
+                'promocion_id': int(promocion_id) if promocion_id else None,
+                'extras': []
+            }
+            
+            # Procesar extras del formulario
+            try:
+                import json
+                extras_formulario = json.loads(extras_json)
+                logger.info(f"Extras del formulario: {extras_formulario}")
+                data['extras'] = extras_formulario
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Error parseando extras del formulario: {str(e)}")
+                # Si hay error parseando, intentar obtener de la reserva existente
+                if object_id != 'new':
+                    try:
+                        reserva = self.get_object(request, object_id)
+                        if reserva and reserva.pk:
+                            extras_reserva = reserva.extras.all()
+                            for extra_reserva in extras_reserva:
+                                data['extras'].append({
+                                    'extra_id': extra_reserva.extra.id,
+                                    'cantidad': extra_reserva.cantidad
+                                })
+                            logger.info(f"Usando extras de reserva existente: {data['extras']}")
+                    except:
+                        pass
+            
+            # Calcular precio usando el servicio
+            from .services import ReservaService
+            reserva_service = ReservaService()
+            resultado = reserva_service.calcular_precio_reserva(data)
+            
+            if not resultado.get('success'):
+                return JsonResponse({'error': resultado.get('error', 'Error desconocido')}, status=400)
+            
+            # Retornar los datos calculados de forma simple
+            return JsonResponse({
+                'success': True,
+                'precio_dia': resultado['desglose']['precio_base'] / resultado['dias_alquiler'],
+                'precio_total': resultado['precio_total'],
+                'iva_simbolico': resultado['desglose']['iva_simbolico'],
+                'dias_alquiler': resultado['dias_alquiler'],
+                'desglose': resultado['desglose']
+            })
+            
+        except (ValueError, TypeError) as e:
+            return JsonResponse({'error': f'Datos inválidos: {str(e)}'}, status=400)
+        except Exception as e:
+            logger.error(f"Error en calcular_precio_ajax: {str(e)}")
+            return JsonResponse({'error': f'Error interno: {str(e)}'}, status=500)
 
     # Acciones masivas
     def confirmar_reservas(self, request, queryset):

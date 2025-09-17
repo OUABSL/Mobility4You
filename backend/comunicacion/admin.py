@@ -44,6 +44,7 @@ class TipoContenidoFilter(SimpleListFilter):
             return queryset.filter(created_at__gte=fecha_limite)
         elif self.value() == "sin_info":
             return queryset.filter(info_adicional__isnull=True)
+        return queryset
 
 
 class EstadoContactoFilter(SimpleListFilter):
@@ -73,6 +74,7 @@ class EstadoContactoFilter(SimpleListFilter):
                 fecha_creacion__lt=fecha_limite,
                 estado__in=["pendiente", "en_proceso"]
             )
+        return queryset
 
 
 # ======================
@@ -880,7 +882,7 @@ class ContactoAdmin(admin.ModelAdmin):
             
             contacto.estado = "resuelto"
             contacto.fecha_respuesta = timezone.now()
-            contacto.respondido_por = request.user
+            contacto.respondido_por = str(request.user.username) if request.user else "Administrador Mobility4You"
             contacto.save()
             
             logger.info(f"Contacto {contacto.id} resuelto por {request.user.username}")
@@ -914,7 +916,7 @@ class ContactoAdmin(admin.ModelAdmin):
             # Actualizar el contacto
             contacto.respuesta = response_text
             contacto.fecha_respuesta = timezone.now()
-            contacto.respondido_por = request.user
+            contacto.respondido_por = str(request.user.username) if request.user else "Administrador"
             contacto.estado = "resuelto" if mark_resolved else "en_proceso"
             contacto.save()
             

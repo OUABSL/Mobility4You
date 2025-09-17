@@ -30,6 +30,7 @@ class CiudadFilter(SimpleListFilter):
     def queryset(self, request, queryset):
         if self.value():
             return queryset.filter(direccion__ciudad=self.value())
+        return queryset
 
 
 @admin.register(Direccion)
@@ -423,6 +424,8 @@ class LugarAdmin(admin.ModelAdmin):
         """Muestra las coordenadas con enlace a mapa"""
         if obj.latitud and obj.longitud:
             maps_url = f"https://www.google.com/maps?q={obj.latitud},{obj.longitud}"
+            lat_value = float(obj.latitud)
+            lon_value = float(obj.longitud)
             return format_html(
                 '<div class="coordenadas" style="font-size: 11px;">'
                 '<a href="{}" target="_blank" style="color: #007bff; text-decoration: none;">'
@@ -432,8 +435,8 @@ class LugarAdmin(admin.ModelAdmin):
                 '</code>'
                 '</div>',
                 maps_url,
-                float(obj.latitud),
-                float(obj.longitud)
+                lat_value,
+                lon_value
             )
         return format_html('<span style="color: #95a5a6;">Sin coordenadas</span>')
     coordenadas_display.short_description = "Coordenadas"

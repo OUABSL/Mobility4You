@@ -16,9 +16,8 @@ const logger = {
 const PROXY_CONFIG = {
   // Target: Docker nginx en puerto 80, fallback a backend directo
   target: process.env.REACT_APP_PROXY_TARGET || 'http://localhost:80',
-  backup_target: process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000', // Fallback directo al backend parametrizado
+  backup_target: process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000',
 
-  // Timeouts aumentados para estabilidad
   timeout: 30000, // 30 segundos
   proxyTimeout: 30000,
 

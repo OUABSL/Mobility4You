@@ -1,10 +1,12 @@
 #!/bin/bash
 
 # =================================================================
-# Mobility4You - Simple Deployment Script
+# Mobility4You - Deployment Script
 # =================================================================
-# This script provides basic deployment commands for the project
-# Usage: ./deploy.sh [dev|prod|build|stop|logs|status]
+# Usage: ./deploy.sh [dev|prod|stop|logs|status]
+# 
+# IMPORTANTE: Para producción usar Render.com
+# Este script es solo para desarrollo local con Docker
 # =================================================================
 
 set -e
@@ -12,10 +14,8 @@ set -e
 PROJECT_NAME="mobility4you"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Project directory: $SCRIPT_DIR"
-DOCKER_COMPOSE_DEV="$SCRIPT_DIR/docker/docker-compose.yml"
+DOCKER_COMPOSE_DEV="$SCRIPT_DIR/docker/docker-compose.dev.yml"
 DOCKER_COMPOSE_PROD="$SCRIPT_DIR/docker/docker-compose.prod.yml"
-BUILD_SCRIPT_DEV="$SCRIPT_DIR/scripts/build.dev.sh"
-BUILD_SCRIPT_PROD="$SCRIPT_DIR/scripts/build.prod.sh"
 
 # Colors for output
 RED='\033[0;31m'
@@ -59,15 +59,9 @@ deploy_dev() {
     # Stop any existing containers
     docker compose -f $DOCKER_COMPOSE_DEV down 2>/dev/null || true
     
-    # Build and start
-    if [ -f "$BUILD_SCRIPT_DEV" ]; then
-        log_info "Running development build script..."
-        chmod +x "$BUILD_SCRIPT_DEV" 2>/dev/null || true
-        "$BUILD_SCRIPT_DEV"
-    else
-        log_info "Building and starting development containers..."
-        docker compose --env-file ./docker/.env.dev -f $DOCKER_COMPOSE_DEV up -d --build
-    fi
+    # Build and start development containers
+    log_info "Building and starting development containers..."
+    docker compose -f $DOCKER_COMPOSE_DEV up -d --build
     
     log_success "Development deployment completed!"
     log_info "Frontend: http://localhost:3000"
@@ -77,7 +71,13 @@ deploy_dev() {
 
 # Production deployment
 deploy_prod() {
-    log_info "Deploying $PROJECT_NAME in PRODUCTION mode..."
+    log_warning "PRODUCCIÓN EN RENDER.COM"
+    log_info "Para deploys de producción:"
+    log_info "1. Push cambios a GitHub"
+    log_info "2. Render auto-deploys backend desde: mobility4you.onrender.com"
+    log_info "3. Frontend se despliega en: mobility4you.es"
+    log_info ""
+    log_info "Variables de entorno: ver documentation/RENDER_ENV_VARIABLES.md"
     
     # Change to script directory to ensure correct working directory
     cd "$SCRIPT_DIR"

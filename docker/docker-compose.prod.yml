@@ -43,7 +43,7 @@ services:
       - static_volume_prod:/app/staticfiles:ro
       # media_volume_prod DEPRECATED: Media files now unified in staticfiles/media/
       - logs_volume_prod:/app/logs
-      - ../backend/entrypoint.sh:/entrypoint.sh:ro # Use entrypoint from backend/
+      - ../backend/entrypoint.render.sh:/entrypoint.sh:ro # Use Render entrypoint from backend/
     depends_on:
       db:
         condition: service_healthy

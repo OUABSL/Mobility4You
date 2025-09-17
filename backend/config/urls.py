@@ -39,9 +39,23 @@ def render_health_check(request):
         "environment": "production"
     })
 
+# CSRF token endpoint for cross-domain requests
+def csrf_token_view(request):
+    """
+    Endpoint específico para obtener el token CSRF
+    Útil para aplicaciones SPA que hacen requests cross-domain
+    """
+    from django.middleware.csrf import get_token
+    token = get_token(request)
+    return JsonResponse({
+        "csrfToken": token,
+        "success": True
+    })
+
 urlpatterns = [
     path("health/", health_check, name="health-check"),
     path("healthz", render_health_check, name="render-health-check"),  # Para Render
+    path("api/csrf-token/", csrf_token_view, name="csrf-token"),  # Endpoint para CSRF token
     path("admin/", mobility_admin_site.urls),  # Usar nuestro admin personalizado
     # APIs modulares (sin namespace por ahora para evitar conflictos)
     path("api/usuarios/", include("usuarios.urls")),

@@ -60,9 +60,16 @@ RUN mkdir -p /app/logs /app/staticfiles /app/media && \
     chmod 666 /app/logs/django.log && \
     echo "Directorios de aplicación creados"
 
-# Copiar el entrypoint optimizado
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Crear un entrypoint básico para desarrollo
+RUN echo '#!/bin/bash\n\
+echo "=== ENTRYPOINT DESARROLLO ==="\n\
+echo "DB_HOST: $DB_HOST"\n\
+until nc -z ${DB_HOST:-db} ${DB_PORT:-5432}; do sleep 2; done\n\
+echo "✅ Base de datos disponible"\n\
+python manage.py migrate\n\
+python manage.py collectstatic --noinput\n\
+exec "$@"' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
 # Exponer puerto
 EXPOSE 8000

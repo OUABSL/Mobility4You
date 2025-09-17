@@ -103,10 +103,44 @@ class LugarCreateSerializer(serializers.ModelSerializer):
             "popular",
         ]
 
+    def validate(self, data):
+        """Validaciones personalizadas"""
+        latitud = data.get('latitud')
+        longitud = data.get('longitud')
+        
+        # Validar que si se proporciona una coordenada, se proporcione la otra
+        if (latitud is not None) != (longitud is not None):
+            raise serializers.ValidationError({
+                'coordenadas': 'Debe proporcionar tanto latitud como longitud, o ninguna de las dos'
+            })
+        
+        # Validar rangos de coordenadas
+        if latitud is not None:
+            if not (-90 <= float(latitud) <= 90):
+                raise serializers.ValidationError({
+                    'latitud': 'La latitud debe estar entre -90 y 90 grados'
+                })
+        
+        if longitud is not None:
+            if not (-180 <= float(longitud) <= 180):
+                raise serializers.ValidationError({
+                    'longitud': 'La longitud debe estar entre -180 y 180 grados'
+                })
+        
+        return data
+
     def create(self, validated_data):
         """Crear lugar con dirección"""
+        from django.db import IntegrityError
         try:
             direccion_data = validated_data.pop("direccion")
+            
+            # Verificar si ya existe un lugar con el mismo nombre
+            nombre = validated_data.get('nombre')
+            if Lugar.objects.filter(nombre__iexact=nombre).exists():
+                raise serializers.ValidationError({
+                    'nombre': f'Ya existe un lugar con el nombre "{nombre}"'
+                })
             
             # Crear la dirección primero
             direccion = Direccion.objects.create(**direccion_data)
@@ -117,6 +151,29 @@ class LugarCreateSerializer(serializers.ModelSerializer):
             logger.info(f"Lugar '{lugar.nombre}' creado exitosamente con dirección {direccion.id}")
             return lugar
             
+        except IntegrityError as e:
+            logger.error(f"Error de integridad al crear lugar: {str(e)}")
+            # Si falla la creación del lugar, intentar limpiar la dirección creada
+            if 'direccion' in locals() and direccion.pk:
+                try:
+                    direccion.delete()
+                    logger.info(f"Dirección {direccion.id} eliminada tras error en creación de lugar")
+                except:
+                    pass
+            
+            if 'unique constraint' in str(e).lower() or 'nombre' in str(e).lower():
+                raise serializers.ValidationError({
+                    'nombre': 'Ya existe un lugar con este nombre'
+                })
+            else:
+                raise serializers.ValidationError({
+                    'error': 'Error al crear el lugar. Verifique que los datos sean únicos.'
+                })
+                
+        except serializers.ValidationError:
+            # Re-lanzar ValidationError tal como viene
+            raise
+            
         except Exception as e:
             logger.error(f"Error al crear lugar: {str(e)}")
             # Si falla la creación del lugar, intentar limpiar la dirección creada
@@ -126,7 +183,9 @@ class LugarCreateSerializer(serializers.ModelSerializer):
                     logger.info(f"Dirección {direccion.id} eliminada tras error en creación de lugar")
                 except:
                     pass
-            raise serializers.ValidationError(f"Error al crear lugar: {str(e)}")
+            raise serializers.ValidationError({
+                'error': f'Error al crear lugar: {str(e)}'
+            })
 
     def update(self, instance, validated_data):
         """Actualizar lugar y dirección"""

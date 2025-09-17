@@ -53,13 +53,45 @@ class ReservaService:
                 }
 
             # Convertir fechas y validar
+            from django.utils import timezone
+            from django.utils.dateparse import parse_date, parse_datetime
+
+            # Convertir fechas string a objetos datetime con zona horaria
             if isinstance(fecha_recogida, str):
-                fecha_recogida = datetime.fromisoformat(fecha_recogida.replace("Z", "+00:00"))
+                # Primero intentar parsear como date simple (YYYY-MM-DD)
+                date_only = parse_date(fecha_recogida)
+                if date_only:
+                    # Convertir a datetime con hora 00:00 en la zona horaria actual
+                    fecha_recogida = timezone.make_aware(datetime.combine(date_only, datetime.min.time()))
+                else:
+                    # Intentar parsear como datetime completo
+                    fecha_recogida = parse_datetime(fecha_recogida)
+                    if not fecha_recogida:
+                        return {
+                            "success": False,
+                            "error": f"Formato de fecha de recogida inválido: {fecha_recogida}",
+                        }
+                    if timezone.is_naive(fecha_recogida):
+                        fecha_recogida = timezone.make_aware(fecha_recogida)
+                        
             if isinstance(fecha_devolucion, str):
-                fecha_devolucion = datetime.fromisoformat(fecha_devolucion.replace("Z", "+00:00"))
+                # Primero intentar parsear como date simple (YYYY-MM-DD)
+                date_only = parse_date(fecha_devolucion)
+                if date_only:
+                    # Convertir a datetime con hora 23:59 en la zona horaria actual
+                    fecha_devolucion = timezone.make_aware(datetime.combine(date_only, datetime.max.time().replace(microsecond=0)))
+                else:
+                    # Intentar parsear como datetime completo
+                    fecha_devolucion = parse_datetime(fecha_devolucion)
+                    if not fecha_devolucion:
+                        return {
+                            "success": False,
+                            "error": f"Formato de fecha de devolución inválido: {fecha_devolucion}",
+                        }
+                    if timezone.is_naive(fecha_devolucion):
+                        fecha_devolucion = timezone.make_aware(fecha_devolucion)
 
             # 🔍 VALIDAR FECHAS ANTES DE PROCEDER
-            from django.utils import timezone
             now = timezone.now()
             
             # Validar que las fechas sean lógicas
@@ -69,19 +101,20 @@ class ReservaService:
                     "error": "La fecha de devolución debe ser posterior a la fecha de recogida",
                 }
             
-            # Validar que las fechas no sean en el pasado (con margen de 30 min para ediciones)
-            margin_time = now - timezone.timedelta(minutes=30)
+            # Validar que las fechas no sean en el pasado (con margen de 24 horas para ediciones de reservas existentes)
+            margin_time = now - timezone.timedelta(hours=24)
             if fecha_recogida <= margin_time:
                 return {
                     "success": False,
                     "error": "La fecha de recogida debe ser en el futuro",
                 }
 
-            # Obtener vehículo
+            # Obtener vehículo y precio para las fechas específicas
             try:
                 vehiculo = Vehiculo.objects.get(id=vehiculo_id)
-                precio_dia_base = vehiculo.precio_dia
-                logger.info(f"Vehículo encontrado: {vehiculo.marca} {vehiculo.modelo}, precio: {precio_dia_base}")
+                # Usar el precio para la fecha de recogida específica
+                precio_dia_base = vehiculo.get_precio_para_fechas(fecha_recogida)
+                logger.info(f"Vehículo encontrado: {vehiculo.marca} {vehiculo.modelo}, precio para {fecha_recogida}: {precio_dia_base}€/día")
             except Vehiculo.DoesNotExist:
                 return {"success": False, "error": "Vehículo no encontrado"}
 

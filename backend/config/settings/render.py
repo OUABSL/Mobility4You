@@ -108,21 +108,17 @@ else:
 # CONFIGURACIÓN CORS Y CSRF UNIFICADA
 # ========================================
 
-# CORS - Configuración completa y sin duplicaciones
-CORS_ALLOWED_ORIGINS = [
+# CORS - Extensión de la configuración base para producción
+CORS_ALLOWED_ORIGINS.extend([
     "https://mobility4you.es",
-    "https://www.mobility4you.es",
+    "https://www.mobility4you.es", 
     "https://mobility4you.onrender.com",
     env("FRONTEND_URL", default="https://mobility4you-ydav.onrender.com"),
-]
+])
 
-# Filtrar URLs vacías y duplicadas
 CORS_ALLOWED_ORIGINS = list(set([url for url in CORS_ALLOWED_ORIGINS if url]))
 
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
-
-# Headers permitidos para CORS
+# CORS headers específicos para producción
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -135,7 +131,6 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Métodos HTTP permitidos
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -145,29 +140,24 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-# Headers expuestos para CORS
 CORS_EXPOSE_HEADERS = [
     'content-type',
     'x-csrftoken',
 ]
 
-# CSRF configuración para dominios cruzados
+# CSRF - Configuración específica para dominios cruzados
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
-
-# Configuración específica de CSRF
-CSRF_USE_SESSIONS = False
-CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "None"  # Necesario para dominios cruzados
 CSRF_COOKIE_SECURE = True  # Solo HTTPS en producción
-CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
-CSRF_COOKIE_NAME = "csrftoken"
 CSRF_COOKIE_DOMAIN = None  # Permitir subdominios
+CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
+CSRF_COOKIE_AGE = 31449600  # 1 año para evitar problemas de expiración
 
 # Configuración básica de seguridad para HTTPS
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
 
-# Logging simplificado
+# Configuración unificada de logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -255,21 +245,6 @@ else:
             "LOCATION": "unique-snowflake",
         }
     }
-
-# Logging simplificado para producción
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
-}
 
 # Configuración adicional para Render
 USE_X_FORWARDED_HOST = True

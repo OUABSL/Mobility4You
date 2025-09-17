@@ -83,7 +83,7 @@ class LugarService:
         # Aproximación simple usando diferencias de coordenadas
         # Para mayor precisión se podría usar la fórmula de Haversine
         delta_lat = Decimal(radio_km / 111)  # Aproximadamente 111 km por grado de latitud
-        delta_lon = Decimal(radio_km / (111 * float(latitud.cos()) if hasattr(latitud, 'cos') else 111))
+        delta_lon = Decimal(radio_km / 111)
         
         return (
             Lugar.objects.filter(
@@ -132,7 +132,7 @@ class LugarService:
             Exception: Si hay error en la creación
         """
         from django.db import transaction
-        
+
         # Validaciones previas
         if not direccion_data.get('ciudad'):
             raise ValueError("La ciudad es obligatoria para crear un lugar")
@@ -142,6 +142,11 @@ class LugarService:
         
         if not lugar_data.get('nombre'):
             raise ValueError("El nombre del lugar es obligatorio")
+        
+        # Verificar si ya existe un lugar con el mismo nombre
+        nombre = lugar_data['nombre'].strip()
+        if Lugar.objects.filter(nombre__iexact=nombre).exists():
+            raise ValueError(f'Ya existe un lugar con el nombre "{nombre}"')
         
         # Normalizar datos de dirección
         direccion_normalizada = DireccionService.normalizar_direccion(direccion_data)
@@ -179,7 +184,10 @@ class LugarService:
                 
         except Exception as e:
             logger.error(f"Error al crear lugar con dirección: {str(e)}")
-            raise Exception(f"Error al crear lugar: {str(e)}")
+            # Verificar si es un error de integridad por nombre duplicado
+            if hasattr(e, '__cause__') and 'unique constraint' in str(e.__cause__).lower():
+                raise ValueError(f'Ya existe un lugar con el nombre "{lugar_data.get("nombre", "")}"')
+            raise ValueError(f"Error al crear lugar: {str(e)}")
 
     @staticmethod
     def actualizar_lugar_con_direccion(lugar: Lugar, lugar_data: dict, direccion_data: dict) -> Lugar:

@@ -3,10 +3,11 @@
 Tests para la funcionalidad de lugares
 """
 
-from django.test import TestCase
 from django.core.exceptions import ValidationError
-from .models import Lugar, Direccion
+from django.test import TestCase
+
 from .forms import LugarForm
+from .models import Direccion, Lugar
 from .services import LugarService
 
 
@@ -133,3 +134,73 @@ class LugarFormTest(TestCase):
         form = LugarForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn('codigo_postal', form.errors)
+    
+    def test_formulario_coordenadas_negativas_validas(self):
+        """Test que coordenadas negativas válidas son aceptadas"""
+        form_data = {
+            'nombre': 'Test Coordenadas Negativas',
+            'calle': 'Test Street',
+            'ciudad': 'Test City',
+            'provincia': 'Test Province',
+            'pais': 'España',
+            'codigo_postal': '12345',
+            'latitud': -12.345,  # Coordenada negativa válida
+            'longitud': -67.890,  # Coordenada negativa válida
+            'activo': True
+        }
+        
+        form = LugarForm(data=form_data)
+        if not form.is_valid():
+            print(f"Errores inesperados: {form.errors}")
+        self.assertTrue(form.is_valid())
+    
+    def test_formulario_coordenadas_invalidas(self):
+        """Test que coordenadas fuera de rango son rechazadas"""
+        form_data = {
+            'nombre': 'Test Coordenadas Inválidas',
+            'calle': 'Test Street',
+            'ciudad': 'Test City',
+            'provincia': 'Test Province',
+            'pais': 'España',
+            'codigo_postal': '12345',
+            'latitud': 95.0,  # Fuera de rango
+            'longitud': -200.0,  # Fuera de rango
+            'activo': True
+        }
+        
+        form = LugarForm(data=form_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('latitud', form.errors)
+        self.assertIn('longitud', form.errors)
+    
+    def test_formulario_nombre_duplicado(self):
+        """Test que no permite nombres duplicados"""
+        # Crear un lugar primero
+        direccion = Direccion.objects.create(
+            calle='Test Street',
+            ciudad='Test City',
+            provincia='Test Province',
+            pais='España',
+            codigo_postal='12345'
+        )
+        
+        lugar = Lugar.objects.create(
+            nombre='Lugar Existente',
+            direccion=direccion,
+            activo=True
+        )
+        
+        # Intentar crear otro lugar con el mismo nombre
+        form_data = {
+            'nombre': 'Lugar Existente',  # Mismo nombre
+            'calle': 'Another Street',
+            'ciudad': 'Another City',
+            'provincia': 'Another Province',
+            'pais': 'España',
+            'codigo_postal': '54321',
+            'activo': True
+        }
+        
+        form = LugarForm(data=form_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('nombre', form.errors)

@@ -1,6 +1,6 @@
-# Mobility4You - Car Rental Platform
+# 🚗 Movility for You - Vehicle Rental System
 
-> 🚗 **Complete car rental management solution** with Django REST API backend, React frontend, and Docker deployment infrastructure.
+> **Complete vehicle rental management platform** with Django 5.1.9 backend API, React 19.1.0 frontend, and Docker + Render.com deployment infrastructure.
 
 ## ✨ Features
 
@@ -39,185 +39,313 @@
 - **Render.com**: Cloud deployment configuration
 - **Docker**: Containerized deployment for all environments
 
-## 🏗️ **Architecture**
+## 🏗️ **Project Architecture**
 
-### **Backend Structure**
+### **Backend Structure (Django 5.1.9)**
 
 ```
 backend/
 ├── config/                     # Django project configuration
-│   ├── settings/              # Environment-specific settings
+│   ├── settings/              # Environment-specific configurations
+│   │   ├── base.py           # Base configuration
+│   │   ├── development.py    # Development configuration
+│   │   ├── production.py     # Production configuration
+│   │   └── render.py         # Render.com configuration
 │   ├── middleware/            # Custom middleware
-│   └── management/            # Management commands
+│   ├── management/            # Management commands
+│   └── static/               # Static files
 │
 ├── usuarios/                   # User management system
 │   ├── models.py              # User models with flexible validation
 │   ├── validations.py         # Centralized validation functions
 │   ├── admin.py               # Custom admin interface
-│   └── serializers.py         # API serializers
+│   ├── serializers.py         # API serializers
+│   ├── views.py               # API endpoints
+│   ├── urls.py                # User routes
+│   └── permissions.py         # Permissions and authentication
 │
 ├── vehiculos/                  # Vehicle management
 │   ├── models.py              # Vehicle and image models
 │   ├── admin.py               # Fleet administration
-│   └── views.py               # Vehicle API endpoints
+│   ├── serializers.py         # Vehicle serializers
+│   ├── views.py               # Vehicle API endpoints
+│   ├── urls.py                # Vehicle routes
+│   └── permissions.py         # Vehicle permissions
 │
 ├── reservas/                   # Reservation system
-│   ├── models.py              # Booking and contract models
+│   ├── models.py              # Reservation and contract models
+│   ├── admin.py               # Reservation administration
+│   ├── serializers.py         # Reservation serializers
+│   ├── views.py               # Reservation API endpoints
+│   ├── urls.py                # Reservation routes
+│   └── permissions.py         # Reservation permissions
+│
+├── lugares/                    # Location management
+│   ├── models.py              # Location and address models
+│   ├── admin.py               # Location administration
+│   └── serializers.py         # Location serializers
+│
+├── politicas/                  # Policies and terms system
+│   ├── models.py              # Policy models
+│   ├── admin.py               # Policy administration
+│   └── serializers.py         # Policy serializers
+│
+├── facturas_contratos/         # Billing and contracts management
+│   ├── models.py              # Invoice and contract models
+│   ├── admin.py               # Financial administration
+│   └── serializers.py         # Financial serializers
+│
+├── comunicacion/               # Communication system
+│   ├── models.py              # Notification models
+│   ├── admin.py               # Communication administration
+│   └── serializers.py         # Communication serializers
+│
+├── payments/                   # Payment system (Stripe)
+│   ├── models.py              # Payment models
+│   ├── admin.py               # Payment administration
+│   ├── serializers.py         # Payment serializers
+│   └── views.py               # Stripe endpoints
+│
+└── utils/                      # Shared utilities
+    ├── apps.py                # Django app configuration
+    ├── email_service.py       # Brevo email integration service
+    ├── management/            # Custom Django management commands
+    └── __init__.py            # Package initialization
 ```
 
-### **Frontend Structure**
+### **Frontend Structure (React 19.1.0)**
 
 ```
 frontend/
 ├── public/                     # Static assets
 │   ├── index.html             # Main HTML template
-│   └── assets/                # Images, icons, etc.
+│   ├── favicon.ico            # Favicon
+│   └── manifest.json          # Application manifest
 │
 ├── src/
-│   ├── components/            # Reusable UI components
+│   ├── components/            # Reusable React components
 │   │   ├── common/            # Shared components
-│   │   ├── admin/             # Admin-specific components
-│   │   └── user/              # User-facing components
+│   │   ├── MyNavbar.js        # Navigation bar
+│   │   ├── Footer.js          # Footer
+│   │   ├── Home.js            # Home page
+│   │   ├── ListadoCoches.js   # Vehicle catalog
+│   │   ├── FichaCoche.js      # Vehicle details
+│   │   ├── ReservaCliente.js  # Reservation form
+│   │   ├── ConsultarReservaCliente.js # Reservation lookup
+│   │   ├── DetallesReserva.js # Reservation details
+│   │   ├── ContactUs.js       # Contact form
+│   │   ├── ReservaPasos/      # Step-by-step reservation process
+│   │   │   ├── ReservaClienteExtras.js
+│   │   │   ├── ReservaClienteConfirmar.js
+│   │   │   ├── ReservaClientePago.js
+│   │   │   ├── ReservaClienteExito.js
+│   │   │   └── ReservaClienteError.js
+│   │   ├── Modals/            # Modal components
+│   │   │   ├── EditReservationModal.js
+│   │   │   └── DeleteReservationModal.js
+│   │   └── StripePayment/     # Payment integration
+│   │       └── StripePaymentForm.js
 │   │
-│   ├── pages/                 # Page components
-│   │   ├── Dashboard/         # User dashboard
-│   │   ├── Reservations/      # Booking management
-│   │   ├── Vehicles/          # Vehicle catalog
-│   │   └── Auth/              # Authentication pages
+│   ├── config/                # Application configuration
+│   │   ├── lazyLoadingConfig.js # Lazy loading configuration
+│   │   └── constants.js       # Application constants
 │   │
-│   ├── services/              # API communication
-│   │   ├── api.js             # API configuration
-│   │   ├── auth.js            # Authentication service
-│   │   └── vehicles.js        # Vehicle service
+│   ├── context/               # React contexts
+│   │   └── AppContext.js      # Main context
 │   │
-│   ├── utils/                 # Utility functions
-│   │   ├── validation.js      # Form validation
-│   │   └── formatting.js      # Data formatting
+│   ├── services/              # API services
+│   │   ├── api.js             # Axios configuration
+│   │   ├── authService.js     # Authentication service
+│   │   ├── vehicleService.js  # Vehicle service
+│   │   ├── reservationService.js # Reservation service
+│   │   └── stripeService.js   # Stripe service
 │   │
-│   └── styles/                # Styling
-│       ├── globals.css        # Global styles
-│       └── components/        # Component styles
-│
-├── package.json               # Node.js dependencies
-├── Dockerfile                 # Development container
-├── Dockerfile.prod            # Production container
-└── nginx.conf                 # Nginx configuration
+│   ├── hooks/                 # Custom hooks
+│   │   ├── useAuth.js         # Authentication hook
+│   │   ├── useApi.js          # API hook
+│   │   └── useLocalStorage.js # localStorage hook
+│   │
+│   ├── utils/                 # Utilities
+│   │   ├── dateUtils.js       # Date utilities
+│   │   ├── formatUtils.js     # Format utilities
+│   │   └── validationUtils.js # Validation utilities
+│   │
+│   ├── css/                   # CSS styles
+│   │   ├── App.css            # Main styles
+│   │   ├── bootstrap-custom.css # Bootstrap customization
+│   │   └── components/        # Component styles
+│   │
+│   └── assets/                # Application assets
+│       ├── images/            # Images
+│       └── icons/             # Icons
 ```
 
 ### **Docker Infrastructure**
 
 ```
 docker/
-├── docker-compose.dev.yml          # Development environment
-├── docker-compose.prod.yml         # Production environment
-├── docker-compose.render-dev.yml   # Render development
-├── docker-compose.render-prod.yml  # Render production
-│
-├── .env                            # Default environment
-├── .env.dev                        # Development variables
-├── .env.prod                       # Production variables
-│
-├── nginx/                          # Reverse proxy configuration
+├── docker-compose.dev.yml          # Local development
+├── docker-compose.prod.yml         # Local production
+├── docker-compose.render-dev.yml   # Render-like development
+├── docker-compose.render-prod.yml  # Render configuration
+├── nginx/                          # Reverse proxy nginx configuration
 ├── redis/                          # Redis configuration
-├── mysql/                          # Database configuration
 ├── monitoring/                     # Monitoring stack
-└── scripts/                        # Docker utility scripts
-```
+└── docker_operations.ps1           # PowerShell script for Windows
 
-### **Scripts & Deployment**
-
-```
 scripts/
-├── build.dev.sh               # Development build script
-├── build.prod.sh              # Production build script
-└── prepare-deployment.sh      # Deployment preparation
+├── prepare-deployment.sh           # Deployment preparation
+└── postgres-init.sql              # PostgreSQL initialization
 
-# Root level deployment scripts
-deploy.sh                      # Multi-environment deployment
-deploy-fresh.sh                # Fresh deployment with cache clearing
-test-render.sh                 # Render environment testing
+# Main deployment script
+deploy.sh                           # Multi-environment deployment (dev|prod|stop|logs|status)
+
+# Frontend build scripts
+frontend/build.render.sh            # Optimized build for Render
+frontend/build.sh                   # Standard build
+
+# Backend build scripts
+backend/build.render.sh             # Build for Render
+backend/build.sh                    # Standard build
+```
+├── docker-compose.dev.yml         # Desarrollo local
+├── docker-compose.prod.yml        # Producción local
+├── docker-compose.render-dev.yml  # Desarrollo similar a Render
+├── docker-compose.render-prod.yml # Configuración para Render
+├── nginx/                         # Configuración nginx proxy reverso
+├── redis/                         # Configuración Redis
+├── mysql/                         # Configuración base de datos (legacy)
+├── monitoring/                    # Stack de monitoreo
+└── docker_operations.ps1          # Script PowerShell para Windows
+
+scripts/
+├── prepare-deployment.sh          # Preparación de despliegue
+└── postgres-init.sql             # Inicialización PostgreSQL
+
+# Script de despliegue principal
+deploy.sh                          # Despliegue multi-entorno (dev|prod|stop|logs|status)
+
+# Scripts de build del frontend
+frontend/build.render.sh           # Build optimizado para Render
+frontend/build.sh                  # Build estándar
+
+# Scripts de build del backend
+backend/build.render.sh            # Build para Render
+backend/build.sh                   # Build estándar
 ```
 
 ## 🚀 **Quick Start**
 
-### **Development Environment**
+### **Local Development Environment**
 
 ```bash
 # Clone repository
 git clone <repository-url>
 cd Movility-for-you
 
-# Start development environment
-./scripts/build.dev.sh
+# Start development environment with Docker
+./deploy.sh dev
 
 # Access applications
 # Frontend: http://localhost:3000
 # Backend: http://localhost:8000
 # Admin: http://localhost:8000/admin
+# PostgreSQL: localhost:5432
 ```
 
-### **Production Environment**
+### **Local Production Environment**
 
 ```bash
-# Start production environment
-./scripts/build.prod.sh
-
-# Or use deployment script
+# Start local production environment
 ./deploy.sh prod
+
+# View service logs
+./deploy.sh logs
+
+# Stop services
+./deploy.sh stop
+
+# Check service status
+./deploy.sh status
 ```
 
 ### **Render.com Deployment**
 
-```bash
-# Test Render configuration
-./test-render.sh
+The project is configured for automatic deployment on Render.com:
 
-# Deploy to Render
-./deploy-fresh.sh
+1. **Frontend**: Static Site with automatic build from `frontend/`
+2. **Backend**: Web Service with managed PostgreSQL
+3. **Configuration**: Environment variables configured in Render
+
+```bash
+# Prepare project for clean deployment
+./scripts/prepare-deployment.sh
 ```
 
 ## 🔧 **Environment Configuration**
 
 ### **Development (.env.dev)**
 
-- Local database (SQLite/PostgreSQL)
-- Debug mode enabled
-- Hot reload for frontend
-- Local media storage
+- **Database**: SQLite (default) or PostgreSQL in Docker
+- **Debug**: Enabled for development
+- **Frontend**: Hot reload with React Scripts
+- **Media**: Local storage
+- **CORS**: Configured for localhost:3000
 
-### **Production (.env.prod)**
+### **Local Production (.env.prod)**
 
-- PostgreSQL database
-- Redis for caching
-- Nginx reverse proxy
-- Optimized static files
+- **Database**: PostgreSQL in Docker container
+- **Proxy**: Nginx as reverse proxy
+- **Static files**: WhiteNoise + nginx
+- **Optimizations**: Compression and cache enabled
 
-## 🛠️ **Key Technologies**
+### **Render.com (Automatic configuration)**
+
+- **Frontend**: Static Site with automatic build
+- **Backend**: Web Service with managed PostgreSQL
+- **Media**: Backblaze B2 for multimedia files
+- **Variables**: Configured in Render dashboard
+- **SSL**: Automatic certificates
+- **Domain**: Automatic DNS configuration
+
+## 🛠️ **Technology Stack**
 
 ### **Backend Stack**
 
-- **Django 4.x**: Web framework with REST API
-- **Django REST Framework**: API development
-- **PostgreSQL**: Primary database
-- **Redis**: Caching and session storage
-- **Celery**: Background task processing
+- **Django 5.1.9**: Web framework with REST API
+- **Django REST Framework 3.16.0**: API development
+- **PostgreSQL 16**: Primary database (production)
+- **SQLite**: Database for local development
+- **psycopg2-binary 2.9.10**: PostgreSQL adapter
+- **dj-database-url 2.2.0**: Flexible database configuration
+- **WhiteNoise 6.8.2**: Static file service
+- **django-storages 1.14.2**: Storage management
+- **boto3 1.35.40**: Backblaze B2 integration
 - **Stripe**: Payment processing
-- **Brevo**: Email service integration
+- **Brevo (sib-api-v3-sdk 7.6.0)**: Email service
+- **Celery 5.3.0**: Background task processing
+- **django-redis 5.4.0**: Cache and sessions
+- **Gunicorn 21.2.0**: WSGI server for production
 
 ### **Frontend Stack**
 
-- **React 18**: Modern UI framework
-- **React Router**: Client-side routing
-- **Axios**: HTTP client for API calls
-- **CSS Modules**: Styled components
-- **Webpack**: Module bundling
+- **React 19.1.0**: Modern UI framework
+- **React Router DOM 7.4.1**: Client-side navigation
+- **React Bootstrap 2.10.9**: UI components
+- **Bootstrap 5.3.3**: CSS framework
+- **Axios 1.8.4**: HTTP client for APIs
+- **Stripe React 3.7.0**: Payment integration
+- **FontAwesome 6.7.2**: Iconography
+- **React Scripts 5.0.1**: Development tools
 
-### **Infrastructure**
+### **Infrastructure and DevOps**
 
-- **Docker**: Containerization
-- **Nginx**: Reverse proxy and static files
+- **Docker**: Multi-environment containerization (dev, prod, render)
+- **Nginx**: Reverse proxy and static file server
 - **Render.com**: Cloud deployment platform
-- **Backblaze B2**: Object storage
+- **Backblaze B2**: Object storage for media files
+- **PostgreSQL 16**: Production database
+- **GitHub**: Version control and CI/CD
 - **GitHub Actions**: CI/CD pipeline
 
 ## 📚 **Documentation**
@@ -282,75 +410,85 @@ For support and questions:
 ---
 
 **Mobility4You** - Making car rental management simple and efficient. 🚗✨
-├── src/ # React source code
-│ ├── components/ # Reusable components
-│ ├── assets/ # Images, styles
-│ └── ...
-├── build/ # Production build
-├── package.json # Node.js dependencies
-└── Dockerfile # Frontend container
-
-```
 
 ## Docker Configuration
 
 ```
-
 docker/
-├── docker-compose.dev.yml # Development environment
-├── docker-compose.prod.yml # Production environment
+├── docker-compose.dev.yml         # Development environment
+├── docker-compose.prod.yml        # Local production environment
+├── docker-compose.render-dev.yml  # Render-like development
+├── docker-compose.render-prod.yml # Render configuration
 ├── nginx/
-│ ├── nginx.dev.conf # Development nginx config
-│ ├── nginx.prod.conf # Production nginx config
-│ └── ssl/ # SSL certificates
-├── mariadb-init.sh # Database initialization
-└── scripts/ # Docker utility scripts
-
+│   ├── nginx.dev.conf             # Development nginx configuration
+│   ├── nginx.prod.conf            # Production nginx configuration
+│   └── ssl/                       # SSL certificates
+├── docker_operations.ps1          # Docker operations script (Windows)
+└── postgres/                      # PostgreSQL configuration
 ```
 
-## Scripts
+## 📁 **Available Scripts**
 
+```bash
+# Main scripts
+deploy.sh                          # Multi-environment deployment (dev|prod|stop|logs|status)
+scripts/prepare-deployment.sh      # Deployment preparation
+
+# Component build scripts
+frontend/build.render.sh           # Optimized build for Render
+frontend/build.sh                  # Standard frontend build
+backend/build.render.sh            # Backend build for Render
+backend/build.sh                   # Standard backend build
+
+# Docker scripts (Windows)
+docker/docker_operations.ps1       # Docker operations with PowerShell
 ```
 
-scripts/
-├── build.dev.sh # Development build
-├── build.prod.sh # Production build
-├── down.dev.sh # Stop development
-└── down.prod.sh # Stop production
+## ✨ **Key Features**
 
-````
-
-## Key Features
-
-- **Modular Architecture**: Each Django app handles a specific domain
-- **Clean Separation**: Development and production configurations
-- **Docker Support**: Containerized deployment
-- **Professional Structure**: Follows Django and software engineering best practices
-- **Comprehensive Testing**: Structured test suite
-- **Documentation**: Clear project organization
+- **Modular Architecture**: 8 specialized Django applications by domain
+- **Clean Separation**: Environment-specific configurations (dev/prod/render)
+- **Docker Support**: Containerized deployment with multiple configurations
+- **Professional Structure**: Follows Django and React best practices
+- **Hybrid File System**: WhiteNoise for static files + Backblaze B2 for media
+- **Payment Integration**: Fully integrated Stripe
+- **Communication System**: Automatic notifications with Brevo
+- **Cloud Deployment**: Complete configuration for Render.com
+- **Comprehensive Documentation**: Clear project organization
 
 ## Environment Files
 
-- `.env` - Development environment variables
-- `.env.dev` - Development-specific variables
-- `.env.prod` - Production-specific variables
+- `backend/.env-example` - Backend environment variables template
+- `frontend/.env-example` - Frontend environment variables template
+- `backend/config/settings/` - Environment-specific configurations
 
-## Database
+## 💾 **Database**
 
-- **Development**: MariaDB in Docker container
-- **Production**: MariaDB with optimized configuration
-- **Migrations**: Django ORM migrations in each app
+- **Development**: SQLite (default) or PostgreSQL in Docker
+- **Production**: PostgreSQL 16 on Render.com with optimizations
+- **Migrations**: Django ORM migrations in each application
+- **Initialization**: Custom SQL scripts for initial configuration
 
-## API Documentation
+## 📡 **API Documentation**
 
-The API follows RESTful principles with modular endpoints:
+The API follows RESTful principles with modular endpoints organized by application:
 
-- `/api/usuarios/` - User management
-- `/api/vehiculos/` - Vehicle management
-- `/api/lugares/` - Location management
-- `/api/reservas/` - Booking management
-- `/api/politicas/` - Policy management
-- `/api/payments/` - Payment processing
+### **Main Endpoints**
+
+- `/api/usuarios/` - User management and authentication
+- `/api/vehiculos/` - Vehicle management and catalog
+- `/api/lugares/` - Location and address management
+- `/api/reservas/` - Reservation and contract management
+- `/api/politicas/` - Policy and terms management
+- `/api/facturas_contratos/` - Billing and contract management
+- `/api/comunicacion/` - Notification and communication system
+- `/api/payments/` - Payment processing with Stripe
+
+### **Authentication**
+
+- Token-based authentication with Django REST Framework
+- Granular permissions per application
+- Custom security middleware
 
 ## Getting Started
 
@@ -362,23 +500,39 @@ cd docker/
 docker-compose -f docker-compose.dev.yml up -d
 
 # Run migrations
-docker exec backend python manage.py migrate
+docker exec mobility4you_backend_dev python manage.py migrate
 
 # Create superuser
-docker exec -it backend python manage.py createsuperuser
-````
+docker exec -it mobility4you_backend_dev python manage.py createsuperuser
+```
 
-### Production
+### **Local Production**
 
 ```bash
 # Start production environment
-cd docker/
-docker-compose -f docker-compose.prod.yml up -d
+./deploy.sh prod
+
+# View logs
+./deploy.sh logs
+
+# Stop services
+./deploy.sh stop
 ```
 
-## Maintenance
+## 🔧 **Maintenance**
 
 - **Logs**: Check `backend/logs/` for application logs
-- **Backups**: Database backups in `docker/backups/`
-- **SSL**: Certificates in `docker/nginx/ssl/`
-- **Media**: User uploads in `backend/media/`
+- **PostgreSQL**: Managed database on Render, local in Docker
+- **Media**: Multimedia files in Backblaze B2 (production)
+- **Static Files**: Served by WhiteNoise in production
+- **Monitoring**: Configuration available in `docker/monitoring/`
+
+---
+
+## 📄 **License**
+
+This project is under the MIT License. See the LICENSE file for more details.
+
+## 👥 **Contributions**
+
+Contributions are welcome. Please follow the project conventions and ensure all tests pass before submitting a pull request.
