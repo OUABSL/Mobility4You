@@ -62,6 +62,23 @@ const invalidateCache = (cacheKey) => {
 };
 
 /**
+ * Invalida todas las claves de caché que coincidan con un patrón
+ * @param {string} pattern - Patrón para buscar claves (ej: 'search_')
+ */
+const invalidateCacheByPattern = (pattern) => {
+  let deletedCount = 0;
+  for (const [key] of dataCache.entries()) {
+    if (key.includes(pattern)) {
+      dataCache.delete(key);
+      deletedCount++;
+    }
+  }
+  logger.info(
+    `🗑️ [CACHE PATTERN INVALIDATED] ${deletedCount} entradas eliminadas con patrón: ${pattern}`,
+  );
+};
+
+/**
  * Limpia todo el caché
  */
 const clearAllCache = () => {
@@ -73,36 +90,43 @@ const clearAllCache = () => {
 /**
  * Ejecuta una función con caché automático
  * Evita llamadas duplicadas usando promesas pendientes
- * @param {string} dataType - Tipo de dato (locations, cars, etc.)
+ * @param {string} dataType - Tipo de dato (locations, cars, etc.) o clave única
  * @param {Function} fetchFunction - Función que obtiene los datos
  * @param {number} customTTL - TTL personalizado en minutos (opcional)
  * @returns {Promise<any>} - Datos obtenidos
  */
 const withCache = async (dataType, fetchFunction, customTTL = null) => {
-  const config = CACHE_CONFIG[dataType];
-  if (!config) {
-    logger.warn(
-      `Tipo de dato no configurado: ${dataType}, usando configuración por defecto`,
-    );
-    // Configuración por defecto para tipos no configurados
-    const defaultConfig = { key: `cache_${dataType}`, ttl: customTTL || 15 };
-    CACHE_CONFIG[dataType] = defaultConfig;
-  }
+  // Para claves dinámicas (como búsquedas), usar directamente como clave
+  let cacheKey = dataType;
+  let ttl = customTTL ? customTTL * 60 * 1000 : 5 * 60 * 1000; // Default 5 minutos
 
-  const { key: cacheKey, ttl: configTTL } = CACHE_CONFIG[dataType];
-  const ttl = customTTL || configTTL;
+  // Para tipos configurados, usar la configuración predefinida
+  const config = CACHE_CONFIG[dataType];
+  if (config) {
+    cacheKey = config.key;
+    ttl = customTTL ? customTTL * 60 * 1000 : config.ttl;
+  } else if (dataType.startsWith('search_')) {
+    // Para búsquedas, usar TTL corto (2 minutos)
+    ttl = customTTL ? customTTL * 60 * 1000 : 2 * 60 * 1000;
+    logger.info(`🔍 [CACHE] Búsqueda con TTL: ${ttl / 1000 / 60} minutos`);
+  }
 
   // 1. Verificar si hay datos en caché válidos
   const cachedData = getCachedData(cacheKey);
   if (cachedData) {
-    logger.info(`✅ [CACHE HIT] ${cacheKey} - datos desde caché`);
+    logger.info(
+      `✅ [CACHE HIT] ${cacheKey.substring(0, 50)}... - datos desde caché`,
+    );
     return cachedData;
   }
 
   // 2. Verificar si hay una petición pendiente para evitar duplicados
   if (pendingRequests.has(cacheKey)) {
     logger.info(
-      `⏳ [CACHE PENDING] Esperando petición en curso para ${cacheKey}`,
+      `⏳ [CACHE PENDING] Esperando petición en curso para ${cacheKey.substring(
+        0,
+        50,
+      )}...`,
     );
     return await pendingRequests.get(cacheKey);
   }
@@ -110,7 +134,12 @@ const withCache = async (dataType, fetchFunction, customTTL = null) => {
   // 3. Crear nueva petición y almacenarla como pendiente
   const fetchPromise = (async () => {
     try {
-      logger.info(`🌐 [CACHE FETCH] Obteniendo datos frescos para ${cacheKey}`);
+      logger.info(
+        `🌐 [CACHE FETCH] Obteniendo datos frescos para ${cacheKey.substring(
+          0,
+          50,
+        )}...`,
+      );
       const data = await fetchFunction();
 
       // Validar datos antes de almacenar en caché
@@ -223,6 +252,7 @@ export {
   getCachedData,
   getCacheStats,
   invalidateCache,
+  invalidateCacheByPattern,
   invalidateRelatedCache,
   setCachedData,
   withCache,

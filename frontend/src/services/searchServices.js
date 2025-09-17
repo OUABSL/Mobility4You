@@ -7,7 +7,7 @@ import {
 } from '../config/appConfig';
 import axios from '../config/axiosConfig';
 import { withTimeout } from '../utils';
-import { withCache } from './cacheService';
+import { invalidateCacheByPattern, withCache } from './cacheService';
 
 // Crear logger para el servicio de búsqueda
 const logger = createServiceLogger('SEARCH_SERVICE');
@@ -265,10 +265,19 @@ export const validateSearchForm = (formData) => {
  * @returns {Promise<Object>} - Resultados de la búsqueda con estructura unificada
  */
 export const searchAvailableVehicles = async (searchParams) => {
-  const searchKey = `search_${JSON.stringify(searchParams)}`;
+  // Crear clave única basada en todos los parámetros relevantes de búsqueda
+  const searchKey = `search_${JSON.stringify({
+    pickupDate: searchParams.pickupDate,
+    dropoffDate: searchParams.dropoffDate,
+    pickupLocation: searchParams.pickupLocation,
+    dropoffLocation: searchParams.dropoffLocation,
+    tipo: searchParams.tipo,
+    categoria_id: searchParams.categoria_id,
+    grupo_id: searchParams.grupo_id,
+  })}`;
 
   return await withCache(
-    'search_results',
+    searchKey, // Usar clave única en lugar de tipo genérico
     async () => {
       try {
         const { isValid, errors } = validateSearchForm(searchParams);
@@ -312,6 +321,11 @@ export const searchAvailableVehicles = async (searchParams) => {
             delete backendParams[key];
           }
         });
+
+        logger.info(
+          '📤 [searchAvailableVehicles] Enviando al backend:',
+          backendParams,
+        );
 
         // UNIFICADA: Una sola llamada para obtener vehículos disponibles
         const response = await withTimeout(
@@ -554,6 +568,19 @@ export const getStoredSearchParams = () => {
   } catch (error) {
     logger.error('Error retrieving search params:', error);
     return null;
+  }
+};
+
+/**
+ * Limpia el caché de búsquedas anteriores
+ * Útil cuando el usuario cambia criterios de búsqueda significativamente
+ */
+export const clearSearchCache = () => {
+  try {
+    invalidateCacheByPattern('search_');
+    logger.info('🗑️ Caché de búsquedas limpiado');
+  } catch (error) {
+    logger.error('❌ Error limpiando caché de búsquedas:', error);
   }
 };
 
