@@ -106,7 +106,7 @@ class Vehiculo(models.Model):
         Categoria, related_name="vehiculos", on_delete=models.RESTRICT, null=False, blank=False
     )
     grupo = models.ForeignKey(
-        GrupoCoche, related_name="vehiculos", on_delete=models.RESTRICT, null=False, blank=False
+        GrupoCoche, related_name="vehiculos", on_delete=models.RESTRICT, null=True, blank=True
     )
     combustible = models.CharField(
         _("Combustible"),

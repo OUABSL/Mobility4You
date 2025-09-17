@@ -341,9 +341,26 @@ class VehiculoViewSet(viewsets.ModelViewSet):
             lugar_devolucion_id = request_data.get("lugar_devolucion_id") or request_data.get("dropoffLocation")
             categoria_id = request_data.get("categoria_id")
             grupo_id = request_data.get("grupo_id")
+            
+            # Manejar tipo de vehículo (coches/furgonetas) - usar categorías existentes
+            tipo_vehiculo = request_data.get("tipo")
+            if tipo_vehiculo and not categoria_id:
+                try:
+                    if tipo_vehiculo == "coches":
+                        categoria = Categoria.objects.get(nombre__iexact="coches")
+                        categoria_id = categoria.id
+                        logger.info(f"Búsqueda filtrada por categoría 'Coches' (ID: {categoria_id})")
+                    elif tipo_vehiculo == "furgonetas":
+                        categoria = Categoria.objects.get(nombre__iexact="furgonetas")
+                        categoria_id = categoria.id
+                        logger.info(f"Búsqueda filtrada por categoría 'Furgonetas' (ID: {categoria_id})")
+                except Categoria.DoesNotExist:
+                    logger.warning(f"Categoría '{tipo_vehiculo}' no encontrada en la base de datos")
+                    # Continuar sin filtrar por categoría
 
             # Log para debugging
-            logger.info(f"Búsqueda de disponibilidad - Datos recibidos: {request_data}")            # Validar fechas
+            logger.info(f"Búsqueda de disponibilidad - Datos recibidos: {request_data}")
+            logger.info(f"Tipo de vehículo solicitado: {tipo_vehiculo}, Categoría final: {categoria_id}, Grupo: {grupo_id}")            # Validar fechas
             if not fecha_recogida or not fecha_devolucion:
                 return Response(
                     {

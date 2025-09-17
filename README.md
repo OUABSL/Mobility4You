@@ -208,31 +208,36 @@ frontend/build.sh                   # Standard build
 backend/build.render.sh             # Build for Render
 backend/build.sh                    # Standard build
 ```
-├── docker-compose.dev.yml         # Desarrollo local
-├── docker-compose.prod.yml        # Producción local
-├── docker-compose.render-dev.yml  # Desarrollo similar a Render
+
+├── docker-compose.dev.yml # Desarrollo local
+├── docker-compose.prod.yml # Producción local
+├── docker-compose.render-dev.yml # Desarrollo similar a Render
 ├── docker-compose.render-prod.yml # Configuración para Render
-├── nginx/                         # Configuración nginx proxy reverso
-├── redis/                         # Configuración Redis
-├── mysql/                         # Configuración base de datos (legacy)
-├── monitoring/                    # Stack de monitoreo
-└── docker_operations.ps1          # Script PowerShell para Windows
+├── nginx/ # Configuración nginx proxy reverso
+├── redis/ # Configuración Redis
+├── mysql/ # Configuración base de datos (legacy)
+├── monitoring/ # Stack de monitoreo
+└── docker_operations.ps1 # Script PowerShell para Windows
 
 scripts/
-├── prepare-deployment.sh          # Preparación de despliegue
-└── postgres-init.sql             # Inicialización PostgreSQL
+├── prepare-deployment.sh # Preparación de despliegue
+└── postgres-init.sql # Inicialización PostgreSQL
 
 # Script de despliegue principal
-deploy.sh                          # Despliegue multi-entorno (dev|prod|stop|logs|status)
+
+deploy.sh # Despliegue multi-entorno (dev|prod|stop|logs|status)
 
 # Scripts de build del frontend
-frontend/build.render.sh           # Build optimizado para Render
-frontend/build.sh                  # Build estándar
+
+frontend/build.render.sh # Build optimizado para Render
+frontend/build.sh # Build estándar
 
 # Scripts de build del backend
-backend/build.render.sh            # Build para Render
-backend/build.sh                   # Build estándar
-```
+
+backend/build.render.sh # Build para Render
+backend/build.sh # Build estándar
+
+````
 
 ## 🚀 **Quick Start**
 
@@ -251,7 +256,7 @@ cd Movility-for-you
 # Backend: http://localhost:8000
 # Admin: http://localhost:8000/admin
 # PostgreSQL: localhost:5432
-```
+````
 
 ### **Local Production Environment**
 
