@@ -41,11 +41,26 @@ export const mapReservationToBackend = (data) => {
         ? new Date(data.fechas.dropoffDate).toISOString()
         : null,
 
-      // Política de pago - extraer ID si es objeto
-      politica_pago:
-        typeof data.paymentOption === 'object'
-          ? data.paymentOption.id
-          : data.paymentOption,
+      // Política de pago
+      politica_pago: (() => {
+        const paymentOption = data.paymentOption;
+        if (typeof paymentOption === 'object' && paymentOption?.id) {
+          // Si es un objeto con ID numérico, usar el ID
+          return typeof paymentOption.id === 'number'
+            ? paymentOption.id
+            : paymentOption.id;
+        }
+        if (typeof paymentOption === 'string') {
+          // Si es un string, podría ser 'emergency-fallback' u otro identificador
+          return paymentOption;
+        }
+        if (typeof paymentOption === 'number') {
+          // Si ya es un número, usarlo directamente
+          return paymentOption;
+        }
+        // Fallback: devolver el valor tal como está
+        return paymentOption;
+      })(),
 
       // Precios directos - corregir mapeo de precio_extras
       precio_total: roundToDecimals(data.detallesReserva?.total || 0, 2),
@@ -472,6 +487,7 @@ export const mapVehicles = (vehicles) => {
     num_pasajeros: vehicle.num_pasajeros,
     num_puertas: vehicle.num_puertas,
     categoria: vehicle.categoria?.nombre || '',
+    grupo: vehicle.grupo?.nombre || null, // Campo grupo opcional para furgonetas
     imagenPrincipal: prepareImageData(vehicle.imagen_principal, 'vehicle'),
     imagenes: (vehicle.imagenes || []).map((img) => ({
       id: img.id,

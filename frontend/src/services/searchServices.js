@@ -303,6 +303,7 @@ export const searchAvailableVehicles = async (searchParams) => {
           grupo_id: searchParams.grupo_id
             ? parseInt(searchParams.grupo_id)
             : undefined,
+          tipo: searchParams.tipo,
         };
 
         // Limpiar parámetros undefined

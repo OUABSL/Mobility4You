@@ -7,6 +7,7 @@ from decimal import Decimal
 
 import stripe
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from .models import PagoStripe, ReembolsoStripe, WebhookStripe
@@ -142,7 +143,7 @@ class StripePaymentService:
             importe_centavos = self._validate_amount(importe)
 
             # Generar número de pedido único
-            numero_pedido = self._generar_numero_pedido(reserva_data, tipo_pago)
+            numero_pedido = self._generar_numero_pedido_unico(reserva_data, tipo_pago)
 
             # Preparar metadatos
             metadata = self._preparar_metadata(reserva_data, tipo_pago, metadata_extra)
@@ -583,12 +584,52 @@ class StripePaymentService:
         except ValueError:
             return False
 
+    def _generar_numero_pedido_unico(self, reserva_data, tipo_pago, max_intentos=5):
+        """
+        Genera un número de pedido único garantizando que no exista en la base de datos
+        
+        Args:
+            reserva_data: Datos de la reserva
+            tipo_pago: Tipo de pago
+            max_intentos: Número máximo de intentos antes de fallar
+            
+        Returns:
+            str: Número de pedido único
+            
+        Raises:
+            ValueError: Si no se puede generar un número único después de max_intentos
+        """
+        for intento in range(max_intentos):
+            numero_pedido = self._generar_numero_pedido(reserva_data, tipo_pago)
+            
+            # Verificar si ya existe en la base de datos
+            if not PagoStripe.objects.filter(numero_pedido=numero_pedido).exists():
+                return numero_pedido
+                
+            logger.warning(f"Número de pedido duplicado en intento {intento + 1}: {numero_pedido}")
+            
+            # Esperar un poco antes del siguiente intento
+            time.sleep(0.001 * (intento + 1))  # Esperar 1ms, 2ms, 3ms, etc.
+        
+        # Si llegamos aquí, no pudimos generar un número único
+        raise ValueError(f"No se pudo generar un número de pedido único después de {max_intentos} intentos")
+
     def _generar_numero_pedido(self, reserva_data, tipo_pago):
-        """Genera un número de pedido único"""
+        """Genera un número de pedido único con timestamp y componente aleatorio optimizado"""
+        import random
+
+        # Usar timestamp más corto (últimos 8 dígitos)
         timestamp = int(time.time())
+        timestamp_short = timestamp % 100000000  # Últimos 8 dígitos
+        
+        # Agregar componente aleatorio más pequeño
+        random_component = random.randint(100, 999)
+        
         reserva_id = reserva_data.get("id", "NEW")
         tipo_prefix = tipo_pago[:3]
-        return f"M4Y-{tipo_prefix}-{reserva_id}-{timestamp}"
+        
+        # Formato más corto: M4Y-TIP-RESERVA_ID-TIMESTAMP8-RND3
+        return f"M4Y-{tipo_prefix}-{reserva_id}-{timestamp_short}-{random_component}"
 
     def _preparar_metadata(self, reserva_data, tipo_pago, metadata_extra):
         """Prepara los metadatos para Stripe"""
@@ -647,8 +688,14 @@ class StripePaymentService:
         email_cliente,
         nombre_cliente,
         importe,
+        max_reintentos=3,
     ):
-        """Crea el registro del pago en la base de datos"""
+        """
+        Crea el registro del pago en la base de datos con manejo de duplicados
+        
+        Args:
+            max_reintentos: Número máximo de reintentos en caso de IntegrityError
+        """
 
         # CORREGIR: Verificar si la reserva existe antes de asignarla
         reserva_instance = None
@@ -656,29 +703,56 @@ class StripePaymentService:
         if reserva_id:
             try:
                 from reservas.models import Reserva
-
                 reserva_instance = Reserva.objects.get(id=reserva_id)
             except Reserva.DoesNotExist:
                 logger.warning(
                     f"Reserva {reserva_id} no encontrada, creando pago sin reserva asociada"
                 )
 
-        return PagoStripe.objects.create(
-            numero_pedido=numero_pedido,
-            stripe_payment_intent_id=payment_intent.id,
-            stripe_client_secret=payment_intent.client_secret,
-            importe=importe,
-            moneda=self.currency.upper(),
-            tipo_pago=tipo_pago,
-            estado="PENDIENTE",
-            stripe_status=payment_intent.status,
-            stripe_metadata=payment_intent.metadata,
-            datos_reserva=reserva_data,
-            email_cliente=email_cliente,
-            nombre_cliente=nombre_cliente,
-            fecha_vencimiento=timezone.now() + timedelta(hours=1),
-            reserva=reserva_instance,  # CORREGIR: usar la instancia, no el ID
-        )
+        # Intentar crear el registro con manejo de duplicados
+        for intento in range(max_reintentos):
+            try:
+                with transaction.atomic():
+                    return PagoStripe.objects.create(
+                        numero_pedido=numero_pedido,
+                        stripe_payment_intent_id=payment_intent.id,
+                        stripe_client_secret=payment_intent.client_secret,
+                        importe=importe,
+                        moneda=self.currency.upper(),
+                        tipo_pago=tipo_pago,
+                        estado="PENDIENTE",
+                        stripe_status=payment_intent.status,
+                        stripe_metadata=payment_intent.metadata,
+                        datos_reserva=reserva_data,
+                        email_cliente=email_cliente,
+                        nombre_cliente=nombre_cliente,
+                        fecha_vencimiento=timezone.now() + timedelta(hours=1),
+                        reserva=reserva_instance,  # CORREGIR: usar la instancia, no el ID
+                    )
+            except IntegrityError as e:
+                logger.warning(f"IntegrityError en intento {intento + 1}: {str(e)}")
+                if intento == max_reintentos - 1:
+                    # Si es el último intento, verificar si es un problema conocido
+                    if "numero_pedido" in str(e):
+                        # Regenerar número de pedido y actualizar payment_intent
+                        numero_pedido = self._generar_numero_pedido_unico(reserva_data, tipo_pago)
+                        logger.info(f"Regenerando número de pedido: {numero_pedido}")
+                        # Importante: actualizar metadatos en Stripe con el nuevo numero_pedido
+                        try:
+                            stripe.PaymentIntent.modify(
+                                payment_intent.id,
+                                metadata={**payment_intent.metadata, "numero_pedido": numero_pedido}
+                            )
+                        except Exception as stripe_error:
+                            logger.error(f"Error actualizando metadatos en Stripe: {stripe_error}")
+                    else:
+                        raise e
+                else:
+                    # Esperar un poco antes del siguiente intento
+                    time.sleep(0.01 * (intento + 1))
+        
+        # Si llegamos aquí sin retornar, algo salió mal
+        raise ValueError("No se pudo crear el registro de pago después de múltiples intentos")
 
     def _procesar_pago_exitoso(self, pago_stripe, payment_intent):
         """Procesa las acciones necesarias cuando un pago es exitoso"""

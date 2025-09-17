@@ -359,6 +359,34 @@ class ReservaCreateSerializer(serializers.ModelSerializer):
                 if field == 'iva':
                     logger.info(f"DESPUÉS redondeo - iva: {data[field]} (original: {original_value})")
         
+        # Manejar politica_pago: si viene como string 'emergency-fallback', obtener la primera política activa
+        if 'politica_pago' in data and isinstance(data['politica_pago'], str):
+            if data['politica_pago'] == 'emergency-fallback':
+                from politicas.models import PoliticaPago
+                try:
+                    # Buscar la primera política activa como fallback
+                    default_policy = PoliticaPago.objects.filter(activo=True).first()
+                    if default_policy:
+                        data['politica_pago'] = default_policy.id
+                        logger.info(f"Aplicando política de fallback: {default_policy.titulo} (ID: {default_policy.id})")
+                    else:
+                        # Si no hay políticas activas, crear una básica
+                        default_policy = PoliticaPago.objects.create(
+                            titulo="Política Básica",
+                            deductible=0.00,
+                            descripcion="Política básica creada automáticamente",
+                            activo=True,
+                            tarifa=50.00  # Tarifa base por día
+                        )
+                        data['politica_pago'] = default_policy.id
+                        logger.info(f"Creada nueva política básica: {default_policy.titulo} (ID: {default_policy.id})")
+                except Exception as e:
+                    logger.error(f"Error manejando politica_pago fallback: {e}")
+                    raise serializers.ValidationError(f"Error procesando política de pago: {str(e)}")
+            else:
+                logger.warning(f"Valor no reconocido para politica_pago: {data['politica_pago']}")
+                raise serializers.ValidationError(f"Valor no válido para política de pago: {data['politica_pago']}")
+        
         # Calcular precio_dia automáticamente si no se proporciona
         if 'precio_dia' not in data or data['precio_dia'] is None:
             if data.get('precio_total') and data.get('fecha_recogida') and data.get('fecha_devolucion'):
