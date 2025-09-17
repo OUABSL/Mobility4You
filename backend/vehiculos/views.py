@@ -330,7 +330,7 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 
                 # También intentar obtener de POST data si no hay JSON
                 if not request_data:
-                    request_data = request.POST.dict() if hasattr(request, 'POST') else {}            # Extraer parámetros con diferentes nombres posibles
+                    request_data = request.POST.dict() if hasattr(request, 'POST') else {}
             fecha_recogida = (request_data.get("fecha_recogida") or 
                             request_data.get("pickupDate") or 
                             request_data.get("fecha_inicio"))
@@ -360,7 +360,9 @@ class VehiculoViewSet(viewsets.ModelViewSet):
 
             # Log para debugging
             logger.info(f"Búsqueda de disponibilidad - Datos recibidos: {request_data}")
-            logger.info(f"Tipo de vehículo solicitado: {tipo_vehiculo}, Categoría final: {categoria_id}, Grupo: {grupo_id}")            # Validar fechas
+            logger.info(f"Tipo de vehículo solicitado: {tipo_vehiculo}, Categoría final: {categoria_id}, Grupo: {grupo_id}")
+            
+            # Validar fechas
             if not fecha_recogida or not fecha_devolucion:
                 return Response(
                     {
@@ -370,7 +372,8 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-                # Convertir fechas
+            
+            # Convertir fechas
             try:
                 if isinstance(fecha_recogida, str):
                     fecha_recogida = datetime.fromisoformat(
